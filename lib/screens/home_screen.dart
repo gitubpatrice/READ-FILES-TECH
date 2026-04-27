@@ -16,6 +16,13 @@ import 'tools/txt_tools_screen.dart';
 import 'tools/csv_tools_screen.dart';
 import 'tools/diff_screen.dart';
 import 'tools/hash_screen.dart';
+import 'tools/encode_screen.dart';
+import 'tools/format_screen.dart';
+import 'tools/content_search_screen.dart';
+import 'viewers/pdf_viewer_screen.dart';
+import 'viewers/zip_viewer_screen.dart';
+import 'editors/code_editor_screen.dart';
+import 'explorer/file_explorer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -41,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _supported = [
     'txt', 'csv', 'html', 'htm', 'css', 'js', 'php',
     'docx', 'doc', 'xlsx', 'xls', 'odt', 'ods', 'odp',
-    'xml', 'json', 'md',
+    'xml', 'json', 'md', 'pdf', 'zip',
   ];
 
   @override
@@ -53,12 +60,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadRecents() async {
     final files = await _service.load();
-    if (mounted) setState(() { _recentFiles = files; _isLoading = false; });
+    if (mounted) { setState(() { _recentFiles = files; _isLoading = false; }); }
   }
 
   Future<void> _checkUpdate() async {
     final info = await UpdateService().checkForUpdate();
-    if (info == null || !mounted) return;
+    if (info == null) return;
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -86,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openFile(String path) async {
     final updated = await _service.addOrUpdate(_recentFiles, path);
-    if (mounted) setState(() => _recentFiles = updated);
+    if (mounted) { setState(() => _recentFiles = updated); }
     if (!mounted) return;
     final ext = path.split('.').last.toLowerCase();
     final screen = _screenForExt(ext, path);
@@ -117,6 +125,10 @@ class _HomeScreenState extends State<HomeScreen> {
         return XlsxViewerScreen(path: path);
       case 'docx': case 'doc': case 'odt': case 'odp':
         return DocxViewerScreen(path: path);
+      case 'pdf':
+        return PdfViewerScreen(path: path);
+      case 'zip':
+        return ZipViewerScreen(path: path);
       default:
         return null;
     }
@@ -124,12 +136,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _toggleFavorite(RecentFile file) async {
     final updated = await _service.toggleFavorite(_recentFiles, file.path);
-    if (mounted) setState(() => _recentFiles = updated);
+    if (mounted) { setState(() => _recentFiles = updated); }
   }
 
   Future<void> _removeRecent(RecentFile file) async {
     final updated = await _service.remove(_recentFiles, file.path);
-    if (mounted) setState(() => _recentFiles = updated);
+    if (mounted) { setState(() => _recentFiles = updated); }
   }
 
   String _formatDate(DateTime date) {
@@ -190,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
             formatDate: _formatDate,
           ),
           _ToolsTab(onPickFile: _pickAndOpen),
+          const FileExplorerScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -204,6 +217,10 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.build_outlined),
               selectedIcon: Icon(Icons.build),
               label: 'Outils'),
+          NavigationDestination(
+              icon: Icon(Icons.folder_outlined),
+              selectedIcon: Icon(Icons.folder),
+              label: 'Explorateur'),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -364,6 +381,10 @@ class _ToolsTab extends StatelessWidget {
       (icon: Icons.table_chart_outlined,  label: 'Outils CSV',    subtitle: 'Stats, PDF, fusion',       color: Colors.green,       screen: const CsvToolsScreen()),
       (icon: Icons.difference_outlined,   label: 'Comparer',      subtitle: 'Diff de deux fichiers',    color: Colors.indigo,      screen: const DiffScreen()),
       (icon: Icons.fingerprint,           label: 'Hash fichier',  subtitle: 'MD5, SHA-1, SHA-256…',    color: Colors.teal,        screen: const HashScreen()),
+      (icon: Icons.lock_outlined,         label: 'Encodage',      subtitle: 'Base64, URL, HTML',        color: Colors.orange,      screen: const EncodeScreen()),
+      (icon: Icons.auto_fix_high,         label: 'Formater',      subtitle: 'JSON, CSS, JS',            color: Colors.purple,      screen: const FormatScreen()),
+      (icon: Icons.edit_outlined,         label: 'Éditeur',       subtitle: 'Modifier et sauvegarder', color: Colors.cyan,        screen: CodeEditorScreen(path: '')),
+      (icon: Icons.manage_search,         label: 'Chercher',      subtitle: 'Dans le contenu des fichiers', color: Colors.deepOrange, screen: const ContentSearchScreen()),
     ];
 
     return GridView.builder(

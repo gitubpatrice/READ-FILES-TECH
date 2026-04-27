@@ -36,8 +36,9 @@ dependencies:
   # Hash fichier
   crypto: ^3.0.3
 
-  # Export PDF
+  # Export PDF + viewer
   syncfusion_flutter_pdf: ^27.1.48
+  syncfusion_flutter_pdfviewer: ^27.1.48
 
   # Google Drive
   google_sign_in: ^6.2.1

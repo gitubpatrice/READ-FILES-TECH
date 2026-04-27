@@ -37,6 +37,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
 
   Future<void> _exportPdf() async {
     if (_path == null || _rows.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isProcessing = true);
     try {
       final doc = PdfDocument();
@@ -90,7 +91,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      messenger.showSnackBar(SnackBar(
         content: Text('PDF créé : ${outPath.split('/').last}'),
         action: SnackBarAction(label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)])),
@@ -98,11 +99,12 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 
   Future<void> _mergeCsv() async {
+    final messenger = ScaffoldMessenger.of(context);
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
@@ -134,7 +136,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      messenger.showSnackBar(SnackBar(
         content: Text('${allRows.length - 1} lignes fusionnées'),
         action: SnackBarAction(label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)])),
@@ -142,7 +144,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 

@@ -102,7 +102,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _colors.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, i) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final c = _colors[i];
           return GestureDetector(

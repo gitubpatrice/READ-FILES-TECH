@@ -55,17 +55,19 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
 
   Future<void> _replace() async {
     if (_path == null || _searchCtrl.text.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
     final updated = _content.replaceAll(_searchCtrl.text, _replaceCtrl.text);
     setState(() => _content = updated);
     await File(_path!).writeAsString(updated);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(content: Text('Remplacement effectué et sauvegardé')),
     );
   }
 
   Future<void> _convertToPdf() async {
     if (_path == null) return;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isProcessing = true);
     try {
       final doc = PdfDocument();
@@ -91,7 +93,7 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('PDF créé : ${outPath.split('/').last}'),
           action: SnackBarAction(
@@ -103,7 +105,7 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 

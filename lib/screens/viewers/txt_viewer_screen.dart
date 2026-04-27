@@ -64,7 +64,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
     // rgb() / rgba()
     final rgbReg = RegExp(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)');
     for (final m in rgbReg.allMatches(text)) {
-      final code = m.group(0)! + ')';
+      final code = '${m.group(0)!})';
       if (seen.contains(code)) continue;
       seen.add(code);
       final r = int.tryParse(m.group(1)!) ?? 0;
@@ -140,7 +140,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _colorMatches.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, i) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final m = _colorMatches[i];
           return GestureDetector(
