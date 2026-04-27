@@ -24,6 +24,12 @@ void main() {
 }
 
 Future<void> _requestStoragePermissions() async {
+  // Ne demander qu'une seule fois après l'install. Si l'utilisateur refuse
+  // ou ignore, il peut toujours autoriser via Réglages → Apps → Read Files Tech.
+  // Sinon le dialog se ré-affiche à chaque lancement, ce qui est pénible.
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool('permissions_asked') == true) return;
+
   // Android 13+ : médias granulaires (un seul dialog regroupé via Future.wait).
   final futures = <Future<PermissionStatus>>[];
   if (await Permission.photos.isDenied) {
@@ -43,6 +49,7 @@ Future<void> _requestStoragePermissions() async {
   if (await Permission.manageExternalStorage.isDenied) {
     await Permission.manageExternalStorage.request();
   }
+  await prefs.setBool('permissions_asked', true);
 }
 
 ThemeData _githubDarkTheme() {
