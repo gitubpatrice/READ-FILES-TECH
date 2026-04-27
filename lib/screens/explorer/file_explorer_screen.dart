@@ -18,7 +18,18 @@ import '../viewers/image_viewer_screen.dart';
 
 class FileExplorerScreen extends StatefulWidget {
   final String? initialPath;
-  const FileExplorerScreen({super.key, this.initialPath});
+  /// Extensions à afficher (sans le point, en minuscules). Si non null, les
+  /// fichiers d'autres extensions sont masqués. Les sous-dossiers restent
+  /// visibles pour permettre la navigation. ex: {'apk'}, {'mp4','mov','avi'}.
+  final Set<String>? extensionFilter;
+  /// Titre custom de l'AppBar (sinon "Explorateur").
+  final String? title;
+  const FileExplorerScreen({
+    super.key,
+    this.initialPath,
+    this.extensionFilter,
+    this.title,
+  });
 
   @override
   State<FileExplorerScreen> createState() => _FileExplorerScreenState();
@@ -646,9 +657,14 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   }
 
   List<FileSystemEntity> get _filtered {
+    final extFilter = widget.extensionFilter;
     return _entries.where((e) {
       final name = e.path.split('/').last;
       if (!_showHidden && name.startsWith('.')) return false;
+      // Filtre extension : fichiers seulement, dossiers toujours visibles.
+      if (extFilter != null && e is File && !extFilter.contains(_ext(e.path))) {
+        return false;
+      }
       if (_search.isNotEmpty && !name.toLowerCase().contains(_search.toLowerCase())) return false;
       return true;
     }).toList();
@@ -708,7 +724,8 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Explorateur', style: TextStyle(fontSize: 16)),
+                  Text(widget.title ?? 'Explorateur',
+                      style: const TextStyle(fontSize: 16)),
                   Text(parts.isNotEmpty ? parts.last : '/',
                       style: const TextStyle(fontSize: 11, color: Colors.grey),
                       overflow: TextOverflow.ellipsis),

@@ -275,13 +275,13 @@ class _HomeTabState extends State<_HomeTab> {
   int _freeBytes  = 0;
 
   static const _quickFolders = [
-    (icon: Icons.photo_camera_outlined,   label: 'Caméra',       color: Color(0xFF9C27B0), path: '/storage/emulated/0/DCIM/Camera'),
-    (icon: Icons.screenshot_outlined,    label: 'Screenshots',  color: Color(0xFF7B1FA2), path: '/storage/emulated/0/DCIM/Screenshots'),
-    (icon: Icons.description_outlined,   label: 'Documents',    color: Color(0xFF1976D2), path: '/storage/emulated/0/Documents'),
-    (icon: Icons.videocam_outlined,       label: 'Vidéos',       color: Color(0xFFE53935), path: '/storage/emulated/0/Movies'),
-    (icon: Icons.download_outlined,       label: 'Télécharg.',   color: Color(0xFF43A047), path: '/storage/emulated/0/Download'),
-    (icon: Icons.android_outlined,        label: 'APKs',         color: Color(0xFF00897B), path: '/storage/emulated/0/Download'),
-    (icon: Icons.photo_library_outlined,  label: 'Galerie',      color: Color(0xFFFF7043), path: '/storage/emulated/0/DCIM'),
+    (icon: Icons.photo_camera_outlined,   label: 'Caméra',       color: Color(0xFF9C27B0), path: '/storage/emulated/0/DCIM/Camera',     filter: <String>{}),
+    (icon: Icons.screenshot_outlined,     label: 'Screenshots',  color: Color(0xFF7B1FA2), path: '/storage/emulated/0/DCIM/Screenshots', filter: <String>{}),
+    (icon: Icons.description_outlined,    label: 'Documents',    color: Color(0xFF1976D2), path: '/storage/emulated/0/Documents',      filter: <String>{}),
+    (icon: Icons.videocam_outlined,       label: 'Vidéos',       color: Color(0xFFE53935), path: '/storage/emulated/0/Movies',         filter: {'mp4','mov','avi','mkv','webm','3gp'}),
+    (icon: Icons.download_outlined,       label: 'Télécharg.',   color: Color(0xFF43A047), path: '/storage/emulated/0/Download',       filter: <String>{}),
+    (icon: Icons.android_outlined,        label: 'APKs',         color: Color(0xFF00897B), path: '/storage/emulated/0/Download',       filter: {'apk'}),
+    (icon: Icons.photo_library_outlined,  label: 'Galerie',      color: Color(0xFFFF7043), path: '/storage/emulated/0/DCIM',           filter: {'jpg','jpeg','png','gif','webp','heic'}),
   ];
 
   @override
@@ -308,9 +308,14 @@ class _HomeTabState extends State<_HomeTab> {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
-  void _openFolder(String path) {
+  void _openFolder(String path,
+      {Set<String>? filter, String? title}) {
     Navigator.push(context, MaterialPageRoute(
-        builder: (_) => FileExplorerScreen(initialPath: path)));
+        builder: (_) => FileExplorerScreen(
+              initialPath: path,
+              extensionFilter: (filter != null && filter.isNotEmpty) ? filter : null,
+              title: title,
+            )));
   }
 
   Color _extColor(String ext) {
@@ -376,7 +381,7 @@ class _HomeTabState extends State<_HomeTab> {
           children: [
             ..._quickFolders.map((f) => _FolderCard(
               icon: f.icon, label: f.label, color: f.color,
-              onTap: () => _openFolder(f.path),
+              onTap: () => _openFolder(f.path, filter: f.filter, title: f.label),
             )),
             _FolderCard(
               icon: Icons.add_to_drive,
