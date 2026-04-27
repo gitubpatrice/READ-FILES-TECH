@@ -16,7 +16,8 @@ import '../editors/code_editor_screen.dart';
 import '../viewers/image_viewer_screen.dart';
 
 class FileExplorerScreen extends StatefulWidget {
-  const FileExplorerScreen({super.key});
+  final String? initialPath;
+  const FileExplorerScreen({super.key, this.initialPath});
 
   @override
   State<FileExplorerScreen> createState() => _FileExplorerScreenState();
@@ -42,7 +43,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   }
 
   Future<void> _initRoot() async {
-    // Priorité : stockage externe (Android), sinon documents
+    if (widget.initialPath != null) {
+      _navigate(Directory(widget.initialPath!));
+      return;
+    }
     Directory? root;
     if (Platform.isAndroid) {
       root = Directory('/storage/emulated/0');
