@@ -34,6 +34,19 @@ class MainActivity : FlutterActivity() {
         // Listing natif : Dart's Directory.list() peut être filtré par
         // Samsung DefEx (APKs invisibles dans /sdcard malgré MANAGE_EXTERNAL_STORAGE).
         // File.listFiles() côté Kotlin retourne tous les fichiers réels.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/lifecycle")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "recreateActivity") {
+                    // Sur Samsung, MANAGE_EXTERNAL_STORAGE accordée via Réglages
+                    // n'est pas appliquée au process en cours. Recreate force
+                    // Android à recharger les permissions.
+                    runOnUiThread { recreate() }
+                    result.success(null)
+                } else {
+                    result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/list_dir")
             .setMethodCallHandler { call, result ->
                 if (call.method == "listDir") {

@@ -214,12 +214,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     super.dispose();
   }
 
+  static const _lifecycleChannel = MethodChannel('com.readfilestech/lifecycle');
+
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Au retour de l'app au premier plan (après toggle dans Réglages),
-    // re-vérifier la permission et refresh si elle vient d'être accordée.
-    if (state == AppLifecycleState.resumed && _permissionDenied && _current != null) {
-      _refresh();
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state != AppLifecycleState.resumed) return;
+    if (!_permissionDenied || _current == null) return;
+    // L'utilisateur revient de la page Réglages : a-t-il activé l'accès ?
+    final permOk = await _hasManageStorage();
+    if (permOk) {
+      // Sur Samsung, le grant ne s'applique pas au process en cours.
+      // recreate() de l'Activity force Android à reloader les permissions.
+      try {
+        await _lifecycleChannel.invokeMethod('recreateActivity');
+      } catch (_) {
+        // Fallback : refresh classique si le channel échoue.
+        if (mounted) _refresh();
+      }
     }
   }
 
