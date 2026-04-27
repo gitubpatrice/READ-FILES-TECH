@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class CodeEditorScreen extends StatefulWidget {
@@ -75,10 +76,113 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     }
   }
 
+  Future<void> _backup() async {
+    if (_resolvedPath.isEmpty) return;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final histDir = Directory('${dir.path}/history');
+      if (!await histDir.exists()) await histDir.create(recursive: true);
+
+      final base = _name.replaceAll(RegExp(r'[^\w.]'), '_');
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      await File(_resolvedPath).copy('${histDir.path}/${base}_$ts.bak');
+
+      final baks = histDir.listSync()
+          .whereType<File>()
+          .where((f) => f.path.contains('${base}_'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+      if (baks.length > 10) {
+        for (final old in baks.sublist(0, baks.length - 10)) {
+          await old.delete();
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _showHistory() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final histDir = Directory('${dir.path}/history');
+    if (!await histDir.exists()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun historique disponible')),
+      );
+      return;
+    }
+    final base = _name.replaceAll(RegExp(r'[^\w.]'), '_');
+    final baks = histDir.listSync()
+        .whereType<File>()
+        .where((f) => f.path.contains('${base}_') && f.path.endsWith('.bak'))
+        .toList()
+      ..sort((a, b) => b.path.compareTo(a.path));
+
+    if (!mounted) return;
+    if (baks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucune sauvegarde pour ce fichier')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text('Historique — $_name',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: baks.length,
+              itemBuilder: (ctx, i) {
+                final f = baks[i];
+                final fname = f.path.split(RegExp(r'[/\\]')).last;
+                final tsStr = fname.split('_').last.replaceAll('.bak', '');
+                final ms = int.tryParse(tsStr);
+                final label = ms != null
+                    ? DateTime.fromMillisecondsSinceEpoch(ms)
+                        .toString()
+                        .substring(0, 19)
+                    : fname;
+                return ListTile(
+                  leading: const Icon(Icons.history),
+                  title: Text(label, style: const TextStyle(fontSize: 14)),
+                  trailing: TextButton(
+                    child: const Text('Restaurer'),
+                    onPressed: () async {
+                      final nav = Navigator.of(ctx);
+                      final content = await f.readAsString();
+                      if (!mounted) return;
+                      nav.pop();
+                      _ctrl.text = content;
+                      setState(() => _modified = true);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Version restaurée — pensez à sauvegarder')),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isSaving = true);
     try {
+      await _backup();
       await File(_resolvedPath).writeAsString(_ctrl.text);
       _original = _ctrl.text;
       setState(() { _modified = false; _isSaving = false; });
@@ -160,6 +264,12 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.save),
                 onPressed: _isSaving ? null : _save,
+              ),
+            if (_resolvedPath.isNotEmpty)
+              IconButton(
+                tooltip: 'Historique',
+                icon: const Icon(Icons.history),
+                onPressed: _showHistory,
               ),
             if (_resolvedPath.isNotEmpty)
               IconButton(

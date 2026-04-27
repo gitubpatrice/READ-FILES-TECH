@@ -22,6 +22,9 @@ import 'tools/content_search_screen.dart';
 import 'viewers/pdf_viewer_screen.dart';
 import 'viewers/zip_viewer_screen.dart';
 import 'editors/code_editor_screen.dart';
+import 'editors/csv_editor_screen.dart';
+import 'tools/zip_creator_screen.dart';
+import 'viewers/image_viewer_screen.dart';
 import 'explorer/file_explorer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -129,6 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return PdfViewerScreen(path: path);
       case 'zip':
         return ZipViewerScreen(path: path);
+      case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp':
+        return ImageViewerScreen(path: path);
       default:
         return null;
     }
@@ -385,6 +390,8 @@ class _ToolsTab extends StatelessWidget {
       (icon: Icons.auto_fix_high,         label: 'Formater',      subtitle: 'JSON, CSS, JS',            color: Colors.purple,      screen: const FormatScreen()),
       (icon: Icons.edit_outlined,         label: 'Éditeur',       subtitle: 'Modifier et sauvegarder', color: Colors.cyan,        screen: CodeEditorScreen(path: '')),
       (icon: Icons.manage_search,         label: 'Chercher',      subtitle: 'Dans le contenu des fichiers', color: Colors.deepOrange, screen: const ContentSearchScreen()),
+      (icon: Icons.table_view,             label: 'Éditeur CSV',   subtitle: 'Modifier cellules, lignes, colonnes', color: Colors.green, screen: CsvEditorScreen(path: '')),
+      (icon: Icons.folder_zip_outlined,    label: 'Créer ZIP',     subtitle: 'Compresser des fichiers', color: Colors.orange, screen: const ZipCreatorScreen()),
     ];
 
     return GridView.builder(

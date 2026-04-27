@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
+import '../editors/csv_editor_screen.dart';
 
 class CsvViewerScreen extends StatefulWidget {
   final String path;
@@ -94,6 +95,13 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
       appBar: AppBar(
         title: Text(_name, overflow: TextOverflow.ellipsis),
         actions: [
+          IconButton(
+            tooltip: 'Éditer',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => CsvEditorScreen(path: widget.path))),
+          ),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => Share.shareXFiles([XFile(widget.path)]),

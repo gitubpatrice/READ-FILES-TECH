@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../viewers/txt_viewer_screen.dart';
@@ -12,6 +13,7 @@ import '../viewers/docx_viewer_screen.dart';
 import '../viewers/pdf_viewer_screen.dart';
 import '../viewers/zip_viewer_screen.dart';
 import '../editors/code_editor_screen.dart';
+import '../viewers/image_viewer_screen.dart';
 
 class FileExplorerScreen extends StatefulWidget {
   const FileExplorerScreen({super.key});
@@ -31,6 +33,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
 
   static const _editableExts   = {'txt','md','csv','xml','json','html','css','js','php','dart'};
   static const _viewableExts   = {'docx','doc','odt','xlsx','xls','ods','odp','pdf','zip'};
+  static const _imageExts      = {'jpg','jpeg','png','gif','webp'};
 
   @override
   void initState() {
@@ -280,6 +283,17 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   }
 
   void _openFile(String path) {
+    final ext = _ext(path);
+    if (_imageExts.contains(ext)) {
+      final siblings = _filtered
+          .whereType<File>()
+          .where((f) => _imageExts.contains(_ext(f.path)))
+          .map((f) => f.path)
+          .toList();
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ImageViewerScreen(path: path, siblings: siblings)));
+      return;
+    }
     final screen = _screenFor(path);
     if (screen != null) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
@@ -293,6 +307,159 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   void _editFile(String path) {
     Navigator.push(context, MaterialPageRoute(
         builder: (_) => CodeEditorScreen(path: path)));
+  }
+
+  Future<void> _refresh() async {
+    if (_current == null) return;
+    setState(() => _isLoading = true);
+    try {
+      final entries = await _current!.list().toList();
+      entries.sort((a, b) {
+        final aDir = a is Directory;
+        final bDir = b is Directory;
+        if (aDir != bDir) return aDir ? -1 : 1;
+        switch (_sort) {
+          case 'size':
+            final aSize = a is File ? a.lengthSync() : 0;
+            final bSize = b is File ? b.lengthSync() : 0;
+            return bSize.compareTo(aSize);
+          case 'date':
+            return b.statSync().modified.compareTo(a.statSync().modified);
+          default:
+            return a.path.split('/').last.toLowerCase()
+                .compareTo(b.path.split('/').last.toLowerCase());
+        }
+      });
+      setState(() { _entries = entries; _isLoading = false; });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Future<void> _rename(FileSystemEntity e) async {
+    final name = e.path.split('/').last;
+    final ctrl = TextEditingController(text: name);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Renommer'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+              child: const Text('Renommer')),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == name) return;
+    try {
+      await e.rename('${e.parent.path}/$newName');
+      _refresh();
+    } catch (ex) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+    }
+  }
+
+  Future<void> _delete(FileSystemEntity e) async {
+    final name = e.path.split('/').last;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer'),
+        content: Text('Supprimer "$name" ?${e is Directory ? '\nLe dossier et tout son contenu seront supprimés.' : ''}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      if (e is Directory) {
+        await e.delete(recursive: true);
+      } else {
+        await e.delete();
+      }
+      _refresh();
+    } catch (ex) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+    }
+  }
+
+  Future<void> _createFolder() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Nouveau dossier'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+              hintText: 'Nom du dossier', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+              child: const Text('Créer')),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty || _current == null) return;
+    try {
+      await Directory('${_current!.path}/$name').create();
+      _refresh();
+    } catch (ex) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+    }
+  }
+
+  Future<void> _copyFile(String sourcePath) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final destDir = await FilePicker.platform.getDirectoryPath();
+    if (destDir == null) return;
+    try {
+      final name = sourcePath.split('/').last;
+      await File(sourcePath).copy('$destDir/$name');
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('Fichier copié')));
+    } catch (ex) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+    }
+  }
+
+  Future<void> _moveFile(String sourcePath) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final destDir = await FilePicker.platform.getDirectoryPath();
+    if (destDir == null) return;
+    try {
+      final name = sourcePath.split('/').last;
+      await File(sourcePath).copy('$destDir/$name');
+      await File(sourcePath).delete();
+      if (!mounted) return;
+      _refresh();
+      messenger.showSnackBar(const SnackBar(content: Text('Fichier déplacé')));
+    } catch (ex) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+    }
   }
 
   List<FileSystemEntity> get _filtered {
@@ -407,7 +574,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                           final isDir = e is Directory;
                           final ext = isDir ? '' : _ext(e.path);
                           final canEdit = _editableExts.contains(ext);
-                          final canView = canEdit || _viewableExts.contains(ext);
+                          final canView = canEdit || _viewableExts.contains(ext) || _imageExts.contains(ext);
 
                           int? size;
                           DateTime? modified;
@@ -444,12 +611,27 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                 ),
                             ]),
                             trailing: isDir
-                                ? const Icon(Icons.chevron_right, color: Colors.grey)
+                                ? PopupMenuButton<String>(
+                                    onSelected: (v) {
+                                      if (v == 'rename') _rename(e);
+                                      if (v == 'delete') _delete(e);
+                                    },
+                                    itemBuilder: (_) => const [
+                                      PopupMenuItem(value: 'rename', child: ListTile(
+                                          leading: Icon(Icons.drive_file_rename_outline), title: Text('Renommer'))),
+                                      PopupMenuItem(value: 'delete', child: ListTile(
+                                          leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Supprimer'))),
+                                    ],
+                                  )
                                 : PopupMenuButton<String>(
                                     onSelected: (v) {
-                                      if (v == 'open')  _openFile(e.path);
-                                      if (v == 'edit')  _editFile(e.path);
-                                      if (v == 'share') Share.shareXFiles([XFile(e.path)]);
+                                      if (v == 'open')   _openFile(e.path);
+                                      if (v == 'edit')   _editFile(e.path);
+                                      if (v == 'share')  Share.shareXFiles([XFile(e.path)]);
+                                      if (v == 'rename') _rename(e);
+                                      if (v == 'copy')   _copyFile(e.path);
+                                      if (v == 'move')   _moveFile(e.path);
+                                      if (v == 'delete') _delete(e);
                                     },
                                     itemBuilder: (_) => [
                                       if (canView)
@@ -460,6 +642,15 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                             leading: Icon(Icons.edit_outlined), title: Text('Éditer'))),
                                       const PopupMenuItem(value: 'share', child: ListTile(
                                           leading: Icon(Icons.share), title: Text('Partager'))),
+                                      const PopupMenuDivider(),
+                                      const PopupMenuItem(value: 'rename', child: ListTile(
+                                          leading: Icon(Icons.drive_file_rename_outline), title: Text('Renommer'))),
+                                      const PopupMenuItem(value: 'copy', child: ListTile(
+                                          leading: Icon(Icons.copy_outlined), title: Text('Copier vers…'))),
+                                      const PopupMenuItem(value: 'move', child: ListTile(
+                                          leading: Icon(Icons.drive_file_move_outlined), title: Text('Déplacer vers…'))),
+                                      const PopupMenuItem(value: 'delete', child: ListTile(
+                                          leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Supprimer'))),
                                     ],
                                   ),
                             onTap: () {
@@ -475,6 +666,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                       ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createFolder,
+        tooltip: 'Nouveau dossier',
+        child: const Icon(Icons.create_new_folder_outlined),
       ),
     );
   }
