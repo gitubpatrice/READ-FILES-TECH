@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import '../viewers/txt_viewer_screen.dart';
 import '../viewers/md_viewer_screen.dart';
@@ -43,6 +44,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   bool _showHidden = false;
   String _search = '';
   String _sort = 'name';
+  bool _permissionDenied = false;
+
+  Future<bool> _hasManageStorage() async {
+    if (!Platform.isAndroid) return true;
+    return await Permission.manageExternalStorage.isGranted;
+  }
+
+  /// Path nécessitant MANAGE_EXTERNAL_STORAGE pour être listé entièrement.
+  bool _requiresManageStorage(String path) {
+    if (!Platform.isAndroid) return false;
+    return path.startsWith('/storage/emulated/0') ||
+           path.startsWith('/sdcard');
+  }
+
+  Future<void> _openAppSettings() async {
+    await openAppSettings();
+  }
 
   final Set<String> _selected = <String>{};
   bool get _selectionMode => _selected.isNotEmpty;
@@ -197,6 +215,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
     setState(() => _isLoading = true);
     try {
       final entries = await _listDirNative(dir);
+      // Détecter le cas "permission manquante" : dossier listable mais
+      // probablement vide à cause de scoped storage.
+      final permOk = await _hasManageStorage();
+      _permissionDenied = entries.isEmpty &&
+          _requiresManageStorage(dir.path) && !permOk;
       entries.sort((a, b) {
         final aDir = a is Directory;
         final bDir = b is Directory;
@@ -797,6 +820,39 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
             ),
           ),
 
+          // Bandeau permission (présent si permission MANAGE_EXTERNAL_STORAGE manquante
+          // et chemin nécessitant cette permission). Reste visible même si _filtered>0.
+          if (_permissionDenied)
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3)),
+              ),
+              child: Row(children: [
+                Icon(Icons.warning_amber_rounded,
+                    size: 18, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Accès aux fichiers limité — autorisez tous les fichiers.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _openAppSettings,
+                  style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  child: const Text('Réglages'),
+                ),
+              ]),
+            ),
+
           // Stats
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -815,10 +871,44 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                     child: _filtered.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 200),
-                          Center(child: Text('Dossier vide',
-                              style: TextStyle(color: Colors.grey))),
+                        children: [
+                          const SizedBox(height: 80),
+                          if (_permissionDenied) ...[
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 32),
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.folder_off_outlined,
+                                        size: 64,
+                                        color: Theme.of(context).colorScheme.error),
+                                    const SizedBox(height: 16),
+                                    const Text('Accès aux fichiers refusé',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Pour afficher les fichiers de ce dossier, '
+                                      'autorisez l\'accès à tous les fichiers '
+                                      'dans les Réglages.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: Colors.grey, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    FilledButton.icon(
+                                      onPressed: _openAppSettings,
+                                      icon: const Icon(Icons.settings),
+                                      label: const Text('Ouvrir les Réglages'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ] else
+                            const Center(child: Text('Dossier vide',
+                                style: TextStyle(color: Colors.grey))),
                         ],
                       )
                     : ListView.builder(
