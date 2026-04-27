@@ -112,6 +112,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
 
   String _ext(String path) => path.contains('.') ? path.split('.').last.toLowerCase() : '';
 
+  String? _mime(String ext) {
+    switch (ext) {
+      case 'jpg': case 'jpeg': return 'image/jpeg';
+      case 'png':  return 'image/png';
+      case 'gif':  return 'image/gif';
+      case 'webp': return 'image/webp';
+      case 'mp4':  return 'video/mp4';
+      case 'mp3':  return 'audio/mpeg';
+      case 'pdf':  return 'application/pdf';
+      case 'txt':  return 'text/plain';
+      case 'html': case 'htm': return 'text/html';
+      case 'csv':  return 'text/csv';
+      case 'zip':  return 'application/zip';
+      default:     return null;
+    }
+  }
+
   IconData _icon(FileSystemEntity e) {
     if (e is Directory) return Icons.folder_outlined;
     final ext = _ext(e.path);
@@ -633,7 +650,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                     onSelected: (v) {
                                       if (v == 'open')   _openFile(e.path);
                                       if (v == 'edit')   _editFile(e.path);
-                                      if (v == 'share')  Share.shareXFiles([XFile(e.path)]);
+                                      if (v == 'share')  Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
                                       if (v == 'rename') _rename(e);
                                       if (v == 'copy')   _copyFile(e.path);
                                       if (v == 'move')   _moveFile(e.path);

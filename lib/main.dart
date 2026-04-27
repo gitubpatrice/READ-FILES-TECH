@@ -1,16 +1,39 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
+  if (Platform.isAndroid) {
+    await _requestStoragePermissions();
+  }
   runApp(const ReadFilesTechApp());
+}
+
+Future<void> _requestStoragePermissions() async {
+  // Android 11+ : demande accès tous fichiers (gestionnaire de fichiers)
+  if (await Permission.manageExternalStorage.isDenied) {
+    await Permission.manageExternalStorage.request();
+  }
+  // Android 13+ : médias granulaires
+  if (await Permission.photos.isDenied) {
+    await Permission.photos.request();
+  }
+  if (await Permission.videos.isDenied) {
+    await Permission.videos.request();
+  }
+  // Android ≤ 12
+  if (await Permission.storage.isDenied) {
+    await Permission.storage.request();
+  }
 }
 
 ThemeData _githubDarkTheme() {

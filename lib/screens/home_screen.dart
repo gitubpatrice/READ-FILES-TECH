@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../models/recent_file.dart';
 import '../services/recent_files_service.dart';
@@ -27,6 +28,7 @@ import 'editors/csv_editor_screen.dart';
 import 'tools/zip_creator_screen.dart';
 import 'viewers/image_viewer_screen.dart';
 import 'explorer/file_explorer_screen.dart';
+import 'about_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -181,6 +183,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 delegate: _FileSearchDelegate(_recentFiles, _openFile),
               ),
             ),
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'À propos',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AboutScreen())),
+          ),
           PopupMenuButton<ThemeMode>(
             tooltip: 'Thème',
             icon: Icon(_themeModeIcon(widget.themeMode)),
@@ -448,12 +456,15 @@ class _HomeTabState extends State<_HomeTab> {
         trailing: PopupMenuButton<String>(
           onSelected: (v) {
             if (v == 'favorite') widget.onToggleFavorite(file);
+            if (v == 'share')    Share.shareXFiles([XFile(file.path)]);
             if (v == 'remove')   widget.onRemove(file);
           },
           itemBuilder: (_) => [
             PopupMenuItem(value: 'favorite', child: ListTile(
                 leading: Icon(file.isFavorite ? Icons.star_border : Icons.star, color: Colors.amber),
                 title: Text(file.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'))),
+            const PopupMenuItem(value: 'share', child: ListTile(
+                leading: Icon(Icons.share), title: Text('Partager'))),
             const PopupMenuItem(value: 'remove', child: ListTile(
                 leading: Icon(Icons.delete_outline), title: Text('Retirer'))),
           ],
