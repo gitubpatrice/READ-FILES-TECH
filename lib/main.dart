@@ -115,13 +115,45 @@ class ReadFilesTechApp extends StatefulWidget {
   State<ReadFilesTechApp> createState() => _ReadFilesTechAppState();
 }
 
-class _ReadFilesTechAppState extends State<ReadFilesTechApp> {
+class _ReadFilesTechAppState extends State<ReadFilesTechApp>
+    with WidgetsBindingObserver {
+  static const _lifecycleChannel = MethodChannel('com.readfilestech/lifecycle');
   ThemeMode _themeMode = ThemeMode.system;
+  bool _lastKnownPermGranted = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadTheme();
+    _captureInitialPerm();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _captureInitialPerm() async {
+    if (!Platform.isAndroid) return;
+    _lastKnownPermGranted = await Permission.manageExternalStorage.isGranted;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state != AppLifecycleState.resumed || !Platform.isAndroid) return;
+    final granted = await Permission.manageExternalStorage.isGranted;
+    // Transition denied → granted : Samsung n'applique pas la nouvelle perm
+    // au process en cours. recreate() force Android à reloader.
+    if (granted && !_lastKnownPermGranted) {
+      _lastKnownPermGranted = true;
+      try {
+        await _lifecycleChannel.invokeMethod('recreateActivity');
+      } catch (_) {}
+    } else {
+      _lastKnownPermGranted = granted;
+    }
   }
 
   Future<void> _loadTheme() async {
