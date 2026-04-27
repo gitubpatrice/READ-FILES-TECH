@@ -5,6 +5,8 @@ import '../models/recent_file.dart';
 import '../services/recent_files_service.dart';
 import '../services/update_service.dart';
 import 'viewers/txt_viewer_screen.dart';
+import 'viewers/md_viewer_screen.dart';
+import 'viewers/json_viewer_screen.dart';
 import 'viewers/html_viewer_screen.dart';
 import 'viewers/csv_viewer_screen.dart';
 import 'viewers/xlsx_viewer_screen.dart';
@@ -12,6 +14,8 @@ import 'viewers/docx_viewer_screen.dart';
 import 'tools/color_picker_screen.dart';
 import 'tools/txt_tools_screen.dart';
 import 'tools/csv_tools_screen.dart';
+import 'tools/diff_screen.dart';
+import 'tools/hash_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -97,8 +101,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget? _screenForExt(String ext, String path) {
     switch (ext) {
-      case 'txt': case 'md': case 'xml': case 'json':
+      case 'txt': case 'xml':
         return TxtViewerScreen(path: path);
+      case 'md':
+        return MdViewerScreen(path: path);
+      case 'json':
+        return JsonViewerScreen(path: path);
       case 'html': case 'htm':
         return HtmlViewerScreen(path: path);
       case 'css': case 'js': case 'php':
@@ -351,9 +359,11 @@ class _ToolsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tools = [
-      (icon: Icons.palette_outlined,    label: 'Color Picker',    subtitle: 'HEX, RGB, HSL',            color: Colors.pink,        screen: const ColorPickerScreen()),
-      (icon: Icons.text_snippet_outlined,label: 'Outils TXT',     subtitle: 'Mots, recherche, PDF',      color: Colors.blueGrey,    screen: const TxtToolsScreen()),
-      (icon: Icons.table_chart_outlined, label: 'Outils CSV',     subtitle: 'Filtrer, trier, fusionner', color: Colors.green,       screen: const CsvToolsScreen()),
+      (icon: Icons.palette_outlined,      label: 'Color Picker',  subtitle: 'HEX, RGB, HSL',            color: Colors.pink,        screen: const ColorPickerScreen()),
+      (icon: Icons.text_snippet_outlined, label: 'Outils TXT',    subtitle: 'Mots, recherche, PDF',     color: Colors.blueGrey,    screen: const TxtToolsScreen()),
+      (icon: Icons.table_chart_outlined,  label: 'Outils CSV',    subtitle: 'Stats, PDF, fusion',       color: Colors.green,       screen: const CsvToolsScreen()),
+      (icon: Icons.difference_outlined,   label: 'Comparer',      subtitle: 'Diff de deux fichiers',    color: Colors.indigo,      screen: const DiffScreen()),
+      (icon: Icons.fingerprint,           label: 'Hash fichier',  subtitle: 'MD5, SHA-1, SHA-256…',    color: Colors.teal,        screen: const HashScreen()),
     ];
 
     return GridView.builder(

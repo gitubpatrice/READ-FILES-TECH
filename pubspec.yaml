@@ -30,6 +30,12 @@ dependencies:
   # Outil couleur
   flutter_colorpicker: ^1.1.0
 
+  # Markdown rendu
+  flutter_markdown: ^0.7.4
+
+  # Hash fichier
+  crypto: ^3.0.3
+
   # Export PDF
   syncfusion_flutter_pdf: ^27.1.48
 
