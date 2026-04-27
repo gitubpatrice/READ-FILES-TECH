@@ -244,6 +244,14 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
         'mime': mime,
         'chooser': chooser,
       });
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      final msg = e.code == 'INSTALL_PERMISSION_REQUIRED'
+          ? (e.message ?? 'Autorisation requise — page Réglages ouverte.')
+          : 'Aucune application trouvée pour ouvrir ce fichier';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+      );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

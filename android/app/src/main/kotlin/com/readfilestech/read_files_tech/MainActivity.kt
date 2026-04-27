@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -79,6 +80,35 @@ class MainActivity : FlutterActivity() {
                         } else {
                             Uri.fromFile(file)
                         }
+
+                        // Cas spécial : APK → installateur de paquets Android.
+                        // Vérifier "Installer apps inconnues" et rediriger si manquant.
+                        if (mime == "application/vnd.android.package-archive") {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                                && !packageManager.canRequestPackageInstalls()) {
+                                val settings = Intent(
+                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:$packageName")
+                                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                startActivity(settings)
+                                result.error(
+                                    "INSTALL_PERMISSION_REQUIRED",
+                                    "Autorisez 'Installer apps inconnues' pour Read Files Tech, puis réessayez.",
+                                    null
+                                )
+                                return@setMethodCallHandler
+                            }
+                            val install = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, mime)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            }
+                            startActivity(install)
+                            result.success(null)
+                            return@setMethodCallHandler
+                        }
+
                         val view = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(uri, mime)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
