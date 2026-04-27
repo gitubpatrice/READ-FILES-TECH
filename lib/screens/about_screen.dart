@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/update_service.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -12,7 +11,6 @@ class AboutScreen extends StatefulWidget {
 class _AboutScreenState extends State<AboutScreen> {
   static const _version = '1.5.0';
   static const _author  = 'Patrice Haltaya';
-  static const _github  = 'github.com/gitubpatrice/READ-FILES-TECH';
 
   bool _checkingUpdate = false;
 
@@ -129,25 +127,6 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
               title: const Text(_author),
               subtitle: const Text('Développeur'),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Source ──────────────────────────────────────────────────────────
-          _sectionTitle(context, 'Code source'),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.code),
-              title: const Text(_github),
-              subtitle: const Text('Appuyer pour copier le lien'),
-              onTap: () {
-                Clipboard.setData(const ClipboardData(text: 'https://$_github'));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Lien copié dans le presse-papier')),
-                );
-              },
             ),
           ),
 
