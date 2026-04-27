@@ -677,6 +677,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                       if (canView)
                                         const PopupMenuItem(value: 'open', child: ListTile(
                                             leading: Icon(Icons.open_in_new), title: Text('Ouvrir'))),
+                                      if (_imageExts.contains(ext))
+                                        const PopupMenuItem(value: 'open_system', child: ListTile(
+                                            leading: Icon(Icons.photo_library_outlined), title: Text('Ouvrir dans la Galerie'))),
                                       if (!canView)
                                         const PopupMenuItem(value: 'open_system', child: ListTile(
                                             leading: Icon(Icons.open_in_new), title: Text('Ouvrir avec…'))),
