@@ -224,7 +224,7 @@ class _PrivacyCard extends StatelessWidget {
     (icon: Icons.wifi_off,           color: Color(0xFF43A047), label: 'Fonctionne hors ligne'),
     (icon: Icons.visibility_off,     color: Color(0xFF1976D2), label: 'Aucune collecte de données'),
     (icon: Icons.share_outlined,     color: Color(0xFF7B1FA2), label: 'Aucun partage de données'),
-    (icon: Icons.code,               color: Color(0xFF00897B), label: 'Code source ouvert'),
+    (icon: Icons.store_mall_directory_outlined, color: Color(0xFF00897B), label: 'Sans Play Store'),
   ];
 
   @override
