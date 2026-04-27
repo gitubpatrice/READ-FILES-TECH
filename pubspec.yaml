@@ -1,0 +1,60 @@
+name: read_files_tech
+description: "Lecteur et outils pour TXT, CSV, HTML, CSS, DOCX, XLSX, ODT, ODS"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Fichiers
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
+  permission_handler: ^11.3.1
+  share_plus: ^10.0.3
+  shared_preferences: ^2.3.2
+
+  # Formats documents
+  excel: ^4.0.6              # XLSX / ODS
+  csv: ^6.0.0                # CSV
+  archive: ^3.6.1            # DOCX / ODT (ZIP + XML)
+  webview_flutter: ^4.10.0   # rendu HTML
+
+  # Visualisation code
+  flutter_highlight: ^0.7.0  # syntax highlighting
+
+  # Outil couleur
+  flutter_colorpicker: ^1.1.0
+
+  # Export PDF
+  syncfusion_flutter_pdf: ^27.1.48
+
+  # Google Drive
+  google_sign_in: ^6.2.1
+  googleapis: ^13.2.0
+  http: ^1.2.0
+
+  # Dates
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+  image: ^4.1.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#1565C0"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
