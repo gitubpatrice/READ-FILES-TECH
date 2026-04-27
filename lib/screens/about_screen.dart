@@ -104,6 +104,13 @@ class _AboutScreenState extends State<AboutScreen> {
 
           const SizedBox(height: 28),
 
+          // ── Confidentialité ─────────────────────────────────────────────────
+          _sectionTitle(context, 'Confidentialité'),
+          const SizedBox(height: 8),
+          const _PrivacyCard(),
+
+          const SizedBox(height: 24),
+
           // ── Fonctionnalités ─────────────────────────────────────────────────
           _sectionTitle(context, 'Fonctionnalités'),
           const SizedBox(height: 8),
@@ -204,6 +211,73 @@ class _FeatureRow extends StatelessWidget {
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         subtitle: Text(desc, style: const TextStyle(fontSize: 11)),
       ),
+    );
+  }
+}
+
+class _PrivacyCard extends StatelessWidget {
+  const _PrivacyCard();
+
+  static const _items = [
+    (icon: Icons.block,              color: Color(0xFFE53935), label: 'Aucune publicité'),
+    (icon: Icons.analytics_outlined, color: Color(0xFFFF7043), label: 'Aucun tracker'),
+    (icon: Icons.wifi_off,           color: Color(0xFF43A047), label: 'Fonctionne hors ligne'),
+    (icon: Icons.visibility_off,     color: Color(0xFF1976D2), label: 'Aucune collecte de données'),
+    (icon: Icons.share_outlined,     color: Color(0xFF7B1FA2), label: 'Aucun partage de données'),
+    (icon: Icons.code,               color: Color(0xFF00897B), label: 'Code source ouvert'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.shield_outlined, color: Color(0xFF43A047), size: 18),
+            const SizedBox(width: 6),
+            Text('100 % privé — zéro surveillance',
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Colors.grey.shade300)),
+          ]),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _items.map((item) => _Badge(
+              icon: item.icon,
+              label: item.label,
+              color: item.color,
+            )).toList(),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _Badge({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+      ]),
     );
   }
 }
