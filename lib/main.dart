@@ -5,34 +5,43 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  if (Platform.isAndroid) {
-    await _requestStoragePermissions();
-  }
+  // Lance l'app immédiatement. Les permissions sont demandées en background
+  // après le premier frame — sinon l'écran de splash reste figé pendant que
+  // le système enchaîne plusieurs dialogs.
   runApp(const ReadFilesTechApp());
+  if (Platform.isAndroid) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestStoragePermissions();
+    });
+  }
 }
 
 Future<void> _requestStoragePermissions() async {
-  // Android 11+ : demande accès tous fichiers (gestionnaire de fichiers)
-  if (await Permission.manageExternalStorage.isDenied) {
-    await Permission.manageExternalStorage.request();
-  }
-  // Android 13+ : médias granulaires
+  // Android 13+ : médias granulaires (un seul dialog regroupé via Future.wait).
+  final futures = <Future<PermissionStatus>>[];
   if (await Permission.photos.isDenied) {
-    await Permission.photos.request();
+    futures.add(Permission.photos.request());
   }
   if (await Permission.videos.isDenied) {
-    await Permission.videos.request();
+    futures.add(Permission.videos.request());
   }
-  // Android ≤ 12
   if (await Permission.storage.isDenied) {
-    await Permission.storage.request();
+    futures.add(Permission.storage.request());
+  }
+  if (futures.isNotEmpty) {
+    await Future.wait(futures);
+  }
+  // Android 11+ : MANAGE_EXTERNAL_STORAGE redirige vers une page Réglages
+  // dédiée. Demandé en dernier pour ne pas bloquer les autres.
+  if (await Permission.manageExternalStorage.isDenied) {
+    await Permission.manageExternalStorage.request();
   }
 }
 
