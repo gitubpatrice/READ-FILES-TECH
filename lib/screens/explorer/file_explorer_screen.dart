@@ -113,10 +113,14 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
 
   static final _openFileChannel = MethodChannel('com.readfilestech/open_file');
 
-  Future<void> _openWithSystem(String path, String ext) async {
+  Future<void> _openWithSystem(String path, String ext, {bool chooser = false}) async {
     final mime = _mime(ext) ?? '*/*';
     try {
-      await _openFileChannel.invokeMethod('openFile', {'path': path, 'mime': mime});
+      await _openFileChannel.invokeMethod('openFile', {
+        'path': path,
+        'mime': mime,
+        'chooser': chooser,
+      });
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -664,25 +668,25 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                   )
                                 : PopupMenuButton<String>(
                                     onSelected: (v) {
-                                      if (v == 'open')        _openFile(e.path);
-                                      if (v == 'open_system') _openWithSystem(e.path, ext);
-                                      if (v == 'edit')        _editFile(e.path);
-                                      if (v == 'share')       Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
-                                      if (v == 'rename')      _rename(e);
-                                      if (v == 'copy')        _copyFile(e.path);
-                                      if (v == 'move')        _moveFile(e.path);
-                                      if (v == 'delete')      _delete(e);
+                                      if (v == 'open')         _openFile(e.path);
+                                      if (v == 'open_system')  _openWithSystem(e.path, ext);
+                                      if (v == 'open_chooser') _openWithSystem(e.path, ext, chooser: true);
+                                      if (v == 'edit')         _editFile(e.path);
+                                      if (v == 'share')        Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
+                                      if (v == 'rename')       _rename(e);
+                                      if (v == 'copy')         _copyFile(e.path);
+                                      if (v == 'move')         _moveFile(e.path);
+                                      if (v == 'delete')       _delete(e);
                                     },
                                     itemBuilder: (_) => [
                                       if (canView)
                                         const PopupMenuItem(value: 'open', child: ListTile(
                                             leading: Icon(Icons.open_in_new), title: Text('Ouvrir'))),
-                                      if (_imageExts.contains(ext))
-                                        const PopupMenuItem(value: 'open_system', child: ListTile(
-                                            leading: Icon(Icons.photo_library_outlined), title: Text('Ouvrir dans la Galerie'))),
                                       if (!canView)
                                         const PopupMenuItem(value: 'open_system', child: ListTile(
-                                            leading: Icon(Icons.open_in_new), title: Text('Ouvrir avec…'))),
+                                            leading: Icon(Icons.open_in_new), title: Text('Ouvrir'))),
+                                      const PopupMenuItem(value: 'open_chooser', child: ListTile(
+                                            leading: Icon(Icons.apps_outlined), title: Text('Ouvrir avec…'))),
                                       if (canEdit)
                                         const PopupMenuItem(value: 'edit', child: ListTile(
                                             leading: Icon(Icons.edit_outlined), title: Text('Éditer'))),

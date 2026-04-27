@@ -36,6 +36,7 @@ class MainActivity : FlutterActivity() {
                     val path = call.argument<String>("path")
                     val mime = call.argument<String>("mime") ?: "*/*"
                     if (path == null) { result.error("NO_PATH", "path manquant", null); return@setMethodCallHandler }
+                    val chooser = call.argument<Boolean>("chooser") ?: false
                     try {
                         val file = File(path)
                         val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -43,11 +44,16 @@ class MainActivity : FlutterActivity() {
                         } else {
                             Uri.fromFile(file)
                         }
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                        val view = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(uri, mime)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
+                        val intent = if (chooser)
+                            Intent.createChooser(view, "Ouvrir avec").apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        else view
                         startActivity(intent)
                         result.success(null)
                     } catch (e: Exception) {
