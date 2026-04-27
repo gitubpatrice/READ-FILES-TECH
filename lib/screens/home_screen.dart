@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -268,12 +267,13 @@ class _HomeTabState extends State<_HomeTab> {
   int _freeBytes  = 0;
 
   static const _quickFolders = [
-    (icon: Icons.photo_library_outlined, label: 'Photos',       color: Color(0xFF9C27B0), path: '/storage/emulated/0/DCIM'),
+    (icon: Icons.photo_camera_outlined,   label: 'Caméra',       color: Color(0xFF9C27B0), path: '/storage/emulated/0/DCIM/Camera'),
+    (icon: Icons.screenshot_outlined,    label: 'Screenshots',  color: Color(0xFF7B1FA2), path: '/storage/emulated/0/DCIM/Screenshots'),
     (icon: Icons.description_outlined,   label: 'Documents',    color: Color(0xFF1976D2), path: '/storage/emulated/0/Documents'),
     (icon: Icons.videocam_outlined,       label: 'Vidéos',       color: Color(0xFFE53935), path: '/storage/emulated/0/Movies'),
     (icon: Icons.download_outlined,       label: 'Télécharg.',   color: Color(0xFF43A047), path: '/storage/emulated/0/Download'),
     (icon: Icons.android_outlined,        label: 'APKs',         color: Color(0xFF00897B), path: '/storage/emulated/0/Download'),
-    (icon: Icons.image_outlined,          label: 'Images',       color: Color(0xFFFF7043), path: '/storage/emulated/0/Pictures'),
+    (icon: Icons.photo_library_outlined,  label: 'Galerie',      color: Color(0xFFFF7043), path: '/storage/emulated/0/DCIM'),
   ];
 
   @override

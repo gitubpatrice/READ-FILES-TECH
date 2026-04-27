@@ -44,7 +44,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
 
   Future<void> _initRoot() async {
     if (widget.initialPath != null) {
-      _navigate(Directory(widget.initialPath!));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navigate(Directory(widget.initialPath!));
+      });
       return;
     }
     Directory? root;
