@@ -33,6 +33,105 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   String _search = '';
   String _sort = 'name';
 
+  final Set<String> _selected = <String>{};
+  bool get _selectionMode => _selected.isNotEmpty;
+
+  void _toggleSelect(FileSystemEntity e) {
+    setState(() {
+      if (_selected.contains(e.path)) {
+        _selected.remove(e.path);
+      } else {
+        _selected.add(e.path);
+      }
+    });
+  }
+
+  void _clearSelection() => setState(_selected.clear);
+
+  void _selectAll() {
+    setState(() {
+      _selected
+        ..clear()
+        ..addAll(_filtered.map((e) => e.path));
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    final count = _selected.length;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer'),
+        content: Text('Supprimer $count élément${count > 1 ? 's' : ''} ?\nLes dossiers et leur contenu seront supprimés.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    int ok = 0, fail = 0;
+    for (final p in _selected.toList()) {
+      try {
+        final type = FileSystemEntity.typeSync(p);
+        if (type == FileSystemEntityType.directory) {
+          await Directory(p).delete(recursive: true);
+        } else {
+          await File(p).delete();
+        }
+        ok++;
+      } catch (_) {
+        fail++;
+      }
+    }
+    _clearSelection();
+    _refresh();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$ok supprimé${ok > 1 ? 's' : ''}${fail > 0 ? ' · $fail erreur(s)' : ''}')),
+    );
+  }
+
+  Future<void> _shareSelected() async {
+    final files = _selected
+        .where((p) => FileSystemEntity.typeSync(p) == FileSystemEntityType.file)
+        .map((p) => XFile(p, mimeType: _mime(_ext(p))))
+        .toList();
+    if (files.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun fichier à partager (dossiers ignorés)')),
+      );
+      return;
+    }
+    await Share.shareXFiles(files);
+  }
+
+  Future<void> _copySelected({required bool move}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final destDir = await FilePicker.platform.getDirectoryPath();
+    if (destDir == null) return;
+    int ok = 0, fail = 0;
+    for (final p in _selected.toList()) {
+      try {
+        final type = FileSystemEntity.typeSync(p);
+        if (type != FileSystemEntityType.file) { fail++; continue; }
+        final name = p.split('/').last;
+        await File(p).copy('$destDir/$name');
+        if (move) await File(p).delete();
+        ok++;
+      } catch (_) { fail++; }
+    }
+    _clearSelection();
+    if (move) _refresh();
+    if (!mounted) return;
+    messenger.showSnackBar(SnackBar(content: Text(
+        '$ok ${move ? 'déplacé' : 'copié'}${ok > 1 ? 's' : ''}${fail > 0 ? ' · $fail erreur(s)' : ''}')));
+  }
+
   static const _editableExts   = {'txt','md','csv','xml','json','html','css','js','php','dart'};
   static const _viewableExts   = {'docx','doc','odt','xlsx','xls','ods','odp','pdf','zip'};
   static const _imageExts      = {'jpg','jpeg','png','gif','webp'};
@@ -519,37 +618,78 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
     final path = _current?.path ?? '';
     final parts = path.split('/').where((p) => p.isNotEmpty).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: _canGoBack()
-            ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _goBack)
-            : null,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Explorateur', style: TextStyle(fontSize: 16)),
-            Text(parts.isNotEmpty ? parts.last : '/',
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                overflow: TextOverflow.ellipsis),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_showHidden ? Icons.visibility_off : Icons.visibility),
-            tooltip: _showHidden ? 'Masquer fichiers cachés' : 'Afficher fichiers cachés',
-            onPressed: () => setState(() => _showHidden = !_showHidden),
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.sort),
-            onSelected: (v) => setState(() { _sort = v; _navigate(_current!); }),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'name', child: ListTile(leading: Icon(Icons.sort_by_alpha), title: Text('Nom'))),
-              PopupMenuItem(value: 'date', child: ListTile(leading: Icon(Icons.access_time), title: Text('Date'))),
-              PopupMenuItem(value: 'size', child: ListTile(leading: Icon(Icons.data_usage), title: Text('Taille'))),
-            ],
-          ),
-        ],
-      ),
+    return PopScope(
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _selectionMode) _clearSelection();
+      },
+      child: Scaffold(
+      appBar: _selectionMode
+          ? AppBar(
+              leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Annuler la sélection',
+                  onPressed: _clearSelection),
+              title: Text('${_selected.length} sélectionné${_selected.length > 1 ? 's' : ''}',
+                  style: const TextStyle(fontSize: 16)),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.select_all),
+                  tooltip: 'Tout sélectionner',
+                  onPressed: _selectAll,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  tooltip: 'Partager',
+                  onPressed: _shareSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy_outlined),
+                  tooltip: 'Copier vers…',
+                  onPressed: () => _copySelected(move: false),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.drive_file_move_outlined),
+                  tooltip: 'Déplacer vers…',
+                  onPressed: () => _copySelected(move: true),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  tooltip: 'Supprimer',
+                  onPressed: _deleteSelected,
+                ),
+              ],
+            )
+          : AppBar(
+              leading: _canGoBack()
+                  ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _goBack)
+                  : null,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Explorateur', style: TextStyle(fontSize: 16)),
+                  Text(parts.isNotEmpty ? parts.last : '/',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      overflow: TextOverflow.ellipsis),
+                ],
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(_showHidden ? Icons.visibility_off : Icons.visibility),
+                  tooltip: _showHidden ? 'Masquer fichiers cachés' : 'Afficher fichiers cachés',
+                  onPressed: () => setState(() => _showHidden = !_showHidden),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.sort),
+                  onSelected: (v) => setState(() { _sort = v; _navigate(_current!); }),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'name', child: ListTile(leading: Icon(Icons.sort_by_alpha), title: Text('Nom'))),
+                    PopupMenuItem(value: 'date', child: ListTile(leading: Icon(Icons.access_time), title: Text('Date'))),
+                    PopupMenuItem(value: 'size', child: ListTile(leading: Icon(Icons.data_usage), title: Text('Taille'))),
+                  ],
+                ),
+              ],
+            ),
       body: Column(
         children: [
           // Breadcrumb
@@ -627,27 +767,40 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                             modified = stat.modified;
                           } catch (_) {}
 
+                          final isSelected = _selected.contains(e.path);
+
                           return ListTile(
                             dense: true,
+                            selected: isSelected,
+                            selectedTileColor: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.12),
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: _imageExts.contains(ext)
-                                  ? Image.file(
-                                      File(e.path),
+                              child: isSelected
+                                  ? Container(
                                       width: 36, height: 36,
-                                      fit: BoxFit.cover,
-                                      cacheWidth: 72,
-                                      errorBuilder: (_, e2, st) => Container(
-                                        width: 36, height: 36,
-                                        color: _color(e).withValues(alpha: 0.12),
-                                        child: Icon(_icon(e), color: _color(e), size: 20),
-                                      ),
+                                      color: Theme.of(context).colorScheme.primary,
+                                      child: const Icon(Icons.check, color: Colors.white, size: 20),
                                     )
-                                  : Container(
-                                      width: 36, height: 36,
-                                      color: _color(e).withValues(alpha: 0.12),
-                                      child: Icon(_icon(e), color: _color(e), size: 20),
-                                    ),
+                                  : (_imageExts.contains(ext)
+                                      ? Image.file(
+                                          File(e.path),
+                                          width: 36, height: 36,
+                                          fit: BoxFit.cover,
+                                          cacheWidth: 72,
+                                          errorBuilder: (_, e2, st) => Container(
+                                            width: 36, height: 36,
+                                            color: _color(e).withValues(alpha: 0.12),
+                                            child: Icon(_icon(e), color: _color(e), size: 20),
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 36, height: 36,
+                                          color: _color(e).withValues(alpha: 0.12),
+                                          child: Icon(_icon(e), color: _color(e), size: 20),
+                                        )),
                             ),
                             title: Text(name,
                                 style: const TextStyle(fontSize: 13),
@@ -665,7 +818,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                                 ),
                             ]),
-                            trailing: isDir
+                            trailing: _selectionMode
+                                ? null
+                                : isDir
                                 ? PopupMenuButton<String>(
                                     onSelected: (v) {
                                       if (v == 'rename') _rename(e);
@@ -683,6 +838,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                       if (v == 'open')         _openFile(e.path);
                                       if (v == 'open_system')  _openWithSystem(e.path, ext);
                                       if (v == 'open_chooser') _openWithSystem(e.path, ext, chooser: true);
+                                      if (v == 'preview')      _showPreview(e.path);
                                       if (v == 'edit')         _editFile(e.path);
                                       if (v == 'share')        Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
                                       if (v == 'rename')       _rename(e);
@@ -699,6 +855,8 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                             leading: Icon(Icons.open_in_new), title: Text('Ouvrir'))),
                                       const PopupMenuItem(value: 'open_chooser', child: ListTile(
                                             leading: Icon(Icons.apps_outlined), title: Text('Ouvrir avec…'))),
+                                      const PopupMenuItem(value: 'preview', child: ListTile(
+                                          leading: Icon(Icons.visibility_outlined), title: Text('Aperçu'))),
                                       if (canEdit)
                                         const PopupMenuItem(value: 'edit', child: ListTile(
                                             leading: Icon(Icons.edit_outlined), title: Text('Éditer'))),
@@ -716,6 +874,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                     ],
                                   ),
                             onTap: () {
+                              if (_selectionMode) {
+                                _toggleSelect(e);
+                                return;
+                              }
                               if (isDir) {
                                 _navigate(Directory(e.path));
                               } else if (canView) {
@@ -724,17 +886,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                 _openWithSystem(e.path, ext);
                               }
                             },
-                            onLongPress: isDir ? null : () => _showPreview(e.path),
+                            onLongPress: () {
+                              HapticFeedback.mediumImpact();
+                              _toggleSelect(e);
+                            },
                           );
                         },
                       ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createFolder,
-        tooltip: 'Nouveau dossier',
-        child: const Icon(Icons.create_new_folder_outlined),
+      floatingActionButton: _selectionMode
+          ? null
+          : FloatingActionButton(
+              onPressed: _createFolder,
+              tooltip: 'Nouveau dossier',
+              child: const Icon(Icons.create_new_folder_outlined),
+            ),
       ),
     );
   }
