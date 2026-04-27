@@ -36,14 +36,42 @@ class MainActivity : FlutterActivity() {
         // File.listFiles() côté Kotlin retourne tous les fichiers réels.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/lifecycle")
             .setMethodCallHandler { call, result ->
-                if (call.method == "recreateActivity") {
-                    // Sur Samsung, MANAGE_EXTERNAL_STORAGE accordée via Réglages
-                    // n'est pas appliquée au process en cours. Recreate force
-                    // Android à recharger les permissions.
-                    runOnUiThread { recreate() }
-                    result.success(null)
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "recreateActivity" -> {
+                        runOnUiThread { recreate() }
+                        result.success(null)
+                    }
+                    "openAllFilesAccess" -> {
+                        // Ouvre EXPLICITEMENT la page "Autoriser l'accès à tous
+                        // les fichiers" pour cette app (Android 11+). Sur Samsung,
+                        // permission_handler ouvrait parfois la page générique.
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                val i = Intent(
+                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    Uri.parse("package:$packageName")
+                                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                startActivity(i)
+                            } else {
+                                val i = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:$packageName"))
+                                    .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                startActivity(i)
+                            }
+                            result.success(null)
+                        } catch (e: Exception) {
+                            // Fallback : page générique de gestion "All Files Access"
+                            try {
+                                val i = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                    .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                startActivity(i)
+                                result.success(null)
+                            } catch (e2: Exception) {
+                                result.error("OPEN_ERROR", e2.message, null)
+                            }
+                        }
+                    }
+                    else -> result.notImplemented()
                 }
             }
 

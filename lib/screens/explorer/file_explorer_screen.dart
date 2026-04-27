@@ -59,18 +59,26 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
            path.startsWith('/sdcard');
   }
 
-  /// Ouvre la page Réglages dédiée "Autoriser l'accès à tous les fichiers"
-  /// (et NON la page générique de l'app). Permission.manageExternalStorage
-  /// .request() ouvre directement cette page sur Android 11+.
+  /// Ouvre la page Réglages dédiée "Autoriser l'accès à tous les fichiers".
+  /// Utilise un Intent natif Kotlin (Settings.ACTION_MANAGE_APP_ALL_FILES_
+  /// ACCESS_PERMISSION) plutôt que permission_handler — plus fiable sur
+  /// Samsung où permission_handler ouvre parfois la page générique.
   Future<void> _requestAllFilesAccess() async {
-    final status = await Permission.manageExternalStorage.request();
-    if (!mounted) return;
-    if (status.isGranted) {
-      _refresh();
-    } else {
-      // Si la requête n'ouvre rien (déjà demandé / restreint), fallback sur
-      // la page générique de l'app.
-      await openAppSettings();
+    try {
+      await _lifecycleChannel.invokeMethod('openAllFilesAccess');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Activez "Autoriser l\'accès à tous les fichiers" puis revenez à l\'app',
+              style: TextStyle(fontSize: 13)),
+          duration: Duration(seconds: 6),
+        ),
+      );
+    } catch (_) {
+      // Fallback : permission_handler classique.
+      await Permission.manageExternalStorage.request();
+      if (mounted) _refresh();
     }
   }
 
