@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -108,6 +109,21 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  static final _openFileChannel = MethodChannel('com.readfilestech/open_file');
+
+  Future<void> _openWithSystem(String path, String ext) async {
+    final mime = _mime(ext) ?? '*/*';
+    try {
+      await _openFileChannel.invokeMethod('openFile', {'path': path, 'mime': mime});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Aucune application trouvée pour ouvrir ce fichier')),
+        );
+      }
+    }
   }
 
   String _ext(String path) => path.contains('.') ? path.split('.').last.toLowerCase() : '';
@@ -648,18 +664,22 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                   )
                                 : PopupMenuButton<String>(
                                     onSelected: (v) {
-                                      if (v == 'open')   _openFile(e.path);
-                                      if (v == 'edit')   _editFile(e.path);
-                                      if (v == 'share')  Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
-                                      if (v == 'rename') _rename(e);
-                                      if (v == 'copy')   _copyFile(e.path);
-                                      if (v == 'move')   _moveFile(e.path);
-                                      if (v == 'delete') _delete(e);
+                                      if (v == 'open')        _openFile(e.path);
+                                      if (v == 'open_system') _openWithSystem(e.path, ext);
+                                      if (v == 'edit')        _editFile(e.path);
+                                      if (v == 'share')       Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
+                                      if (v == 'rename')      _rename(e);
+                                      if (v == 'copy')        _copyFile(e.path);
+                                      if (v == 'move')        _moveFile(e.path);
+                                      if (v == 'delete')      _delete(e);
                                     },
                                     itemBuilder: (_) => [
                                       if (canView)
                                         const PopupMenuItem(value: 'open', child: ListTile(
                                             leading: Icon(Icons.open_in_new), title: Text('Ouvrir'))),
+                                      if (!canView)
+                                        const PopupMenuItem(value: 'open_system', child: ListTile(
+                                            leading: Icon(Icons.open_in_new), title: Text('Ouvrir avec…'))),
                                       if (canEdit)
                                         const PopupMenuItem(value: 'edit', child: ListTile(
                                             leading: Icon(Icons.edit_outlined), title: Text('Éditer'))),
@@ -681,6 +701,8 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                 _navigate(Directory(e.path));
                               } else if (canView) {
                                 _openFile(e.path);
+                              } else {
+                                _openWithSystem(e.path, ext);
                               }
                             },
                             onLongPress: isDir ? null : () => _showPreview(e.path),
