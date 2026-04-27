@@ -24,11 +24,17 @@ void main() {
 }
 
 Future<void> _requestStoragePermissions() async {
-  // Ne demander qu'une seule fois après l'install. Si l'utilisateur refuse
-  // ou ignore, il peut toujours autoriser via Réglages → Apps → Read Files Tech.
-  // Sinon le dialog se ré-affiche à chaque lancement, ce qui est pénible.
+  // Ne demander qu'une seule fois après l'install. Le flag est écrit AVANT
+  // les requêtes — si l'utilisateur kill l'app pendant un dialog ou refuse,
+  // on ne redemande PAS au lancement suivant. L'utilisateur peut toujours
+  // autoriser via Réglages (bouton dans l'explorateur si dossier inaccessible).
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getBool('permissions_asked') == true) return;
+  await prefs.setBool('permissions_asked', true);
+
+  // Si déjà toutes accordées (cas où l'utilisateur les a données via Réglages
+  // avant le premier "vrai" lancement), ne rien demander.
+  if (await Permission.manageExternalStorage.isGranted) return;
 
   // Android 13+ : médias granulaires (un seul dialog regroupé via Future.wait).
   final futures = <Future<PermissionStatus>>[];
@@ -44,12 +50,10 @@ Future<void> _requestStoragePermissions() async {
   if (futures.isNotEmpty) {
     await Future.wait(futures);
   }
-  // Android 11+ : MANAGE_EXTERNAL_STORAGE redirige vers une page Réglages
-  // dédiée. Demandé en dernier pour ne pas bloquer les autres.
+  // Android 11+ : MANAGE_EXTERNAL_STORAGE redirige vers une page Réglages.
   if (await Permission.manageExternalStorage.isDenied) {
     await Permission.manageExternalStorage.request();
   }
-  await prefs.setBool('permissions_asked', true);
 }
 
 ThemeData _githubDarkTheme() {
