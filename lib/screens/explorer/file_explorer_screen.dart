@@ -629,13 +629,25 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
 
                           return ListTile(
                             dense: true,
-                            leading: Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                color: _color(e).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(_icon(e), color: _color(e), size: 20),
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: _imageExts.contains(ext)
+                                  ? Image.file(
+                                      File(e.path),
+                                      width: 36, height: 36,
+                                      fit: BoxFit.cover,
+                                      cacheWidth: 72,
+                                      errorBuilder: (_, e2, st) => Container(
+                                        width: 36, height: 36,
+                                        color: _color(e).withValues(alpha: 0.12),
+                                        child: Icon(_icon(e), color: _color(e), size: 20),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 36, height: 36,
+                                      color: _color(e).withValues(alpha: 0.12),
+                                      child: Icon(_icon(e), color: _color(e), size: 20),
+                                    ),
                             ),
                             title: Text(name,
                                 style: const TextStyle(fontSize: 13),
