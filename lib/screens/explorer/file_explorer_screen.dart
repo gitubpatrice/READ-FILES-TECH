@@ -36,7 +36,8 @@ class FileExplorerScreen extends StatefulWidget {
   State<FileExplorerScreen> createState() => _FileExplorerScreenState();
 }
 
-class _FileExplorerScreenState extends State<FileExplorerScreen> {
+class _FileExplorerScreenState extends State<FileExplorerScreen>
+    with WidgetsBindingObserver {
   Directory? _current;
   final List<Directory> _history = [];
   List<FileSystemEntity> _entries = [];
@@ -58,8 +59,19 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
            path.startsWith('/sdcard');
   }
 
-  Future<void> _openAppSettings() async {
-    await openAppSettings();
+  /// Ouvre la page Réglages dédiée "Autoriser l'accès à tous les fichiers"
+  /// (et NON la page générique de l'app). Permission.manageExternalStorage
+  /// .request() ouvre directement cette page sur Android 11+.
+  Future<void> _requestAllFilesAccess() async {
+    final status = await Permission.manageExternalStorage.request();
+    if (!mounted) return;
+    if (status.isGranted) {
+      _refresh();
+    } else {
+      // Si la requête n'ouvre rien (déjà demandé / restreint), fallback sur
+      // la page générique de l'app.
+      await openAppSettings();
+    }
   }
 
   final Set<String> _selected = <String>{};
@@ -192,7 +204,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initRoot();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Au retour de l'app au premier plan (après toggle dans Réglages),
+    // re-vérifier la permission et refresh si elle vient d'être accordée.
+    if (state == AppLifecycleState.resumed && _permissionDenied && _current != null) {
+      _refresh();
+    }
   }
 
   Future<void> _initRoot() async {
@@ -843,7 +871,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: _openAppSettings,
+                  onPressed: _requestAllFilesAccess,
                   style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: Size.zero,
@@ -898,7 +926,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     FilledButton.icon(
-                                      onPressed: _openAppSettings,
+                                      onPressed: _requestAllFilesAccess,
                                       icon: const Icon(Icons.settings),
                                       label: const Text('Ouvrir les Réglages'),
                                     ),
