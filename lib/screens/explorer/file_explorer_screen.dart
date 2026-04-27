@@ -244,6 +244,15 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
       case 'html': case 'htm': return 'text/html';
       case 'csv':  return 'text/csv';
       case 'zip':  return 'application/zip';
+      case 'apk':  return 'application/vnd.android.package-archive';
+      case 'json': return 'application/json';
+      case 'xml':  return 'application/xml';
+      case 'doc':  return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':  return 'application/vnd.ms-excel';
+      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt':  return 'application/vnd.ms-powerpoint';
+      case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
       default:     return null;
     }
   }
@@ -675,6 +684,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Actualiser',
+                  onPressed: _refresh,
+                ),
+                IconButton(
                   icon: Icon(_showHidden ? Icons.visibility_off : Icons.visibility),
                   tooltip: _showHidden ? 'Masquer fichiers cachés' : 'Afficher fichiers cachés',
                   onPressed: () => setState(() => _showHidden = !_showHidden),
@@ -747,9 +761,19 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _filtered.isEmpty
-                    ? const Center(child: Text('Dossier vide', style: TextStyle(color: Colors.grey)))
+                : RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: _filtered.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 200),
+                          Center(child: Text('Dossier vide',
+                              style: TextStyle(color: Colors.grey))),
+                        ],
+                      )
                     : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         itemCount: _filtered.length,
                         itemBuilder: (_, i) {
                           final e = _filtered[i];
@@ -893,6 +917,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
                           );
                         },
                       ),
+                  ),
           ),
         ],
       ),

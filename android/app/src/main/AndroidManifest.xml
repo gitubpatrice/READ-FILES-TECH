@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Lancer l'installateur d'APK depuis l'explorateur -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:label="Read Files Tech"
@@ -66,6 +68,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Découverte des apps capables d'installer un APK -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/vnd.android.package-archive"/>
+        </intent>
+        <!-- Découverte des apps capables d'ouvrir des fichiers de tout type -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
         </intent>
     </queries>
 </manifest>
