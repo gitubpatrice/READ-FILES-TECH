@@ -30,6 +30,41 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // Listing natif : Dart's Directory.list() peut être filtré par
+        // Samsung DefEx (APKs invisibles dans /sdcard malgré MANAGE_EXTERNAL_STORAGE).
+        // File.listFiles() côté Kotlin retourne tous les fichiers réels.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/list_dir")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "listDir") {
+                    val path = call.argument<String>("path")
+                    if (path == null) {
+                        result.error("NO_PATH", "path manquant", null); return@setMethodCallHandler
+                    }
+                    try {
+                        val dir = File(path)
+                        if (!dir.exists() || !dir.isDirectory) {
+                            result.error("NOT_DIR", "Pas un dossier : $path", null)
+                            return@setMethodCallHandler
+                        }
+                        val files = dir.listFiles() ?: emptyArray()
+                        val out = files.map { f ->
+                            mapOf(
+                                "path"      to f.absolutePath,
+                                "name"      to f.name,
+                                "isDir"     to f.isDirectory,
+                                "size"      to (if (f.isFile) f.length() else 0L),
+                                "modified"  to f.lastModified()
+                            )
+                        }
+                        result.success(out)
+                    } catch (e: Exception) {
+                        result.error("LIST_ERROR", e.message, null)
+                    }
+                } else {
+                    result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/open_file")
             .setMethodCallHandler { call, result ->
                 if (call.method == "openFile") {

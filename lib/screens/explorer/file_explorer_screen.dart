@@ -136,6 +136,30 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   static const _viewableExts   = {'docx','doc','odt','xlsx','xls','ods','odp','pdf','zip'};
   static const _imageExts      = {'jpg','jpeg','png','gif','webp'};
 
+  static const _listDirChannel = MethodChannel('com.readfilestech/list_dir');
+
+  /// Liste un dossier via le code natif Kotlin (File.listFiles()) au lieu de
+  /// Dart's Directory.list(). Samsung DefEx peut filtrer certains fichiers
+  /// (notamment les .apk) via le syscall readdir() exposé à Dart.
+  /// Fallback automatique sur Dart en cas d'erreur.
+  Future<List<FileSystemEntity>> _listDirNative(Directory dir) async {
+    if (!Platform.isAndroid) return dir.list().toList();
+    try {
+      final raw = await _listDirChannel.invokeMethod<List<dynamic>>(
+          'listDir', {'path': dir.path});
+      if (raw == null) return dir.list().toList();
+      final out = <FileSystemEntity>[];
+      for (final item in raw) {
+        final m = Map<String, dynamic>.from(item as Map);
+        final p = m['path'] as String;
+        out.add((m['isDir'] as bool) ? Directory(p) : File(p));
+      }
+      return out;
+    } catch (_) {
+      return dir.list().toList();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -161,7 +185,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
   Future<void> _navigate(Directory dir) async {
     setState(() => _isLoading = true);
     try {
-      final entries = await dir.list().toList();
+      final entries = await _listDirNative(dir);
       entries.sort((a, b) {
         final aDir = a is Directory;
         final bDir = b is Directory;
@@ -464,7 +488,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen> {
     if (_current == null) return;
     setState(() => _isLoading = true);
     try {
-      final entries = await _current!.list().toList();
+      final entries = await _listDirNative(_current!);
       entries.sort((a, b) {
         final aDir = a is Directory;
         final bDir = b is Directory;
