@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
@@ -18,25 +20,49 @@ void main() {
   runApp(const ReadFilesTechApp());
   if (Platform.isAndroid) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _requestStoragePermissions();
+      _requestStoragePermissions(_navigatorKey.currentContext);
     });
   }
 }
 
-Future<void> _requestStoragePermissions() async {
-  // Ne demander qu'une seule fois après l'install. Le flag est écrit AVANT
-  // les requêtes — si l'utilisateur kill l'app pendant un dialog ou refuse,
-  // on ne redemande PAS au lancement suivant. L'utilisateur peut toujours
-  // autoriser via Réglages (bouton dans l'explorateur si dossier inaccessible).
+/// Au 1er lancement, affiche un dialog welcome explicatif puis chaîne les
+/// requêtes système. Flag écrit AVANT pour ne jamais redemander.
+Future<void> _requestStoragePermissions(BuildContext? context) async {
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getBool('permissions_asked') == true) return;
   await prefs.setBool('permissions_asked', true);
 
-  // Si déjà toutes accordées (cas où l'utilisateur les a données via Réglages
-  // avant le premier "vrai" lancement), ne rien demander.
+  // Court-circuit si déjà accordée
   if (await Permission.manageExternalStorage.isGranted) return;
 
-  // Android 13+ : médias granulaires (un seul dialog regroupé via Future.wait).
+  // Dialog welcome explicatif (si context dispo)
+  if (context != null && context.mounted) {
+    final wantContinue = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.folder_open, size: 36),
+        title: const Text('Bienvenue dans Read Files Tech'),
+        content: const Text(
+          'Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) '
+          'partout sur votre téléphone, l\'app a besoin d\'accéder aux fichiers.\n\n'
+          'Aucun fichier n\'est transmis ailleurs.',
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Plus tard')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Autoriser')),
+        ],
+      ),
+    );
+    if (wantContinue != true) return;
+  }
+
+  // Android 13+ : médias granulaires (un seul dialog regroupé)
   final futures = <Future<PermissionStatus>>[];
   if (await Permission.photos.isDenied) {
     futures.add(Permission.photos.request());
@@ -50,7 +76,7 @@ Future<void> _requestStoragePermissions() async {
   if (futures.isNotEmpty) {
     await Future.wait(futures);
   }
-  // Android 11+ : MANAGE_EXTERNAL_STORAGE redirige vers une page Réglages.
+  // Android 11+ : MANAGE_EXTERNAL_STORAGE → page Réglages dédiée
   if (await Permission.manageExternalStorage.isDenied) {
     await Permission.manageExternalStorage.request();
   }
@@ -177,6 +203,7 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Read Files Tech',
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1565C0)),
