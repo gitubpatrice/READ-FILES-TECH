@@ -25,8 +25,11 @@ void main() {
   }
 }
 
-/// Au 1er lancement, affiche un dialog welcome explicatif puis chaîne les
-/// requêtes système. Flag écrit AVANT pour ne jamais redemander.
+/// Au 1er lancement, affiche un dialog welcome explicatif puis demande
+/// directement MANAGE_EXTERNAL_STORAGE (page Réglages dédiée "Tous les
+/// fichiers"). Pas de pop-ups intermédiaires READ_MEDIA_* qui embrouillent
+/// l'utilisateur — MANAGE_EXTERNAL_STORAGE couvre tout en pratique.
+/// Flag écrit AVANT pour ne jamais redemander.
 Future<void> _requestStoragePermissions(BuildContext? context) async {
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getBool('permissions_asked') == true) return;
@@ -36,50 +39,38 @@ Future<void> _requestStoragePermissions(BuildContext? context) async {
   if (await Permission.manageExternalStorage.isGranted) return;
 
   // Dialog welcome explicatif (si context dispo)
-  if (context != null && context.mounted) {
-    final wantContinue = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.folder_open, size: 36),
-        title: const Text('Bienvenue dans Read Files Tech'),
-        content: const Text(
-          'Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) '
-          'partout sur votre téléphone, l\'app a besoin d\'accéder aux fichiers.\n\n'
-          'Aucun fichier n\'est transmis ailleurs.',
-          style: TextStyle(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Plus tard')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Autoriser')),
-        ],
-      ),
-    );
-    if (wantContinue != true) return;
-  }
+  if (context == null || !context.mounted) return;
 
-  // Android 13+ : médias granulaires (un seul dialog regroupé)
-  final futures = <Future<PermissionStatus>>[];
-  if (await Permission.photos.isDenied) {
-    futures.add(Permission.photos.request());
-  }
-  if (await Permission.videos.isDenied) {
-    futures.add(Permission.videos.request());
-  }
-  if (await Permission.storage.isDenied) {
-    futures.add(Permission.storage.request());
-  }
-  if (futures.isNotEmpty) {
-    await Future.wait(futures);
-  }
-  // Android 11+ : MANAGE_EXTERNAL_STORAGE → page Réglages dédiée
-  if (await Permission.manageExternalStorage.isDenied) {
-    await Permission.manageExternalStorage.request();
-  }
+  final wantContinue = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(Icons.folder_open, size: 36),
+      title: const Text('Bienvenue dans Read Files Tech'),
+      content: const Text(
+        'Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) '
+        'partout sur votre téléphone, l\'app a besoin de l\'accès "Tous les fichiers".\n\n'
+        '➜ Vous serez redirigé(e) vers les Réglages.\n'
+        '➜ Activez le toggle "Autoriser l\'accès à tous les fichiers".\n'
+        '➜ Revenez à l\'app.\n\n'
+        'Aucun fichier n\'est transmis ailleurs.',
+        style: TextStyle(fontSize: 13),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Plus tard')),
+        FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ouvrir les Réglages')),
+      ],
+    ),
+  );
+  if (wantContinue != true) return;
+
+  // Demande directe : permission_handler ouvre la page "Tous les fichiers"
+  // dédiée pour cette app sur Android 11+. Pas de READ_MEDIA_* en amont.
+  await Permission.manageExternalStorage.request();
 }
 
 ThemeData _githubDarkTheme() {
