@@ -4,7 +4,7 @@ import 'dart:convert';
 class UpdateService {
   static const _owner   = 'gitubpatrice';
   static const _repo    = 'read-files-tech';
-  static const _current = '1.7.11';
+  static const _current = '1.8.0';
 
   Future<UpdateInfo?> checkForUpdate() async {
     try {
@@ -17,13 +17,27 @@ class UpdateService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final tag = (data['tag_name'] as String).replaceFirst('v', '');
       if (!_isNewer(tag, _current)) return null;
+      final body = data['body'] as String? ?? '';
       return UpdateInfo(
         version: tag,
-        body: data['body'] as String? ?? '',
+        body: body,
+        expectedSha256: _extractSha256(body),
       );
     } catch (_) {
       return null;
     }
+  }
+
+  /// Extrait le SHA-256 hex du body de la release GitHub. Cherche les
+  /// patterns `SHA-256: <hex>` ou `SHA256: <hex>` (insensible à la casse).
+  /// Permet à l'utilisateur de vérifier l'intégrité de l'APK téléchargé
+  /// avant install (defense in depth — l'app n'auto-télécharge pas).
+  static String? _extractSha256(String body) {
+    final match = RegExp(
+      r'sha-?256\s*[:=]\s*([0-9a-fA-F]{64})',
+      caseSensitive: false,
+    ).firstMatch(body);
+    return match?.group(1)?.toLowerCase();
   }
 
   bool _isNewer(String remote, String local) {
@@ -42,5 +56,10 @@ class UpdateService {
 class UpdateInfo {
   final String version;
   final String body;
-  const UpdateInfo({required this.version, required this.body});
+  final String? expectedSha256;
+  const UpdateInfo({
+    required this.version,
+    required this.body,
+    this.expectedSha256,
+  });
 }

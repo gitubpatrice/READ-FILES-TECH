@@ -9,7 +9,7 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  static const _version = '1.7.11';
+  static const _version = '1.8.0';
   static const _author  = 'Patrice Haltaya';
 
   bool _checkingUpdate = false;
@@ -40,14 +40,64 @@ class _AboutScreenState extends State<AboutScreen> {
     }
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text('v${info.version} disponible'),
-        content: Text(info.body.isNotEmpty ? info.body : 'Une nouvelle version est disponible.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Plus tard')),
-          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-        ],
-      ),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          title: Text('v${info.version} disponible'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(info.body.isNotEmpty
+                    ? info.body
+                    : 'Une nouvelle version est disponible.'),
+                if (info.expectedSha256 != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: cs.outline),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.verified_outlined,
+                              size: 14, color: cs.primary),
+                          const SizedBox(width: 6),
+                          const Text('SHA-256 attendu (APK arm64-v8a)',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                        ]),
+                        const SizedBox(height: 6),
+                        SelectableText(
+                          info.expectedSha256!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 10,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Vérifiez avant install : sha256sum app-arm64-v8a-release.apk',
+                          style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Plus tard')),
+            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          ],
+        );
+      },
     );
   }
 

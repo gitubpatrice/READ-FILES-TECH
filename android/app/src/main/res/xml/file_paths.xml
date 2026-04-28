@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Read Files Tech est un explorateur de fichiers : il a besoin d'exposer
+     les fichiers utilisateur via FileProvider pour share/open avec d'autres
+     apps. external-path est nécessaire pour cet usage métier.
+
+     Le risque est mitigé par :
+     - FileProvider exported="false" (uniquement IPC contrôlé)
+     - grantUriPermissions sur URI individuel avec FLAG_GRANT_READ_URI_PERMISSION
+     - Validation côté Kotlin MainActivity que le path n'est pas hors zone autorisée
+
+     Les chemins internes app (files-path, external-files-path) sont retirés
+     car non partagés (pas de fichiers générés par l'app à partager). -->
 <paths>
     <external-path name="external" path="." />
-    <external-files-path name="external_files" path="." />
-    <files-path name="files" path="." />
+    <cache-path name="cache" path="." />
 </paths>

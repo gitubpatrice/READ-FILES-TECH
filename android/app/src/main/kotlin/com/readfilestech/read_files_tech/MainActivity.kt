@@ -13,6 +13,36 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+
+    /// Racines autorisées pour list_dir / open_file. Le path passé par Dart
+    /// est canonicalisé (suit les symlinks) puis comparé à ces racines.
+    /// Empêche un path Dart compromis ou un symlink de viser /data/data/<other>.
+    private val allowedRoots: List<File> by lazy {
+        listOf(
+            Environment.getExternalStorageDirectory().canonicalFile,
+            File("/storage").canonicalFile,
+            filesDir.canonicalFile,
+            cacheDir.canonicalFile,
+            // Le répertoire docs externe de l'app (extractions de zip, exports)
+            getExternalFilesDir(null)?.canonicalFile
+        ).filterNotNull()
+    }
+
+    /// Vérifie qu'un path est dans une racine autorisée. Utilise canonicalFile
+    /// pour résoudre les symlinks (un symlink dans /sdcard pointant vers
+    /// /data/data/<other> sera rejeté).
+    private fun isAllowedPath(path: String): Boolean {
+        return try {
+            val canonical = File(path).canonicalFile
+            allowedRoots.any { root ->
+                canonical.absolutePath == root.absolutePath ||
+                canonical.absolutePath.startsWith(root.absolutePath + File.separator)
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/storage")
@@ -31,9 +61,6 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        // Listing natif : Dart's Directory.list() peut être filtré par
-        // Samsung DefEx (APKs invisibles dans /sdcard malgré MANAGE_EXTERNAL_STORAGE).
-        // File.listFiles() côté Kotlin retourne tous les fichiers réels.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/lifecycle")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -43,8 +70,7 @@ class MainActivity : FlutterActivity() {
                     }
                     "openAllFilesAccess" -> {
                         // Ouvre EXPLICITEMENT la page "Autoriser l'accès à tous
-                        // les fichiers" pour cette app (Android 11+). Sur Samsung,
-                        // permission_handler ouvrait parfois la page générique.
+                        // les fichiers" pour cette app (Android 11+).
                         try {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                 val i = Intent(
@@ -60,7 +86,6 @@ class MainActivity : FlutterActivity() {
                             }
                             result.success(null)
                         } catch (e: Exception) {
-                            // Fallback : page générique de gestion "All Files Access"
                             try {
                                 val i = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                                     .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
@@ -75,12 +100,19 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // Listing natif : Dart's Directory.list() peut être filtré par
+        // Samsung DefEx (APKs invisibles dans /sdcard malgré MANAGE_EXTERNAL_STORAGE).
+        // File.listFiles() côté Kotlin retourne tous les fichiers réels.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/list_dir")
             .setMethodCallHandler { call, result ->
                 if (call.method == "listDir") {
                     val path = call.argument<String>("path")
                     if (path == null) {
                         result.error("NO_PATH", "path manquant", null); return@setMethodCallHandler
+                    }
+                    if (!isAllowedPath(path)) {
+                        result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
+                        return@setMethodCallHandler
                     }
                     try {
                         val dir = File(path)
@@ -95,7 +127,12 @@ class MainActivity : FlutterActivity() {
                                 "name"      to f.name,
                                 "isDir"     to f.isDirectory,
                                 "size"      to (if (f.isFile) f.length() else 0L),
-                                "modified"  to f.lastModified()
+                                "modified"  to f.lastModified(),
+                                // Exposer si l'entrée est un symlink — Dart peut
+                                // ainsi avertir avant édition / suppression.
+                                "isSymlink" to try {
+                                    f.canonicalPath != f.absolutePath
+                                } catch (_: Exception) { false }
                             )
                         }
                         result.success(out)
@@ -113,6 +150,10 @@ class MainActivity : FlutterActivity() {
                     val path = call.argument<String>("path")
                     val mime = call.argument<String>("mime") ?: "*/*"
                     if (path == null) { result.error("NO_PATH", "path manquant", null); return@setMethodCallHandler }
+                    if (!isAllowedPath(path)) {
+                        result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
+                        return@setMethodCallHandler
+                    }
                     val chooser = call.argument<Boolean>("chooser") ?: false
                     try {
                         val file = File(path)
@@ -123,7 +164,6 @@ class MainActivity : FlutterActivity() {
                         }
 
                         // Cas spécial : APK → installateur de paquets Android.
-                        // Vérifier "Installer apps inconnues" et rediriger si manquant.
                         if (mime == "application/vnd.android.package-archive") {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                                 && !packageManager.canRequestPackageInstalls()) {

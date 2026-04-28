@@ -624,13 +624,32 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       ),
     );
     if (newName == null || newName.isEmpty || newName == name) return;
+    if (!_isValidFileName(newName)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Nom invalide (caractères / \\ .. interdits)')));
+      return;
+    }
     try {
       await e.rename('${e.parent.path}/$newName');
       _refresh();
-    } catch (ex) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de renommer ce fichier')));
     }
+  }
+
+  /// Refuse les noms contenant séparateurs de chemin ou traversal — empêche
+  /// rename / createFolder de sortir du dossier courant.
+  bool _isValidFileName(String name) {
+    if (name.contains('/') || name.contains('\\')) return false;
+    if (name == '.' || name == '..') return false;
+    // Caractères de contrôle (NUL, etc.)
+    for (final c in name.codeUnits) {
+      if (c < 0x20) return false;
+    }
+    return true;
   }
 
   Future<void> _delete(FileSystemEntity e) async {
@@ -685,12 +704,19 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       ),
     );
     if (name == null || name.isEmpty || _current == null) return;
+    if (!_isValidFileName(name)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Nom invalide (caractères / \\ .. interdits)')));
+      return;
+    }
     try {
       await Directory('${_current!.path}/$name').create();
       _refresh();
-    } catch (ex) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de créer ce dossier')));
     }
   }
 

@@ -1,7 +1,7 @@
 name: read_files_tech
 description: "Lecteur et outils pour TXT, CSV, HTML, CSS, DOCX, XLSX, ODT, ODS"
 publish_to: 'none'
-version: 1.7.11+18
+version: 1.8.0+19
 
 environment:
   sdk: ^3.11.5
@@ -40,9 +40,7 @@ dependencies:
   syncfusion_flutter_pdf: ^27.1.48
   syncfusion_flutter_pdfviewer: ^27.1.48
 
-  # Google Drive
-  google_sign_in: ^6.2.1
-  googleapis: ^13.2.0
+  # HTTP (utilisé par UpdateService pour GitHub Releases API)
   http: ^1.2.0
 
   # Dates
