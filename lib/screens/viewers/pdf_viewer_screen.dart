@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:share_plus/share_plus.dart';
@@ -71,8 +72,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           ),
         ],
       ),
-      body: SfPdfViewer.asset(
-        widget.path,
+      body: SfPdfViewer.file(
+        File(widget.path),
         key: _viewerKey,
         controller: _ctrl,
         onDocumentLoaded: (details) {

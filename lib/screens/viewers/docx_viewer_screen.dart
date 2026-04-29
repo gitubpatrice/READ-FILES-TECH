@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
@@ -42,15 +43,36 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     final archive = ZipDecoder().decodeBytes(bytes);
     final docFile = archive.findFile('word/document.xml');
     if (docFile == null) return 'Impossible de lire le document.';
-    final xml = String.fromCharCodes(docFile.content as List<int>);
-    return _xmlToText(xml, tagName: 'w:t');
+    final xml = utf8.decode(docFile.content as List<int>, allowMalformed: true);
+    // Split paragraphs first, then concat all <w:t> inside each.
+    final paragraphs = RegExp(r'<w:p[^>]*>(.*?)</w:p>', dotAll: true);
+    final tRun = RegExp(r'<w:t[^>]*>(.*?)</w:t>', dotAll: true);
+    final out = StringBuffer();
+    for (final m in paragraphs.allMatches(xml)) {
+      final pXml = m.group(1) ?? '';
+      final line = StringBuffer();
+      for (final t in tRun.allMatches(pXml)) {
+        line.write(_decodeEntities(t.group(1) ?? ''));
+      }
+      final text = line.toString();
+      if (text.trim().isNotEmpty) out.writeln(text);
+    }
+    return out.toString().trim();
   }
+
+  String _decodeEntities(String s) => s
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&apos;', "'")
+      .replaceAll('&#xD;', '\n');
 
   String _extractOdt(List<int> bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
     final contentFile = archive.findFile('content.xml');
     if (contentFile == null) return 'Impossible de lire le document.';
-    final xml = String.fromCharCodes(contentFile.content as List<int>);
+    final xml = utf8.decode(contentFile.content as List<int>, allowMalformed: true);
     return _xmlToText(xml, tagName: 'text:p');
   }
 

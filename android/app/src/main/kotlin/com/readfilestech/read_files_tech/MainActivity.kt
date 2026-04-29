@@ -205,6 +205,52 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Exception) {
                         result.error("OPEN_ERROR", e.message, null)
                     }
+                } else if (call.method == "openWithPackage") {
+                    val path = call.argument<String>("path")
+                    val mime = call.argument<String>("mime") ?: "*/*"
+                    val pkg  = call.argument<String>("package")
+                    if (path == null || pkg == null) {
+                        result.error("NO_ARGS", "path/package manquant", null)
+                        return@setMethodCallHandler
+                    }
+                    if (!isAllowedPath(path)) {
+                        result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        // Vérifie l'app installée.
+                        val installed = try {
+                            packageManager.getPackageInfo(pkg, 0); true
+                        } catch (_: Exception) { false }
+                        if (!installed) {
+                            result.error("NOT_INSTALLED", "Application non installée : $pkg", null)
+                            return@setMethodCallHandler
+                        }
+                        val file = File(path)
+                        val uri: Uri = FileProvider.getUriForFile(
+                            this, "$packageName.fileprovider", file)
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, mime)
+                            setPackage(pkg)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("OPEN_ERROR", e.message, null)
+                    }
+                } else if (call.method == "isPackageInstalled") {
+                    val pkg = call.argument<String>("package")
+                    if (pkg == null) {
+                        result.error("NO_PACKAGE", "package manquant", null)
+                        return@setMethodCallHandler
+                    }
+                    val installed = try {
+                        packageManager.getPackageInfo(pkg, 0); true
+                    } catch (_: Exception) { false }
+                    result.success(installed)
                 } else {
                     result.notImplemented()
                 }

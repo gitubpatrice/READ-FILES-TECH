@@ -735,6 +735,121 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     }
   }
 
+  static const _pdfTechPackage = 'com.pdftech.pdf_tech';
+
+  Future<void> _editInPdfTech(String path) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _openFileChannel.invokeMethod('openWithPackage', {
+        'path': path,
+        'mime': 'application/pdf',
+        'package': _pdfTechPackage,
+      });
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text(e.code == 'NOT_INSTALLED'
+            ? 'PDF Tech n\'est pas installé sur cet appareil.'
+            : 'Impossible d\'ouvrir avec PDF Tech.'),
+      ));
+    }
+  }
+
+  Future<void> _showFileInfo(FileSystemEntity e) async {
+    final name = e.path.split('/').last;
+    final isDir = e is Directory;
+    int size = 0;
+    int items = 0;
+    DateTime? modified;
+    DateTime? accessed;
+    bool isSymlink = false;
+    try {
+      final stat = e.statSync();
+      modified = stat.modified;
+      accessed = stat.accessed;
+      isSymlink = FileSystemEntity.isLinkSync(e.path);
+      if (isDir) {
+        // Compteur léger : enfants directs uniquement.
+        items = (e).listSync().length;
+      } else {
+        size = stat.size;
+      }
+    } catch (_) {}
+
+    final ext = isDir ? '—' : (_ext(e.path).isEmpty ? '—' : _ext(e.path));
+    final mime = isDir ? '—' : (_mime(_ext(e.path)) ?? 'inconnu');
+
+    String fmt(DateTime? d) => d == null
+        ? '—'
+        : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} '
+          '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(_icon(e), color: _color(e), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(name,
+                style: const TextStyle(fontSize: 15),
+                overflow: TextOverflow.ellipsis),
+          ),
+        ]),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _infoRow('Type', isDir ? 'Dossier' : 'Fichier'),
+              if (!isDir) _infoRow('Extension', ext),
+              if (!isDir) _infoRow('Type MIME', mime),
+              if (!isDir) _infoRow('Taille', '${_formatSize(size)}  ($size octets)'),
+              if (isDir) _infoRow('Éléments', '$items'),
+              _infoRow('Modifié', fmt(modified)),
+              _infoRow('Consulté', fmt(accessed)),
+              if (isSymlink) _infoRow('Lien symbolique', 'oui'),
+              const SizedBox(height: 8),
+              const Text('Chemin',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+              const SizedBox(height: 4),
+              SelectableText(e.path,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () { Clipboard.setData(ClipboardData(text: e.path)); Navigator.pop(ctx); },
+            child: const Text('Copier le chemin'),
+          ),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label,
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _moveFile(String sourcePath) async {
     final messenger = ScaffoldMessenger.of(context);
     final destDir = await FilePicker.platform.getDirectoryPath();
@@ -1060,11 +1175,14 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                 ? PopupMenuButton<String>(
                                     onSelected: (v) {
                                       if (v == 'rename') _rename(e);
+                                      if (v == 'info')   _showFileInfo(e);
                                       if (v == 'delete') _delete(e);
                                     },
                                     itemBuilder: (_) => const [
                                       PopupMenuItem(value: 'rename', child: ListTile(
                                           leading: Icon(Icons.drive_file_rename_outline), title: Text('Renommer'))),
+                                      PopupMenuItem(value: 'info', child: ListTile(
+                                          leading: Icon(Icons.info_outline), title: Text('Informations'))),
                                       PopupMenuItem(value: 'delete', child: ListTile(
                                           leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Supprimer'))),
                                     ],
@@ -1076,10 +1194,12 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                       if (v == 'open_chooser') _openWithSystem(e.path, ext, chooser: true);
                                       if (v == 'preview')      _showPreview(e.path);
                                       if (v == 'edit')         _editFile(e.path);
+                                      if (v == 'edit_pdftech') _editInPdfTech(e.path);
                                       if (v == 'share')        Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
                                       if (v == 'rename')       _rename(e);
                                       if (v == 'copy')         _copyFile(e.path);
                                       if (v == 'move')         _moveFile(e.path);
+                                      if (v == 'info')         _showFileInfo(e);
                                       if (v == 'delete')       _delete(e);
                                     },
                                     itemBuilder: (_) => [
@@ -1096,6 +1216,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                       if (canEdit)
                                         const PopupMenuItem(value: 'edit', child: ListTile(
                                             leading: Icon(Icons.edit_outlined), title: Text('Éditer'))),
+                                      if (ext == 'pdf')
+                                        const PopupMenuItem(value: 'edit_pdftech', child: ListTile(
+                                            leading: Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                                            title: Text('Éditer dans PDF Tech'))),
                                       const PopupMenuItem(value: 'share', child: ListTile(
                                           leading: Icon(Icons.share), title: Text('Partager'))),
                                       const PopupMenuDivider(),
@@ -1105,6 +1229,8 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                           leading: Icon(Icons.copy_outlined), title: Text('Copier vers…'))),
                                       const PopupMenuItem(value: 'move', child: ListTile(
                                           leading: Icon(Icons.drive_file_move_outlined), title: Text('Déplacer vers…'))),
+                                      const PopupMenuItem(value: 'info', child: ListTile(
+                                          leading: Icon(Icons.info_outline), title: Text('Informations'))),
                                       const PopupMenuItem(value: 'delete', child: ListTile(
                                           leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Supprimer'))),
                                     ],
