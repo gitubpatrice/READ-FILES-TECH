@@ -135,7 +135,11 @@ class _CompressScreenState extends State<CompressScreen> {
             if (_outputSize != null) ...[
               const SizedBox(height: 20),
               Card(
-                color: Colors.green.withValues(alpha: 0.10),
+                color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
@@ -145,7 +149,9 @@ class _CompressScreenState extends State<CompressScreen> {
                       Text('Après : ${_fmt(_outputSize!)}'),
                       if (ratio != null)
                         Text('Réduction : -$ratio %',
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.green)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.lightBlue.shade900)),
                       if (_outputPath != null) ...[
                         const SizedBox(height: 8),
                         Text(_outputPath!,

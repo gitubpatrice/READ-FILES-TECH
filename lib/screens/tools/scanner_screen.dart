@@ -145,9 +145,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
           if (_lastPdfPath != null) ...[
             const SizedBox(height: 24),
             Card(
-              color: Colors.green.withValues(alpha: 0.15),
+              color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
               shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Colors.green, width: 2),
+                side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
@@ -156,10 +156,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                      Icon(Icons.check_circle, color: Colors.lightBlue.shade700, size: 24),
                       const SizedBox(width: 8),
-                      const Text('Scan sauvegardé sur votre téléphone',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text('Scan sauvegardé sur votre téléphone',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.lightBlue.shade900)),
                     ]),
                     const SizedBox(height: 10),
                     const Text('Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :',

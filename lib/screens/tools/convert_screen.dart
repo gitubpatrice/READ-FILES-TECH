@@ -193,17 +193,24 @@ class _ConvertScreenState extends State<ConvertScreen> {
           if (_busy) const LinearProgressIndicator(),
           if (_lastPath != null)
             Card(
-              color: Colors.green.withValues(alpha: 0.10),
+              color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 18),
-                      SizedBox(width: 6),
+                    Row(children: [
+                      Icon(Icons.check_circle, color: Colors.lightBlue.shade700, size: 18),
+                      const SizedBox(width: 6),
                       Text('Sauvegardé',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Colors.lightBlue.shade900)),
                     ]),
                     const SizedBox(height: 6),
                     Text(_lastPath!,
