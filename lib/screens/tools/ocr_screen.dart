@@ -6,6 +6,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
+import '../../widgets/cloud_share_row.dart';
 
 class OcrScreen extends StatefulWidget {
   const OcrScreen({super.key});
@@ -19,6 +20,7 @@ class _OcrScreenState extends State<OcrScreen> {
   final _picker = ImagePicker();
   String _text = '';
   String? _imagePath;
+  String? _lastTxtPath;
   bool _busy = false;
   String? _error;
 
@@ -68,6 +70,7 @@ class _OcrScreenState extends State<OcrScreen> {
     await out.writeAsString(_text);
     final autoShare = await storage.getAutoShare();
     if (!mounted) return;
+    setState(() => _lastTxtPath = out.path);
     messenger.showSnackBar(SnackBar(
       content: Text('Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}'),
       duration: const Duration(seconds: 4),
@@ -142,6 +145,35 @@ class _OcrScreenState extends State<OcrScreen> {
                         style: const TextStyle(fontSize: 14, height: 1.5)),
                   ),
           ),
+          if (_lastTxtPath != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.lightBlue.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.check_circle, color: Colors.lightBlue.shade700, size: 18),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                          'Sauvegardé : ${_lastTxtPath!.split(RegExp(r'[/\\]')).last}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 12,
+                              color: Colors.lightBlue.shade900),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  CloudShareRow(path: _lastTxtPath!, mime: 'text/plain'),
+                ],
+              ),
+            ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),

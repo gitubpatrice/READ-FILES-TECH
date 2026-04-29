@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../services/output_storage_service.dart';
 import '../../services/pdf_signature_service.dart';
+import '../../widgets/cloud_share_row.dart';
 
 /// Permet de poser une signature [pngBytes] sur un PDF source [pdfPath].
 /// L'utilisateur navigue dans le PDF (SfPdfViewer), choisit la page courante,
@@ -69,16 +70,58 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
       try { await tmp.delete(); } catch (_) {}
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(
-        content: Text('Signé : ${dest.path.split(RegExp(r'[/\\]')).last}'),
-      ));
-      // Pop avec le path persistant — le viewer/explorateur peut l'afficher.
+      // Bottom sheet de résultat avec partage / cloud direct (kDrive, Google
+      // Drive, Proton Drive). Cohérent avec Scanner / Convert / Compress / EXIF.
+      await _showResultSheet(dest.path);
+      if (!mounted) return;
       Navigator.pop(context, dest.path);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
+  }
+
+  /// Bottom sheet de résultat : confirme la sauvegarde et propose le partage
+  /// + envoi cloud direct (kDrive / Google Drive / Proton Drive). Cohérent
+  /// avec les autres flows de génération de fichiers de l'app.
+  Future<void> _showResultSheet(String path) async {
+    final fileName = path.split(RegExp(r'[/\\]')).last;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle,
+                  color: Colors.lightBlue.shade700, size: 44),
+              const SizedBox(height: 8),
+              const Text('PDF signé',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              const SizedBox(height: 4),
+              Text(fileName,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              const Text('Partager ou envoyer',
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 8),
+              CloudShareRow(path: path, mime: 'application/pdf'),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
