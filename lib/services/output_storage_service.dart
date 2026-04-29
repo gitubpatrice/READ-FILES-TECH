@@ -72,9 +72,46 @@ class OutputStorageService {
     await prefs.setString(_kBasePath, path);
   }
 
+  /// Pré-crée tous les sous-dossiers de sortie. À appeler au boot de l'app
+  /// pour que le dossier soit visible immédiatement dans l'explorateur, sans
+  /// attendre la première sauvegarde.
+  /// Retourne le chemin effectivement créé (peut différer du configuré si
+  /// fallback). Retourne null si toutes les tentatives ont échoué.
+  Future<String?> ensureFolders() async {
+    final basePath = await getBasePath();
+    // Tente le dossier configuré
+    final base = Directory(basePath);
+    try {
+      if (!await base.exists()) await base.create(recursive: true);
+      // Crée tous les sous-dossiers
+      for (final c in OutputCategory.values) {
+        final sub = Directory('${base.path}/${c.folderName}');
+        if (!await sub.exists()) await sub.create(recursive: true);
+      }
+      return base.path;
+    } catch (_) {}
+    // Fallback : app-private external
+    try {
+      final ext = await getExternalStorageDirectory();
+      if (ext != null) {
+        final fbBase = Directory('${ext.path}/Files Tech');
+        if (!await fbBase.exists()) await fbBase.create(recursive: true);
+        for (final c in OutputCategory.values) {
+          final sub = Directory('${fbBase.path}/${c.folderName}');
+          if (!await sub.exists()) await sub.create(recursive: true);
+        }
+        return fbBase.path;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<bool> getAutoShare() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kAutoShare) ?? true;
+    // Désactivé par défaut : la carte de résultat affiche déjà le chemin
+    // sauvegardé + bouton "Voir le fichier" + boutons cloud. Forcer un partage
+    // immédiat masquerait ces infos derrière le sélecteur Android.
+    return prefs.getBool(_kAutoShare) ?? false;
   }
 
   Future<void> setAutoShare(bool value) async {

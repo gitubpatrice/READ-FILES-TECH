@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/output_storage_service.dart';
+import 'explorer/file_explorer_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _service = OutputStorageService();
   String _basePath = '';
+  String? _effectivePath;
   bool _autoShare = true;
   bool _canWrite = true;
   bool _loading = true;
@@ -26,13 +28,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final base = await _service.getBasePath();
     final auto = await _service.getAutoShare();
     final ok   = await _service.canWriteToConfiguredBase();
+    // Pré-crée les sous-dossiers — l'utilisateur les verra dans l'explorateur
+    // même sans avoir encore généré de fichier.
+    final effective = await _service.ensureFolders();
     if (!mounted) return;
     setState(() {
       _basePath = base;
+      _effectivePath = effective;
       _autoShare = auto;
       _canWrite = ok;
       _loading = false;
     });
+  }
+
+  void _openFolder() {
+    final path = _effectivePath ?? _basePath;
+    Navigator.push(context, MaterialPageRoute(
+        builder: (_) => FileExplorerScreen(initialPath: path)));
   }
 
   Future<void> _changeBase() async {
@@ -78,6 +90,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
                 trailing: const Icon(Icons.edit_outlined),
                 onTap: _changeBase,
+              ),
+              if (_effectivePath != null && _effectivePath != _basePath)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Dossier réel utilisé (fallback car configuré inaccessible) :',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(_effectivePath!,
+                          style: const TextStyle(
+                              fontFamily: 'monospace', fontSize: 10)),
+                    ],
+                  ),
+                ),
+              const Divider(height: 1),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.folder_open, size: 20),
+                title: const Text('Ouvrir le dossier dans l\'explorateur',
+                    style: TextStyle(fontSize: 13)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _openFolder,
               ),
               if (!_canWrite)
                 Container(

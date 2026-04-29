@@ -4,6 +4,7 @@ import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
 import '../../widgets/cloud_share_row.dart';
+import '../explorer/file_explorer_screen.dart';
 
 /// Scanner de document via ML Kit (Google) — on-device, gratuit.
 /// Détection automatique des bords, redressement perspective, sortie PDF.
@@ -144,22 +145,50 @@ class _ScannerScreenState extends State<ScannerScreen> {
           if (_lastPdfPath != null) ...[
             const SizedBox(height: 24),
             Card(
-              color: Colors.green.withValues(alpha: 0.10),
+              color: Colors.green.withValues(alpha: 0.15),
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(color: Colors.green, width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      const Icon(Icons.check_circle, color: Colors.green),
+                      const Icon(Icons.check_circle, color: Colors.green, size: 24),
                       const SizedBox(width: 8),
-                      const Text('PDF sauvegardé',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      const Text('Scan sauvegardé sur votre téléphone',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                     ]),
-                    const SizedBox(height: 8),
-                    Text(_lastPdfPath!,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                    const SizedBox(height: 10),
+                    const Text('Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :',
+                        style: TextStyle(fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(_lastPdfPath!,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                    ),
                     const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: () {
+                        final dir = _lastPdfPath!.substring(
+                            0, _lastPdfPath!.lastIndexOf(RegExp(r'[/\\]')));
+                        Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => FileExplorerScreen(initialPath: dir)));
+                      },
+                      icon: const Icon(Icons.folder_open),
+                      label: const Text('Voir le fichier dans l\'explorateur'),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text('Ou envoyer vers :',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 6),
                     CloudShareRow(path: _lastPdfPath!, mime: 'application/pdf'),
                   ],
                 ),
