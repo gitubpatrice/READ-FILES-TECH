@@ -1,7 +1,7 @@
 name: read_files_tech
 description: "Lecteur et outils pour TXT, CSV, HTML, CSS, DOCX, XLSX, ODT, ODS"
 publish_to: 'none'
-version: 1.9.0+23
+version: 2.2.0+26
 
 environment:
   sdk: ^3.11.5
@@ -49,12 +49,28 @@ dependencies:
   # Liens externes (mailto / https) pour Aide & Support
   url_launcher: ^6.3.1
 
+  # OCR on-device (texte depuis images)
+  google_mlkit_text_recognition: ^0.13.0
+
+  # Scanner de documents (caméra + détection bords + perspective + PDF)
+  google_mlkit_document_scanner: ^0.3.0
+
+  # EPUB : extraction de texte / chapitres
+  html: ^0.15.4
+
+  # Manipulation images (compression, conversion)
+  image: ^4.1.3
+  image_picker: ^1.1.2
+
+  # Utilitaires path / pointycastle pour PBKDF2
+  pointycastle: ^3.9.1
+  path: ^1.9.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
-  image: ^4.1.3
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -15,6 +15,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- Lancer l'installateur d'APK depuis l'explorateur -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- OCR : capture caméra -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:label="Read Files Tech"
@@ -47,6 +50,38 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Quick Tiles (volet notification Android, API 24+) -->
+        <service
+            android:name=".ScannerTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Scanner Files Tech"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".OcrTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="OCR Files Tech"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".VaultTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Coffre Files Tech"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -56,6 +91,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- ML Kit : modèle OCR latin embarqué dans l'APK (pas de download runtime) -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr" />
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -71,6 +111,9 @@
     <queries>
         <!-- Synchronisation avec PDF Tech (édition PDF) -->
         <package android:name="com.pdftech.pdf_tech" />
+        <!-- Cloud apps : envoyer un fichier directement -->
+        <package android:name="com.infomaniak.drive" />
+        <package android:name="me.proton.android.drive" />
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

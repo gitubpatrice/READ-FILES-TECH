@@ -13,7 +13,7 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  static const _version = '1.9.0';
+  static const _version = '2.2.0';
   static const _author  = 'Patrice Haltaya';
 
   bool _checkingUpdate = false;
@@ -29,6 +29,26 @@ class _AboutScreenState extends State<AboutScreen> {
         desc: 'Color picker, diff, hash, encodage, formater, recherche contenu, créer ZIP'),
     (icon: Icons.home_outlined, label: 'Accueil',
         desc: 'Stockage, reprendre, accès rapide dossiers, favoris, récents'),
+    (icon: Icons.shield_outlined, label: 'Coffre fort',
+        desc: 'Fichiers chiffrés AES-256-GCM (PBKDF2 600k, biométrique)'),
+    (icon: Icons.transform, label: 'Conversion',
+        desc: 'Images→PDF, CSV→XLSX, TXT/MD→PDF, JPG/PNG'),
+    (icon: Icons.document_scanner_outlined, label: 'OCR',
+        desc: 'Reconnaissance de texte locale sur images (ML Kit)'),
+    (icon: Icons.compress, label: 'Compression',
+        desc: 'Réduction d\'images (qualité + redim.)'),
+    (icon: Icons.camera_alt_outlined, label: 'Scanner',
+        desc: 'Document → PDF (caméra, détection bords, perspective)'),
+    (icon: Icons.cleaning_services_outlined, label: 'Effacer EXIF',
+        desc: 'Supprime GPS, date, modèle d\'appareil avant partage'),
+    (icon: Icons.drive_file_rename_outline, label: 'Renommage en masse',
+        desc: 'Numérotation, préfixe/suffixe, regex (multi-sélection)'),
+    (icon: Icons.menu_book_outlined, label: 'Mode lecture',
+        desc: 'EPUB et HTML désencombrés, taille de police variable'),
+    (icon: Icons.dashboard_customize_outlined, label: 'Quick Tiles',
+        desc: 'Scanner, OCR, Coffre depuis le volet de notification'),
+    (icon: Icons.cloud_upload_outlined, label: 'Cloud',
+        desc: 'Envoi direct vers kDrive Infomaniak ou Proton Drive'),
   ];
 
   Future<void> _checkUpdate() async {

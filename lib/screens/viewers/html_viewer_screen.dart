@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'reader_viewer_screen.dart';
 
 class HtmlViewerScreen extends StatefulWidget {
   final String path;
@@ -147,6 +148,12 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
             tooltip: _viewSource ? 'Vue rendue' : 'Code source',
             icon: Icon(_viewSource ? Icons.web : Icons.code),
             onPressed: () => setState(() => _viewSource = !_viewSource),
+          ),
+          IconButton(
+            tooltip: 'Mode lecture (texte désencombré)',
+            icon: const Icon(Icons.menu_book_outlined),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => ReaderViewerScreen(path: widget.path, isEpub: false))),
           ),
           IconButton(
             tooltip: 'Partager',

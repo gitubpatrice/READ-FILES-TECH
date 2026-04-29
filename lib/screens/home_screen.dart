@@ -26,6 +26,13 @@ import 'viewers/zip_viewer_screen.dart';
 import 'editors/code_editor_screen.dart';
 import 'editors/csv_editor_screen.dart';
 import 'tools/zip_creator_screen.dart';
+import 'tools/convert_screen.dart';
+import 'tools/ocr_screen.dart';
+import 'tools/compress_screen.dart';
+import 'tools/scanner_screen.dart';
+import 'tools/exif_screen.dart';
+import 'vault/vault_screen.dart';
+import 'viewers/reader_viewer_screen.dart';
 import 'viewers/image_viewer_screen.dart';
 import 'explorer/file_explorer_screen.dart';
 import 'about_screen.dart';
@@ -54,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _supported = [
     'txt', 'csv', 'html', 'htm', 'css', 'js', 'php',
     'docx', 'doc', 'xlsx', 'xls', 'odt', 'ods', 'odp',
-    'xml', 'json', 'md', 'pdf', 'zip',
+    'xml', 'json', 'md', 'pdf', 'zip', 'epub',
   ];
 
   @override
@@ -135,6 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return PdfViewerScreen(path: path);
       case 'zip':
         return ZipViewerScreen(path: path);
+      case 'epub':
+        return ReaderViewerScreen(path: path, isEpub: true);
       case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp':
         return ImageViewerScreen(path: path);
       default:
@@ -384,12 +393,18 @@ class _HomeTabState extends State<_HomeTab> {
               onTap: () => _openFolder(f.path, filter: f.filter, title: f.label),
             )),
             _FolderCard(
-              icon: Icons.add_to_drive,
-              label: 'Google Drive',
-              color: const Color(0xFF1A73E8),
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Google Drive — bientôt disponible')),
-              ),
+              icon: Icons.camera_alt_outlined,
+              label: 'Scanner',
+              color: const Color(0xFF00897B),
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const ScannerScreen())),
+            ),
+            _FolderCard(
+              icon: Icons.shield_outlined,
+              label: 'Coffre fort',
+              color: const Color(0xFFD32F2F),
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const VaultScreen())),
             ),
           ],
         ),
@@ -655,6 +670,12 @@ class _ToolsTab extends StatelessWidget {
       (icon: Icons.manage_search,         label: 'Chercher',      subtitle: 'Dans le contenu des fichiers', color: Colors.deepOrange, screen: const ContentSearchScreen()),
       (icon: Icons.table_view,             label: 'Éditeur CSV',   subtitle: 'Modifier cellules, lignes, colonnes', color: Colors.green, screen: CsvEditorScreen(path: '')),
       (icon: Icons.folder_zip_outlined,    label: 'Créer ZIP',     subtitle: 'Compresser des fichiers', color: Colors.orange, screen: const ZipCreatorScreen()),
+      (icon: Icons.transform,               label: 'Convertir',     subtitle: 'Images/PDF, CSV/XLSX, TXT/PDF', color: Colors.deepPurple, screen: const ConvertScreen()),
+      (icon: Icons.document_scanner_outlined, label: 'OCR',         subtitle: 'Image vers texte (local)', color: Colors.blue, screen: const OcrScreen()),
+      (icon: Icons.compress,                label: 'Compresser',    subtitle: 'Réduire la taille des images', color: Colors.amber, screen: const CompressScreen()),
+      (icon: Icons.shield_outlined,         label: 'Coffre fort',   subtitle: 'Fichiers chiffrés AES-256', color: Colors.red, screen: const VaultScreen()),
+      (icon: Icons.camera_alt_outlined,     label: 'Scanner',       subtitle: 'Document → PDF (caméra)', color: Colors.teal, screen: const ScannerScreen()),
+      (icon: Icons.cleaning_services_outlined, label: 'Effacer EXIF', subtitle: 'Supprimer GPS/date des images', color: Colors.brown, screen: const ExifScreen()),
     ];
 
     return GridView.builder(

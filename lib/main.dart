@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
+import 'screens/tools/scanner_screen.dart';
+import 'screens/tools/ocr_screen.dart';
+import 'screens/vault/vault_screen.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -135,6 +138,7 @@ class ReadFilesTechApp extends StatefulWidget {
 class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     with WidgetsBindingObserver {
   static const _lifecycleChannel = MethodChannel('com.readfilestech/lifecycle');
+  static const _shortcutChannel  = MethodChannel('com.readfilestech/shortcut');
   ThemeMode _themeMode = ThemeMode.system;
   bool _lastKnownPermGranted = false;
 
@@ -144,6 +148,39 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     WidgetsBinding.instance.addObserver(this);
     _loadTheme();
     _captureInitialPerm();
+    _initShortcuts();
+  }
+
+  /// Récupère le shortcut éventuel (cold-start) et écoute les invocations
+  /// `onShortcut` (warm-start via onNewIntent côté Kotlin).
+  Future<void> _initShortcuts() async {
+    _shortcutChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onShortcut') {
+        _handleShortcut(call.arguments as String?);
+      }
+      return null;
+    });
+    // Cold start
+    try {
+      final shortcut = await _shortcutChannel.invokeMethod<String>('getShortcut');
+      if (shortcut != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _handleShortcut(shortcut));
+      }
+    } catch (_) {}
+  }
+
+  void _handleShortcut(String? shortcut) {
+    if (shortcut == null) return;
+    final ctx = _navigatorKey.currentContext;
+    if (ctx == null) return;
+    final Widget? target = switch (shortcut) {
+      'scanner' => const ScannerScreen(),
+      'ocr'     => const OcrScreen(),
+      'vault'   => const VaultScreen(),
+      _         => null,
+    };
+    if (target == null) return;
+    Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => target));
   }
 
   @override

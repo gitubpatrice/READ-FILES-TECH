@@ -7,12 +7,12 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 
     /// Racines autorisées pour list_dir / open_file. Le path passé par Dart
     /// est canonicalisé (suit les symlinks) puis comparé à ces racines.
@@ -43,8 +43,36 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /// Channel partagé pour pousser un shortcut quand l'activity est déjà
+    /// vivante (singleTop) — déclenché par onNewIntent.
+    private var shortcutChannel: MethodChannel? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val shortcut = intent.getStringExtra("shortcut")
+        if (shortcut != null) {
+            shortcutChannel?.invokeMethod("onShortcut", shortcut)
+            intent.removeExtra("shortcut")
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Channel "shortcut" : Dart appelle getShortcut() au boot pour récupérer
+        // l'éventuel raccourci qui a lancé l'app (Quick Tile ou autre intent).
+        // Et reçoit `onShortcut` si l'app était déjà ouverte (onNewIntent).
+        shortcutChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/shortcut")
+        shortcutChannel!!.setMethodCallHandler { call, result ->
+            if (call.method == "getShortcut") {
+                val shortcut = intent?.getStringExtra("shortcut")
+                intent?.removeExtra("shortcut")
+                result.success(shortcut)
+            } else {
+                result.notImplemented()
+            }
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/storage")
             .setMethodCallHandler { call, result ->
                 if (call.method == "getStorageInfo") {
@@ -234,6 +262,43 @@ class MainActivity : FlutterActivity() {
                             setPackage(pkg)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("OPEN_ERROR", e.message, null)
+                    }
+                } else if (call.method == "sendToPackage") {
+                    // Envoie un fichier vers une app cible via ACTION_SEND
+                    // (cloud, messagerie…). Plus universel que ACTION_VIEW.
+                    val path = call.argument<String>("path")
+                    val mime = call.argument<String>("mime") ?: "*/*"
+                    val pkg  = call.argument<String>("package")
+                    if (path == null || pkg == null) {
+                        result.error("NO_ARGS", "path/package manquant", null)
+                        return@setMethodCallHandler
+                    }
+                    if (!isAllowedPath(path)) {
+                        result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val installed = try {
+                            packageManager.getPackageInfo(pkg, 0); true
+                        } catch (_: Exception) { false }
+                        if (!installed) {
+                            result.error("NOT_INSTALLED", "Application non installée : $pkg", null)
+                            return@setMethodCallHandler
+                        }
+                        val file = File(path)
+                        val uri: Uri = FileProvider.getUriForFile(
+                            this, "$packageName.fileprovider", file)
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = mime
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            setPackage(pkg)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         startActivity(intent)

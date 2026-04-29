@@ -16,6 +16,9 @@ import '../viewers/pdf_viewer_screen.dart';
 import '../viewers/zip_viewer_screen.dart';
 import '../editors/code_editor_screen.dart';
 import '../viewers/image_viewer_screen.dart';
+import '../viewers/reader_viewer_screen.dart';
+import '../tools/exif_screen.dart';
+import '../tools/bulk_rename_screen.dart';
 
 class FileExplorerScreen extends StatefulWidget {
   final String? initialPath;
@@ -159,6 +162,20 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     await Share.shareXFiles(files);
   }
 
+  Future<void> _bulkRenameSelected() async {
+    final paths = _selected.toList();
+    if (paths.isEmpty) return;
+    final renamed = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(builder: (_) => BulkRenameScreen(paths: paths)),
+    );
+    if (!mounted) return;
+    if (renamed != null && renamed > 0) {
+      _clearSelection();
+      _refresh();
+    }
+  }
+
   Future<void> _copySelected({required bool move}) async {
     final messenger = ScaffoldMessenger.of(context);
     final destDir = await FilePicker.platform.getDirectoryPath();
@@ -182,7 +199,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   static const _editableExts   = {'txt','md','csv','xml','json','html','css','js','php','dart'};
-  static const _viewableExts   = {'docx','doc','odt','xlsx','xls','ods','odp','pdf','zip'};
+  static const _viewableExts   = {'docx','doc','odt','xlsx','xls','ods','odp','pdf','zip','epub'};
   static const _imageExts      = {'jpg','jpeg','png','gif','webp'};
 
   static const _listDirChannel = MethodChannel('com.readfilestech/list_dir');
@@ -424,6 +441,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       case 'xlsx': case 'xls': case 'ods': return XlsxViewerScreen(path: path);
       case 'pdf':  return PdfViewerScreen(path: path);
       case 'zip':  return ZipViewerScreen(path: path);
+      case 'epub': return ReaderViewerScreen(path: path, isEpub: true);
       default:     return null;
     }
   }
@@ -736,6 +754,32 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   static const _pdfTechPackage = 'com.pdftech.pdf_tech';
+  static const _kDrivePackage = 'com.infomaniak.drive';
+  static const _protonDrivePackage = 'me.proton.android.drive';
+
+  Future<void> _sendToCloud(String path, String pkg, String label) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final mime = _mime(_ext(path)) ?? '*/*';
+    try {
+      await _openFileChannel.invokeMethod('sendToPackage', {
+        'path': path,
+        'mime': mime,
+        'package': pkg,
+      });
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text(e.code == 'NOT_INSTALLED'
+            ? '$label n\'est pas installé sur cet appareil.'
+            : 'Erreur : impossible d\'envoyer vers $label.'),
+      ));
+    }
+  }
+
+  void _stripExif(String path) {
+    Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ExifScreen(initialPath: path)));
+  }
 
   Future<void> _editInPdfTech(String path) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -920,6 +964,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                   icon: const Icon(Icons.drive_file_move_outlined),
                   tooltip: 'Déplacer vers…',
                   onPressed: () => _copySelected(move: true),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.drive_file_rename_outline),
+                  tooltip: 'Renommer en masse',
+                  onPressed: _bulkRenameSelected,
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -1195,6 +1244,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                       if (v == 'preview')      _showPreview(e.path);
                                       if (v == 'edit')         _editFile(e.path);
                                       if (v == 'edit_pdftech') _editInPdfTech(e.path);
+                                      if (v == 'strip_exif')   _stripExif(e.path);
+                                      if (v == 'kdrive')       _sendToCloud(e.path, _kDrivePackage, 'kDrive');
+                                      if (v == 'proton')       _sendToCloud(e.path, _protonDrivePackage, 'Proton Drive');
                                       if (v == 'share')        Share.shareXFiles([XFile(e.path, mimeType: _mime(ext))]);
                                       if (v == 'rename')       _rename(e);
                                       if (v == 'copy')         _copyFile(e.path);
@@ -1220,8 +1272,18 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                         const PopupMenuItem(value: 'edit_pdftech', child: ListTile(
                                             leading: Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
                                             title: Text('Éditer dans PDF Tech'))),
+                                      if (_imageExts.contains(ext))
+                                        const PopupMenuItem(value: 'strip_exif', child: ListTile(
+                                            leading: Icon(Icons.cleaning_services_outlined),
+                                            title: Text('Effacer les métadonnées'))),
                                       const PopupMenuItem(value: 'share', child: ListTile(
                                           leading: Icon(Icons.share), title: Text('Partager'))),
+                                      const PopupMenuItem(value: 'kdrive', child: ListTile(
+                                          leading: Icon(Icons.cloud_upload_outlined, color: Color(0xFF0098FF)),
+                                          title: Text('Envoyer vers kDrive'))),
+                                      const PopupMenuItem(value: 'proton', child: ListTile(
+                                          leading: Icon(Icons.cloud_upload_outlined, color: Color(0xFF6D4AFF)),
+                                          title: Text('Envoyer vers Proton Drive'))),
                                       const PopupMenuDivider(),
                                       const PopupMenuItem(value: 'rename', child: ListTile(
                                           leading: Icon(Icons.drive_file_rename_outline), title: Text('Renommer'))),
