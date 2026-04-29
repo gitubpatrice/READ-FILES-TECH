@@ -28,7 +28,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     try {
       scanner = DocumentScanner(
         options: DocumentScannerOptions(
-          documentFormat: DocumentFormat.pdf,
+          documentFormats: {DocumentFormat.pdf},
           mode: ScannerMode.full,
           pageLimit: _pageLimit,
           isGalleryImport: true,

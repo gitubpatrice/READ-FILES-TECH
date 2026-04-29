@@ -1,7 +1,7 @@
 name: read_files_tech
 description: "Lecteur et outils pour TXT, CSV, HTML, CSS, DOCX, XLSX, ODT, ODS"
 publish_to: 'none'
-version: 2.4.2+30
+version: 2.4.3+31
 
 environment:
   sdk: ^3.11.5
@@ -14,7 +14,7 @@ dependencies:
   # Fichiers
   file_picker: ^8.1.2
   path_provider: ^2.1.4
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.1
   share_plus: ^10.0.3
   shared_preferences: ^2.3.2
 
@@ -50,10 +50,10 @@ dependencies:
   url_launcher: ^6.3.1
 
   # OCR on-device (texte depuis images)
-  google_mlkit_text_recognition: ^0.13.0
+  google_mlkit_text_recognition: ^0.15.1
 
   # Scanner de documents (caméra + détection bords + perspective + PDF)
-  google_mlkit_document_scanner: ^0.3.0
+  google_mlkit_document_scanner: ^0.4.1
 
   # EPUB : extraction de texte / chapitres
   html: ^0.15.4
@@ -63,7 +63,7 @@ dependencies:
   image_picker: ^1.1.2
 
   # Utilitaires path / pointycastle pour PBKDF2
-  pointycastle: ^3.9.1
+  pointycastle: ^4.0.0
   path: ^1.9.0
 
 dev_dependencies:
