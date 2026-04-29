@@ -35,6 +35,7 @@ import 'tools/global_search_screen.dart';
 import 'tools/duplicates_screen.dart';
 import 'vault/vault_screen.dart';
 import 'viewers/reader_viewer_screen.dart';
+import 'settings_screen.dart';
 import 'viewers/image_viewer_screen.dart';
 import 'explorer/file_explorer_screen.dart';
 import 'about_screen.dart';
@@ -194,6 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 delegate: _FileSearchDelegate(_recentFiles, _openFile),
               ),
             ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Réglages',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'À propos',

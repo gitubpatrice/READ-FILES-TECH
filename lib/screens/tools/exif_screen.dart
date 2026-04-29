@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../services/exif_service.dart';
+import '../../services/output_storage_service.dart';
+import '../../widgets/cloud_share_row.dart';
 
 class ExifScreen extends StatefulWidget {
   /// Path optionnel : si fourni, l'écran traite directement ce fichier
@@ -16,6 +17,7 @@ class ExifScreen extends StatefulWidget {
 
 class _ExifScreenState extends State<ExifScreen> {
   final _service = ExifService();
+  final _storage = OutputStorageService();
   String? _sourcePath;
   Map<String, String> _metadata = {};
   String? _outputPath;
@@ -52,10 +54,22 @@ class _ExifScreenState extends State<ExifScreen> {
     if (_sourcePath == null) return;
     setState(() { _busy = true; _error = null; });
     try {
-      final out = await _service.stripExif(File(_sourcePath!));
+      // 1. Strip → fichier en cache temp
+      final tmp = await _service.stripExif(File(_sourcePath!));
+      // 2. Copie persistante dans <Files Tech>/Sans-EXIF/
+      final ext = tmp.path.split('.').last.toLowerCase();
+      final base = _sourcePath!.split(RegExp(r'[/\\]')).last
+          .replaceAll(RegExp(r'\.[^.]+$'), '');
+      final dest = await _storage.reserveFile(
+        category: OutputCategory.exifClean,
+        suggestedName: '${base}_no_exif',
+        extension: ext,
+      );
+      await tmp.copy(dest.path);
+      // Nettoyage du temp
+      try { await tmp.delete(); } catch (_) {}
       if (!mounted) return;
-      setState(() { _outputPath = out.path; _busy = false; });
-      await Share.shareXFiles([XFile(out.path)]);
+      setState(() { _outputPath = dest.path; _busy = false; });
     } catch (e) {
       if (!mounted) return;
       setState(() { _error = '$e'; _busy = false; });
@@ -138,12 +152,27 @@ class _ExifScreenState extends State<ExifScreen> {
               const SizedBox(height: 12),
               Card(
                 color: Colors.green.withValues(alpha: 0.10),
-                child: ListTile(
-                  leading: const Icon(Icons.verified_outlined, color: Colors.green),
-                  title: const Text('Image nettoyée'),
-                  subtitle: Text(_outputPath!.split(RegExp(r'[/\\]')).last,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(children: [
+                        Icon(Icons.verified_outlined, color: Colors.green, size: 18),
+                        SizedBox(width: 6),
+                        Text('Image nettoyée et sauvegardée',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      ]),
+                      const SizedBox(height: 6),
+                      Text(_outputPath!,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                      const SizedBox(height: 8),
+                      CloudShareRow(
+                        path: _outputPath!,
+                        mime: _outputPath!.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

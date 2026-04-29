@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import '../../services/output_storage_service.dart';
 import '../../services/pdf_signature_service.dart';
 
 /// Permet de poser une signature [pngBytes] sur un PDF source [pdfPath].
@@ -49,20 +49,31 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final out = await PdfSignatureService().sign(
+      // 1. Sign : produit un PDF en cache temp
+      final tmp = await PdfSignatureService().sign(
         sourcePath: widget.pdfPath,
         pageIndex: _currentPage - 1,
         rectNorm: Rect.fromLTWH(_x, _y, _width, _height),
         signaturePng: widget.pngBytes,
       );
+      // 2. Copie persistante dans <Files Tech>/Signatures/
+      final storage = OutputStorageService();
+      final base = widget.pdfPath.split(RegExp(r'[/\\]')).last
+          .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
+      final dest = await storage.reserveFile(
+        category: OutputCategory.signatures,
+        suggestedName: '${base}_signe',
+        extension: 'pdf',
+      );
+      await tmp.copy(dest.path);
+      try { await tmp.delete(); } catch (_) {}
       if (!mounted) return;
       setState(() => _saving = false);
       messenger.showSnackBar(SnackBar(
-        content: Text('Signé : ${out.path.split(RegExp(r'[/\\]')).last}'),
+        content: Text('Signé : ${dest.path.split(RegExp(r'[/\\]')).last}'),
       ));
-      await Share.shareXFiles([XFile(out.path)]);
-      if (!mounted) return;
-      Navigator.pop(context, out.path);
+      // Pop avec le path persistant — le viewer/explorateur peut l'afficher.
+      Navigator.pop(context, dest.path);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);

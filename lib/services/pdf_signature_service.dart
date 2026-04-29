@@ -23,6 +23,12 @@ class PdfSignatureService {
     if (rectNorm.width <= 0 || rectNorm.height <= 0) {
       throw ArgumentError('Zone de signature invalide');
     }
+    // Clamp dans [0, 1] : évite que Syncfusion reçoive des coords négatives
+    // ou hors page si le caller a un bug dans son code de drag/resize.
+    if (rectNorm.left < 0 || rectNorm.top < 0 ||
+        rectNorm.right > 1 + 1e-6 || rectNorm.bottom > 1 + 1e-6) {
+      throw ArgumentError('Zone de signature hors page (doit être dans [0,1])');
+    }
     final bytes = await File(sourcePath).readAsBytes();
     final doc = PdfDocument(inputBytes: bytes);
     try {

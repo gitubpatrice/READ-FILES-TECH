@@ -5,9 +5,10 @@ import 'package:excel/excel.dart' as xls;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../services/output_storage_service.dart';
+import '../../widgets/cloud_share_row.dart';
 
 class ConvertScreen extends StatefulWidget {
   const ConvertScreen({super.key});
@@ -17,16 +18,22 @@ class ConvertScreen extends StatefulWidget {
 }
 
 class _ConvertScreenState extends State<ConvertScreen> {
+  final _storage = OutputStorageService();
   bool _busy = false;
   String? _status;
+  String? _lastPath;
 
-  Future<File> _outFile(String name) async {
-    final tmp = await getTemporaryDirectory();
-    return File('${tmp.path}/$name');
-  }
+  /// Réserve un fichier persistant dans `Files Tech/Conversions/`.
+  /// Tous les jobs de conversion passent par cette méthode → cohérence garantie.
+  Future<File> _reserve(String suggested, String ext) =>
+      _storage.reserveFile(
+        category: OutputCategory.conversions,
+        suggestedName: suggested,
+        extension: ext,
+      );
 
   Future<void> _run(Future<File?> Function() job) async {
-    setState(() { _busy = true; _status = null; });
+    setState(() { _busy = true; _status = null; _lastPath = null; });
     try {
       final out = await job();
       if (!mounted) return;
@@ -34,9 +41,18 @@ class _ConvertScreenState extends State<ConvertScreen> {
         setState(() { _busy = false; _status = 'Annulé'; });
         return;
       }
-      setState(() { _busy = false; _status = 'OK : ${out.path.split('/').last}'; });
-      await Share.shareXFiles([XFile(out.path)]);
+      final autoShare = await _storage.getAutoShare();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _lastPath = out.path;
+        _status = 'Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}';
+      });
+      if (autoShare) {
+        await Share.shareXFiles([XFile(out.path)]);
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() { _busy = false; _status = 'Erreur : $e'; });
     }
   }
@@ -67,7 +83,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       final dy = (pageSize.height - dh) / 2;
       page.graphics.drawImage(image, Rect.fromLTWH(dx, dy, dw, dh));
     }
-    final out = await _outFile('images_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    final out = await _reserve('images', 'pdf');
     await out.writeAsBytes(await pdf.save());
     pdf.dispose();
     return out;
@@ -92,7 +108,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     final bytes = excel.save();
     if (bytes == null) throw 'Échec génération XLSX';
     final base = res.files.single.name.replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
-    final out = await _outFile('$base.xlsx');
+    final out = await _reserve(base, 'xlsx');
     await out.writeAsBytes(bytes);
     return out;
   }
@@ -121,7 +137,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       format: layoutFormat,
     );
     final base = sourceName.replaceAll(RegExp(r'\.[^.]+$'), '');
-    final out = await _outFile('$base.pdf');
+    final out = await _reserve(base, 'pdf');
     await out.writeAsBytes(await pdf.save());
     pdf.dispose();
     return out;
@@ -144,7 +160,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       default: throw 'Format inconnu';
     }
     final base = res.files.single.name.replaceAll(RegExp(r'\.[^.]+$'), '');
-    final out = await _outFile('$base.$targetExt');
+    final out = await _reserve(base, targetExt);
     await out.writeAsBytes(encoded);
     return out;
   }
@@ -175,7 +191,30 @@ class _ConvertScreenState extends State<ConvertScreen> {
         padding: const EdgeInsets.all(12),
         children: [
           if (_busy) const LinearProgressIndicator(),
-          if (_status != null)
+          if (_lastPath != null)
+            Card(
+              color: Colors.green.withValues(alpha: 0.10),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      SizedBox(width: 6),
+                      Text('Sauvegardé',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    ]),
+                    const SizedBox(height: 6),
+                    Text(_lastPath!,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                    const SizedBox(height: 8),
+                    CloudShareRow(path: _lastPath!),
+                  ],
+                ),
+              ),
+            )
+          else if (_status != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(_status!,

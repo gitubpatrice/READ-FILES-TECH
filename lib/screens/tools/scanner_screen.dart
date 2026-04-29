@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/output_storage_service.dart';
+import '../../widgets/cloud_share_row.dart';
 
 /// Scanner de document via ML Kit (Google) — on-device, gratuit.
 /// Détection automatique des bords, redressement perspective, sortie PDF.
@@ -14,6 +15,7 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
+  final _storage = OutputStorageService();
   bool _busy = false;
   String? _lastPdfPath;
   String? _error;
@@ -44,12 +46,20 @@ class _ScannerScreenState extends State<ScannerScreen> {
       if (!await src.exists()) {
         throw FileSystemException('Fichier scan introuvable', src.path);
       }
-      final tmp = await getTemporaryDirectory();
-      final dest = File('${tmp.path}/scan_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      // Sauvegarde persistante dans <Files Tech>/Scans/scan_yyyyMMdd_HHmmss.pdf
+      final dest = await _storage.reserveFile(
+        category: OutputCategory.scans,
+        suggestedName: 'scan',
+        extension: 'pdf',
+      );
       await src.copy(dest.path);
       // src appartient à ML Kit — on ne le supprime pas, c'est leur cache.
+      final autoShare = await _storage.getAutoShare();
       if (!mounted) return;
       setState(() { _busy = false; _lastPdfPath = dest.path; });
+      if (autoShare) {
+        await Share.shareXFiles([XFile(dest.path)]);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() { _busy = false; _error = 'Erreur scanner : $e'; });
@@ -57,11 +67,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
       // Libère les ressources natives du scanner.
       try { await scanner?.close(); } catch (_) {}
     }
-  }
-
-  Future<void> _share() async {
-    if (_lastPdfPath == null) return;
-    await Share.shareXFiles([XFile(_lastPdfPath!)]);
   }
 
   @override
@@ -75,7 +80,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             IconButton(
               icon: const Icon(Icons.share),
               tooltip: 'Partager le PDF',
-              onPressed: _share,
+              onPressed: () => Share.shareXFiles([XFile(_lastPdfPath!)]),
             ),
         ],
       ),
@@ -140,13 +145,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
             const SizedBox(height: 24),
             Card(
               color: Colors.green.withValues(alpha: 0.10),
-              child: ListTile(
-                leading: const Icon(Icons.picture_as_pdf, color: Colors.green),
-                title: Text(_lastPdfPath!.split(RegExp(r'[/\\]')).last,
-                    overflow: TextOverflow.ellipsis),
-                subtitle: const Text('PDF prêt — toucher pour partager'),
-                trailing: const Icon(Icons.share),
-                onTap: _share,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.check_circle, color: Colors.green),
+                      const SizedBox(width: 8),
+                      const Text('PDF sauvegardé',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                    ]),
+                    const SizedBox(height: 8),
+                    Text(_lastPdfPath!,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                    const SizedBox(height: 12),
+                    CloudShareRow(path: _lastPdfPath!, mime: 'application/pdf'),
+                  ],
+                ),
               ),
             ),
           ],

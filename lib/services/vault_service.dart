@@ -89,7 +89,7 @@ class VaultService {
   Future<String> importFileSafe(File source, {bool overwrite = false}) async {
     final key = _requireKey();
     final dir = await _vaultDir();
-    final name = source.path.split(RegExp(r'[/\\]')).last;
+    final name = _safeBasename(source.path);
     final dest = File('${dir.path}/$name.enc');
     if (await dest.exists() && !overwrite) {
       throw FileSystemException('Fichier homonyme déjà dans le coffre', dest.path);
@@ -113,11 +113,25 @@ class VaultService {
   Future<String> importFile(File source) async {
     final key = _requireKey();
     final dir = await _vaultDir();
-    final name = source.path.split(RegExp(r'[/\\]')).last;
+    final name = _safeBasename(source.path);
     final dest = File('${dir.path}/$name.enc');
     final plain = await source.readAsBytes();
     await dest.writeAsBytes(_encrypt(plain, key));
     return dest.path;
+  }
+
+  /// Extrait un basename sûr d'un path source. Refuse `..`, vide, ou chemins
+  /// comportant des séparateurs internes — empêche un path forgé de sortir
+  /// du dossier vault via concaténation.
+  String _safeBasename(String path) {
+    final raw = path.split(RegExp(r'[/\\]')).last;
+    if (raw.isEmpty || raw == '.' || raw == '..') {
+      throw ArgumentError('Nom de fichier invalide');
+    }
+    if (raw.contains('/') || raw.contains('\\') || raw.contains('\x00')) {
+      throw ArgumentError('Nom de fichier invalide');
+    }
+    return raw;
   }
 
   /// Déchiffre un fichier du coffre vers un emplacement temporaire (pour viewer/share).

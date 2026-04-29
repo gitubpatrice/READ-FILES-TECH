@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/output_storage_service.dart';
 
 class OcrScreen extends StatefulWidget {
   const OcrScreen({super.key});
@@ -58,11 +58,23 @@ class _OcrScreenState extends State<OcrScreen> {
 
   Future<void> _saveAsTxt() async {
     if (_text.isEmpty) return;
-    final tmp = await getTemporaryDirectory();
-    final out = File('${tmp.path}/ocr_${DateTime.now().millisecondsSinceEpoch}.txt');
+    final messenger = ScaffoldMessenger.of(context);
+    final storage = OutputStorageService();
+    final out = await storage.reserveFile(
+      category: OutputCategory.ocr,
+      suggestedName: 'ocr',
+      extension: 'txt',
+    );
     await out.writeAsString(_text);
+    final autoShare = await storage.getAutoShare();
     if (!mounted) return;
-    await Share.shareXFiles([XFile(out.path)]);
+    messenger.showSnackBar(SnackBar(
+      content: Text('Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}'),
+      duration: const Duration(seconds: 4),
+    ));
+    if (autoShare) {
+      await Share.shareXFiles([XFile(out.path)]);
+    }
   }
 
   void _copy() {

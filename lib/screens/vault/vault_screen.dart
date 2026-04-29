@@ -11,7 +11,7 @@ class VaultScreen extends StatefulWidget {
   State<VaultScreen> createState() => _VaultScreenState();
 }
 
-class _VaultScreenState extends State<VaultScreen> {
+class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   final _service = VaultService();
   bool _checking = true;
   bool _unlocked = false;
@@ -20,9 +20,30 @@ class _VaultScreenState extends State<VaultScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Au boot du coffre, purger d'éventuels fichiers déchiffrés laissés.
     _service.purgeTempDecrypted();
     _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Sécurité : verrouille le coffre dès que l'app passe en arrière-plan.
+  /// Empêche que `_cachedKey` reste en mémoire si l'utilisateur a ouvert le
+  /// coffre puis a juste appuyé sur Home (sans verrouiller manuellement).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      if (_service.isUnlocked) {
+        _service.lock();
+        if (mounted) setState(() => _unlocked = false);
+      }
+    }
   }
 
   Future<void> _bootstrap() async {

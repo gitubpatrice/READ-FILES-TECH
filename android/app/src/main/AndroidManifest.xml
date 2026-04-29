@@ -114,6 +114,7 @@
         <!-- Cloud apps : envoyer un fichier directement -->
         <package android:name="com.infomaniak.drive" />
         <package android:name="me.proton.android.drive" />
+        <package android:name="com.google.android.apps.docs" />
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

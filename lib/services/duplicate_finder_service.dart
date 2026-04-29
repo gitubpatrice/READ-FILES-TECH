@@ -60,6 +60,12 @@ class DuplicateFinderService {
       } else if (msg is String) {
         completer.completeError(msg);
         cancel();
+      } else {
+        // Garde-fou : tout autre type signale un bug logique côté isolate.
+        // Ne pas laisser le Completer pendre indéfiniment.
+        completer.completeError(
+            StateError('Message Isolate inattendu : ${msg.runtimeType}'));
+        cancel();
       }
     });
     _iso = await Isolate.spawn(_entry, _Args(_recv!.sendPort, root, topN, minSize));

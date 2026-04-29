@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show rootBundle, Clipboard, ClipboardData
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
+import 'settings_screen.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -13,7 +14,7 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  static const _version = '2.3.0';
+  static const _version = '2.4.0';
   static const _author  = 'Patrice Haltaya';
 
   bool _checkingUpdate = false;
@@ -207,6 +208,25 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
               title: const Text(_author),
               subtitle: const Text('Développeur'),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Réglages ────────────────────────────────────────────────────────
+          _sectionTitle(context, 'Réglages'),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.settings_outlined, color: cs.primary),
+              title: const Text('Dossier de sortie & partage automatique'),
+              subtitle: const Text(
+                'Choisir où sont sauvegardés scans, conversions, signatures…',
+                style: TextStyle(fontSize: 11),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const SettingsScreen())),
             ),
           ),
 

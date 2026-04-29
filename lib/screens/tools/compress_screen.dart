@@ -3,8 +3,9 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/output_storage_service.dart';
+import '../../widgets/cloud_share_row.dart';
 
 class CompressScreen extends StatefulWidget {
   const CompressScreen({super.key});
@@ -14,7 +15,9 @@ class CompressScreen extends StatefulWidget {
 }
 
 class _CompressScreenState extends State<CompressScreen> {
+  final _storage = OutputStorageService();
   String? _sourcePath;
+  String? _outputPath;
   int _sourceSize = 0;
   int? _outputSize;
   int _quality = 80;
@@ -34,7 +37,7 @@ class _CompressScreenState extends State<CompressScreen> {
 
   Future<void> _compress() async {
     if (_sourcePath == null) return;
-    setState(() { _busy = true; _outputSize = null; });
+    setState(() { _busy = true; _outputSize = null; _outputPath = null; });
     final messenger = ScaffoldMessenger.of(context);
     try {
       final bytes = await File(_sourcePath!).readAsBytes();
@@ -45,14 +48,24 @@ class _CompressScreenState extends State<CompressScreen> {
         resized = img.copyResize(decoded, width: _maxWidth);
       }
       final encoded = Uint8List.fromList(img.encodeJpg(resized, quality: _quality));
-      final tmp = await getTemporaryDirectory();
       final base = _sourcePath!.split(RegExp(r'[/\\]')).last
           .replaceAll(RegExp(r'\.[^.]+$'), '');
-      final out = File('${tmp.path}/${base}_compressed.jpg');
+      final out = await _storage.reserveFile(
+        category: OutputCategory.compressions,
+        suggestedName: '${base}_compressed',
+        extension: 'jpg',
+      );
       await out.writeAsBytes(encoded);
+      final autoShare = await _storage.getAutoShare();
       if (!mounted) return;
-      setState(() { _busy = false; _outputSize = encoded.length; });
-      await Share.shareXFiles([XFile(out.path)]);
+      setState(() {
+        _busy = false;
+        _outputSize = encoded.length;
+        _outputPath = out.path;
+      });
+      if (autoShare) {
+        await Share.shareXFiles([XFile(out.path)]);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -133,6 +146,13 @@ class _CompressScreenState extends State<CompressScreen> {
                       if (ratio != null)
                         Text('Réduction : -$ratio %',
                             style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.green)),
+                      if (_outputPath != null) ...[
+                        const SizedBox(height: 8),
+                        Text(_outputPath!,
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                        const SizedBox(height: 8),
+                        CloudShareRow(path: _outputPath!, mime: 'image/jpeg'),
+                      ],
                     ],
                   ),
                 ),

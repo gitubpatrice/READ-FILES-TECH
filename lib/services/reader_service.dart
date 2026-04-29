@@ -73,10 +73,19 @@ class ReaderService {
 
     // 3. Parcourt chaque chapitre
     final out = <EpubChapter>[];
+    final basePrefix = basePath.isEmpty ? '' : '$basePath/';
     for (final id in spineIds) {
       final href = manifest[id];
       if (href == null) continue;
+      // Garde-fou : un EPUB malveillant peut avoir un href avec `..` qui sort
+      // du dossier OPF. p.normalize les résout — on rejette si on sort.
       final fullPath = p.normalize(p.join(basePath, href)).replaceAll('\\', '/');
+      if (basePath.isNotEmpty &&
+          !fullPath.startsWith(basePrefix) && fullPath != basePath) {
+        continue;
+      }
+      // Un href absolu (`/etc/passwd`) est aussi rejeté.
+      if (href.startsWith('/') || href.contains('://')) continue;
       final entry = archive.findFile(fullPath);
       if (entry == null) continue;
       final xhtml = utf8.decode(entry.content as List<int>, allowMalformed: true);

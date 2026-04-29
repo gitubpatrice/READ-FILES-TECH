@@ -53,8 +53,11 @@ class ExifService {
     }
 
     final tmp = await getTemporaryDirectory();
-    final base = source.path.split(RegExp(r'[/\\]')).last
-        .replaceAll(RegExp(r'\.[^.]+$'), '');
+    // Sanitize : refuse les caractères de path traversal et de contrôle.
+    var base = source.path.split(RegExp(r'[/\\]')).last
+        .replaceAll(RegExp(r'\.[^.]+$'), '')
+        .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_');
+    if (base.isEmpty || base == '.' || base == '..') base = 'image';
     final dest = File('${tmp.path}/${base}_no_exif.$outExt');
     await dest.writeAsBytes(out);
     return dest;
