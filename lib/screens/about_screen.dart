@@ -13,7 +13,7 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  static const _version = '2.2.0';
+  static const _version = '2.3.0';
   static const _author  = 'Patrice Haltaya';
 
   bool _checkingUpdate = false;
@@ -49,6 +49,12 @@ class _AboutScreenState extends State<AboutScreen> {
         desc: 'Scanner, OCR, Coffre depuis le volet de notification'),
     (icon: Icons.cloud_upload_outlined, label: 'Cloud',
         desc: 'Envoi direct vers kDrive Infomaniak ou Proton Drive'),
+    (icon: Icons.draw_outlined, label: 'Signature PDF',
+        desc: 'Tracer une signature manuscrite et l\'apposer sur un PDF'),
+    (icon: Icons.travel_explore, label: 'Recherche globale',
+        desc: 'Par nom et contenu sur tout le téléphone (Isolate)'),
+    (icon: Icons.content_copy_outlined, label: 'Doublons & gros fichiers',
+        desc: 'SHA-256 deux passes, libère du stockage rapidement'),
   ];
 
   Future<void> _checkUpdate() async {

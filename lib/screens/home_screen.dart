@@ -31,6 +31,8 @@ import 'tools/ocr_screen.dart';
 import 'tools/compress_screen.dart';
 import 'tools/scanner_screen.dart';
 import 'tools/exif_screen.dart';
+import 'tools/global_search_screen.dart';
+import 'tools/duplicates_screen.dart';
 import 'vault/vault_screen.dart';
 import 'viewers/reader_viewer_screen.dart';
 import 'viewers/image_viewer_screen.dart';
@@ -676,6 +678,8 @@ class _ToolsTab extends StatelessWidget {
       (icon: Icons.shield_outlined,         label: 'Coffre fort',   subtitle: 'Fichiers chiffrés AES-256', color: Colors.red, screen: const VaultScreen()),
       (icon: Icons.camera_alt_outlined,     label: 'Scanner',       subtitle: 'Document → PDF (caméra)', color: Colors.teal, screen: const ScannerScreen()),
       (icon: Icons.cleaning_services_outlined, label: 'Effacer EXIF', subtitle: 'Supprimer GPS/date des images', color: Colors.brown, screen: const ExifScreen()),
+      (icon: Icons.travel_explore,           label: 'Recherche globale', subtitle: 'Par nom et contenu, tout le téléphone', color: Colors.indigo, screen: const GlobalSearchScreen()),
+      (icon: Icons.content_copy_outlined,    label: 'Doublons & gros',   subtitle: 'Libérer du stockage', color: Colors.deepOrange, screen: const DuplicatesScreen()),
     ];
 
     return GridView.builder(

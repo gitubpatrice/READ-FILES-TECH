@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:share_plus/share_plus.dart';
+import '../tools/signature_capture_screen.dart';
+import '../tools/signature_place_screen.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final String path;
@@ -49,6 +52,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 _viewerKey.currentState?.openBookmarkView();
               }
             },
+          ),
+          IconButton(
+            tooltip: 'Signer',
+            icon: const Icon(Icons.draw_outlined),
+            onPressed: _startSignature,
           ),
           IconButton(
             tooltip: 'Partager',
@@ -102,6 +110,23 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  Future<void> _startSignature() async {
+    // 1. Capture du tracé
+    final png = await Navigator.push<Uint8List>(
+      context,
+      MaterialPageRoute(builder: (_) => const SignatureCaptureScreen()),
+    );
+    if (png == null || !mounted) return;
+    // 2. Pose sur la page courante du PDF
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => SignaturePlaceScreen(
+        pdfPath: widget.path,
+        pngBytes: png,
+      )),
     );
   }
 
