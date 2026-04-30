@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,7 +139,7 @@ class VaultService {
   Future<String> importFileSafe(File source, {bool overwrite = false}) async {
     final key = _requireKey();
     final dir = await _vaultDir();
-    final name = _safeBasename(source.path);
+    final name = PathSafe.basename(source.path);
     final destName = '$name.enc';
     final dest = File('${dir.path}/$destName');
     if (await dest.exists() && !overwrite) {
@@ -164,27 +165,13 @@ class VaultService {
   Future<String> importFile(File source) async {
     final key = _requireKey();
     final dir = await _vaultDir();
-    final name = _safeBasename(source.path);
+    final name = PathSafe.basename(source.path);
     final destName = '$name.enc';
     final dest = File('${dir.path}/$destName');
     final plain = await source.readAsBytes();
     final ct = await _encryptMaybeIsolate(plain, key, destName);
     await dest.writeAsBytes(ct);
     return dest.path;
-  }
-
-  /// Extrait un basename sûr d'un path source. Refuse `..`, vide, ou chemins
-  /// comportant des séparateurs internes — empêche un path forgé de sortir
-  /// du dossier vault via concaténation.
-  String _safeBasename(String path) {
-    final raw = path.split(RegExp(r'[/\\]')).last;
-    if (raw.isEmpty || raw == '.' || raw == '..') {
-      throw ArgumentError('Nom de fichier invalide');
-    }
-    if (raw.contains('/') || raw.contains('\\') || raw.contains('\x00')) {
-      throw ArgumentError('Nom de fichier invalide');
-    }
-    return raw;
   }
 
   /// Déchiffre un fichier du coffre vers un emplacement temporaire (pour viewer/share).

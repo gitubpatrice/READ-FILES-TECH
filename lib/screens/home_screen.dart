@@ -325,11 +325,7 @@ class _HomeTabState extends State<_HomeTab> {
     } catch (_) {}
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(0)} MB';
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
+  String _formatBytes(int bytes) => FormatUtils.bytesStorage(bytes);
 
   void _openFolder(String path,
       {Set<String>? filter, String? title}) {

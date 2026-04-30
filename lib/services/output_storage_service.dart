@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -132,7 +133,7 @@ class OutputStorageService {
     required String suggestedName,
     required String extension,
   }) async {
-    final safeBase = _sanitize(suggestedName);
+    final safeBase = PathSafe.sanitizeForFs(suggestedName);
     final ts = _timestamp();
     final fileName = '${safeBase}_$ts.$extension';
 
@@ -213,16 +214,4 @@ class OutputStorageService {
     return '${n.year}${two(n.month)}${two(n.day)}_${two(n.hour)}${two(n.minute)}${two(n.second)}';
   }
 
-  /// Retire les caractères dangereux pour un nom de fichier (path traversal,
-  /// caractères de contrôle, séparateurs). Remplace par `_`. Tronque à 60.
-  String _sanitize(String name) {
-    var s = name.replaceAll(RegExp(r'[\x00-\x1f]'), '_');
-    s = s.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_');
-    s = s.replaceAll(RegExp(r'\s+'), '_');
-    s = s.replaceAll(RegExp(r'_+'), '_');
-    s = s.replaceAll(RegExp(r'^[._]+|[._]+$'), '');
-    if (s.isEmpty) s = 'fichier';
-    if (s.length > 60) s = s.substring(0, 60);
-    return s;
-  }
 }
