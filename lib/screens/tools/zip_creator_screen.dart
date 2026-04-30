@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class ZipCreatorScreen extends StatefulWidget {
   const ZipCreatorScreen({super.key});
@@ -27,13 +27,12 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
       });
 
   Future<void> _addFiles() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result == null) return;
+    final paths = await RftPickerScreen.pickMany(context,
+        title: 'Choisir des fichiers à compresser');
+    if (paths == null || paths.isEmpty) return;
     setState(() {
-      for (final f in result.files) {
-        if (f.path != null && !_files.contains(f.path)) {
-          _files.add(f.path!);
-        }
+      for (final p in paths) {
+        if (!_files.contains(p)) _files.add(p);
       }
     });
   }

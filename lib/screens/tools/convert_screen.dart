@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
 import '../../widgets/cloud_share_row.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class ConvertScreen extends StatefulWidget {
   const ConvertScreen({super.key});
@@ -91,10 +92,11 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   // ── CSV → XLSX ──────────────────────────────────────────────────────────────
   Future<File?> _csvToXlsx() async {
-    final res = await FilePicker.platform.pickFiles(
-      type: FileType.custom, allowedExtensions: ['csv']);
-    if (res == null || res.files.single.path == null) return null;
-    final raw = await File(res.files.single.path!).readAsString();
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Choisir un CSV',
+        extensions: const {'csv'});
+    if (path == null) return null;
+    final raw = await File(path).readAsString();
     final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false)
         .convert(raw);
     final excel = xls.Excel.createExcel();
@@ -107,7 +109,8 @@ class _ConvertScreenState extends State<ConvertScreen> {
     }
     final bytes = excel.save();
     if (bytes == null) throw 'Échec génération XLSX';
-    final base = res.files.single.name.replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
+    final base = path.split(RegExp(r'[/\\]')).last
+        .replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
     final out = await _reserve(base, 'xlsx');
     await out.writeAsBytes(bytes);
     return out;
@@ -115,11 +118,13 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   // ── Texte (TXT/MD) → PDF ────────────────────────────────────────────────────
   Future<File?> _textToPdf() async {
-    final res = await FilePicker.platform.pickFiles(
-      type: FileType.custom, allowedExtensions: ['txt', 'md']);
-    if (res == null || res.files.single.path == null) return null;
-    final text = await File(res.files.single.path!).readAsString();
-    return _generateTextPdf(text, res.files.single.name);
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Choisir un fichier texte',
+        extensions: const {'txt', 'md'});
+    if (path == null) return null;
+    final text = await File(path).readAsString();
+    final name = path.split(RegExp(r'[/\\]')).last;
+    return _generateTextPdf(text, name);
   }
 
   Future<File> _generateTextPdf(String text, String sourceName) async {

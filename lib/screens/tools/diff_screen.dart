@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class DiffScreen extends StatefulWidget {
   const DiffScreen({super.key});
@@ -16,19 +16,18 @@ class _DiffScreenState extends State<DiffScreen> {
   int _added = 0, _removed = 0, _same = 0;
 
   Future<void> _pickFile(bool isA) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['txt', 'md', 'csv', 'xml', 'json', 'html', 'css', 'js', 'php', 'dart'],
-      allowMultiple: false,
-    );
-    if (result == null || result.files.single.path == null) return;
+    final path = await RftPickerScreen.pickOne(context,
+        title: isA ? 'Fichier A' : 'Fichier B',
+        extensions: const {'txt','md','csv','xml','json','html','css','js','php','dart'});
+    if (path == null) return;
+    final name = path.split(RegExp(r'[/\\]')).last;
     setState(() {
       if (isA) {
-        _pathA = result.files.single.path;
-        _nameA = result.files.single.name;
+        _pathA = path;
+        _nameA = name;
       } else {
-        _pathB = result.files.single.path;
-        _nameB = result.files.single.name;
+        _pathB = path;
+        _nameB = name;
       }
     });
     if (_pathA != null && _pathB != null) await _compute();

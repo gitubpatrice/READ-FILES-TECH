@@ -154,11 +154,17 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     ),
   ];
 
+  /// Liste de tous les dossiers de premier niveau du stockage interne,
+  /// excluant ceux déjà présents dans les raccourcis colorés et les dossiers
+  /// système Android non pertinents pour l'utilisateur.
+  List<Directory> _allFolders = [];
+
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     _load();
+    _loadAllFolders();
   }
 
   @override
@@ -181,6 +187,98 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     }).toList();
     if (!mounted) return;
     setState(() { _recents = existing; _loading = false; });
+  }
+
+  /// Charge dynamiquement tous les dossiers de premier niveau du stockage
+  /// interne. Exclut les dossiers déjà raccourcis (pour éviter doublons),
+  /// les dossiers système Android (`Android/`) et les fichiers cachés.
+  /// Icône smart dérivée du nom du dossier : reconnaît les patterns
+  /// fréquents (photos, vidéos, docs, etc.) en fr/en. Sinon folder neutre.
+  IconData _smartIconFor(String name) {
+    final n = name.toLowerCase();
+    if (RegExp(r'photo|image|picture|dcim|camera').hasMatch(n)) {
+      return Icons.photo_camera_outlined;
+    }
+    if (RegExp(r'vid[ée]o|movie|film|cin[ée]ma').hasMatch(n)) {
+      return Icons.videocam_outlined;
+    }
+    if (RegExp(r'music|audio|sound|son|chanson|podcast').hasMatch(n)) {
+      return Icons.music_note_outlined;
+    }
+    if (RegExp(r'doc|text|note|word|excel|pdf').hasMatch(n)) {
+      return Icons.description_outlined;
+    }
+    if (RegExp(r'download|t[ée]l[ée]chargement').hasMatch(n)) {
+      return Icons.download_outlined;
+    }
+    if (RegExp(r'backup|sauvegarde|archive').hasMatch(n)) {
+      return Icons.backup_outlined;
+    }
+    if (RegExp(r'screenshot|capture').hasMatch(n)) {
+      return Icons.screenshot_outlined;
+    }
+    if (RegExp(r'book|livre|epub|read|lecture').hasMatch(n)) {
+      return Icons.menu_book_outlined;
+    }
+    if (RegExp(r'whatsapp|telegram|signal|messenger|chat').hasMatch(n)) {
+      return Icons.chat_outlined;
+    }
+    if (RegExp(r'zip|tar|rar|7z|archive').hasMatch(n)) {
+      return Icons.folder_zip_outlined;
+    }
+    return Icons.folder_outlined;
+  }
+
+  /// Couleur déterministe basée sur le hash du nom — même nom donne toujours
+  /// la même couleur, donc le visuel reste stable entre 2 ouvertures du
+  /// picker. Palette de 12 couleurs Material 600/700 lisibles sur clair ET
+  /// sombre.
+  static const _autoPalette = <Color>[
+    Color(0xFF1976D2), // bleu
+    Color(0xFF43A047), // vert
+    Color(0xFFE53935), // rouge
+    Color(0xFFFF7043), // orange
+    Color(0xFF8E24AA), // pourpre
+    Color(0xFFE91E63), // rose
+    Color(0xFF00897B), // teal
+    Color(0xFF3949AB), // indigo
+    Color(0xFF6D4C41), // marron
+    Color(0xFF455A64), // bleu marin
+    Color(0xFF7CB342), // lime
+    Color(0xFF039BE5), // bleu clair
+  ];
+
+  Color _autoColorFor(String name) {
+    var hash = 0;
+    for (final c in name.codeUnits) {
+      hash = (hash * 31 + c) & 0x7FFFFFFF;
+    }
+    return _autoPalette[hash % _autoPalette.length];
+  }
+
+  Future<void> _loadAllFolders() async {
+    try {
+      final root = Directory('/storage/emulated/0');
+      if (!await root.exists()) return;
+      final shortcutPaths = _shortcuts.map((s) => s.path).toSet();
+      // Liste les enfants directs uniquement (pas récursif).
+      final entries = await root.list(followLinks: false).toList();
+      final folders = entries
+          .whereType<Directory>()
+          .where((d) {
+            final name = d.path.split(RegExp(r'[/\\]')).last;
+            if (name.startsWith('.')) return false;
+            if (name == 'Android') return false; // dossiers data app peu utiles
+            // Ne re-liste pas les chemins déjà dans les raccourcis colorés
+            if (shortcutPaths.contains(d.path)) return false;
+            return true;
+          })
+          .toList()
+        ..sort((a, b) => a.path.split(RegExp(r'[/\\]')).last.toLowerCase()
+            .compareTo(b.path.split(RegExp(r'[/\\]')).last.toLowerCase()));
+      if (!mounted) return;
+      setState(() => _allFolders = folders);
+    } catch (_) {/* perm refusée — silent */}
   }
 
   void _pick(String path) {
@@ -230,29 +328,6 @@ class _RftPickerScreenState extends State<RftPickerScreen>
       ),
     ));
     if (picked != null && mounted) _pick(picked);
-  }
-
-  Future<void> _pickWithSystem() async {
-    final res = await FilePicker.platform.pickFiles(
-      type: widget.extensions == null
-          ? FileType.any
-          : FileType.custom,
-      allowedExtensions: widget.extensions?.toList(),
-      allowMultiple: widget.multi,
-    );
-    if (res == null || !mounted) return;
-    if (widget.multi) {
-      setState(() {
-        for (final f in res.files) {
-          if (f.path != null && !_selected.contains(f.path!)) {
-            _selected.add(f.path!);
-          }
-        }
-      });
-    } else {
-      final path = res.files.isEmpty ? null : res.files.first.path;
-      if (path != null) Navigator.pop(context, path);
-    }
   }
 
   @override
@@ -333,6 +408,35 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
+        // Bouton "Parcourir un autre dossier" en haut, toujours accessible
+        // sans avoir à scroller — permet d'aller dans des sous-dossiers ou
+        // sur la SD card, complément des raccourcis fixes ci-dessous.
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.folder_open,
+                color: Theme.of(context).colorScheme.primary),
+            title: const Text('Parcourir un autre dossier',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text(
+                'Sélecteur (sous-dossiers, SD, etc.)',
+                style: TextStyle(fontSize: 11)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _browseAnyFolder,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Text(
+            'Raccourcis',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
         // Grille 2 colonnes : raccourcis colorés vers les dossiers Android
         GridView.count(
           crossAxisCount: 2,
@@ -347,34 +451,46 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           )).toList(),
         ),
         const SizedBox(height: 16),
-        // Parcourir n'importe quel dossier
-        Card(
-          child: ListTile(
-            leading: Icon(Icons.folder_outlined,
-                color: Theme.of(context).colorScheme.primary),
-            title: const Text('Parcourir un autre dossier',
-                style: TextStyle(fontSize: 13)),
-            subtitle: const Text(
-                'Choisir n\'importe quel dossier du téléphone',
-                style: TextStyle(fontSize: 11)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _browseAnyFolder,
+        if (_allFolders.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(
+              'Tous les dossiers',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade600,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
-        ),
-        // Picker système Android (fallback Drive, etc.)
-        Card(
-          child: ListTile(
-            leading: Icon(Icons.folder_open,
-                color: Theme.of(context).colorScheme.primary),
-            title: const Text('Picker système Android',
-                style: TextStyle(fontSize: 13)),
-            subtitle: const Text(
-                'Sélecteur Android (Drive, Téléchargements…)',
-                style: TextStyle(fontSize: 11)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _pickWithSystem,
+          // Grille 2 colonnes cohérente avec les raccourcis : couleur auto
+          // déterministe (hash du nom) + icône smart (caméra pour Photos,
+          // video pour Vidéos, doc pour Docs, etc.).
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 2.5,
+            children: _allFolders.map((d) {
+              final name = d.path.split(RegExp(r'[/\\]')).last;
+              final shortcut = _FolderShortcut(
+                icon: _smartIconFor(name),
+                label: name,
+                path: d.path,
+                color: _autoColorFor(name),
+              );
+              return _ShortcutCard(
+                shortcut: shortcut,
+                onTap: () => _openInExplorer(d.path, name),
+              );
+            }).toList(),
           ),
-        ),
+        ],
+
       ],
     );
   }

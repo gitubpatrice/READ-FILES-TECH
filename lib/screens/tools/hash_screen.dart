@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class HashScreen extends StatefulWidget {
   const HashScreen({super.key});
@@ -18,12 +18,13 @@ class _HashScreenState extends State<HashScreen> {
   int _fileSize = 0;
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-    if (result == null || result.files.single.path == null) return;
-    final path = result.files.single.path!;
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Calculer le hash');
+    if (path == null) return;
+    final name = path.split(RegExp(r'[/\\]')).last;
     setState(() {
       _path = path;
-      _name = result.files.single.name;
+      _name = name;
       _hashes = {};
       _isComputing = true;
     });

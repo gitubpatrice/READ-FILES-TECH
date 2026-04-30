@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
+import '../../widgets/rft_picker_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
@@ -23,16 +23,19 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
   List<List<dynamic>> get _dataRows => _rows.length > 1 ? _rows.sublist(1) : [];
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['csv'],
-      allowMultiple: false,
-    );
-    if (result == null || result.files.single.path == null) return;
-    final path = result.files.single.path!;
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Choisir un CSV',
+        extensions: const {'csv'});
+    if (path == null) return;
+    if (!mounted) return;
     final content = await File(path).readAsString();
     final rows = const CsvToListConverter().convert(content, eol: '\n');
-    setState(() { _path = path; _name = result.files.single.name; _rows = rows; });
+    if (!mounted) return;
+    setState(() {
+      _path = path;
+      _name = path.split(RegExp(r'[/\\]')).last;
+      _rows = rows;
+    });
   }
 
   Future<void> _exportPdf() async {
@@ -104,20 +107,18 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
   }
 
   Future<void> _mergeCsv() async {
+    final paths = await RftPickerScreen.pickMany(context,
+        title: 'Fusionner des CSV',
+        extensions: const {'csv'});
+    if (paths == null || paths.isEmpty) return;
+    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['csv'],
-      allowMultiple: true,
-    );
-    if (result == null || result.files.isEmpty) return;
     setState(() => _isProcessing = true);
     try {
       final allRows = <List<dynamic>>[];
       bool firstFile = true;
-      for (final f in result.files) {
-        if (f.path == null) continue;
-        final content = await File(f.path!).readAsString();
+      for (final p in paths) {
+        final content = await File(p).readAsString();
         final rows = const CsvToListConverter().convert(content, eol: '\n');
         if (firstFile) {
           allRows.addAll(rows);

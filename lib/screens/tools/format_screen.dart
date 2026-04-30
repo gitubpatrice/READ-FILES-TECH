@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import '../../widgets/rft_picker_screen.dart';
 
 class FormatScreen extends StatefulWidget {
   const FormatScreen({super.key});
@@ -27,14 +27,12 @@ class _FormatScreenState extends State<FormatScreen> {
   }
 
   Future<void> _pickFile() async {
-    final exts = _mode == 'json' ? ['json'] : ['css', 'js'];
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: exts,
-      allowMultiple: false,
-    );
-    if (result == null || result.files.single.path == null) return;
-    final content = await File(result.files.single.path!).readAsString();
+    final exts = _mode == 'json' ? const {'json'} : const {'css', 'js'};
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Choisir un fichier',
+        extensions: exts);
+    if (path == null) return;
+    final content = await File(path).readAsString();
     _inputCtrl.text = content;
     _process();
   }

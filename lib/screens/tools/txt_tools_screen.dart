@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class TxtToolsScreen extends StatefulWidget {
   const TxtToolsScreen({super.key});
@@ -31,17 +31,16 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
   }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['txt', 'md', 'csv', 'xml', 'json'],
-      allowMultiple: false,
-    );
-    if (result == null || result.files.single.path == null) return;
-    final path = result.files.single.path!;
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Choisir un fichier texte',
+        extensions: const {'txt', 'md', 'csv', 'xml', 'json'});
+    if (path == null) return;
+    if (!mounted) return;
     final content = await File(path).readAsString();
+    if (!mounted) return;
     setState(() {
       _path = path;
-      _name = result.files.single.name;
+      _name = path.split(RegExp(r'[/\\]')).last;
       _content = content;
       _matchCount = 0;
     });
