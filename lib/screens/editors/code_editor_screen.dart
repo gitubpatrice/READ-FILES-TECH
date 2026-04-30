@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class CodeEditorScreen extends StatefulWidget {
   final String path;
@@ -42,16 +42,14 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
   Future<void> _init() async {
     if (_resolvedPath.isEmpty) {
       final nav = Navigator.of(context);
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['txt','md','csv','xml','json','html','css','js','php','dart'],
-        allowMultiple: false,
-      );
-      if (result == null || result.files.single.path == null) {
+      final path = await RftPickerScreen.pickOne(context,
+          title: 'Choisir un fichier à éditer',
+          extensions: const {'txt','md','csv','xml','json','html','css','js','php','dart'});
+      if (path == null) {
         if (mounted) { nav.pop(); }
         return;
       }
-      _resolvedPath = result.files.single.path!;
+      _resolvedPath = path;
     }
     await _load();
   }

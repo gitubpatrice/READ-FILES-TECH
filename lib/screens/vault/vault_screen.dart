@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/vault_service.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -329,13 +330,13 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _import() async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result == null) return;
+    final paths = await RftPickerScreen.pickMany(context,
+        title: 'Importer dans le coffre');
+    if (paths == null || paths.isEmpty) return;
     int ok = 0, skip = 0, fail = 0;
-    for (final f in result.files) {
-      if (f.path == null) continue;
+    for (final p in paths) {
       try {
-        await widget.service.importFileSafe(File(f.path!));
+        await widget.service.importFileSafe(File(p));
         ok++;
       } on FileSystemException {
         if (!mounted) return;
@@ -343,7 +344,7 @@ class _VaultContentState extends State<_VaultContent> {
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Fichier déjà présent'),
-            content: Text('"${f.name}" existe déjà dans le coffre. Écraser ?'),
+            content: Text('"${p.split(RegExp(r'[/\\\\]')).last}" existe déjà dans le coffre. Écraser ?'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Garder')),
               FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Écraser')),
@@ -352,7 +353,7 @@ class _VaultContentState extends State<_VaultContent> {
         );
         if (overwrite == true) {
           try {
-            await widget.service.importFileSafe(File(f.path!), overwrite: true);
+            await widget.service.importFileSafe(File(p), overwrite: true);
             ok++;
           } catch (_) { fail++; }
         } else { skip++; }

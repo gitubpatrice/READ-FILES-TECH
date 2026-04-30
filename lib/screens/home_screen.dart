@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../models/recent_file.dart';
@@ -36,6 +35,7 @@ import 'tools/duplicates_screen.dart';
 import 'vault/vault_screen.dart';
 import 'viewers/reader_viewer_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/rft_picker_screen.dart';
 import 'viewers/image_viewer_screen.dart';
 import 'explorer/file_explorer_screen.dart';
 import 'about_screen.dart';
@@ -99,13 +99,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _pickAndOpen() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: _supported,
-      allowMultiple: false,
-    );
-    if (result == null || result.files.single.path == null) return;
-    await _openFile(result.files.single.path!);
+    final path = await RftPickerScreen.pickOne(context,
+        title: 'Ouvrir un fichier',
+        extensions: _supported.toSet());
+    if (path == null) return;
+    await _openFile(path);
   }
 
   Future<void> _openFile(String path) async {

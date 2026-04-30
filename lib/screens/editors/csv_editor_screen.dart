@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class CsvEditorScreen extends StatefulWidget {
   final String path;
@@ -32,16 +32,14 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   Future<void> _init() async {
     if (_resolvedPath.isEmpty) {
       final nav = Navigator.of(context);
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-        allowMultiple: false,
-      );
-      if (result == null || result.files.single.path == null) {
+      final path = await RftPickerScreen.pickOne(context,
+          title: 'Choisir un CSV à éditer',
+          extensions: const {'csv'});
+      if (path == null) {
         if (mounted) { nav.pop(); }
         return;
       }
-      _resolvedPath = result.files.single.path!;
+      _resolvedPath = path;
     }
     await _load();
   }

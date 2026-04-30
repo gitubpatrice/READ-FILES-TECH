@@ -28,11 +28,17 @@ class FileExplorerScreen extends StatefulWidget {
   final Set<String>? extensionFilter;
   /// Titre custom de l'AppBar (sinon "Explorateur").
   final String? title;
+  /// Mode "picker" : si true, le tap sur un fichier ne l'ouvre PAS dans un
+  /// viewer mais ferme l'écran avec le path (Navigator.pop(path)). Utilisé
+  /// par RftPickerScreen pour réutiliser l'explorateur en mode sélection
+  /// sans dupliquer la navigation/recherche/tri.
+  final bool pickMode;
   const FileExplorerScreen({
     super.key,
     this.initialPath,
     this.extensionFilter,
     this.title,
+    this.pickMode = false,
   });
 
   @override
@@ -1304,7 +1310,14 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                               }
                               if (isDir) {
                                 _navigate(Directory(e.path));
-                              } else if (canView) {
+                                return;
+                              }
+                              // Mode picker : pop avec le path au lieu d'ouvrir
+                              if (widget.pickMode) {
+                                Navigator.pop(context, e.path);
+                                return;
+                              }
+                              if (canView) {
                                 _openFile(e.path);
                               } else {
                                 _openWithSystem(e.path, ext);

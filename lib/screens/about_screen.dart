@@ -14,7 +14,7 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  static const _version = '2.4.4';
+  static const _version = '2.5.0';
   static const _author  = 'Patrice Haltaya';
 
   bool _checkingUpdate = false;
