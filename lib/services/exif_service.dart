@@ -1,66 +1,63 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
 /// Suppression des métadonnées EXIF (GPS, date, appareil, orientation rotative…).
 ///
-/// Approche : on décode l'image, on conserve l'orientation visuelle (le pixel
-/// data est déjà rotaté correctement par décodage), puis on ré-encode SANS
-/// transmettre les ExifData. Le package `image` 4.x n'inclut pas l'EXIF lors
-/// d'un `encodeJpg`/`encodePng` à partir d'une `Image` créée sans `exif`.
+/// Approche : on décode l'image, on **réinitialise les ExifData** (toutes les
+/// IFDs vidées) puis on ré-encode. `image` 4.x n'écrit l'EXIF en sortie que
+/// si `decoded.exif.isNotEmpty` — vidage = aucun EXIF dans le fichier final.
+///
+/// Le décodage + ré-encodage est fait dans un Isolate (offload coûteux pour
+/// images > 5 Mpx — sur S9 / Redmi 9C, freezait l'UI 5-15 s avant v2.5.5).
 class ExifService {
   /// Retourne un nouveau fichier dans le cache avec EXIF effacé. JPEG ou PNG.
-  /// Conserve la qualité au maximum (JPEG quality 95) car le but est privacy,
-  /// pas compression.
   Future<File> stripExif(File source, {int jpegQuality = 95}) async {
     final bytes = await source.readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) {
+    final ext = source.path.toLowerCase().split('.').last;
+    // Décode + ré-encode dans un Isolate pour ne pas geler l'UI.
+    final result = await Isolate.run(() => _stripBytes(bytes, ext, jpegQuality));
+    if (result == null) {
       throw const FormatException('Image illisible — impossible d\'effacer EXIF');
     }
-    // Crée une nouvelle image SANS clone des metadata. `Image.from(decoded)` recopie
-    // l'EXIF ; on construit donc à partir des pixels uniquement.
-    final clean = img.Image(
-      width: decoded.width,
-      height: decoded.height,
-      numChannels: decoded.numChannels,
-    );
-    // Copie pixel-à-pixel — coûteux mais garantit aucune metadata.
-    for (var y = 0; y < decoded.height; y++) {
-      for (var x = 0; x < decoded.width; x++) {
-        clean.setPixel(x, y, decoded.getPixel(x, y));
-      }
-    }
 
-    final ext = source.path.toLowerCase().split('.').last;
+    final tmp = await getTemporaryDirectory();
+    var base = source.path.split(RegExp(r'[/\\]')).last
+        .replaceAll(RegExp(r'\.[^.]+$'), '')
+        .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_');
+    if (base.isEmpty || base == '.' || base == '..') base = 'image';
+    final dest = File('${tmp.path}/${base}_no_exif.${result.$2}');
+    await dest.writeAsBytes(result.$1);
+    return dest;
+  }
+
+  /// Worker Isolate : retourne (bytes, extension de sortie) ou null si KO.
+  static (Uint8List, String)? _stripBytes(
+      Uint8List bytes, String ext, int jpegQuality) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return null;
+    // Vide l'EXIF in-place — tous les IFDs (image, exif, gps, interop, thumbnail).
+    decoded.exif.clear();
+
     Uint8List out;
     String outExt;
     switch (ext) {
       case 'jpg':
       case 'jpeg':
-        out = Uint8List.fromList(img.encodeJpg(clean, quality: jpegQuality));
+        out = Uint8List.fromList(img.encodeJpg(decoded, quality: jpegQuality));
         outExt = 'jpg';
         break;
       case 'png':
-        out = Uint8List.fromList(img.encodePng(clean));
+        out = Uint8List.fromList(img.encodePng(decoded));
         outExt = 'png';
         break;
       default:
-        // Format non géré (HEIC, WebP encode non disponible) → JPEG par défaut
-        out = Uint8List.fromList(img.encodeJpg(clean, quality: jpegQuality));
+        out = Uint8List.fromList(img.encodeJpg(decoded, quality: jpegQuality));
         outExt = 'jpg';
     }
-
-    final tmp = await getTemporaryDirectory();
-    // Sanitize : refuse les caractères de path traversal et de contrôle.
-    var base = source.path.split(RegExp(r'[/\\]')).last
-        .replaceAll(RegExp(r'\.[^.]+$'), '')
-        .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_');
-    if (base.isEmpty || base == '.' || base == '..') base = 'image';
-    final dest = File('${tmp.path}/${base}_no_exif.$outExt');
-    await dest.writeAsBytes(out);
-    return dest;
+    return (out, outExt);
   }
 
   /// Inspecte sommairement les métadonnées présentes dans un fichier image.

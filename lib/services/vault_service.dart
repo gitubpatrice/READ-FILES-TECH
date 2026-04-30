@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -8,20 +10,41 @@ import 'package:pointycastle/export.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Coffre fort local : fichiers chiffrés AES-256-GCM.
-/// - Master password → PBKDF2-HMAC-SHA256 (600 000 itérations, salt 16 o)
-/// - Chaque fichier : nonce 12 o + ciphertext + tag 16 o, le tout dans un seul .enc
-/// - Le nom de fichier d'origine est préservé en clair (basename) — le contenu seul est chiffré.
-/// - Vérification du master password : un fichier sentinelle "_check.enc" qui contient
-///   un texte connu chiffré ; si le déchiffrement réussit, le password est correct.
+///
+/// **Format v2 (depuis v2.5.5)** :
+///   `magic(4) | nonce(12) | ciphertext+tag` avec **AAD = "rft-vault-v2|" + filename**
+///   `magic = 0x52465432 (ASCII "RFT2")`
+///
+/// **Format v1 (≤ v2.5.4)** : `nonce(12) | ciphertext+tag`, AAD = vide. Lu en
+/// fallback (rétrocompatibilité), ré-écrit en v2 au prochain import.
+///
+/// L'AAD lié au filename empêche un attaquant ayant accès en écriture au dossier
+/// vault de renommer un .enc pour le faire passer pour un autre fichier.
+///
+/// Master password : PBKDF2-HMAC-SHA256, 600 000 itérations, salt 16 o.
+/// Vérification password : sentinelle `_check.enc`.
+///
+/// **Anti brute-force** : compteur d'échecs persistant + back-off exponentiel
+/// au-delà de 5 essais (1, 2, 4, 8, 16 minutes).
 class VaultService {
-  static const _kSalt   = 'vault_salt_v1';
-  static const _kSetup  = 'vault_setup_v1';
+  static const _kSalt          = 'vault_salt_v1';
+  static const _kSetup         = 'vault_setup_v1';
+  static const _kFails         = 'vault_unlock_fails';
+  static const _kLockoutUntil  = 'vault_lockout_until_ms';
   static const _iterations = 600000;
   static const _saltLen  = 16;
   static const _nonceLen = 12;
   static const _keyLen   = 32;
   static const _checkFile = '_check.enc';
   static const _checkPlain = 'read_files_tech_vault_v1';
+
+  /// Magic bytes du format v2 : "RFT2".
+  static const _magicV2 = [0x52, 0x46, 0x54, 0x32];
+  static const _aadPrefix = 'rft-vault-v2|';
+
+  /// Seuil au-delà duquel on bascule l'op crypto sur un Isolate (évite UI freeze).
+  /// 1 Mo = ~30 ms PointyCastle GCM sur S9 → acceptable. Au-dessus, isolate.
+  static const _isolateThreshold = 1024 * 1024;
 
   static Uint8List? _cachedKey;
 
@@ -44,16 +67,26 @@ class VaultService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSalt, base64Encode(salt));
     await prefs.setBool(_kSetup, true);
-    // Crée le fichier sentinelle.
+    await prefs.remove(_kFails);
+    await prefs.remove(_kLockoutUntil);
+    // Crée le fichier sentinelle (format v2 avec AAD = filename).
     final dir = await _vaultDir();
-    final encrypted = _encrypt(utf8.encode(_checkPlain), key);
+    final encrypted = _encryptV2(utf8.encode(_checkPlain), key, _checkFile);
     await File('${dir.path}/$_checkFile').writeAsBytes(encrypted);
     _cachedKey = key;
   }
 
   /// Tente le déverrouillage. Retourne true si réussi.
+  /// Lève [StateError] si le coffre est temporairement verrouillé après trop
+  /// d'échecs ; le message contient le nombre de secondes restantes.
   Future<bool> unlockWithPassword(String password) async {
     final prefs = await SharedPreferences.getInstance();
+    final lockoutUntil = prefs.getInt(_kLockoutUntil) ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now < lockoutUntil) {
+      final remaining = ((lockoutUntil - now) / 1000).ceil();
+      throw StateError('Trop d\'essais. Réessayez dans $remaining s.');
+    }
     final saltB64 = prefs.getString(_kSalt);
     if (saltB64 == null) return false;
     final salt = base64Decode(saltB64);
@@ -62,22 +95,35 @@ class VaultService {
     final check = File('${dir.path}/$_checkFile');
     if (!await check.exists()) return false;
     try {
-      final plain = _decrypt(await check.readAsBytes(), key);
+      final blob = await check.readAsBytes();
+      final plain = _decryptAuto(blob, key, _checkFile);
       if (utf8.decode(plain) == _checkPlain) {
         _cachedKey = key;
+        await prefs.remove(_kFails);
+        await prefs.remove(_kLockoutUntil);
         return true;
       }
-    } catch (_) {}
+    } catch (_) {/* on tombe sur incrément échec ci-dessous */}
+    // Échec : incrémente compteur + applique backoff exponentiel.
+    final fails = (prefs.getInt(_kFails) ?? 0) + 1;
+    await prefs.setInt(_kFails, fails);
+    if (fails >= 5) {
+      // Backoff : 1, 2, 4, 8, 16, 30 min (cappé). Sec : tentative GPU offline
+      // reste possible mais ralentie.
+      final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
+      await prefs.setInt(_kLockoutUntil, now + minutes * 60 * 1000);
+    }
+    // Zeroize la clé dérivée (mauvaise) avant retour.
+    _zeroize(key);
     return false;
   }
 
   /// Marque le coffre comme déverrouillé en cache (après biométrique réussie).
-  /// Note : nécessite que le password ait été passé une fois ; ici on ne stocke
-  /// jamais le password. La biométrique permet juste de réutiliser la clé en
-  /// mémoire pour la session courante. Si l'app est tuée, il faut ressaisir.
   bool get isUnlocked => _cachedKey != null;
 
   void lock() {
+    final k = _cachedKey;
+    if (k != null) _zeroize(k);
     _cachedKey = null;
     // Best-effort : nettoyer les fichiers déchiffrés laissés en tmp.
     purgeTempDecrypted();
@@ -90,12 +136,14 @@ class VaultService {
     final key = _requireKey();
     final dir = await _vaultDir();
     final name = _safeBasename(source.path);
-    final dest = File('${dir.path}/$name.enc');
+    final destName = '$name.enc';
+    final dest = File('${dir.path}/$destName');
     if (await dest.exists() && !overwrite) {
       throw FileSystemException('Fichier homonyme déjà dans le coffre', dest.path);
     }
     final plain = await source.readAsBytes();
-    await dest.writeAsBytes(_encrypt(plain, key));
+    final ct = await _encryptMaybeIsolate(plain, key, destName);
+    await dest.writeAsBytes(ct);
     return dest.path;
   }
 
@@ -114,9 +162,11 @@ class VaultService {
     final key = _requireKey();
     final dir = await _vaultDir();
     final name = _safeBasename(source.path);
-    final dest = File('${dir.path}/$name.enc');
+    final destName = '$name.enc';
+    final dest = File('${dir.path}/$destName');
     final plain = await source.readAsBytes();
-    await dest.writeAsBytes(_encrypt(plain, key));
+    final ct = await _encryptMaybeIsolate(plain, key, destName);
+    await dest.writeAsBytes(ct);
     return dest.path;
   }
 
@@ -135,25 +185,23 @@ class VaultService {
   }
 
   /// Déchiffre un fichier du coffre vers un emplacement temporaire (pour viewer/share).
-  /// Le fichier en clair est créé dans `tmp/vault_decrypt/` — nettoyé à `lock()`
-  /// et au démarrage via [purgeTempDecrypted].
   Future<File> decryptToTemp(File encrypted) async {
     final key = _requireKey();
     final tmpRoot = await getTemporaryDirectory();
     final tmp = Directory('${tmpRoot.path}/vault_decrypt');
     if (!await tmp.exists()) await tmp.create(recursive: true);
-    final base = encrypted.path.split(RegExp(r'[/\\]')).last;
-    final originalName = base.endsWith('.enc')
-        ? base.substring(0, base.length - 4)
-        : base;
+    final encName = encrypted.path.split(RegExp(r'[/\\]')).last;
+    final originalName = encName.endsWith('.enc')
+        ? encName.substring(0, encName.length - 4)
+        : encName;
     final out = File('${tmp.path}/$originalName');
-    final plain = _decrypt(await encrypted.readAsBytes(), key);
+    final blob = await encrypted.readAsBytes();
+    final plain = await _decryptMaybeIsolate(blob, key, encName);
     await out.writeAsBytes(plain);
     return out;
   }
 
   /// Supprime tous les fichiers déchiffrés laissés dans le cache.
-  /// À appeler au boot de l'app et à chaque verrouillage du coffre.
   Future<void> purgeTempDecrypted() async {
     try {
       final tmpRoot = await getTemporaryDirectory();
@@ -165,12 +213,13 @@ class VaultService {
   /// Exporte (déchiffre) un fichier du coffre vers un dossier de destination.
   Future<File> exportFile(File encrypted, String destDir) async {
     final key = _requireKey();
-    final base = encrypted.path.split(RegExp(r'[/\\]')).last;
-    final originalName = base.endsWith('.enc')
-        ? base.substring(0, base.length - 4)
-        : base;
+    final encName = encrypted.path.split(RegExp(r'[/\\]')).last;
+    final originalName = encName.endsWith('.enc')
+        ? encName.substring(0, encName.length - 4)
+        : encName;
     final out = File('$destDir/$originalName');
-    final plain = _decrypt(await encrypted.readAsBytes(), key);
+    final blob = await encrypted.readAsBytes();
+    final plain = await _decryptMaybeIsolate(blob, key, encName);
     await out.writeAsBytes(plain);
     return out;
   }
@@ -179,16 +228,20 @@ class VaultService {
     if (await encrypted.exists()) await encrypted.delete();
   }
 
-  /// Réinitialise complètement le coffre (DESTRUCTIF — supprime tous les fichiers chiffrés).
+  /// Réinitialise complètement le coffre.
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kSalt);
     await prefs.remove(_kSetup);
+    await prefs.remove(_kFails);
+    await prefs.remove(_kLockoutUntil);
     final dir = await _vaultDir();
     if (await dir.exists()) {
       await dir.delete(recursive: true);
       await dir.create(recursive: true);
     }
+    final k = _cachedKey;
+    if (k != null) _zeroize(k);
     _cachedKey = null;
   }
 
@@ -211,21 +264,65 @@ class VaultService {
     return pbkdf2.process(Uint8List.fromList(utf8.encode(password)));
   }
 
-  Uint8List _encrypt(List<int> plain, Uint8List key) {
+  void _zeroize(Uint8List bytes) {
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = 0;
+    }
+  }
+
+  /// Chiffre en v2 (magic "RFT2" + nonce + ciphertext+tag, AAD = prefix|filename).
+  Uint8List _encryptV2(List<int> plain, Uint8List key, String filename) {
     final nonce = _randomBytes(_nonceLen);
+    final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
     final cipher = GCMBlockCipher(AESEngine())
-      ..init(true, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
+      ..init(true, AEADParameters(KeyParameter(key), 128, nonce, aad));
     final ct = cipher.process(Uint8List.fromList(plain));
-    final out = BytesBuilder()..add(nonce)..add(ct);
+    final out = BytesBuilder()
+      ..add(_magicV2)
+      ..add(nonce)
+      ..add(ct);
     return out.toBytes();
   }
 
-  Uint8List _decrypt(Uint8List blob, Uint8List key) {
+  /// Déchiffre auto-détectant le format (magic v2 sinon fallback v1 sans AAD).
+  Uint8List _decryptAuto(Uint8List blob, Uint8List key, String filename) {
+    if (blob.length >= 4 + _nonceLen + 16 &&
+        blob[0] == _magicV2[0] &&
+        blob[1] == _magicV2[1] &&
+        blob[2] == _magicV2[2] &&
+        blob[3] == _magicV2[3]) {
+      // Format v2
+      final nonce = blob.sublist(4, 4 + _nonceLen);
+      final ct    = blob.sublist(4 + _nonceLen);
+      final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
+      final cipher = GCMBlockCipher(AESEngine())
+        ..init(false, AEADParameters(KeyParameter(key), 128, nonce, aad));
+      return cipher.process(ct);
+    }
+    // Format v1 (legacy) : nonce + ciphertext+tag, AAD vide.
     if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
     final nonce = blob.sublist(0, _nonceLen);
     final ct    = blob.sublist(_nonceLen);
     final cipher = GCMBlockCipher(AESEngine())
       ..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
     return cipher.process(ct);
+  }
+
+  /// Encrypt avec offload Isolate au-delà du seuil.
+  Future<Uint8List> _encryptMaybeIsolate(
+      List<int> plain, Uint8List key, String filename) async {
+    if (plain.length < _isolateThreshold) {
+      return _encryptV2(plain, key, filename);
+    }
+    return Isolate.run(() => _encryptV2(plain, key, filename));
+  }
+
+  /// Decrypt avec offload Isolate au-delà du seuil.
+  Future<Uint8List> _decryptMaybeIsolate(
+      Uint8List blob, Uint8List key, String filename) async {
+    if (blob.length < _isolateThreshold) {
+      return _decryptAuto(blob, key, filename);
+    }
+    return Isolate.run(() => _decryptAuto(blob, key, filename));
   }
 }

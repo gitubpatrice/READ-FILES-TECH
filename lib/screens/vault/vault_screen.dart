@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/secure_window.dart';
 import '../../services/vault_service.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -42,6 +43,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       if (_service.isUnlocked) {
         _service.lock();
+        SecureWindow.disable();
         if (mounted) setState(() => _unlocked = false);
       }
     }
@@ -60,16 +62,21 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
     }
     if (!_setup) {
       return _SetupScreen(onCreated: () async {
+        SecureWindow.enable();
         setState(() { _setup = true; _unlocked = true; });
       });
     }
     if (!_unlocked) {
       return _UnlockScreen(
-        onUnlocked: () => setState(() => _unlocked = true),
+        onUnlocked: () {
+          SecureWindow.enable();
+          setState(() => _unlocked = true);
+        },
         onReset: () async {
           final ok = await _confirmReset(context);
           if (ok) {
             await _service.reset();
+            SecureWindow.disable();
             if (mounted) setState(() { _setup = false; _unlocked = false; });
           }
         },
@@ -77,6 +84,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
     }
     return _VaultContent(service: _service, onLock: () {
       _service.lock();
+      SecureWindow.disable();
       setState(() => _unlocked = false);
     });
   }
@@ -242,12 +250,18 @@ class _UnlockScreenState extends State<_UnlockScreen> {
 
   Future<void> _unlock() async {
     setState(() { _busy = true; _error = null; });
-    final ok = await VaultService().unlockWithPassword(_pwd.text);
-    if (!mounted) return;
-    if (ok) {
-      widget.onUnlocked();
-    } else {
-      setState(() { _error = 'Mot de passe incorrect'; _busy = false; });
+    try {
+      final ok = await VaultService().unlockWithPassword(_pwd.text);
+      if (!mounted) return;
+      if (ok) {
+        widget.onUnlocked();
+      } else {
+        setState(() { _error = 'Mot de passe incorrect'; _busy = false; });
+      }
+    } on StateError catch (e) {
+      // Verrouillage temporaire après trop d'échecs.
+      if (!mounted) return;
+      setState(() { _error = e.message; _busy = false; });
     }
   }
 
