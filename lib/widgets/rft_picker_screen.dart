@@ -406,34 +406,17 @@ class _RftPickerScreenState extends State<RftPickerScreen>
 
   Widget _buildBrowse() {
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       children: [
-        // Bouton "Parcourir un autre dossier" en haut, toujours accessible
-        // sans avoir à scroller — permet d'aller dans des sous-dossiers ou
-        // sur la SD card, complément des raccourcis fixes ci-dessous.
-        Card(
-          child: ListTile(
-            leading: Icon(Icons.folder_open,
-                color: Theme.of(context).colorScheme.primary),
-            title: const Text('Parcourir un autre dossier',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text(
-                'Sélecteur (sous-dossiers, SD, etc.)',
-                style: TextStyle(fontSize: 11)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _browseAnyFolder,
-          ),
-        ),
-        const SizedBox(height: 12),
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
           child: Text(
             'Raccourcis',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
-              letterSpacing: 0.5,
+              color: Colors.grey.shade700,
+              letterSpacing: 0.3,
             ),
           ),
         ),
@@ -442,9 +425,9 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 2.5,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 6,
+          childAspectRatio: 2.7,
           children: _shortcuts.map((s) => _ShortcutCard(
             shortcut: s,
             onTap: () => _openInExplorer(s.path, s.label, filter: s.filter),
@@ -452,16 +435,16 @@ class _RftPickerScreenState extends State<RftPickerScreen>
         ),
         const SizedBox(height: 16),
         if (_allFolders.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
             child: Text(
               'Tous les dossiers',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey.shade600,
-                letterSpacing: 0.5,
+                color: Colors.grey.shade700,
+                letterSpacing: 0.3,
               ),
             ),
           ),
@@ -472,9 +455,9 @@ class _RftPickerScreenState extends State<RftPickerScreen>
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 2.5,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
+            childAspectRatio: 2.7,
             children: _allFolders.map((d) {
               final name = d.path.split(RegExp(r'[/\\]')).last;
               final shortcut = _FolderShortcut(
@@ -491,6 +474,23 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           ),
         ],
 
+        // "Parcourir un autre dossier" en bas avec marge réduite
+        const SizedBox(height: 8),
+        Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            dense: true,
+            leading: Icon(Icons.folder_open,
+                color: Theme.of(context).colorScheme.primary),
+            title: const Text('Parcourir un autre dossier',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text(
+                'Sélecteur (sous-dossiers, SD, etc.)',
+                style: TextStyle(fontSize: 11)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _browseAnyFolder,
+          ),
+        ),
       ],
     );
   }
@@ -537,6 +537,15 @@ class _ShortcutCard extends StatelessWidget {
 /// Wrapper autour du FileExplorerScreen qui rend la sélection au tap : le tap
 /// sur un fichier (au lieu de l'ouvrir) pop avec le path. On réutilise
 /// l'explorateur existant pour la navigation, le tri, la recherche, etc.
+///
+/// **Limitation connue** : en mode picker multi (`widget.multi=true`), ce
+/// wrapper ne propage PAS le mode multi à l'explorateur. Le tap fichier dans
+/// l'explorateur fait toujours pop avec UN seul path. Pour une sélection
+/// multi, l'utilisateur doit passer par l'onglet Récents (qui lui supporte
+/// les checkbox), ou faire plusieurs tours de Parcourir → 1 fichier ajouté
+/// à la sélection multi parente, puis re-Parcourir, etc. UX acceptable car
+/// les flows multi de RFT (vault import, zip create) sont peu utilisés via
+/// la grille Parcourir.
 class _PickerExplorerWrapper extends StatelessWidget {
   final String initialPath;
   final String title;

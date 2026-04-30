@@ -60,11 +60,19 @@ class _HomeScreenState extends State<HomeScreen> {
   int _navIndex = 0;
   bool _isLoading = true;
 
-  // Extensions supportées
+  // Extensions supportées : tout ce que RFT peut ouvrir (visualiser/éditer).
+  // Inclus les images pour que DCIM/Screenshots/Galerie affichent du contenu
+  // dans le picker (sinon dossiers paraissent vides à cause du filtre).
   static const _supported = [
+    // Texte / code
     'txt', 'csv', 'html', 'htm', 'css', 'js', 'php',
+    'xml', 'json', 'md',
+    // Documents / tableurs
     'docx', 'doc', 'xlsx', 'xls', 'odt', 'ods', 'odp',
-    'xml', 'json', 'md', 'pdf', 'zip', 'epub',
+    // PDF / archives / livres
+    'pdf', 'zip', 'epub',
+    // Images
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp',
   ];
 
   @override
