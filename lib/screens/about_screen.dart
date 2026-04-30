@@ -3,7 +3,7 @@ import 'package:flutter/services.dart' show rootBundle, Clipboard, ClipboardData
 // rootBundle is used by _LegalScreen below
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/update_service.dart';
+import '../services/app_update.dart';
 import 'settings_screen.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -60,7 +60,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Future<void> _checkUpdate() async {
     setState(() => _checkingUpdate = true);
-    final info = await UpdateService().checkForUpdate();
+    final info = await appUpdateService.checkForUpdate(force: true);
     if (!mounted) return;
     setState(() => _checkingUpdate = false);
     if (info == null) {
