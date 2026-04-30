@@ -126,6 +126,7 @@ class _SetupScreenState extends State<_SetupScreen> {
   final _pwd1 = TextEditingController();
   final _pwd2 = TextEditingController();
   bool _busy = false;
+  bool _showPwd = false;
   String? _error;
 
   @override
@@ -147,10 +148,44 @@ class _SetupScreenState extends State<_SetupScreen> {
       return;
     }
     setState(() => _busy = true);
+
+    // Overlay modal pendant la dérivation PBKDF2 + setup (1-3s sur S9).
+    // Même si la dérivation est désormais en Isolate, on affiche un retour
+    // visuel explicite — plus intuitif que juste un spinner sur le bouton.
+    final messenger = ScaffoldMessenger.of(context);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: SizedBox(
+          height: 80,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Création du coffre…',
+                  style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+      ),
+    );
+
     try {
       await VaultService().setupWithPassword(p1);
+      if (!mounted) return;
+      // Ferme l'overlay
+      Navigator.of(context, rootNavigator: true).pop();
+      // Snackbar de confirmation (auto-dismiss)
+      messenger.showSnackBar(const SnackBar(
+        content: Text('✓ Coffre fort créé'),
+        duration: Duration(seconds: 2),
+      ));
       widget.onCreated();
     } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
       setState(() { _error = 'Erreur : $e'; _busy = false; });
     }
   }
@@ -174,17 +209,30 @@ class _SetupScreenState extends State<_SetupScreen> {
           const SizedBox(height: 20),
           TextField(
             controller: _pwd1,
-            obscureText: true,
-            decoration: const InputDecoration(
+            obscureText: !_showPwd,
+            enableSuggestions: false,
+            autocorrect: false,
+            keyboardType: TextInputType.visiblePassword,
+            decoration: InputDecoration(
               labelText: 'Mot de passe',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.lock_outline),
+              helperText: 'Minimum 8 caractères',
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_showPwd ? Icons.visibility_off : Icons.visibility,
+                    size: 20),
+                tooltip: _showPwd ? 'Masquer' : 'Afficher',
+                onPressed: () => setState(() => _showPwd = !_showPwd),
+              ),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _pwd2,
-            obscureText: true,
+            obscureText: !_showPwd,
+            enableSuggestions: false,
+            autocorrect: false,
+            keyboardType: TextInputType.visiblePassword,
             decoration: const InputDecoration(
               labelText: 'Confirmer',
               border: OutlineInputBorder(),
@@ -243,6 +291,7 @@ class _UnlockScreen extends StatefulWidget {
 class _UnlockScreenState extends State<_UnlockScreen> {
   final _pwd = TextEditingController();
   bool _busy = false;
+  bool _showPwd = false;
   String? _error;
 
   @override
@@ -281,13 +330,22 @@ class _UnlockScreenState extends State<_UnlockScreen> {
           const SizedBox(height: 24),
           TextField(
             controller: _pwd,
-            obscureText: true,
+            obscureText: !_showPwd,
             autofocus: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            keyboardType: TextInputType.visiblePassword,
             onSubmitted: (_) => _unlock(),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Mot de passe',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.lock_outline),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_showPwd ? Icons.visibility_off : Icons.visibility,
+                    size: 20),
+                tooltip: _showPwd ? 'Masquer' : 'Afficher',
+                onPressed: () => setState(() => _showPwd = !_showPwd),
+              ),
             ),
           ),
           if (_error != null) ...[

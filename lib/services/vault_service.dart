@@ -63,7 +63,9 @@ class VaultService {
   /// Crée le coffre avec un master password (à appeler une seule fois).
   Future<void> setupWithPassword(String password) async {
     final salt = _randomBytes(_saltLen);
-    final key  = _deriveKey(password, salt);
+    // Dérivation PBKDF2 600k itérations en Isolate (1-3s sur S9 — bloquerait
+    // l'UI sinon).
+    final key  = await Isolate.run(() => _deriveKey(password, salt));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSalt, base64Encode(salt));
     await prefs.setBool(_kSetup, true);
@@ -90,7 +92,8 @@ class VaultService {
     final saltB64 = prefs.getString(_kSalt);
     if (saltB64 == null) return false;
     final salt = base64Decode(saltB64);
-    final key  = _deriveKey(password, salt);
+    // Dérivation PBKDF2 600k itérations en Isolate (1-3s sur S9).
+    final key  = await Isolate.run(() => _deriveKey(password, salt));
     final dir  = await _vaultDir();
     final check = File('${dir.path}/$_checkFile');
     if (!await check.exists()) return false;
@@ -258,7 +261,8 @@ class VaultService {
     return Uint8List.fromList(List<int>.generate(n, (_) => rng.nextInt(256)));
   }
 
-  Uint8List _deriveKey(String password, Uint8List salt) {
+  /// Static : nécessaire pour `Isolate.run` (pas de capture de `this`).
+  static Uint8List _deriveKey(String password, Uint8List salt) {
     final pbkdf2 = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
       ..init(Pbkdf2Parameters(salt, _iterations, _keyLen));
     return pbkdf2.process(Uint8List.fromList(utf8.encode(password)));
