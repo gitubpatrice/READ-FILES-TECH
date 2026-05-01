@@ -262,6 +262,311 @@ class VaultService {
     if (await encrypted.exists()) await encrypted.delete();
   }
 
+  // ── Export / Restore (.rftvault backup) ────────────────────────────────────
+
+  /// Magic header du format de sauvegarde `.rftvault` v1.
+  static const _backupMagic = [0x52, 0x46, 0x54, 0x56, 0x41, 0x55, 0x4C, 0x54];
+  // "RFTVAULT"
+  static const _backupVersion = 1;
+  static const _backupAad = 'rftvault-v1';
+
+  /// Limite hard pour éviter OOM sur les low-end (Redmi 9C 3GB) lors de
+  /// l'export ou restore qui matérialise tout le payload en RAM avant
+  /// chiffrement enveloppe.
+  static const _backupMaxBytes = 200 * 1024 * 1024; // 200 Mo
+
+  /// Exporte tout le coffre dans un fichier `.rftvault` chiffré avec
+  /// [exportPassword] (Argon2id + AES-GCM, distinct du master password).
+  ///
+  /// Le fichier produit peut être restauré sur un autre device via
+  /// [restoreFromBackup]. Le master password actuel n'est pas requis pour
+  /// le restore — résilience max en cas de perte du téléphone.
+  ///
+  /// Limité à 200 Mo total (sinon [StateError]). [onProgress] est rapporté
+  /// dans `[0.0, 1.0]` pour brancher une progress bar.
+  Future<File> exportToBackup({
+    required String exportPassword,
+    void Function(double)? onProgress,
+  }) async {
+    final masterKey = _requireKey();
+    final files = await listFiles();
+
+    // Garde-fou taille.
+    int total = 0;
+    for (final f in files) {
+      total += await f.length();
+    }
+    if (total > _backupMaxBytes) {
+      throw StateError(
+          'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
+          'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.');
+    }
+
+    onProgress?.call(0.0);
+
+    // Construction du payload en clair (déchiffre chaque fichier avec master).
+    final builder = BytesBuilder();
+    builder.add(_int32be(files.length));
+    for (var i = 0; i < files.length; i++) {
+      final f = files[i];
+      final encName = f.path.split(RegExp(r'[/\\]')).last;
+      final plainName = encName.endsWith('.enc')
+          ? encName.substring(0, encName.length - 4)
+          : encName;
+      final blob = await f.readAsBytes();
+      final plain = await _decryptMaybeIsolate(blob, masterKey, encName);
+      final nameBytes = utf8.encode(plainName);
+      if (nameBytes.length > 0xFFFF) {
+        throw StateError('Nom de fichier trop long pour l\'export');
+      }
+      builder.add(_int16be(nameBytes.length));
+      builder.add(nameBytes);
+      builder.add(_int32be(plain.length));
+      builder.add(plain);
+      onProgress?.call((i + 1) / files.length * 0.6);
+    }
+    final payload = builder.toBytes();
+
+    // Dérivation Argon2id depuis exportPassword (distinct du master).
+    final salt = _randomBytes(_saltLen);
+    final exportKey = await Isolate.run(
+        () => _deriveKeyArgon2id(exportPassword, salt));
+    onProgress?.call(0.85);
+
+    // Chiffrement enveloppe AES-GCM.
+    final nonce = _randomBytes(_nonceLen);
+    final aad = Uint8List.fromList(utf8.encode(_backupAad));
+    final ct = await _encryptRaw(payload, exportKey, nonce, aad);
+    _zeroize(exportKey);
+
+    // Construction du fichier final.
+    final out = BytesBuilder()
+      ..add(_backupMagic)
+      ..addByte(_backupVersion)
+      ..add(const [0, 0, 0]) // reserved
+      ..add(salt)
+      ..add(nonce)
+      ..add(ct);
+
+    final tmpDir = await getTemporaryDirectory();
+    final ts = DateTime.now()
+        .toIso8601String()
+        .substring(0, 19)
+        .replaceAll(':', '-');
+    final outFile = File('${tmpDir.path}/coffre_$ts.rftvault');
+    await outFile.writeAsBytes(out.toBytes());
+    onProgress?.call(1.0);
+    return outFile;
+  }
+
+  /// Restaure les fichiers d'un `.rftvault` dans le coffre actuel
+  /// (qui doit être déverrouillé). Retourne le nombre de fichiers
+  /// effectivement restaurés.
+  ///
+  /// [overwriteExisting] : si false (défaut), les fichiers déjà présents
+  /// sont ignorés. Si true, ils sont écrasés.
+  ///
+  /// Lève [StateError] si le format est invalide, [PlatformException]
+  /// (code DECRYPT_ERROR) si le password est mauvais ou le fichier altéré
+  /// (vérification AEAD GCM).
+  Future<RestoreResult> restoreFromBackup({
+    required File backupFile,
+    required String exportPassword,
+    bool overwriteExisting = false,
+    void Function(double)? onProgress,
+  }) async {
+    final masterKey = _requireKey();
+    final raw = await backupFile.readAsBytes();
+    final headerLen = 8 + 1 + 3 + _saltLen + _nonceLen;
+    if (raw.length < headerLen + 16) {
+      throw StateError('Fichier .rftvault invalide (taille).');
+    }
+
+    // Validation magic + version.
+    for (var i = 0; i < _backupMagic.length; i++) {
+      if (raw[i] != _backupMagic[i]) {
+        throw StateError('Fichier .rftvault invalide (signature).');
+      }
+    }
+    final version = raw[8];
+    if (version != _backupVersion) {
+      throw StateError('Version $version non supportée.');
+    }
+
+    final salt  = Uint8List.sublistView(raw, 12, 12 + _saltLen);
+    final nonce = Uint8List.sublistView(
+        raw, 12 + _saltLen, 12 + _saltLen + _nonceLen);
+    final ct    = Uint8List.sublistView(raw, 12 + _saltLen + _nonceLen);
+
+    onProgress?.call(0.05);
+
+    // Dérivation Argon2id (~0.5-4s).
+    final saltCopy = Uint8List.fromList(salt);
+    final exportKey = await Isolate.run(
+        () => _deriveKeyArgon2id(exportPassword, saltCopy));
+    onProgress?.call(0.4);
+
+    // Décryptage enveloppe — lève si bad password / tampering (GCM tag).
+    final aad = Uint8List.fromList(utf8.encode(_backupAad));
+    Uint8List payload;
+    try {
+      payload = await _decryptRaw(
+          Uint8List.fromList(ct),
+          exportKey,
+          Uint8List.fromList(nonce),
+          aad);
+    } finally {
+      _zeroize(exportKey);
+    }
+    onProgress?.call(0.55);
+
+    // Parse + ré-importation dans le coffre actuel (re-chiffré sous master key).
+    final entries = _parseBackupPayload(payload);
+    final dir = await _vaultDir();
+    int restored = 0;
+    int skipped = 0;
+    for (var i = 0; i < entries.length; i++) {
+      final e = entries[i];
+      final destName = '${e.name}.enc';
+      final dest = File('${dir.path}/$destName');
+      if (await dest.exists() && !overwriteExisting) {
+        skipped++;
+        continue;
+      }
+      final encrypted = await _encryptMaybeIsolate(
+          e.plain, masterKey, destName);
+      await dest.writeAsBytes(encrypted);
+      restored++;
+      onProgress?.call(0.55 + (i + 1) / entries.length * 0.45);
+    }
+    onProgress?.call(1.0);
+    return RestoreResult(
+        total: entries.length, restored: restored, skipped: skipped);
+  }
+
+  /// Parse défensif du payload après décryptage de l'enveloppe.
+  /// Refuse les noms de fichiers invalides (path traversal protection
+  /// via [PathSafe.basename]).
+  List<_BackupEntry> _parseBackupPayload(Uint8List payload) {
+    final out = <_BackupEntry>[];
+    int p = 0;
+    if (p + 4 > payload.length) {
+      throw StateError('Payload tronqué (en-tête).');
+    }
+    final n = _readInt32be(payload, p);
+    p += 4;
+    if (n < 0 || n > 100000) {
+      throw StateError('Nombre de fichiers invalide.');
+    }
+    for (var i = 0; i < n; i++) {
+      if (p + 2 > payload.length) {
+        throw StateError('Payload tronqué (nameLen #$i).');
+      }
+      final nameLen = _readInt16be(payload, p);
+      p += 2;
+      if (p + nameLen > payload.length) {
+        throw StateError('Payload tronqué (name #$i).');
+      }
+      final name = utf8.decode(
+          Uint8List.sublistView(payload, p, p + nameLen));
+      p += nameLen;
+      if (p + 4 > payload.length) {
+        throw StateError('Payload tronqué (dataLen #$i).');
+      }
+      final dataLen = _readInt32be(payload, p);
+      p += 4;
+      if (dataLen < 0 || p + dataLen > payload.length) {
+        throw StateError('Payload tronqué (data #$i).');
+      }
+      final plain = Uint8List.fromList(
+          Uint8List.sublistView(payload, p, p + dataLen));
+      p += dataLen;
+      // Anti path-traversal : refuse silencieusement les entrées avec
+      // nom invalide (../, /, NUL, vide).
+      try {
+        PathSafe.basename(name);
+      } catch (_) {
+        continue;
+      }
+      out.add(_BackupEntry(name, plain));
+    }
+    return out;
+  }
+
+  /// Encrypt AES-GCM "raw" (sans magic header) — utilisé pour l'enveloppe
+  /// `.rftvault`. Routing identique à [_encryptMaybeIsolate] (native >5Mo).
+  Future<Uint8List> _encryptRaw(
+      Uint8List plain, Uint8List key, Uint8List nonce, Uint8List aad) async {
+    if (plain.length >= _nativeThreshold) {
+      try {
+        final result = await _nativeChannel.invokeMethod<Uint8List>(
+            'encrypt', {
+          'key': key, 'nonce': nonce, 'aad': aad, 'plain': plain,
+        });
+        if (result != null) return result;
+      } on MissingPluginException {/* fallback */}
+      on PlatformException catch (e) {
+        if (_isCryptoErrorCode(e.code)) rethrow;
+      }
+    }
+    if (plain.length < _isolateThreshold) {
+      return _gcmRaw(true, plain, key, nonce, aad);
+    }
+    return Isolate.run(() => _gcmRaw(true, plain, key, nonce, aad));
+  }
+
+  /// Decrypt AES-GCM "raw" (sans magic header) — propage [PlatformException]
+  /// de code DECRYPT_ERROR si tampering / bad key (signal d'intégrité).
+  Future<Uint8List> _decryptRaw(
+      Uint8List blob, Uint8List key, Uint8List nonce, Uint8List aad) async {
+    if (blob.length >= _nativeThreshold) {
+      try {
+        final result = await _nativeChannel.invokeMethod<Uint8List>(
+            'decrypt', {
+          'key': key, 'nonce': nonce, 'aad': aad, 'blob': blob,
+        });
+        if (result != null) return result;
+      } on MissingPluginException {/* fallback */}
+      on PlatformException catch (e) {
+        if (_isCryptoErrorCode(e.code)) rethrow;
+      }
+    }
+    if (blob.length < _isolateThreshold) {
+      return _gcmRaw(false, blob, key, nonce, aad);
+    }
+    return Isolate.run(() => _gcmRaw(false, blob, key, nonce, aad));
+  }
+
+  /// PointyCastle GCM brut, statique pour `Isolate.run`.
+  static Uint8List _gcmRaw(
+      bool forEncryption, Uint8List input, Uint8List key,
+      Uint8List nonce, Uint8List aad) {
+    final cipher = GCMBlockCipher(AESEngine())
+      ..init(forEncryption,
+          AEADParameters(KeyParameter(key), 128, nonce, aad));
+    return cipher.process(input);
+  }
+
+  // Helpers big-endian.
+  static Uint8List _int32be(int v) {
+    final out = Uint8List(4);
+    out[0] = (v >> 24) & 0xff;
+    out[1] = (v >> 16) & 0xff;
+    out[2] = (v >> 8) & 0xff;
+    out[3] = v & 0xff;
+    return out;
+  }
+  static Uint8List _int16be(int v) {
+    final out = Uint8List(2);
+    out[0] = (v >> 8) & 0xff;
+    out[1] = v & 0xff;
+    return out;
+  }
+  static int _readInt32be(Uint8List b, int o) =>
+      (b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3];
+  static int _readInt16be(Uint8List b, int o) =>
+      (b[o] << 8) | b[o + 1];
+
   /// Réinitialise complètement le coffre.
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
@@ -476,4 +781,30 @@ class VaultService {
     if (result == null) throw StateError('Native decrypt returned null');
     return result;
   }
+}
+
+/// Résultat d'un restore depuis un fichier `.rftvault`.
+class RestoreResult {
+  /// Nombre total d'entrées dans le backup.
+  final int total;
+
+  /// Nombre de fichiers effectivement restaurés (écrits dans le coffre).
+  final int restored;
+
+  /// Nombre de fichiers ignorés car homonymes existent déjà
+  /// (et `overwriteExisting=false`).
+  final int skipped;
+
+  const RestoreResult({
+    required this.total,
+    required this.restored,
+    required this.skipped,
+  });
+}
+
+/// Entrée parsée du payload `.rftvault` (interne au service).
+class _BackupEntry {
+  final String name;
+  final Uint8List plain;
+  const _BackupEntry(this.name, this.plain);
 }

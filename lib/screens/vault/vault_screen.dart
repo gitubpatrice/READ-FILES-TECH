@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/secure_window.dart';
 import '../../services/vault_service.dart';
 import '../../widgets/rft_picker_screen.dart';
+import 'vault_import_folder_screen.dart';
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -484,6 +485,215 @@ class _VaultContentState extends State<_VaultContent> {
     _refresh();
   }
 
+  // ── Importer dossier ──────────────────────────────────────────────────────
+
+  Future<void> _importFolder() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final folderPath = await FilePicker.platform.getDirectoryPath();
+    if (folderPath == null || !mounted) return;
+
+    final imported = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VaultImportFolderScreen(
+          folderPath: folderPath,
+          service: widget.service,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (imported != null && imported > 0) {
+      await _refresh();
+      // Snackbar déjà affiché par l'écran enfant — pas de double notification.
+    } else {
+      messenger.hideCurrentSnackBar();
+    }
+  }
+
+  // ── Exporter le coffre (.rftvault) ────────────────────────────────────────
+
+  Future<void> _exportBackup() async {
+    if (_files.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Coffre vide — rien à exporter.'),
+      ));
+      return;
+    }
+    final pwd = await _askPassword(
+      title: 'Exporter le coffre',
+      info: 'Choisissez un mot de passe pour la sauvegarde. '
+          'Il sera nécessaire pour la restaurer.\n\n'
+          '⚠ Distinct du mot de passe principal — choisissez-le bien : '
+          'sans lui, la sauvegarde est irrécupérable.',
+      confirm: true,
+      submitLabel: 'Exporter',
+    );
+    if (pwd == null || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    double progress = 0;
+    final progressDialog = _showProgressDialog(
+      title: 'Export en cours…',
+      progressOf: () => progress,
+    );
+
+    try {
+      final out = await widget.service.exportToBackup(
+        exportPassword: pwd,
+        onProgress: (p) {
+          progress = p;
+          progressDialog.refresh();
+        },
+      );
+      if (!mounted) return;
+      progressDialog.close();
+      // Partage du fichier produit (l'utilisateur choisit où le sauver).
+      await Share.shareXFiles(
+        [XFile(out.path, mimeType: 'application/octet-stream')],
+        subject: 'Sauvegarde Read Files Tech',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      progressDialog.close();
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+    }
+  }
+
+  // ── Restaurer un coffre depuis un .rftvault ───────────────────────────────
+
+  Future<void> _restoreBackup() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      withData: false,
+    );
+    if (picked == null || picked.files.isEmpty) return;
+    final path = picked.files.first.path;
+    if (path == null) return;
+    if (!path.toLowerCase().endsWith('.rftvault')) {
+      if (!mounted) return;
+      final cont = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Extension inattendue'),
+          content: const Text(
+              'Le fichier ne se termine pas par .rftvault. Continuer quand même ?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annuler')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Continuer')),
+          ],
+        ),
+      );
+      if (cont != true || !mounted) return;
+    }
+
+    final pwd = await _askPassword(
+      title: 'Restaurer un coffre',
+      info: 'Entrez le mot de passe utilisé lors de l\'export.\n'
+          'Les fichiers déjà présents dans le coffre actuel '
+          'seront ignorés (pas écrasés).',
+      confirm: false,
+      submitLabel: 'Restaurer',
+    );
+    if (pwd == null || !mounted) return;
+
+    double progress = 0;
+    final progressDialog = _showProgressDialog(
+      title: 'Restauration en cours…',
+      progressOf: () => progress,
+    );
+
+    try {
+      final result = await widget.service.restoreFromBackup(
+        backupFile: File(path),
+        exportPassword: pwd,
+        onProgress: (p) {
+          progress = p;
+          progressDialog.refresh();
+        },
+      );
+      if (!mounted) return;
+      progressDialog.close();
+      await _refresh();
+      if (!mounted) return;
+      final parts = <String>[
+        '${result.restored} restauré${result.restored > 1 ? "s" : ""}',
+        if (result.skipped > 0)
+          '${result.skipped} ignoré${result.skipped > 1 ? "s" : ""} (homonyme)',
+      ];
+      messenger.showSnackBar(SnackBar(content: Text(parts.join(' · '))));
+    } catch (e) {
+      if (!mounted) return;
+      progressDialog.close();
+      // Tampering ou mauvais password → message neutre (pas d'oracle).
+      messenger.showSnackBar(SnackBar(
+        content: Text(e is StateError
+            ? e.message
+            : 'Mot de passe incorrect ou fichier invalide'),
+      ));
+    }
+  }
+
+  /// Affiche un dialog modal avec progress bar dont la valeur est lue à la
+  /// demande via [progressOf]. Retourne un controller permettant `refresh()`
+  /// (re-build) et `close()`.
+  _ProgressDialog _showProgressDialog({
+    required String title,
+    required double Function() progressOf,
+  }) {
+    final controller = _ProgressDialog();
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        controller._ctx = ctx;
+        return StatefulBuilder(builder: (_, setSt) {
+          controller._setSt = setSt;
+          return AlertDialog(
+            content: SizedBox(
+              height: 110,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 14),
+                  LinearProgressIndicator(value: progressOf()),
+                  const SizedBox(height: 8),
+                  Text('${(progressOf() * 100).round()}%',
+                      style: const TextStyle(fontSize: 11)),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+    return controller;
+  }
+
+  /// Demande un mot de passe à l'utilisateur (avec confirmation optionnelle).
+  /// Retourne null si annulé.
+  Future<String?> _askPassword({
+    required String title,
+    required String info,
+    required bool confirm,
+    required String submitLabel,
+  }) async {
+    return showDialog<String>(
+      context: context,
+      builder: (_) => _PasswordDialog(
+        title: title,
+        info: info,
+        confirm: confirm,
+        submitLabel: submitLabel,
+      ),
+    );
+  }
+
   String _displayName(File f) {
     final n = f.path.split(RegExp(r'[/\\]')).last;
     return n.endsWith('.enc') ? n.substring(0, n.length - 4) : n;
@@ -495,6 +705,47 @@ class _VaultContentState extends State<_VaultContent> {
       appBar: AppBar(
         title: const Text('Coffre fort'),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Plus d\'actions',
+            onSelected: (v) {
+              switch (v) {
+                case 'folder': _importFolder(); break;
+                case 'export': _exportBackup(); break;
+                case 'restore': _restoreBackup(); break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'folder',
+                child: ListTile(
+                  leading: Icon(Icons.folder_copy_outlined),
+                  title: Text('Importer un dossier'),
+                  subtitle: Text('Chiffrement batch',
+                      style: TextStyle(fontSize: 11)),
+                ),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'export',
+                child: ListTile(
+                  leading: Icon(Icons.archive_outlined),
+                  title: Text('Exporter le coffre'),
+                  subtitle: Text('Sauvegarde .rftvault',
+                      style: TextStyle(fontSize: 11)),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'restore',
+                child: ListTile(
+                  leading: Icon(Icons.unarchive_outlined),
+                  title: Text('Restaurer un coffre'),
+                  subtitle: Text('Depuis .rftvault',
+                      style: TextStyle(fontSize: 11)),
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.lock_outline),
             tooltip: 'Verrouiller',
@@ -558,5 +809,136 @@ class _VaultContentState extends State<_VaultContent> {
     if (b < 1024) return '$b B';
     if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
     return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
+
+/// Controller de progress dialog : permet à l'appelant d'appeler `refresh()`
+/// pour rebuild la barre, et `close()` pour fermer le dialog modal.
+class _ProgressDialog {
+  BuildContext? _ctx;
+  StateSetter? _setSt;
+
+  void refresh() => _setSt?.call(() {});
+
+  void close() {
+    final ctx = _ctx;
+    if (ctx != null && Navigator.of(ctx).canPop()) {
+      Navigator.of(ctx).pop();
+    }
+  }
+}
+
+/// Dialog modal de saisie de mot de passe.
+/// Avec [confirm] true : 2e champ "Confirmer" + validation matching.
+class _PasswordDialog extends StatefulWidget {
+  final String title;
+  final String info;
+  final bool confirm;
+  final String submitLabel;
+
+  const _PasswordDialog({
+    required this.title,
+    required this.info,
+    required this.confirm,
+    required this.submitLabel,
+  });
+
+  @override
+  State<_PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<_PasswordDialog> {
+  final _pwd1 = TextEditingController();
+  final _pwd2 = TextEditingController();
+  bool _show = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pwd1.dispose();
+    _pwd2.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final p1 = _pwd1.text;
+    if (p1.length < 8) {
+      setState(() => _error = 'Minimum 8 caractères');
+      return;
+    }
+    if (widget.confirm && p1 != _pwd2.text) {
+      setState(() => _error = 'Les mots de passe ne correspondent pas');
+      return;
+    }
+    Navigator.of(context).pop(p1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.info,
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pwd1,
+            obscureText: !_show,
+            autofocus: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            keyboardType: TextInputType.visiblePassword,
+            onSubmitted: widget.confirm ? null : (_) => _submit(),
+            decoration: InputDecoration(
+              labelText: 'Mot de passe',
+              helperText: widget.confirm ? 'Minimum 8 caractères' : null,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_show ? Icons.visibility_off : Icons.visibility,
+                    size: 20),
+                tooltip: _show ? 'Masquer' : 'Afficher',
+                onPressed: () => setState(() => _show = !_show),
+              ),
+            ),
+          ),
+          if (widget.confirm) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pwd2,
+              obscureText: !_show,
+              enableSuggestions: false,
+              autocorrect: false,
+              keyboardType: TextInputType.visiblePassword,
+              onSubmitted: (_) => _submit(),
+              decoration: const InputDecoration(
+                labelText: 'Confirmer',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!,
+                style: const TextStyle(color: Colors.red, fontSize: 12)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(widget.submitLabel),
+        ),
+      ],
+    );
   }
 }
