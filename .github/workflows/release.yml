@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build signed APK + GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout app
+        uses: actions/checkout@v4
+        with:
+          path: read_files_tech
+
+      - name: Checkout files_tech_core (path dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: gitubpatrice/files_tech_core
+          path: files_tech_core
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > read_files_tech/android/readfilestech-release.jks
+          ls -la read_files_tech/android/readfilestech-release.jks
+
+      - name: Create key.properties
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          cat > read_files_tech/android/key.properties << EOF
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=readfilestech-release.jks
+          EOF
+
+      - name: Pub get
+        working-directory: read_files_tech
+        run: flutter pub get
+
+      - name: Build APK release (signed)
+        working-directory: read_files_tech
+        run: flutter build apk --release
+
+      - name: Rename + SHA256
+        id: sha
+        run: |
+          SRC=read_files_tech/build/app/outputs/flutter-apk/app-release.apk
+          DEST=read_files_tech-v${{ steps.version.outputs.VERSION }}.apk
+          cp "$SRC" "$DEST"
+          SHA=$(sha256sum "$DEST" | awk '{print $1}')
+          echo "SHA256=$SHA" >> $GITHUB_OUTPUT
+          echo "APK_PATH=$DEST" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## Vérification d'intégrité
+
+            **APK arm64-v8a** : `${{ steps.sha.outputs.APK_PATH }}`
+
+            **SHA-256** :
+            ```
+            ${{ steps.sha.outputs.SHA256 }}
+            ```
+
+            Vérifiez avec :
+            ```
+            sha256sum read_files_tech-v${{ steps.version.outputs.VERSION }}.apk
+            ```
+
+            ---
+
+            🤖 Build automatique via GitHub Actions (commit `${{ github.sha }}`)
+          files: ${{ steps.sha.outputs.APK_PATH }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f read_files_tech/android/readfilestech-release.jks
+          rm -f read_files_tech/android/key.properties
