@@ -47,15 +47,46 @@ class VaultService {
   static const _kdfPbkdf2   = 'pbkdf2';
   static const _kdfArgon2id = 'argon2id';
 
+  /// Params Argon2id auto-calibrés stockés au setup (depuis v2.7.1).
+  /// Permet à chaque device d'utiliser son maximum CPU sans freezer.
+  /// Coffres v2.6.0–v2.7.0 (sans ces clés) : fallback sur params legacy.
+  static const _kArgon2MemoryKB   = 'vault_argon2_mem_kb';
+  static const _kArgon2Iterations = 'vault_argon2_iter';
+
   static const _iterations = 600000; // PBKDF2 (legacy)
 
-  // Argon2id params : choisis pour bon équilibre sécurité / low-end devices.
-  // 16 Mo de mémoire = OK sur Redmi 9C 3GB, 4 itérations compensent.
-  // Sur S24 flagship : ~0.5s. Sur S9 : ~1.5s. Sur Redmi 9C : ~4s.
-  // GPU-cracking : ~1000× plus difficile que PBKDF2 600k SHA-256.
-  static const _argon2MemoryPowerOf2 = 14;  // 2^14 KB = 16 MB
-  static const _argon2Iterations     = 4;
-  static const _argon2Lanes          = 1;
+  // ── Argon2id : auto-tuning ─────────────────────────────────────────────────
+  // Cible : ~2.5s par dérivation, quel que soit le device.
+  // Algo : 1 bench à params min, calcul du facteur d'échelle, choix de
+  // params dans des bornes [4Mo..32Mo] × [2..4] itérations.
+
+  static const _argon2BenchMemoryKB   = 4096; // 4 MB pour le bench
+  static const _argon2BenchIterations = 2;
+  static const _argon2TargetMs        = 2500;
+  // Plancher absolu 8 Mo (pas 4) : protège contre un setup faussé par
+  // thermal-throttle qui fixerait des params trop faibles à vie. 8 Mo
+  // reste tenable même sur Redmi 9C 3GB.
+  static const _argon2MinMemoryKB     = 8192;  // 8 MB
+  static const _argon2MaxMemoryKB     = 32768; // 32 MB (cap haut Redmi 9C 3GB)
+  static const _argon2MinIterations   = 2;
+  static const _argon2MaxIterations   = 4;
+  // Nombre d'échantillons du bench. On garde le minimum (= meilleur cas
+  // CPU non-throttled) pour éviter un calibrage trop bas si le device
+  // est sous load au moment du setup.
+  static const _argon2BenchSamples    = 3;
+
+  // Legacy params pour coffres v2.6.0–v2.7.0 (sans calibrage stocké) :
+  // m=16 Mo, t=4. Lus en fallback à l'unlock pour rétro-compat.
+  static const _argon2LegacyMemoryKB   = 16384; // 16 MB
+  static const _argon2LegacyIterations = 4;
+
+  // Params utilisés pour l'export `.rftvault` (fixes, indépendants du
+  // calibrage du coffre — le fichier peut être restauré sur n'importe
+  // quel device, donc on cible la sécurité plutôt que la vitesse).
+  static const _argon2ExportMemoryKB   = 16384; // 16 MB
+  static const _argon2ExportIterations = 4;
+
+  static const _argon2Lanes = 1;
 
   static const _saltLen  = 16;
   static const _nonceLen = 12;
@@ -97,21 +128,42 @@ class VaultService {
   }
 
   /// Crée le coffre avec un master password (à appeler une seule fois).
-  /// Utilise Argon2id par défaut (depuis v2.6.0).
+  /// Utilise Argon2id avec params auto-calibrés pour ce device (depuis
+  /// v2.7.1) ou legacy (m=16Mo t=4) sur les coffres pré-v2.7.1.
+  ///
+  /// Le calibrage tourne en Isolate (~1-3s) avant la dérivation effective
+  /// (~2.5s ciblés). Cible UX globale ~3-5s à la création.
   Future<void> setupWithPassword(String password) async {
     final salt = _randomBytes(_saltLen);
-    // Argon2id en Isolate (~0.5-4s selon device).
-    final key  = await Isolate.run(() => _deriveKeyArgon2id(password, salt));
+    // Auto-tuning : mesure le device puis choisit des params Argon2id
+    // optimaux dans les bornes [4-32 Mo] × [2-4 iter] pour cibler ~2.5s
+    // par dérivation, quel que soit le hardware.
+    final calibrated = await _calibrateArgon2();
+    final memKB = calibrated.memoryKB;
+    final iter  = calibrated.iterations;
+    final key   = await Isolate.run(
+        () => _deriveKeyArgon2id(password, salt, memKB, iter));
     final prefs = await SharedPreferences.getInstance();
+
+    // ── Ordre atomicité-friendly ───────────────────────────────────────────
+    // Si l'app est killée à n'importe quelle étape, l'état reste cohérent :
+    // - Crash avant étape 4 (sentinelle) → _kSetup pas écrit → coffre vu
+    //   comme non-setup → retombe sur l'écran Setup
+    // - Crash après sentinelle mais avant _kSetup → idem (Setup s'affiche),
+    //   un futur setup écrasera la sentinelle
+    // 1. Tous les params (salt, KDF version, mem, iter) ENSEMBLE
     await prefs.setString(_kSalt, base64Encode(salt));
     await prefs.setString(_kKdfVersion, _kdfArgon2id);
-    await prefs.setBool(_kSetup, true);
+    await prefs.setInt(_kArgon2MemoryKB, memKB);
+    await prefs.setInt(_kArgon2Iterations, iter);
     await prefs.remove(_kFails);
     await prefs.remove(_kLockoutUntil);
-    // Crée le fichier sentinelle (format v2 avec AAD = filename).
+    // 2. Sentinelle disque (preuve crypto)
     final dir = await _vaultDir();
     final encrypted = _encryptV2(utf8.encode(_checkPlain), key, _checkFile);
     await File('${dir.path}/$_checkFile').writeAsBytes(encrypted);
+    // 3. Flag final SEULEMENT si tout précède a réussi
+    await prefs.setBool(_kSetup, true);
     _cachedKey = key;
   }
 
@@ -130,15 +182,25 @@ class VaultService {
     if (saltB64 == null) return false;
     final salt = base64Decode(saltB64);
     // Sélectionne le KDF selon la version stockée :
-    // - 'argon2id' (v2.6.0+) → Argon2id
-    // - 'pbkdf2' ou absent (legacy) → PBKDF2
+    // - 'argon2id' (v2.6.0+) → Argon2id avec params en prefs (v2.7.1+
+    //   auto-calibrés) ou legacy m=16Mo t=4 (coffres v2.6.0–v2.7.0).
+    // - 'pbkdf2' ou absent (legacy) → PBKDF2 600k.
     final kdf = prefs.getString(_kKdfVersion) ?? _kdfPbkdf2;
-    final key = kdf == _kdfArgon2id
-        ? await Isolate.run(() => _deriveKeyArgon2id(password, salt))
-        : await Isolate.run(() => _deriveKey(password, salt));
+    final Uint8List key;
+    if (kdf == _kdfArgon2id) {
+      final memKB = prefs.getInt(_kArgon2MemoryKB) ?? _argon2LegacyMemoryKB;
+      final iter  = prefs.getInt(_kArgon2Iterations) ?? _argon2LegacyIterations;
+      key = await Isolate.run(
+          () => _deriveKeyArgon2id(password, salt, memKB, iter));
+    } else {
+      key = await Isolate.run(() => _deriveKey(password, salt));
+    }
     final dir  = await _vaultDir();
     final check = File('${dir.path}/$_checkFile');
-    if (!await check.exists()) return false;
+    if (!await check.exists()) {
+      _zeroize(key);
+      return false;
+    }
     try {
       final blob = await check.readAsBytes();
       final plain = _decryptAuto(blob, key, _checkFile);
@@ -151,7 +213,31 @@ class VaultService {
         await prefs.remove(_kLockoutUntil);
         return true;
       }
-    } catch (_) {/* on tombe sur incrément échec ci-dessous */}
+      // Sentinelle décodable mais contenu inattendu → coffre corrompu,
+      // pas un mauvais password. On ne lockout pas l'utilisateur.
+      _zeroize(key);
+      throw StateError('Sentinelle invalide — coffre corrompu, '
+          'réinitialisez via Réglages.');
+    } on InvalidCipherTextException {
+      // Bad tag GCM = vrai mauvais password → incrément compteur ci-dessous.
+    } on PlatformException catch (e) {
+      // DECRYPT_ERROR du native channel = bad tag équivalent.
+      // Tout autre code = erreur système, on rethrow sans pénaliser.
+      if (e.code != 'DECRYPT_ERROR') {
+        _zeroize(key);
+        rethrow;
+      }
+    } on StateError {
+      // Propagé par le bloc plus haut (sentinelle invalide) ou par
+      // _decryptAuto (bloc invalide / format inattendu) — pas un mauvais
+      // password, pas de lockout.
+      _zeroize(key);
+      rethrow;
+    } catch (e) {
+      // I/O, OOM, ou autre erreur système — pas un mauvais password.
+      _zeroize(key);
+      rethrow;
+    }
     // Échec : incrémente compteur + applique backoff exponentiel.
     final fails = (prefs.getInt(_kFails) ?? 0) + 1;
     await prefs.setInt(_kFails, fails);
@@ -336,9 +422,16 @@ class VaultService {
       payload = payloadLocal;
 
       // Dérivation Argon2id depuis exportPassword (distinct du master).
+      // Params FIXES pour l'export (m=16Mo, t=4) — le fichier .rftvault
+      // peut être restauré sur n'importe quel device, on cible donc la
+      // sécurité maximale plutôt que la vitesse. Cohérent avec les
+      // anciens coffres v2.6.0–v2.7.0.
       final salt = _randomBytes(_saltLen);
-      final exportKeyLocal = await Isolate.run(
-          () => _deriveKeyArgon2id(exportPassword, salt));
+      final exportKeyLocal = await Isolate.run(() => _deriveKeyArgon2id(
+          exportPassword,
+          salt,
+          _argon2ExportMemoryKB,
+          _argon2ExportIterations));
       exportKey = exportKeyLocal;
       onProgress?.call(0.85);
 
@@ -426,10 +519,16 @@ class VaultService {
 
     onProgress?.call(0.05);
 
-    // Dérivation Argon2id (~0.5-4s).
+    // Dérivation Argon2id (~0.5-4s) avec params FIXES export
+    // (m=16Mo, t=4) — doit matcher ceux utilisés à l'export.
+    // Le format .rftvault v1 ne stocke PAS les params en header (volontaire
+    // pour figer le format) ; tout fichier v1 utilise donc ces constantes.
     final saltCopy = Uint8List.fromList(salt);
-    final exportKey = await Isolate.run(
-        () => _deriveKeyArgon2id(exportPassword, saltCopy));
+    final exportKey = await Isolate.run(() => _deriveKeyArgon2id(
+        exportPassword,
+        saltCopy,
+        _argon2ExportMemoryKB,
+        _argon2ExportIterations));
     onProgress?.call(0.4);
 
     // Décryptage enveloppe — lève si bad password / tampering (GCM tag).
@@ -629,6 +728,8 @@ class VaultService {
     await prefs.remove(_kSalt);
     await prefs.remove(_kSetup);
     await prefs.remove(_kKdfVersion);
+    await prefs.remove(_kArgon2MemoryKB);
+    await prefs.remove(_kArgon2Iterations);
     await prefs.remove(_kFails);
     await prefs.remove(_kLockoutUntil);
     final dir = await _vaultDir();
@@ -671,23 +772,26 @@ class VaultService {
     }
   }
 
-  /// Argon2id (coffres ≥ v2.6.0). m=16 Mo, t=4, p=1, type ARGON2_id, version 1.3.
-  /// Memory-hard → résiste au cracking GPU bien mieux que PBKDF2.
+  /// Argon2id (coffres ≥ v2.6.0). Params [memoryKB] et [iterations] passés
+  /// dynamiquement (auto-tuning depuis v2.7.1, ou legacy/export sinon).
+  /// `p=1`, type ARGON2_id, version 1.3. Memory-hard → résiste au cracking
+  /// GPU bien mieux que PBKDF2.
   /// Static pour `Isolate.run`.
   ///
   /// Note : le `String password` reste en RAM (limitation Dart, immuable).
   /// On ne zeroize que la copie bytes UTF-8 que l'on contrôle. L'isolate
   /// duplique aussi le password à l'envoi du message — ces bytes sont
   /// hors de notre contrôle (limitation Isolate.run).
-  static Uint8List _deriveKeyArgon2id(String password, Uint8List salt) {
+  static Uint8List _deriveKeyArgon2id(
+      String password, Uint8List salt, int memoryKB, int iterations) {
     final pwBytes = Uint8List.fromList(utf8.encode(password));
     try {
       final params = Argon2Parameters(
         Argon2Parameters.ARGON2_id,
         salt,
         desiredKeyLength: _keyLen,
-        iterations: _argon2Iterations,
-        memoryPowerOf2: _argon2MemoryPowerOf2,
+        iterations: iterations,
+        memory: memoryKB,
         lanes: _argon2Lanes,
         version: Argon2Parameters.ARGON2_VERSION_13,
       );
@@ -700,6 +804,94 @@ class VaultService {
         pwBytes[i] = 0;
       }
     }
+  }
+
+  // ── Auto-tuning Argon2id (par device) ──────────────────────────────────────
+
+  /// Bench rapide à params minimums pour estimer la vitesse Argon2id du
+  /// device. Static pour `Isolate.run`. Retourne le temps en ms.
+  static int _benchArgon2id() {
+    final salt = Uint8List(_saltLen);
+    final pwBytes = Uint8List(32);
+    final stopwatch = Stopwatch()..start();
+    final params = Argon2Parameters(
+      Argon2Parameters.ARGON2_id,
+      salt,
+      desiredKeyLength: _keyLen,
+      iterations: _argon2BenchIterations,
+      memory: _argon2BenchMemoryKB,
+      lanes: _argon2Lanes,
+      version: Argon2Parameters.ARGON2_VERSION_13,
+    );
+    final argon2 = Argon2BytesGenerator()..init(params);
+    final out = Uint8List(_keyLen);
+    argon2.deriveKey(pwBytes, 0, out, 0);
+    stopwatch.stop();
+    return stopwatch.elapsedMilliseconds;
+  }
+
+  /// Calcule des params Argon2id qui ciblent ~[_argon2TargetMs] sur ce
+  /// device, à partir d'un temps mesuré [benchMs] aux params bench.
+  /// Bornes [4Mo..32Mo] × [2..4] iter pour rester safe sur low-end (Redmi 9C 3GB).
+  static ({int memoryKB, int iterations}) _calibrateFromBench(int benchMs) {
+    if (benchMs <= 0) {
+      // Fallback de sécurité (mesure absurde) : params médians.
+      return (memoryKB: 12288, iterations: 2);
+    }
+    if (benchMs >= _argon2TargetMs) {
+      // Device déjà lent au bench min → params minimums.
+      return (
+        memoryKB: _argon2MinMemoryKB,
+        iterations: _argon2MinIterations,
+      );
+    }
+    // Argon2id est ~linéaire en (memory × iterations).
+    const benchWork = _argon2BenchMemoryKB * _argon2BenchIterations; // 8192
+    final scaleFactor = _argon2TargetMs / benchMs;
+    final targetWork = (benchWork * scaleFactor).round();
+
+    int mem;
+    int iter;
+    if (targetWork <= _argon2MaxMemoryKB * _argon2MinIterations) {
+      // On peut tenir avec t=2, on bumpe juste la memory.
+      mem = (targetWork / _argon2MinIterations).round();
+      iter = _argon2MinIterations;
+    } else {
+      // Memory au max, on bumpe iter.
+      mem = _argon2MaxMemoryKB;
+      iter = (targetWork / _argon2MaxMemoryKB).round();
+    }
+    // Arrondi à des multiples de 1024 KB (cohérence + lecture humaine).
+    mem = ((mem / 1024).round() * 1024)
+        .clamp(_argon2MinMemoryKB, _argon2MaxMemoryKB);
+    iter = iter.clamp(_argon2MinIterations, _argon2MaxIterations);
+    return (memoryKB: mem, iterations: iter);
+  }
+
+  /// Mesure + calcule les params Argon2id optimaux pour le device courant.
+  /// À appeler une fois au setup.
+  ///
+  /// Lance [_argon2BenchSamples] benchs successifs en Isolate et garde le
+  /// minimum (= meilleur cas, CPU non-throttled). Évite qu'un setup fait
+  /// téléphone chaud / sous load fixe des params trop faibles à vie.
+  ///
+  /// Si tous les benchs échouent (OOM, isolate crash), fallback safe :
+  /// params médians (m=12 Mo, t=2) — sécurité priorisée sur vitesse.
+  Future<({int memoryKB, int iterations})> _calibrateArgon2() async {
+    final samples = <int>[];
+    for (var i = 0; i < _argon2BenchSamples; i++) {
+      try {
+        samples.add(await Isolate.run(_benchArgon2id));
+      } catch (_) {
+        // OOM, isolate crash → on saute cet échantillon.
+      }
+    }
+    if (samples.isEmpty) {
+      // Fallback safe : tous les benchs ont échoué.
+      return (memoryKB: 12288, iterations: 2);
+    }
+    samples.sort();
+    return _calibrateFromBench(samples.first);
   }
 
   void _zeroize(Uint8List bytes) {

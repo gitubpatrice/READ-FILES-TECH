@@ -196,7 +196,7 @@ class _SetupScreenState extends State<_SetupScreen> {
       barrierDismissible: false,
       builder: (_) => const AlertDialog(
         content: SizedBox(
-          height: 80,
+          height: 110,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -204,6 +204,9 @@ class _SetupScreenState extends State<_SetupScreen> {
               SizedBox(height: 16),
               Text('Création du coffre…',
                   style: TextStyle(fontSize: 13)),
+              SizedBox(height: 6),
+              Text('Optimisation pour votre appareil',
+                  style: TextStyle(fontSize: 11, color: Colors.grey)),
             ],
           ),
         ),
