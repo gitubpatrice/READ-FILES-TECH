@@ -4,5 +4,5 @@ import 'package:files_tech_core/files_tech_core.dart';
 const appUpdateService = UpdateService(
   owner: 'gitubpatrice',
   repo: 'read-files-tech',
-  currentVersion: '2.5.6',
+  currentVersion: '2.6.0',
 );

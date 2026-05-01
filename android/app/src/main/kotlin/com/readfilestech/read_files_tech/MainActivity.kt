@@ -13,6 +13,9 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : FlutterFragmentActivity() {
 
@@ -337,6 +340,98 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(installed)
                 } else {
                     result.notImplemented()
+                }
+            }
+
+        // Crypto AES-256-GCM native (vault). Utilise l'accélération matérielle
+        // ARMv8 via javax.crypto.Cipher — 10-50× plus rapide que PointyCastle
+        // Dart pur sur fichiers >10 Mo. Appelé par VaultService côté Dart
+        // au-delà d'un seuil de taille pour éviter de freezer même un Isolate.
+        //
+        // Format identique à _encryptV2 / _decryptAuto Dart : magic "RFT2"
+        // (4 bytes) + nonce (12 bytes) + ciphertext + tag GCM (16 bytes).
+        // L'AAD (= "rft-vault-v2|" + filename) est passé tel quel par Dart.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+            "com.readfilestech/vault_crypto")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "encrypt" -> {
+                        val key   = call.argument<ByteArray>("key")
+                        val nonce = call.argument<ByteArray>("nonce")
+                        val aad   = call.argument<ByteArray>("aad")
+                        val plain = call.argument<ByteArray>("plain")
+                        if (key == null || nonce == null || aad == null || plain == null) {
+                            result.error("NO_ARGS", "args", null)
+                            return@setMethodCallHandler
+                        }
+                        if (key.size != 32) {
+                            result.error("BAD_KEY", "key", null)
+                            return@setMethodCallHandler
+                        }
+                        if (nonce.size != 12) {
+                            result.error("BAD_NONCE", "nonce", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                            cipher.init(
+                                Cipher.ENCRYPT_MODE,
+                                SecretKeySpec(key, "AES"),
+                                GCMParameterSpec(128, nonce)
+                            )
+                            cipher.updateAAD(aad)
+                            val ct = cipher.doFinal(plain)
+                            result.success(ct)
+                        } catch (_: Exception) {
+                            // Message constant — ne JAMAIS exposer e.message
+                            // (peut contenir du contenu sensible selon impl JCE).
+                            result.error("ENCRYPT_ERROR", "crypto", null)
+                        } finally {
+                            // Zeroize la clé reçue côté JVM pour réduire la
+                            // fenêtre d'extraction par memory forensics.
+                            // Note : le SecretKeySpec a fait sa propre copie,
+                            // mais on efface au moins la copie qu'on contrôle.
+                            java.util.Arrays.fill(key, 0)
+                        }
+                    }
+                    "decrypt" -> {
+                        val key   = call.argument<ByteArray>("key")
+                        val nonce = call.argument<ByteArray>("nonce")
+                        val aad   = call.argument<ByteArray>("aad")
+                        val blob  = call.argument<ByteArray>("blob") // ciphertext+tag
+                        if (key == null || nonce == null || aad == null || blob == null) {
+                            result.error("NO_ARGS", "args", null)
+                            return@setMethodCallHandler
+                        }
+                        if (key.size != 32) {
+                            result.error("BAD_KEY", "key", null)
+                            return@setMethodCallHandler
+                        }
+                        if (nonce.size != 12) {
+                            result.error("BAD_NONCE", "nonce", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                            cipher.init(
+                                Cipher.DECRYPT_MODE,
+                                SecretKeySpec(key, "AES"),
+                                GCMParameterSpec(128, nonce)
+                            )
+                            cipher.updateAAD(aad)
+                            val plain = cipher.doFinal(blob)
+                            result.success(plain)
+                        } catch (_: javax.crypto.AEADBadTagException) {
+                            // Tampering OU mauvaise clé OU mauvais nonce/AAD.
+                            // Message constant — pas d'oracle d'erreur fin.
+                            result.error("DECRYPT_ERROR", "auth", null)
+                        } catch (_: Exception) {
+                            result.error("DECRYPT_ERROR", "crypto", null)
+                        } finally {
+                            java.util.Arrays.fill(key, 0)
+                        }
+                    }
+                    else -> result.notImplemented()
                 }
             }
     }
