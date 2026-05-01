@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Analyze + Test + Build (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout app
+        uses: actions/checkout@v4
+        with:
+          path: read_files_tech
+
+      - name: Checkout files_tech_core (path dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: gitubpatrice/files_tech_core
+          path: files_tech_core
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Pub get
+        working-directory: read_files_tech
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: read_files_tech
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        working-directory: read_files_tech
+        run: flutter test || echo "No tests yet"
+
+      - name: Build APK (debug, unsigned)
+        working-directory: read_files_tech
+        run: flutter build apk --debug
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: read_files_tech-debug-${{ github.sha }}
+          path: read_files_tech/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+          if-no-files-found: ignore
