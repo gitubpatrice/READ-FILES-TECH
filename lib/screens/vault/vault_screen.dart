@@ -132,8 +132,16 @@ class _SetupScreenState extends State<_SetupScreen> {
 
   @override
   void dispose() {
-    _pwd1.dispose(); _pwd2.dispose();
+    _scrubPwd(_pwd1);
+    _scrubPwd(_pwd2);
+    _pwd1.dispose();
+    _pwd2.dispose();
     super.dispose();
+  }
+
+  static void _scrubPwd(TextEditingController c) {
+    if (c.text.isNotEmpty) c.text = '\x00' * c.text.length;
+    c.text = '';
   }
 
   Future<void> _create() async {
@@ -213,6 +221,7 @@ class _SetupScreenState extends State<_SetupScreen> {
             obscureText: !_showPwd,
             enableSuggestions: false,
             autocorrect: false,
+            autofillHints: const <String>[],
             keyboardType: TextInputType.visiblePassword,
             decoration: InputDecoration(
               labelText: 'Mot de passe',
@@ -233,6 +242,7 @@ class _SetupScreenState extends State<_SetupScreen> {
             obscureText: !_showPwd,
             enableSuggestions: false,
             autocorrect: false,
+            autofillHints: const <String>[],
             keyboardType: TextInputType.visiblePassword,
             decoration: const InputDecoration(
               labelText: 'Confirmer',
@@ -296,7 +306,12 @@ class _UnlockScreenState extends State<_UnlockScreen> {
   String? _error;
 
   @override
-  void dispose() { _pwd.dispose(); super.dispose(); }
+  void dispose() {
+    if (_pwd.text.isNotEmpty) _pwd.text = '\x00' * _pwd.text.length;
+    _pwd.text = '';
+    _pwd.dispose();
+    super.dispose();
+  }
 
   Future<void> _unlock() async {
     setState(() { _busy = true; _error = null; });
@@ -855,9 +870,22 @@ class _PasswordDialogState extends State<_PasswordDialog> {
 
   @override
   void dispose() {
+    // Scrub best-effort : remplace le contenu par des null-bytes puis vide.
+    // Ne garantit PAS l'effacement RAM (les String Dart sont immuables et
+    // non-zeroizables — limitation langage). Mais retire la référence
+    // forte du controller, accélérant le GC potentiel.
+    _scrub(_pwd1);
+    _scrub(_pwd2);
     _pwd1.dispose();
     _pwd2.dispose();
     super.dispose();
+  }
+
+  static void _scrub(TextEditingController c) {
+    if (c.text.isNotEmpty) {
+      c.text = '\x00' * c.text.length;
+    }
+    c.text = '';
   }
 
   void _submit() {
@@ -891,6 +919,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             autofocus: true,
             enableSuggestions: false,
             autocorrect: false,
+            autofillHints: const <String>[], // disable Android Autofill
             keyboardType: TextInputType.visiblePassword,
             onSubmitted: widget.confirm ? null : (_) => _submit(),
             decoration: InputDecoration(
@@ -913,6 +942,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               obscureText: !_show,
               enableSuggestions: false,
               autocorrect: false,
+              autofillHints: const <String>[], // disable Android Autofill
               keyboardType: TextInputType.visiblePassword,
               onSubmitted: (_) => _submit(),
               decoration: const InputDecoration(

@@ -31,10 +31,25 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
   bool _deleteOriginals = false;
   bool _scanning = true;
   bool _running = false;
+  bool _capReached = false;
   double _progress = 0;
 
   /// Fichiers détectés dans le dossier (avec sélection courante).
   final List<_Entry> _entries = [];
+
+  /// Cap dur sur le nombre d'entrées listées — protège contre l'OOM si
+  /// l'utilisateur sélectionne `/storage/emulated/0` racine par erreur.
+  static const _maxEntries = 5000;
+
+  /// Patterns de chemins système à exclure (pas pertinents pour le coffre,
+  /// et certains contiennent des fichiers temporaires de gros volume).
+  static const _excludedPatterns = [
+    '/Android/data/',
+    '/Android/obb/',
+    '/.thumbnails/',
+    '/.cache/',
+    '/.trash/',
+  ];
 
   @override
   void initState() {
@@ -45,6 +60,7 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
   Future<void> _scan() async {
     setState(() {
       _scanning = true;
+      _capReached = false;
       _entries.clear();
     });
     try {
@@ -53,13 +69,22 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
         if (mounted) setState(() => _scanning = false);
         return;
       }
-      await for (final ent in dir.list(recursive: _recursive, followLinks: false)) {
+      await for (final ent in dir.list(
+          recursive: _recursive, followLinks: false)) {
         if (ent is! File) continue;
+        // Filtrage chemins système.
+        final path = ent.path.replaceAll('\\', '/');
+        if (_excludedPatterns.any(path.contains)) continue;
         try {
           final size = await ent.length();
           _entries.add(_Entry(file: ent, size: size, selected: true));
         } catch (_) {
           // Permission refusée / fichier disparu — on saute.
+        }
+        // Cap dur — on stoppe le scan et on prévient l'utilisateur.
+        if (_entries.length >= _maxEntries) {
+          if (mounted) setState(() => _capReached = true);
+          break;
         }
       }
       _entries.sort((a, b) => a.file.path.compareTo(b.file.path));
@@ -215,6 +240,31 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
                   ),
                 ]),
               ),
+
+              if (_capReached)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Limite de $_maxEntries fichiers atteinte. '
+                        'Choisissez un sous-dossier plus précis pour tout voir.',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  ]),
+                ),
 
               // Liste
               Expanded(

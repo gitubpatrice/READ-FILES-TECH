@@ -304,59 +304,75 @@ class VaultService {
 
     onProgress?.call(0.0);
 
-    // Construction du payload en clair (déchiffre chaque fichier avec master).
-    final builder = BytesBuilder();
-    builder.add(_int32be(files.length));
-    for (var i = 0; i < files.length; i++) {
-      final f = files[i];
-      final encName = f.path.split(RegExp(r'[/\\]')).last;
-      final plainName = encName.endsWith('.enc')
-          ? encName.substring(0, encName.length - 4)
-          : encName;
-      final blob = await f.readAsBytes();
-      final plain = await _decryptMaybeIsolate(blob, masterKey, encName);
-      final nameBytes = utf8.encode(plainName);
-      if (nameBytes.length > 0xFFFF) {
-        throw StateError('Nom de fichier trop long pour l\'export');
+    // Liste des plaintext alloués pour zeroize garanti en finally.
+    final plains = <Uint8List>[];
+    Uint8List? payload;
+    Uint8List? exportKey;
+    try {
+      // Construction du payload en clair (déchiffre chaque fichier avec master).
+      final builder = BytesBuilder();
+      builder.add(_int32be(files.length));
+      for (var i = 0; i < files.length; i++) {
+        final f = files[i];
+        final encName = f.path.split(RegExp(r'[/\\]')).last;
+        final plainName = encName.endsWith('.enc')
+            ? encName.substring(0, encName.length - 4)
+            : encName;
+        final blob = await f.readAsBytes();
+        final plain = await _decryptMaybeIsolate(blob, masterKey, encName);
+        plains.add(plain);
+        final nameBytes = utf8.encode(plainName);
+        if (nameBytes.length > 0xFFFF) {
+          throw StateError('Nom de fichier trop long pour l\'export');
+        }
+        builder.add(_int16be(nameBytes.length));
+        builder.add(nameBytes);
+        builder.add(_int32be(plain.length));
+        builder.add(plain);
+        onProgress?.call((i + 1) / files.length * 0.6);
       }
-      builder.add(_int16be(nameBytes.length));
-      builder.add(nameBytes);
-      builder.add(_int32be(plain.length));
-      builder.add(plain);
-      onProgress?.call((i + 1) / files.length * 0.6);
+      // Force ownership pour pouvoir zeroize (toBytes() peut renvoyer une vue).
+      final payloadLocal = Uint8List.fromList(builder.toBytes());
+      payload = payloadLocal;
+
+      // Dérivation Argon2id depuis exportPassword (distinct du master).
+      final salt = _randomBytes(_saltLen);
+      final exportKeyLocal = await Isolate.run(
+          () => _deriveKeyArgon2id(exportPassword, salt));
+      exportKey = exportKeyLocal;
+      onProgress?.call(0.85);
+
+      // Chiffrement enveloppe AES-GCM.
+      final nonce = _randomBytes(_nonceLen);
+      final aad = Uint8List.fromList(utf8.encode(_backupAad));
+      final ct = await _encryptRaw(payloadLocal, exportKeyLocal, nonce, aad);
+
+      // Construction du fichier final.
+      final out = BytesBuilder()
+        ..add(_backupMagic)
+        ..addByte(_backupVersion)
+        ..add(const [0, 0, 0]) // reserved
+        ..add(salt)
+        ..add(nonce)
+        ..add(ct);
+
+      final tmpDir = await getTemporaryDirectory();
+      final ts = DateTime.now()
+          .toIso8601String()
+          .substring(0, 19)
+          .replaceAll(':', '-');
+      final outFile = File('${tmpDir.path}/coffre_$ts.rftvault');
+      await outFile.writeAsBytes(out.toBytes());
+      onProgress?.call(1.0);
+      return outFile;
+    } finally {
+      // Zeroize tous les buffers en clair, même si exception.
+      for (final p in plains) {
+        _zeroize(p);
+      }
+      if (payload != null) _zeroize(payload);
+      if (exportKey != null) _zeroize(exportKey);
     }
-    final payload = builder.toBytes();
-
-    // Dérivation Argon2id depuis exportPassword (distinct du master).
-    final salt = _randomBytes(_saltLen);
-    final exportKey = await Isolate.run(
-        () => _deriveKeyArgon2id(exportPassword, salt));
-    onProgress?.call(0.85);
-
-    // Chiffrement enveloppe AES-GCM.
-    final nonce = _randomBytes(_nonceLen);
-    final aad = Uint8List.fromList(utf8.encode(_backupAad));
-    final ct = await _encryptRaw(payload, exportKey, nonce, aad);
-    _zeroize(exportKey);
-
-    // Construction du fichier final.
-    final out = BytesBuilder()
-      ..add(_backupMagic)
-      ..addByte(_backupVersion)
-      ..add(const [0, 0, 0]) // reserved
-      ..add(salt)
-      ..add(nonce)
-      ..add(ct);
-
-    final tmpDir = await getTemporaryDirectory();
-    final ts = DateTime.now()
-        .toIso8601String()
-        .substring(0, 19)
-        .replaceAll(':', '-');
-    final outFile = File('${tmpDir.path}/coffre_$ts.rftvault');
-    await outFile.writeAsBytes(out.toBytes());
-    onProgress?.call(1.0);
-    return outFile;
   }
 
   /// Restaure les fichiers d'un `.rftvault` dans le coffre actuel
@@ -421,27 +437,51 @@ class VaultService {
     onProgress?.call(0.55);
 
     // Parse + ré-importation dans le coffre actuel (re-chiffré sous master key).
-    final entries = _parseBackupPayload(payload);
-    final dir = await _vaultDir();
-    int restored = 0;
-    int skipped = 0;
-    for (var i = 0; i < entries.length; i++) {
-      final e = entries[i];
-      final destName = '${e.name}.enc';
-      final dest = File('${dir.path}/$destName');
-      if (await dest.exists() && !overwriteExisting) {
-        skipped++;
-        continue;
+    // Zeroize garanti du payload + des plaintexts individuels en finally.
+    List<_BackupEntry>? entries;
+    try {
+      entries = _parseBackupPayload(payload);
+      final dir = await _vaultDir();
+      int restored = 0;
+      int skipped = 0;
+      int failed = 0;
+      for (var i = 0; i < entries.length; i++) {
+        final e = entries[i];
+        final destName = '${e.name}.enc';
+        final dest = File('${dir.path}/$destName');
+        if (await dest.exists() && !overwriteExisting) {
+          skipped++;
+          continue;
+        }
+        // Try/catch par entrée : si une écriture échoue (FAT32 nom invalide,
+        // disque plein, perm refusée), on continue avec les autres au lieu
+        // de planter tout le restore au milieu.
+        try {
+          final encrypted = await _encryptMaybeIsolate(
+              e.plain, masterKey, destName);
+          await dest.writeAsBytes(encrypted);
+          restored++;
+        } catch (_) {
+          failed++;
+        }
+        onProgress?.call(0.55 + (i + 1) / entries.length * 0.45);
       }
-      final encrypted = await _encryptMaybeIsolate(
-          e.plain, masterKey, destName);
-      await dest.writeAsBytes(encrypted);
-      restored++;
-      onProgress?.call(0.55 + (i + 1) / entries.length * 0.45);
+      onProgress?.call(1.0);
+      return RestoreResult(
+          total: entries.length,
+          restored: restored,
+          skipped: skipped + failed);
+    } finally {
+      // Zeroize tous les plaintexts (e.plain est une vue de payload, donc
+      // zeroizer payload zeroize aussi les e.plain — mais on fait les deux
+      // par défense en profondeur).
+      if (entries != null) {
+        for (final e in entries) {
+          _zeroize(e.plain);
+        }
+      }
+      _zeroize(payload);
     }
-    onProgress?.call(1.0);
-    return RestoreResult(
-        total: entries.length, restored: restored, skipped: skipped);
   }
 
   /// Parse défensif du payload après décryptage de l'enveloppe.
@@ -481,14 +521,20 @@ class VaultService {
       final plain = Uint8List.fromList(
           Uint8List.sublistView(payload, p, p + dataLen));
       p += dataLen;
-      // Anti path-traversal : refuse silencieusement les entrées avec
-      // nom invalide (../, /, NUL, vide).
+      // Anti path-traversal STRICT : on garde uniquement les noms qui
+      // restent IDENTIQUES après basename(). Si PathSafe modifie ou rejette,
+      // l'entrée est ignorée silencieusement (anti DoS via filename forgé).
+      final String safeName;
       try {
-        PathSafe.basename(name);
+        safeName = PathSafe.basename(name);
       } catch (_) {
         continue;
       }
-      out.add(_BackupEntry(name, plain));
+      if (safeName != name) continue;
+      // Caractères réservés Windows + NUL byte (defense in depth pour SD
+      // FAT32 et compat cross-FS).
+      if (RegExp(r'[\x00-\x1f<>:"|?*]').hasMatch(safeName)) continue;
+      out.add(_BackupEntry(safeName, plain));
     }
     return out;
   }
