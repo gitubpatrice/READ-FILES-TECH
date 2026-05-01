@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────────────────────
+#  Pre-commit hook — Files Tech
+#  Lance flutter analyze + vérifie format avant chaque commit.
+#  Bloque le commit si erreurs détectées.
+#
+#  Activation (1× par clone) :
+#    git config core.hooksPath .githooks
+# ──────────────────────────────────────────────────────────────────────────
+set -e
+
+RED=$'\033[0;31m'
+GRN=$'\033[0;32m'
+YLW=$'\033[1;33m'
+RST=$'\033[0m'
+
+# Liste des fichiers Dart staged (ignorés si commit non-Dart only)
+STAGED_DART=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.dart$' || true)
+
+if [ -z "$STAGED_DART" ]; then
+  exit 0  # rien à analyser
+fi
+
+echo "${YLW}→ flutter analyze...${RST}"
+if ! flutter analyze --no-fatal-infos 2>&1 | tail -20; then
+  echo "${RED}✗ flutter analyze a échoué — fix avant de commit${RST}"
+  exit 1
+fi
+
+echo "${YLW}→ dart format check...${RST}"
+UNFORMATTED=$(dart format --output=none --set-exit-if-changed $STAGED_DART 2>&1 | grep -v "^$" || true)
+if [ -n "$UNFORMATTED" ]; then
+  echo "${RED}✗ Fichiers non formatés :${RST}"
+  echo "$UNFORMATTED"
+  echo ""
+  echo "${YLW}→ Lance : dart format <fichier> et re-stage avant commit${RST}"
+  exit 1
+fi
+
+echo "${GRN}✓ Pre-commit OK${RST}"
+exit 0
