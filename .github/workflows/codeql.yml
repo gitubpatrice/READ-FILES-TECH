@@ -4,9 +4,10 @@ name: CodeQL
 # Note : Dart non supporté par CodeQL — l'analyse Dart est faite par
 # `flutter analyze` dans le workflow CI principal.
 #
-# Détecte (côté Kotlin) : injections, path traversal, perms leak, crypto
-# faible, hardcoded secrets, deserialization unsafe, race conditions,
-# logs de données sensibles, etc.
+# `build-mode: none` : analyse statique sans compilation (Flutter Android
+# nécessiterait flutter SDK + gradle, hors scope CodeQL). La couverture
+# est légèrement réduite mais reste utile pour les patterns Kotlin courants
+# (path traversal, hardcoded secrets, intent leaks, crypto faible).
 #
 # Findings visibles dans l'onglet Security > Code scanning du repo.
 
@@ -16,14 +17,13 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Re-scan hebdomadaire pour catcher les nouvelles règles CodeQL.
     - cron: '0 6 * * 1'
 
 jobs:
   analyze:
-    name: Analyze (Kotlin/Java)
+    name: Analyze (Kotlin/Java, no-build)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     permissions:
       actions: read
       contents: read
@@ -38,25 +38,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          # On limite l'analyse au code Android (Kotlin/Java), pas tout le repo.
+          build-mode: none
           source-root: android
           queries: security-and-quality
-
-      # CodeQL fait un build automatique pour Kotlin via la query
-      # `autobuild`. Pour Flutter Android, on contourne en pointant
-      # directement sur le code source sans compiler le Dart.
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
