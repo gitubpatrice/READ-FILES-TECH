@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,15 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   bool _unlocked = false;
   bool _setup = false;
 
+  /// Délai d'auto-lock après `paused`. Permet à un picker natif (SAF, share
+  /// sheet, FilePicker) qui pause brièvement l'app de se terminer sans
+  /// déclencher le lock. Pattern standard des password managers (Bitwarden,
+  /// KeePassDX).
+  static const _autoLockDelay = Duration(seconds: 30);
+
+  /// Timer programmant le lock différé. Annulé sur `resumed`.
+  Timer? _pendingLockTimer;
+
   @override
   void initState() {
     super.initState();
@@ -31,23 +41,42 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _pendingLockTimer?.cancel();
+    _pendingLockTimer = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  /// Sécurité : verrouille le coffre dès que l'app passe en arrière-plan.
-  /// Empêche que `_cachedKey` reste en mémoire si l'utilisateur a ouvert le
-  /// coffre puis a juste appuyé sur Home (sans verrouiller manuellement).
+  /// Sécurité : verrouille le coffre quand l'app passe en arrière-plan,
+  /// avec un délai de [_autoLockDelay] (30 s) — pattern Bitwarden/KeePassDX.
+  /// Si l'utilisateur revient dans les 30 s (ex. retour d'un picker SAF), le
+  /// timer est annulé et le coffre reste déverrouillé.
+  /// `detached` (process killed) → lock immédiat (mais la clé est de toute
+  /// façon perdue avec le process).
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
+    // Guard : si l'observer est déclenché après dispose (race rare),
+    // on ne crée pas de Timer orphelin retenant une ref vers ce State.
+    if (!mounted) return;
+    if (state == AppLifecycleState.paused) {
       if (_service.isUnlocked) {
-        _service.lock();
-        SecureWindow.disable();
-        if (mounted) setState(() => _unlocked = false);
+        _pendingLockTimer?.cancel();
+        _pendingLockTimer = Timer(_autoLockDelay, _lockNow);
       }
+    } else if (state == AppLifecycleState.detached) {
+      if (_service.isUnlocked) _lockNow();
+    } else if (state == AppLifecycleState.resumed) {
+      // Annule un lock en attente si l'utilisateur revient dans les 30s.
+      _pendingLockTimer?.cancel();
+      _pendingLockTimer = null;
     }
+  }
+
+  void _lockNow() {
+    if (!_service.isUnlocked) return;
+    _service.lock();
+    SecureWindow.disable();
+    if (mounted) setState(() => _unlocked = false);
   }
 
   Future<void> _bootstrap() async {
@@ -504,7 +533,13 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _importFolder() async {
     final messenger = ScaffoldMessenger.of(context);
-    final folderPath = await FilePicker.platform.getDirectoryPath();
+    // Picker custom RFT — UX cohérente avec le reste de l'app (raccourcis
+    // colorés Téléchargements/Photos/Vidéos/Documents/WhatsApp + tous les
+    // dossiers du stockage + bouton "Parcourir un autre dossier" SAF).
+    final folderPath = await RftPickerScreen.pickFolder(
+      context,
+      title: 'Choisir un dossier à chiffrer',
+    );
     if (folderPath == null || !mounted) return;
 
     final imported = await Navigator.push<int>(
@@ -578,15 +613,15 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _restoreBackup() async {
     final messenger = ScaffoldMessenger.of(context);
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-      withData: false,
+    // Picker custom RFT cohérent avec le reste de l'app — raccourcis colorés
+    // (Téléchargements, Documents, Files Tech) où l'utilisateur stocke
+    // typiquement ses sauvegardes .rftvault.
+    final path = await RftPickerScreen.pickOne(
+      context,
+      title: 'Choisir une sauvegarde .rftvault',
     );
-    if (picked == null || picked.files.isEmpty) return;
-    final path = picked.files.first.path;
-    if (path == null) return;
+    if (path == null || !mounted) return;
     if (!path.toLowerCase().endsWith('.rftvault')) {
-      if (!mounted) return;
       final cont = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(

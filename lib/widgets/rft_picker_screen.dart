@@ -20,12 +20,17 @@ import '../screens/explorer/file_explorer_screen.dart';
 class RftPickerScreen extends StatefulWidget {
   final String title;
   final bool multi;
+  /// Si true, le picker retourne un chemin de DOSSIER au tap d'un raccourci
+  /// ou d'un dossier listé (au lieu d'ouvrir l'explorateur). L'onglet
+  /// Récents est masqué (pas de récents pour les dossiers).
+  final bool folderMode;
   /// Filtre d'extensions optionnel (ex: {'pdf','docx'}). Si null, accepte tout.
   final Set<String>? extensions;
   const RftPickerScreen({
     super.key,
     this.title = 'Choisir un fichier',
     this.multi = false,
+    this.folderMode = false,
     this.extensions,
   });
 
@@ -57,6 +62,19 @@ class RftPickerScreen extends StatefulWidget {
     ));
   }
 
+  /// Helper sélection de dossier — UX cohérente avec le picker fichiers
+  /// (mêmes raccourcis colorés, même grille "Tous les dossiers", même
+  /// "Parcourir un autre dossier" en SAF). Tap sur un raccourci/dossier
+  /// retourne directement son chemin.
+  static Future<String?> pickFolder(BuildContext context, {String? title}) {
+    return Navigator.push<String>(context, MaterialPageRoute(
+      builder: (_) => RftPickerScreen(
+        title: title ?? 'Choisir un dossier',
+        folderMode: true,
+      ),
+    ));
+  }
+
   @override
   State<RftPickerScreen> createState() => _RftPickerScreenState();
 }
@@ -83,8 +101,11 @@ class _RftPickerScreenState extends State<RftPickerScreen>
   late final TabController _tabs;
   final _recentService = RecentFilesService();
   List<RecentFile> _recents = [];
-  bool _loading = true;
+  late bool _loading;
   final List<String> _selected = [];
+
+  /// En mode folder, on n'a qu'un seul onglet "Parcourir" (pas de Récents).
+  bool get _folderMode => widget.folderMode;
 
   /// Grille de raccourcis. Chaque tuile a sa couleur distinctive pour un
   /// repérage visuel immédiat. Couleurs choisies pour bon contraste sur fond
@@ -161,8 +182,10 @@ class _RftPickerScreenState extends State<RftPickerScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
-    _load();
+    // Mode folder : 1 seul onglet (Parcourir). Mode fichier : 2 onglets.
+    _tabs = TabController(length: _folderMode ? 1 : 2, vsync: this);
+    _loading = !_folderMode; // chargement Récents uniquement en mode fichier
+    if (!_folderMode) _load();
     _loadAllFolders();
   }
 
@@ -299,11 +322,36 @@ class _RftPickerScreenState extends State<RftPickerScreen>
   Future<void> _browseAnyFolder() async {
     final dir = await FilePicker.platform.getDirectoryPath();
     if (dir == null || !mounted) return;
+    if (_folderMode) {
+      // Mode folder : retour direct du path SAF, pas d'ouverture explorer.
+      Navigator.pop(context, dir);
+      return;
+    }
     final label = dir.split(RegExp(r'[/\\]')).last;
     await _openInExplorer(dir, label.isEmpty ? 'Dossier' : label);
   }
 
-  Future<void> _openInExplorer(String path, String label, {Set<String>? filter}) async {
+  Future<void> _openInExplorer(String path, String label,
+      {Set<String>? filter}) async {
+    // En mode folder, on ne navigue pas dans l'explorateur — tap sur un
+    // raccourci ou un dossier listé retourne directement le chemin.
+    if (_folderMode) {
+      final dir = Directory(path);
+      if (!await dir.exists()) {
+        if (label == 'Files Tech') {
+          try { await dir.create(recursive: true); } catch (_) {}
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Dossier "$label" introuvable')));
+          return;
+        }
+      }
+      if (!mounted) return;
+      Navigator.pop(context, path);
+      return;
+    }
+
     final dir = Directory(path);
     if (!dir.existsSync()) {
       // Auto-création silencieuse pour Files Tech (notre dossier app).
@@ -334,20 +382,25 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
-        bottom: TabBar(
-          controller: _tabs,
-          tabs: const [
-            Tab(text: 'Récents', icon: Icon(Icons.history)),
-            Tab(text: 'Parcourir', icon: Icon(Icons.folder_outlined)),
-          ],
-        ),
+        // Pas de TabBar en mode folder (1 seul onglet visible).
+        bottom: _folderMode
+            ? null
+            : TabBar(
+                controller: _tabs,
+                tabs: const [
+                  Tab(text: 'Récents', icon: Icon(Icons.history)),
+                  Tab(text: 'Parcourir', icon: Icon(Icons.folder_outlined)),
+                ],
+              ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabs,
-              children: [_buildRecents(), _buildBrowse()],
-            ),
+          : _folderMode
+              ? _buildBrowse()
+              : TabBarView(
+                  controller: _tabs,
+                  children: [_buildRecents(), _buildBrowse()],
+                ),
       floatingActionButton: widget.multi && _selected.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.pop(context, _selected),

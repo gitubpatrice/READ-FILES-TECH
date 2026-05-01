@@ -81,9 +81,11 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
         } catch (_) {
           // Permission refusée / fichier disparu — on saute.
         }
+        // Guard : utilisateur a quitté l'écran pendant le scan async.
+        if (!mounted) break;
         // Cap dur — on stoppe le scan et on prévient l'utilisateur.
         if (_entries.length >= _maxEntries) {
-          if (mounted) setState(() => _capReached = true);
+          setState(() => _capReached = true);
           break;
         }
       }

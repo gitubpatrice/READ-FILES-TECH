@@ -392,6 +392,16 @@ class VaultService {
     void Function(double)? onProgress,
   }) async {
     final masterKey = _requireKey();
+
+    // Cap taille AVANT readAsBytes — un .rftvault malformé/forgé de plusieurs
+    // Go ferait OOM crash sur low-end (Redmi 9C 3GB). 1.2× pour overhead
+    // enveloppe (header + tag + padding interne).
+    final fileSize = await backupFile.length();
+    if (fileSize > _backupMaxBytes * 1.2) {
+      throw StateError(
+          'Fichier trop volumineux (max ${_backupMaxBytes ~/ (1024 * 1024)} Mo).');
+    }
+
     final raw = await backupFile.readAsBytes();
     final headerLen = 8 + 1 + 3 + _saltLen + _nonceLen;
     if (raw.length < headerLen + 16) {
@@ -472,9 +482,9 @@ class VaultService {
           restored: restored,
           skipped: skipped + failed);
     } finally {
-      // Zeroize tous les plaintexts (e.plain est une vue de payload, donc
-      // zeroizer payload zeroize aussi les e.plain — mais on fait les deux
-      // par défense en profondeur).
+      // _parseBackupPayload alloue une COPIE pour chaque e.plain (via
+      // Uint8List.fromList) — ce ne sont PAS des vues de payload. Donc
+      // zeroizer les deux est nécessaire (pas redondant).
       if (entries != null) {
         for (final e in entries) {
           _zeroize(e.plain);
@@ -645,34 +655,51 @@ class VaultService {
   }
 
   /// PBKDF2 legacy (coffres < v2.6.0). Static pour `Isolate.run`.
+  ///
+  /// Note : le `String password` reste en RAM (limitation Dart, immuable).
+  /// On ne zeroize que la copie bytes UTF-8 que l'on a contrôle.
   static Uint8List _deriveKey(String password, Uint8List salt) {
-    final pbkdf2 = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
-      ..init(Pbkdf2Parameters(salt, _iterations, _keyLen));
-    return pbkdf2.process(Uint8List.fromList(utf8.encode(password)));
+    final pwBytes = Uint8List.fromList(utf8.encode(password));
+    try {
+      final pbkdf2 = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
+        ..init(Pbkdf2Parameters(salt, _iterations, _keyLen));
+      return pbkdf2.process(pwBytes);
+    } finally {
+      for (var i = 0; i < pwBytes.length; i++) {
+        pwBytes[i] = 0;
+      }
+    }
   }
 
   /// Argon2id (coffres ≥ v2.6.0). m=16 Mo, t=4, p=1, type ARGON2_id, version 1.3.
   /// Memory-hard → résiste au cracking GPU bien mieux que PBKDF2.
   /// Static pour `Isolate.run`.
+  ///
+  /// Note : le `String password` reste en RAM (limitation Dart, immuable).
+  /// On ne zeroize que la copie bytes UTF-8 que l'on contrôle. L'isolate
+  /// duplique aussi le password à l'envoi du message — ces bytes sont
+  /// hors de notre contrôle (limitation Isolate.run).
   static Uint8List _deriveKeyArgon2id(String password, Uint8List salt) {
-    final params = Argon2Parameters(
-      Argon2Parameters.ARGON2_id,
-      salt,
-      desiredKeyLength: _keyLen,
-      iterations: _argon2Iterations,
-      memoryPowerOf2: _argon2MemoryPowerOf2,
-      lanes: _argon2Lanes,
-      version: Argon2Parameters.ARGON2_VERSION_13,
-    );
-    final argon2 = Argon2BytesGenerator()..init(params);
-    final out = Uint8List(_keyLen);
-    argon2.deriveKey(
-      Uint8List.fromList(utf8.encode(password)),
-      0,
-      out,
-      0,
-    );
-    return out;
+    final pwBytes = Uint8List.fromList(utf8.encode(password));
+    try {
+      final params = Argon2Parameters(
+        Argon2Parameters.ARGON2_id,
+        salt,
+        desiredKeyLength: _keyLen,
+        iterations: _argon2Iterations,
+        memoryPowerOf2: _argon2MemoryPowerOf2,
+        lanes: _argon2Lanes,
+        version: Argon2Parameters.ARGON2_VERSION_13,
+      );
+      final argon2 = Argon2BytesGenerator()..init(params);
+      final out = Uint8List(_keyLen);
+      argon2.deriveKey(pwBytes, 0, out, 0);
+      return out;
+    } finally {
+      for (var i = 0; i < pwBytes.length; i++) {
+        pwBytes[i] = 0;
+      }
+    }
   }
 
   void _zeroize(Uint8List bytes) {
