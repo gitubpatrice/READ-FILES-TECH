@@ -1,15 +1,15 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:archive/archive.dart';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as xls;
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
+import '../../services/text_extraction_service.dart';
 import '../../widgets/cloud_share_row.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -199,68 +199,24 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
     final src = File(path);
     final size = await src.length();
-    // Garde-fou défensif : un .pdf de plusieurs centaines de Mo sature la RAM
-    // sur un device d'entrée de gamme. On laisse passer 100 Mo, au-delà on
-    // refuse plutôt que de crasher.
     if (size > 100 * 1024 * 1024) {
       throw 'Fichier trop volumineux (${(size / 1024 / 1024).toStringAsFixed(0)} Mo). '
           'Maximum 100 Mo.';
     }
 
     final bytes = await src.readAsBytes();
-    PdfDocument? doc;
-    try {
-      doc = PdfDocument(inputBytes: bytes);
-    } catch (e) {
-      throw 'PDF illisible (peut-être chiffré ou corrompu).';
-    }
-
-    final buf = StringBuffer();
-    try {
-      final extractor = PdfTextExtractor(doc);
-      final pageCount = doc.pages.count;
-      for (var i = 0; i < pageCount; i++) {
-        String pageText;
-        try {
-          pageText = extractor.extractText(startPageIndex: i, endPageIndex: i);
-        } catch (_) {
-          pageText = '';
-        }
-        if (i > 0) buf.writeln();
-        buf
-          ..writeln('--- Page ${i + 1} ---')
-          ..write(pageText.trimRight());
-        // Yield au framework toutes les 10 pages pour ne pas geler l'UI
-        // sur des PDF de plusieurs centaines de pages (ANR sur device lent).
-        if (i % 10 == 9) {
-          await Future<void>.delayed(Duration.zero);
-        }
-      }
-    } finally {
-      // Garantit la libération native même si extractText lève une
-      // exception inattendue (OOM, format inconnu).
-      doc.dispose();
-    }
-
-    final extracted = buf.toString().trim();
-    // Heuristique "PDF scanné" recalibrée : on retire d'abord nos propres
-    // marqueurs `--- Page N ---` pour ne pas les compter comme du texte
-    // utile, puis on applique un seuil absolu (< 30 caractères).
-    final usefulChars = extracted
-        .replaceAll(RegExp(r'---\s*Page\s+\d+\s*---'), '')
-        .replaceAll(RegExp(r'\s'), '')
-        .length;
-    if (usefulChars < 30) {
-      throw 'Aucun texte sélectionnable détecté. Si le PDF est scanné, '
-          'utilisez d\'abord l\'outil OCR.';
-    }
+    // L'extraction tourne dans un isolate via `compute()` : Syncfusion charge
+    // le PDF en RAM côté isolate, le UI thread reste libre pendant tout le
+    // traitement (crucial sur PDF de plusieurs centaines de pages).
+    final result = await compute(extractPdfText, bytes);
+    if (result.error != null) throw result.error!;
 
     final base = path
         .split(RegExp(r'[/\\]'))
         .last
         .replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'txt');
-    await out.writeAsString(extracted);
+    await out.writeAsString(result.text!);
     return out;
   }
 
@@ -286,7 +242,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
   Future<File?> _docxToText() async {
     final path = await RftPickerScreen.pickOne(
       context,
-      title: 'Choisir un fichier Word',
+      title: "Choisir un fichier Word",
       extensions: const {'docx', 'docm'},
     );
     if (path == null) return null;
@@ -299,124 +255,19 @@ class _ConvertScreenState extends State<ConvertScreen> {
     }
 
     final bytes = await src.readAsBytes();
-
-    // Garde-fou minimal : un .doc binaire commence par la signature OLE
-    // `D0 CF 11 E0 A1 B1 1A E1`. On rejette proprement avant de tenter le
-    // décodage ZIP qui crasherait avec un message obscur.
-    if (bytes.length >= 8 &&
-        bytes[0] == 0xD0 &&
-        bytes[1] == 0xCF &&
-        bytes[2] == 0x11 &&
-        bytes[3] == 0xE0) {
-      throw 'Format .doc (Word 97-2003) non supporté. Réenregistrez en .docx '
-          'depuis Word ou LibreOffice.';
-    }
-
-    Archive archive;
-    try {
-      archive = ZipDecoder().decodeBytes(bytes);
-    } catch (_) {
-      throw 'Le fichier n\'est pas un .docx valide (archive ZIP illisible).';
-    }
-
-    final entry = archive.findFile('word/document.xml');
-    if (entry == null) {
-      throw '`word/document.xml` introuvable dans l\'archive — fichier '
-          'corrompu ou chiffré.';
-    }
-    // Garde-fou anti zip-bomb : un `.docx` malicieux peut décompresser
-    // `document.xml` à plusieurs Go. On refuse au-delà de 200 Mo
-    // décompressés (largement au-dessus de tout document Word légitime).
-    if (entry.size > 200 * 1024 * 1024) {
-      throw 'Le contenu décompressé est trop volumineux '
-          '(${entry.size ~/ 1024 ~/ 1024} Mo). Fichier suspect.';
-    }
-    // UTF-8 strict : Word écrit toujours `<?xml version="1.0" encoding="UTF-8"?>`.
-    // `String.fromCharCodes` traiterait chaque byte comme un codepoint Latin-1
-    // et corromprait tous les caractères non-ASCII (accents, emojis, idéogrammes).
-    final xmlContent = utf8.decode(
-      entry.content as List<int>,
-      allowMalformed: true,
-    );
-    final extracted = _docxXmlToPlainText(xmlContent);
-
-    if (extracted.trim().isEmpty) {
-      throw 'Le document semble vide (aucun texte trouvé).';
-    }
+    // L'unzip + parsing XML tournent dans un isolate via compute() : sur un
+    // .docx avec quelques milliers de paragraphes, le regex peut bloquer
+    // l'UI thread plusieurs centaines de ms. On le déporte.
+    final result = await compute(extractDocxText, bytes);
+    if (result.error != null) throw result.error!;
 
     final base = path
         .split(RegExp(r'[/\\]'))
         .last
         .replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'txt');
-    await out.writeAsString(extracted);
+    await out.writeAsString(result.text!);
     return out;
-  }
-
-  /// Convertit le XML interne d'un `.docx` en texte brut.
-  ///
-  /// Approche par regex plutôt que parser DOM complet (Word XML est verbeux
-  /// et la dépendance `xml` n'est pas embarquée). Robuste pour le cas général
-  /// de production de texte lisible.
-  static String _docxXmlToPlainText(String xml) {
-    var s = xml;
-    // Sauts de ligne durs et tabulations.
-    // Variantes auto-fermantes (`<w:br/>`, `<w:br xmlns:w="..."/>`).
-    s = s.replaceAll(RegExp(r'<w:br\b[^/>]*/?>'), '\n');
-    s = s.replaceAll(RegExp(r'<w:tab\b[^/>]*/?>'), '\t');
-    // Fin de paragraphe → marqueur unique qu'on remplacera après extraction
-    // des runs (l'ordre compte pour ne pas dupliquer des sauts).
-    s = s.replaceAll(RegExp(r'</w:p>'), '');
-
-    // Extrait tous les contenus <w:t ...>texte</w:t>, en respectant l'option
-    // xml:space="preserve" via `.*?` non-greedy.
-    final runRe = RegExp(r'<w:t(?:\s[^>]*)?>(.*?)</w:t>', dotAll: true);
-    final paragraphs = s.split('');
-    final out = StringBuffer();
-    for (final p in paragraphs) {
-      final pieces = runRe
-          .allMatches(p)
-          .map((m) => _decodeXmlEntities(m.group(1) ?? ''))
-          .join();
-      // On préserve les paragraphes vides (ligne blanche en sortie).
-      out
-        ..write(pieces)
-        ..writeln();
-    }
-    // Compresse les enchaînements de plus de 2 lignes vides (mise en page
-    // Word génère parfois plusieurs paragraphes vides successifs).
-    final result = out
-        .toString()
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-        .trimRight();
-    return result;
-  }
-
-  /// Décode les entités XML standard + numériques (`&#10;`, `&#xE9;`).
-  ///
-  /// L'ordre importe : `&amp;` est décodé en **dernier** pour que
-  /// `&amp;lt;` reste `&lt;` (et non décodé en `<`, ce qui serait une
-  /// corruption — XML n'utilise que de l'encodage simple, pas double).
-  static String _decodeXmlEntities(String s) {
-    final dec = s
-        .replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (m) {
-          final code = int.tryParse(m.group(1)!, radix: 16);
-          return (code != null && code >= 0 && code <= 0x10FFFF)
-              ? String.fromCharCode(code)
-              : m.group(0)!;
-        })
-        .replaceAllMapped(RegExp(r'&#(\d+);'), (m) {
-          final code = int.tryParse(m.group(1)!);
-          return (code != null && code >= 0 && code <= 0x10FFFF)
-              ? String.fromCharCode(code)
-              : m.group(0)!;
-        })
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&apos;', "'")
-        .replaceAll('&amp;', '&');
-    return dec;
   }
 
   // ── Image conversion (any → JPG/PNG/WebP) ──────────────────────────────────
