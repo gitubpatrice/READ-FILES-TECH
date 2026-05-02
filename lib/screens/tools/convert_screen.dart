@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
@@ -34,6 +35,10 @@ class _ConvertScreenState extends State<ConvertScreen> {
   );
 
   Future<void> _run(Future<File?> Function() job) async {
+    // Garde re-entrante : si l'utilisateur tape deux fois rapidement avant
+    // que `_busy=true` soit appliqué côté UI, on évite de lancer deux jobs
+    // en parallèle (qui se battraient pour le picker, le storage…).
+    if (_busy) return;
     setState(() {
       _busy = true;
       _status = null;
@@ -210,28 +215,42 @@ class _ConvertScreenState extends State<ConvertScreen> {
       throw 'PDF illisible (peut-être chiffré ou corrompu).';
     }
 
-    final extractor = PdfTextExtractor(doc);
     final buf = StringBuffer();
-    final pageCount = doc.pages.count;
-    for (var i = 0; i < pageCount; i++) {
-      String pageText;
-      try {
-        pageText = extractor.extractText(startPageIndex: i, endPageIndex: i);
-      } catch (_) {
-        pageText = '';
+    try {
+      final extractor = PdfTextExtractor(doc);
+      final pageCount = doc.pages.count;
+      for (var i = 0; i < pageCount; i++) {
+        String pageText;
+        try {
+          pageText = extractor.extractText(startPageIndex: i, endPageIndex: i);
+        } catch (_) {
+          pageText = '';
+        }
+        if (i > 0) buf.writeln();
+        buf
+          ..writeln('--- Page ${i + 1} ---')
+          ..write(pageText.trimRight());
+        // Yield au framework toutes les 10 pages pour ne pas geler l'UI
+        // sur des PDF de plusieurs centaines de pages (ANR sur device lent).
+        if (i % 10 == 9) {
+          await Future<void>.delayed(Duration.zero);
+        }
       }
-      if (i > 0) buf.writeln();
-      buf
-        ..writeln('--- Page ${i + 1} ---')
-        ..write(pageText.trimRight());
+    } finally {
+      // Garantit la libération native même si extractText lève une
+      // exception inattendue (OOM, format inconnu).
+      doc.dispose();
     }
-    doc.dispose();
 
     final extracted = buf.toString().trim();
-    if (extracted.isEmpty ||
-        extracted.replaceAll(RegExp(r'[\s\n\-]'), '').length < pageCount * 5) {
-      // Heuristique : si on n'a quasiment rien sorti à part les en-têtes
-      // de page, c'est probablement un PDF scanné. On le dit clairement.
+    // Heuristique "PDF scanné" recalibrée : on retire d'abord nos propres
+    // marqueurs `--- Page N ---` pour ne pas les compter comme du texte
+    // utile, puis on applique un seuil absolu (< 30 caractères).
+    final usefulChars = extracted
+        .replaceAll(RegExp(r'---\s*Page\s+\d+\s*---'), '')
+        .replaceAll(RegExp(r'\s'), '')
+        .length;
+    if (usefulChars < 30) {
       throw 'Aucun texte sélectionnable détecté. Si le PDF est scanné, '
           'utilisez d\'abord l\'outil OCR.';
     }
@@ -305,7 +324,20 @@ class _ConvertScreenState extends State<ConvertScreen> {
       throw '`word/document.xml` introuvable dans l\'archive — fichier '
           'corrompu ou chiffré.';
     }
-    final xmlContent = String.fromCharCodes(entry.content as List<int>);
+    // Garde-fou anti zip-bomb : un `.docx` malicieux peut décompresser
+    // `document.xml` à plusieurs Go. On refuse au-delà de 200 Mo
+    // décompressés (largement au-dessus de tout document Word légitime).
+    if (entry.size > 200 * 1024 * 1024) {
+      throw 'Le contenu décompressé est trop volumineux '
+          '(${entry.size ~/ 1024 ~/ 1024} Mo). Fichier suspect.';
+    }
+    // UTF-8 strict : Word écrit toujours `<?xml version="1.0" encoding="UTF-8"?>`.
+    // `String.fromCharCodes` traiterait chaque byte comme un codepoint Latin-1
+    // et corromprait tous les caractères non-ASCII (accents, emojis, idéogrammes).
+    final xmlContent = utf8.decode(
+      entry.content as List<int>,
+      allowMalformed: true,
+    );
     final extracted = _docxXmlToPlainText(xmlContent);
 
     if (extracted.trim().isEmpty) {
@@ -329,8 +361,9 @@ class _ConvertScreenState extends State<ConvertScreen> {
   static String _docxXmlToPlainText(String xml) {
     var s = xml;
     // Sauts de ligne durs et tabulations.
-    s = s.replaceAll(RegExp(r'<w:br\s*/>'), '\n');
-    s = s.replaceAll(RegExp(r'<w:tab\s*/>'), '\t');
+    // Variantes auto-fermantes (`<w:br/>`, `<w:br xmlns:w="..."/>`).
+    s = s.replaceAll(RegExp(r'<w:br\b[^/>]*/?>'), '\n');
+    s = s.replaceAll(RegExp(r'<w:tab\b[^/>]*/?>'), '\t');
     // Fin de paragraphe → marqueur unique qu'on remplacera après extraction
     // des runs (l'ordre compte pour ne pas dupliquer des sauts).
     s = s.replaceAll(RegExp(r'</w:p>'), '');
@@ -359,15 +392,31 @@ class _ConvertScreenState extends State<ConvertScreen> {
     return result;
   }
 
-  /// Décode les 5 entités XML standard. Suffisant pour Word qui n'utilise
-  /// pas d'entités HTML étendues.
+  /// Décode les entités XML standard + numériques (`&#10;`, `&#xE9;`).
+  ///
+  /// L'ordre importe : `&amp;` est décodé en **dernier** pour que
+  /// `&amp;lt;` reste `&lt;` (et non décodé en `<`, ce qui serait une
+  /// corruption — XML n'utilise que de l'encodage simple, pas double).
   static String _decodeXmlEntities(String s) {
-    return s
+    final dec = s
+        .replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (m) {
+          final code = int.tryParse(m.group(1)!, radix: 16);
+          return (code != null && code >= 0 && code <= 0x10FFFF)
+              ? String.fromCharCode(code)
+              : m.group(0)!;
+        })
+        .replaceAllMapped(RegExp(r'&#(\d+);'), (m) {
+          final code = int.tryParse(m.group(1)!);
+          return (code != null && code >= 0 && code <= 0x10FFFF)
+              ? String.fromCharCode(code)
+              : m.group(0)!;
+        })
         .replaceAll('&lt;', '<')
         .replaceAll('&gt;', '>')
         .replaceAll('&quot;', '"')
         .replaceAll('&apos;', "'")
         .replaceAll('&amp;', '&');
+    return dec;
   }
 
   // ── Image conversion (any → JPG/PNG/WebP) ──────────────────────────────────
