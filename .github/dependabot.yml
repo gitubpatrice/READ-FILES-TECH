@@ -27,3 +27,13 @@ updates:
     labels:
       - "dependencies"
       - "android"
+    # Les bumps majeurs côté Android Gradle Plugin / Kotlin / Gradle Wrapper
+    # cassent systématiquement la CI tant que Flutter ne suit pas. On les
+    # ignore — on les fera à la main quand Flutter aura validé.
+    ignore:
+      - dependency-name: "org.jetbrains.kotlin.android"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.android.application"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-major"]
