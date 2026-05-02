@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Checkout app
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: read_files_tech
 
       - name: Checkout files_tech_core (path dependency)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: gitubpatrice/files_tech_core
           path: files_tech_core
