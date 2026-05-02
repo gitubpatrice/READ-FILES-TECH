@@ -28,13 +28,18 @@ if ! flutter analyze --no-fatal-infos 2>&1 | tail -20; then
 fi
 
 echo "${YLW}→ dart format check...${RST}"
-UNFORMATTED=$(dart format --output=none --set-exit-if-changed $STAGED_DART 2>&1 | grep -v "^$" || true)
-if [ -n "$UNFORMATTED" ]; then
-  echo "${RED}✗ Fichiers non formatés :${RST}"
-  echo "$UNFORMATTED"
-  echo ""
-  echo "${YLW}→ Lance : dart format <fichier> et re-stage avant commit${RST}"
-  exit 1
+# `--set-exit-if-changed` retourne 1 si des changements seraient appliqués.
+# On capture seulement les fichiers nommément "Changed" (pas le résumé final
+# "Formatted N files (0 changed)" qui n'indique aucun changement).
+if ! dart format --output=none --set-exit-if-changed $STAGED_DART > /tmp/dart_fmt_out.txt 2>&1; then
+  CHANGED=$(grep '^Changed ' /tmp/dart_fmt_out.txt || true)
+  if [ -n "$CHANGED" ]; then
+    echo "${RED}✗ Fichiers non formatés :${RST}"
+    echo "$CHANGED"
+    echo ""
+    echo "${YLW}→ Lance : dart format <fichier> et re-stage avant commit${RST}"
+    exit 1
+  fi
 fi
 
 echo "${GRN}✓ Pre-commit OK${RST}"

@@ -1,7 +1,7 @@
 name: read_files_tech
 description: "Lecteur et outils pour TXT, CSV, HTML, CSS, DOCX, XLSX, ODT, ODS"
 publish_to: 'none'
-version: 2.7.0+2070
+version: 2.8.0+2080
 
 environment:
   sdk: ^3.11.5
