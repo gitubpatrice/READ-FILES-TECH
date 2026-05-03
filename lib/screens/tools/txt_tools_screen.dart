@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../services/output_storage_service.dart';
 import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -90,11 +90,17 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
         format: PdfStringFormat(lineSpacing: 4),
       );
 
-      final dir = await getApplicationDocumentsDirectory();
-      final ts = DateTime.now().millisecondsSinceEpoch;
+      // Sauvegarde dans Files Tech/Conversions/ pour cohérence avec les
+      // autres outils ; le résultat apparaîtra automatiquement dans les
+      // Récents (scan auto + auto-register OutputActionsRow).
       final base = (_name ?? 'document').replaceAll(RegExp(r'\.\w+$'), '');
-      final outPath = '${dir.path}/${base}_$ts.pdf';
-      await File(outPath).writeAsBytes(await doc.save());
+      final out = await OutputStorageService().reserveFile(
+        category: OutputCategory.conversions,
+        suggestedName: base,
+        extension: 'pdf',
+      );
+      await out.writeAsBytes(await doc.save());
+      final outPath = out.path;
       doc.dispose();
 
       if (!mounted) return;

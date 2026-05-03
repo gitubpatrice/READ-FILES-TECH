@@ -27,6 +27,10 @@ class _OutputActionsRowState extends State<OutputActionsRow> {
   /// les taps suivants sont ignorés (sinon → 2 viewers empilés).
   bool _opening = false;
 
+  /// Set partagé pour éviter d'enregistrer plusieurs fois le même path
+  /// (rotation, hot reload, parent qui rebuild → mêmes prefs sollicités).
+  static final Set<String> _alreadyRegistered = {};
+
   @override
   void initState() {
     super.initState();
@@ -37,9 +41,12 @@ class _OutputActionsRowState extends State<OutputActionsRow> {
   }
 
   Future<void> _registerAsRecent() async {
+    if (widget.path.isEmpty) return;
+    if (!_alreadyRegistered.add(widget.path)) return; // déjà fait
     try {
       const service = RecentFilesService();
       final current = await service.load();
+      if (!mounted) return;
       await service.addOrUpdate(current, widget.path);
     } catch (_) {
       // Silencieux : si l'enregistrement échoue (path invalide, prefs
@@ -66,14 +73,17 @@ class _OutputActionsRowState extends State<OutputActionsRow> {
         if (canView)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _opening ? null : _open,
-                icon: const Icon(Icons.visibility_outlined, size: 18),
-                label: const Text('Ouvrir'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Tooltip(
+              message: 'Ouvrir le fichier dans le viewer interne',
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _opening ? null : _open,
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text('Ouvrir'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
                 ),
               ),
             ),

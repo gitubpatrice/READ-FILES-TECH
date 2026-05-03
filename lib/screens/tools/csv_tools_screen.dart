@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
-import '../../widgets/file_viewer_router.dart';
-import '../../widgets/rft_picker_screen.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../services/output_storage_service.dart';
+import '../../widgets/file_viewer_router.dart';
+import '../../widgets/rft_picker_screen.dart';
 
 class CsvToolsScreen extends StatefulWidget {
   const CsvToolsScreen({super.key});
@@ -112,11 +112,14 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         y += rowH;
       }
 
-      final dir = await getApplicationDocumentsDirectory();
-      final ts = DateTime.now().millisecondsSinceEpoch;
       final base = (_name ?? 'data').replaceAll('.csv', '');
-      final outPath = '${dir.path}/${base}_$ts.pdf';
-      await File(outPath).writeAsBytes(await doc.save());
+      final out = await OutputStorageService().reserveFile(
+        category: OutputCategory.conversions,
+        suggestedName: base,
+        extension: 'pdf',
+      );
+      await out.writeAsBytes(await doc.save());
+      final outPath = out.path;
       doc.dispose();
 
       if (!mounted) return;
@@ -163,10 +166,13 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       }
 
       final csv = const ListToCsvConverter().convert(allRows);
-      final dir = await getApplicationDocumentsDirectory();
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final outPath = '${dir.path}/fusion_csv_$ts.csv';
-      await File(outPath).writeAsString(csv);
+      final out = await OutputStorageService().reserveFile(
+        category: OutputCategory.conversions,
+        suggestedName: 'fusion_csv',
+        extension: 'csv',
+      );
+      await out.writeAsString(csv);
+      final outPath = out.path;
 
       if (!mounted) return;
       setState(() => _isProcessing = false);

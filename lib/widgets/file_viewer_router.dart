@@ -147,6 +147,21 @@ class FileViewerRouter {
     return true;
   }
 
-  static String _ext(String path) =>
-      path.contains('.') ? path.split('.').last.toLowerCase() : '';
+  /// Extension fichier en minuscules. Gère correctement :
+  /// - `foo.txt`        → `txt`
+  /// - `archive.tar.gz` → `gz` (dernière extension)
+  /// - `.bashrc`        → `''`  (dotfile, pas d'extension)
+  /// - `Makefile`       → `''`
+  static String _ext(String path) {
+    final basename = path.split(_kSepRe).last;
+    // Dotfile (commence par '.') sans autre point → pas d'extension.
+    if (basename.startsWith('.') && basename.lastIndexOf('.') == 0) {
+      return '';
+    }
+    final dot = basename.lastIndexOf('.');
+    if (dot < 0) return '';
+    return basename.substring(dot + 1).toLowerCase();
+  }
+
+  static final _kSepRe = RegExp(r'[/\\]');
 }

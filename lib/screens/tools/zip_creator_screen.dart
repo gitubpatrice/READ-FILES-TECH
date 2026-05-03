@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/output_storage_service.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class ZipCreatorScreen extends StatefulWidget {
@@ -57,10 +57,15 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
       final encoded = ZipEncoder().encode(archive);
       if (encoded == null) throw Exception('Compression échouée');
 
-      final dir = await getApplicationDocumentsDirectory();
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final outPath = '${dir.path}/archive_$ts.zip';
-      await File(outPath).writeAsBytes(encoded);
+      // Sauvegarde dans Files Tech/Conversions/ — apparaîtra dans Récents
+      // via le scan auto-output de RftPickerScreen.
+      final out = await OutputStorageService().reserveFile(
+        category: OutputCategory.conversions,
+        suggestedName: 'archive',
+        extension: 'zip',
+      );
+      await out.writeAsBytes(encoded);
+      final outPath = out.path;
 
       if (!mounted) return;
       setState(() => _isProcessing = false);

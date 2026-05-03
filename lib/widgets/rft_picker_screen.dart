@@ -3,8 +3,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/explorer/file_explorer_screen.dart';
 import '../screens/editors/code_editor_screen.dart';
+import '../services/output_storage_service.dart';
 import 'file_viewer_router.dart';
 
 /// Picker custom pour Read Files Tech : remplace le Storage Access Framework
@@ -223,11 +225,16 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     );
     final fromPrefs = checks.whereType<RecentFile>().toList();
 
-    // 3. Auto-découverte : scanne les dossiers d'output produits par les
-    //    outils (Files Tech/Conversions/, OCR/, Scanner/, …) pour faire
-    //    apparaître AUSSI les fichiers produits avant que l'app ne tienne
-    //    un index Récents (ou si l'index a été vidé).
-    final fromOutput = await _scanOutputFolders();
+    // 3. Auto-découverte : scanne les dossiers d'output (Conversions, OCR,
+    //    Scans, Compressions, Signatures, Sans-EXIF) pour faire apparaître
+    //    AUSSI les fichiers produits avant l'auto-register OutputActionsRow,
+    //    ou si l'index Récents a été vidé. Les paths que l'utilisateur a
+    //    explicitement retirés (via menu ⋮ "Retirer") sont exclus du scan.
+    final dismissed = await _loadDismissed();
+    final fromOutput = await _scanOutputFolders(dismissed);
+    // On filtre AUSSI fromPrefs des paths dismissed, par cohérence : si on
+    // a retiré un fichier scanné, retire-le aussi des prefs s'il y traîne.
+    fromPrefs.removeWhere((f) => dismissed.contains(f.path));
     if (!mounted) return;
 
     // 4. Fusion : on prend tous les paths uniques, prefs prioritaires (gardent
@@ -253,22 +260,43 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     });
   }
 
-  /// Scanne les sous-dossiers de `Files Tech/` produits par nos outils
-  /// (Conversions, OCR, Scanner, Compressions, Signatures…) pour pré-peupler
-  /// les Récents. Ainsi, l'utilisateur retrouve toujours ses derniers fichiers
-  /// produits, même sans avoir interagi avec eux après leur création.
-  static const _outputFolders = [
-    '/storage/emulated/0/Files Tech/Conversions',
-    '/storage/emulated/0/Files Tech/OCR',
-    '/storage/emulated/0/Files Tech/Scanner',
-    '/storage/emulated/0/Files Tech/Compressions',
-    '/storage/emulated/0/Files Tech/Signatures',
-    '/storage/emulated/0/Files Tech/EXIF',
-  ];
+  /// Clé SharedPreferences : ensemble des paths que l'utilisateur a explicitement
+  /// retirés via le menu ⋮ "Retirer des récents". Sans cette persistance, le
+  /// scan output les réinjecterait au prochain ouverture du picker.
+  static const _kDismissedPaths = 'recents_dismissed_paths';
 
-  Future<List<RecentFile>> _scanOutputFolders() async {
+  Future<Set<String>> _loadDismissed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_kDismissedPaths) ?? const <String>[]).toSet();
+  }
+
+  Future<void> _addDismissed(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    final set = (prefs.getStringList(_kDismissedPaths) ?? const <String>[])
+        .toSet();
+    set.add(path);
+    await prefs.setStringList(_kDismissedPaths, set.toList());
+  }
+
+  /// RegExp séparateur path — static final pour éviter recompilation.
+  static final _kSepRe = RegExp(r'[/\\]');
+
+  /// Scanne tous les sous-dossiers d'output produits par nos outils.
+  /// Source de vérité : [OutputCategory] + base configurée via
+  /// [OutputStorageService.getBasePath]. Évite ainsi divergence noms
+  /// hardcodés (Scans vs Scanner, Sans-EXIF vs EXIF) et respecte
+  /// l'éventuel base path personnalisé.
+  ///
+  /// Filtre extensions appliqué dès la lecture du nom (évite les `stat()`
+  /// inutiles). stat() en parallèle via Future.wait pour SD lente.
+  Future<List<RecentFile>> _scanOutputFolders(Set<String> dismissed) async {
     final out = <RecentFile>[];
-    for (final folder in _outputFolders) {
+    final basePath = await OutputStorageService().getBasePath();
+    final filter = widget.extensions;
+    final hasFilter = filter != null && filter.isNotEmpty;
+
+    for (final cat in OutputCategory.values) {
+      final folder = '$basePath/${cat.folderName}';
       try {
         final dir = Directory(folder);
         if (!await dir.exists()) continue;
@@ -277,23 +305,32 @@ class _RftPickerScreenState extends State<RftPickerScreen>
             .where((e) => e is File)
             .cast<File>()
             .toList();
+        final futures = <Future<RecentFile?>>[];
         for (final f in entries) {
-          try {
-            final stat = await f.stat();
-            final name = f.path.split(RegExp(r'[/\\]')).last;
-            if (name.startsWith('.')) continue; // fichiers cachés
-            out.add(
-              RecentFile(
+          final name = f.path.split(_kSepRe).last;
+          if (name.startsWith('.')) continue; // fichiers cachés
+          if (dismissed.contains(f.path)) continue;
+          if (hasFilter) {
+            final dot = name.lastIndexOf('.');
+            final ext = dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
+            if (!filter.contains(ext)) continue;
+          }
+          futures.add(() async {
+            try {
+              final stat = await f.stat();
+              return RecentFile(
                 path: f.path,
                 name: name,
                 lastOpened: stat.modified,
                 sizeBytes: stat.size,
-              ),
-            );
-          } catch (_) {
-            /* fichier inaccessible — skip */
-          }
+              );
+            } catch (_) {
+              return null;
+            }
+          }());
         }
+        final results = await Future.wait(futures);
+        out.addAll(results.whereType<RecentFile>());
       } catch (_) {
         /* perm refusée sur le dossier — skip */
       }
@@ -498,7 +535,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     }
 
     final dir = Directory(path);
-    if (!dir.existsSync()) {
+    if (!await dir.exists()) {
       // Auto-création silencieuse pour Files Tech (notre dossier app).
       if (label == 'Files Tech') {
         try {
@@ -575,7 +612,8 @@ class _RftPickerScreenState extends State<RftPickerScreen>
               ),
               const SizedBox(height: 6),
               const Text(
-                'Ouvrez un fichier depuis l\'onglet Parcourir pour le voir ici.',
+                'Les fichiers ouverts ou produits par les outils '
+                '(Conversions, Scanner, OCR…) apparaîtront ici automatiquement.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -681,11 +719,32 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           MaterialPageRoute(builder: (_) => CodeEditorScreen(path: path)),
         );
       case 'share':
-        await Share.shareXFiles([XFile(path)]);
+        // Anti-symlink : on canonicalise pour éviter qu'un lien planté dans
+        // Files Tech/Conversions/ exfiltre un fichier hors zone via Share.
+        try {
+          final resolved = await File(path).resolveSymbolicLinks();
+          if (!mounted) return;
+          await Share.shareXFiles([XFile(resolved)]);
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Fichier introuvable')));
+        }
       case 'remove':
+        // Double action : retire des prefs ET ajoute aux paths "dismissed"
+        // pour empêcher la ré-injection par le scan output au prochain load.
         await _recentService.remove(_recents, path);
+        await _addDismissed(path);
         if (!mounted) return;
         await _load();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Retiré des récents'),
+            duration: Duration(seconds: 2),
+          ),
+        );
     }
   }
 
