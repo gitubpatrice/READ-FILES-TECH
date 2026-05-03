@@ -18,7 +18,9 @@ class SecureWindow {
     try {
       await _channel.invokeMethod('setSecure', {'enabled': true});
       _enabled = true;
-    } catch (_) {/* silent — non bloquant */}
+    } catch (_) {
+      /* silent — non bloquant */
+    }
   }
 
   static Future<void> disable() async {
@@ -26,6 +28,8 @@ class SecureWindow {
     try {
       await _channel.invokeMethod('setSecure', {'enabled': false});
       _enabled = false;
-    } catch (_) {/* silent */}
+    } catch (_) {
+      /* silent */
+    }
   }
 }

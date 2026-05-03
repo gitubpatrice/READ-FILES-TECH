@@ -14,9 +14,15 @@ class FormatScreen extends StatefulWidget {
 }
 
 class _FormatScreenState extends State<FormatScreen> {
-  final _inputCtrl  = TextEditingController();
+  final _inputCtrl = TextEditingController();
   final _outputCtrl = TextEditingController();
+
+  /// Catégorie du fichier : 'json', 'css' ou 'js'.
   String _mode = 'json';
+
+  /// Action choisie pour la catégorie courante. Pour json :
+  /// 'format' ou 'minify'. Pour css/js : 'minify' uniquement.
+  String _action = 'format';
   bool _isProcessing = false;
 
   @override
@@ -28,9 +34,11 @@ class _FormatScreenState extends State<FormatScreen> {
 
   Future<void> _pickFile() async {
     final exts = _mode == 'json' ? const {'json'} : const {'css', 'js'};
-    final path = await RftPickerScreen.pickOne(context,
-        title: 'Choisir un fichier',
-        extensions: exts);
+    final path = await RftPickerScreen.pickOne(
+      context,
+      title: 'Choisir un fichier',
+      extensions: exts,
+    );
     if (path == null) return;
     final content = await File(path).readAsString();
     _inputCtrl.text = content;
@@ -39,11 +47,14 @@ class _FormatScreenState extends State<FormatScreen> {
 
   void _process() {
     final input = _inputCtrl.text.trim();
-    if (input.isEmpty) { _outputCtrl.text = ''; return; }
+    if (input.isEmpty) {
+      _outputCtrl.text = '';
+      return;
+    }
     setState(() => _isProcessing = true);
     try {
       String result;
-      switch (_mode) {
+      switch ('${_mode}_$_action') {
         case 'json_format':
           final decoded = json.decode(input);
           result = const JsonEncoder.withIndent('  ').convert(decoded);
@@ -92,7 +103,7 @@ class _FormatScreenState extends State<FormatScreen> {
   Future<void> _saveAndShare() async {
     if (_outputCtrl.text.isEmpty) return;
     final dir = await getTemporaryDirectory();
-    final ext = _mode.startsWith('json') ? 'json' : _mode.startsWith('css') ? 'css' : 'js';
+    final ext = _mode;
     final ts = DateTime.now().millisecondsSinceEpoch;
     final path = '${dir.path}/result_$ts.$ext';
     await File(path).writeAsString(_outputCtrl.text);
@@ -111,54 +122,81 @@ class _FormatScreenState extends State<FormatScreen> {
             // Mode
             SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'json', label: Text('JSON'),   icon: Icon(Icons.data_object, size: 16)),
-                ButtonSegment(value: 'css',  label: Text('CSS'),    icon: Icon(Icons.css_outlined, size: 16)),
-                ButtonSegment(value: 'js',   label: Text('JS'),     icon: Icon(Icons.javascript_outlined, size: 16)),
+                ButtonSegment(
+                  value: 'json',
+                  label: Text('JSON'),
+                  icon: Icon(Icons.data_object, size: 16),
+                ),
+                ButtonSegment(
+                  value: 'css',
+                  label: Text('CSS'),
+                  icon: Icon(Icons.css_outlined, size: 16),
+                ),
+                ButtonSegment(
+                  value: 'js',
+                  label: Text('JS'),
+                  icon: Icon(Icons.javascript_outlined, size: 16),
+                ),
               ],
               selected: {_mode},
-              onSelectionChanged: (v) => setState(() { _mode = v.first; _outputCtrl.text = ''; }),
+              onSelectionChanged: (v) => setState(() {
+                _mode = v.first;
+                // CSS/JS n'ont qu'une action ; JSON garde format par défaut.
+                _action = _mode == 'json' ? 'format' : 'minify';
+                _outputCtrl.text = '';
+              }),
             ),
             const SizedBox(height: 12),
 
             // Actions selon mode
             if (_mode == 'json')
-              Row(children: [
-                ChoiceChip(
-                  label: const Text('Formater'),
-                  selected: _mode == 'json_format' || _mode == 'json',
-                  onSelected: (_) => setState(() { _mode = 'json_format'; _process(); }),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Minifier'),
-                  selected: _mode == 'json_minify',
-                  onSelected: (_) => setState(() { _mode = 'json_minify'; _process(); }),
-                ),
-              ]),
+              Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Formater'),
+                    selected: _action == 'format',
+                    onSelected: (_) => setState(() {
+                      _action = 'format';
+                      _process();
+                    }),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('Minifier'),
+                    selected: _action == 'minify',
+                    onSelected: (_) => setState(() {
+                      _action = 'minify';
+                      _process();
+                    }),
+                  ),
+                ],
+              ),
             if (_mode == 'css')
               ChoiceChip(
                 label: const Text('Minifier CSS'),
                 selected: true,
-                onSelected: (_) { _mode = 'css_minify'; _process(); },
+                onSelected: (_) => _process(),
               ),
             if (_mode == 'js')
               ChoiceChip(
                 label: const Text('Minifier JS'),
                 selected: true,
-                onSelected: (_) { _mode = 'js_minify'; _process(); },
+                onSelected: (_) => _process(),
               ),
             const SizedBox(height: 12),
 
             // Input
-            Row(children: [
-              Text('Entrée', style: Theme.of(context).textTheme.titleSmall),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _pickFile,
-                icon: const Icon(Icons.folder_open, size: 16),
-                label: const Text('Ouvrir fichier'),
-              ),
-            ]),
+            Row(
+              children: [
+                Text('Entrée', style: Theme.of(context).textTheme.titleSmall),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _pickFile,
+                  icon: const Icon(Icons.folder_open, size: 16),
+                  label: const Text('Ouvrir fichier'),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _inputCtrl,
@@ -180,14 +218,25 @@ class _FormatScreenState extends State<FormatScreen> {
             const SizedBox(height: 16),
 
             // Output
-            Row(children: [
-              Text('Résultat', style: Theme.of(context).textTheme.titleSmall),
-              const Spacer(),
-              if (_outputCtrl.text.isNotEmpty && !_outputCtrl.text.startsWith('Erreur')) ...[
-                IconButton(onPressed: _copy, icon: const Icon(Icons.copy, size: 18), tooltip: 'Copier'),
-                IconButton(onPressed: _saveAndShare, icon: const Icon(Icons.share, size: 18), tooltip: 'Partager'),
+            Row(
+              children: [
+                Text('Résultat', style: Theme.of(context).textTheme.titleSmall),
+                const Spacer(),
+                if (_outputCtrl.text.isNotEmpty &&
+                    !_outputCtrl.text.startsWith('Erreur')) ...[
+                  IconButton(
+                    onPressed: _copy,
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: 'Copier',
+                  ),
+                  IconButton(
+                    onPressed: _saveAndShare,
+                    icon: const Icon(Icons.share, size: 18),
+                    tooltip: 'Partager',
+                  ),
+                ],
               ],
-            ]),
+            ),
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
@@ -203,7 +252,9 @@ class _FormatScreenState extends State<FormatScreen> {
                 style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 12,
-                  color: _outputCtrl.text.startsWith('Erreur') ? Colors.red : null,
+                  color: _outputCtrl.text.startsWith('Erreur')
+                      ? Colors.red
+                      : null,
                 ),
               ),
             ),

@@ -35,7 +35,10 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
   Future<Uint8List?> _exportPng(Size size) async {
     if (_strokes.isEmpty || _strokes.every((s) => s.length < 2)) return null;
     final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, size.width, size.height));
+    final canvas = Canvas(
+      recorder,
+      Rect.fromLTWH(0, 0, size.width, size.height),
+    );
     // Pas de drawColor → fond transparent
     final paint = Paint()
       ..color = _color
@@ -53,7 +56,10 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
       canvas.drawPath(path, paint);
     }
     final picture = recorder.endRecording();
-    final image = await picture.toImage(size.width.toInt(), size.height.toInt());
+    final image = await picture.toImage(
+      size.width.toInt(),
+      size.height.toInt(),
+    );
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose();
     return bytes?.buffer.asUint8List();
@@ -67,7 +73,9 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
     if (!mounted) return;
     if (png == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tracez votre signature avant de valider')),
+        const SnackBar(
+          content: Text('Tracez votre signature avant de valider'),
+        ),
       );
       return;
     }
@@ -112,45 +120,60 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(children: [
-              const Icon(Icons.brush_outlined, size: 16),
-              const SizedBox(width: 8),
-              const Text('Épaisseur', style: TextStyle(fontSize: 12)),
-              Expanded(
-                child: Slider(
-                  value: _strokeWidth, min: 1, max: 8, divisions: 14,
-                  label: _strokeWidth.toStringAsFixed(1),
-                  onChanged: (v) => setState(() => _strokeWidth = v),
+            child: Row(
+              children: [
+                const Icon(Icons.brush_outlined, size: 16),
+                const SizedBox(width: 8),
+                const Text('Épaisseur', style: TextStyle(fontSize: 12)),
+                Expanded(
+                  child: Slider(
+                    value: _strokeWidth,
+                    min: 1,
+                    max: 8,
+                    divisions: 14,
+                    label: _strokeWidth.toStringAsFixed(1),
+                    onChanged: (v) => setState(() => _strokeWidth = v),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(children: [
-              const Icon(Icons.palette_outlined, size: 16),
-              const SizedBox(width: 8),
-              const Text('Couleur', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 12),
-              for (final c in const [Colors.black, Color(0xFF1A237E), Color(0xFF1B5E20), Color(0xFFB71C1C)])
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _color = c),
-                    child: Container(
-                      width: 28, height: 28,
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: c.toARGB32() == _color.toARGB32() ? Colors.amber : Colors.grey.shade400,
-                          width: c.toARGB32() == _color.toARGB32() ? 3 : 1,
+            child: Row(
+              children: [
+                const Icon(Icons.palette_outlined, size: 16),
+                const SizedBox(width: 8),
+                const Text('Couleur', style: TextStyle(fontSize: 12)),
+                const SizedBox(width: 12),
+                for (final c in const [
+                  Colors.black,
+                  Color(0xFF1A237E),
+                  Color(0xFF1B5E20),
+                  Color(0xFFB71C1C),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _color = c),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: c.toARGB32() == _color.toARGB32()
+                                ? Colors.amber
+                                : Colors.grey.shade400,
+                            width: c.toARGB32() == _color.toARGB32() ? 3 : 1,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ]),
+              ],
+            ),
           ),
           const Spacer(),
           SafeArea(
@@ -196,5 +219,7 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SignaturePainter old) =>
-      old.strokes != strokes || old.color != color || old.strokeWidth != strokeWidth;
+      old.strokes != strokes ||
+      old.color != color ||
+      old.strokeWidth != strokeWidth;
 }

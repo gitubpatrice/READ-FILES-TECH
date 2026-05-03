@@ -31,9 +31,15 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
     try {
       _raw = await File(widget.path).readAsString();
       final data = json.decode(_raw);
-      setState(() { _data = data; _isLoading = false; });
+      setState(() {
+        _data = data;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); _isLoading = false; });
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -46,7 +52,9 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
           if (_error == null)
             IconButton(
               tooltip: _treeMode ? 'Texte brut' : 'Arbre',
-              icon: Icon(_treeMode ? Icons.data_object : Icons.account_tree_outlined),
+              icon: Icon(
+                _treeMode ? Icons.data_object : Icons.account_tree_outlined,
+              ),
               onPressed: () => setState(() => _treeMode = !_treeMode),
             ),
           IconButton(
@@ -58,36 +66,44 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                        const SizedBox(height: 12),
-                        Text('JSON invalide',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 8),
-                        Text(_error!,
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
-                            textAlign: TextAlign.center),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
                     ),
-                  ),
-                )
-              : _treeMode
-                  ? SingleChildScrollView(
-                      padding: const EdgeInsets.all(12),
-                      child: _JsonNode(data: _data, initiallyExpanded: true),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: SelectableText(
-                        const JsonEncoder.withIndent('  ').convert(_data),
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                      ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'JSON invalide',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : _treeMode
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: _JsonNode(data: _data, initiallyExpanded: true),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: SelectableText(
+                const JsonEncoder.withIndent('  ').convert(_data),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+            ),
     );
   }
 }
@@ -97,7 +113,11 @@ class _JsonNode extends StatefulWidget {
   final String? label;
   final bool initiallyExpanded;
 
-  const _JsonNode({required this.data, this.label, this.initiallyExpanded = false});
+  const _JsonNode({
+    required this.data,
+    this.label,
+    this.initiallyExpanded = false,
+  });
 
   @override
   State<_JsonNode> createState() => _JsonNodeState();
@@ -128,15 +148,15 @@ class _JsonNodeState extends State<_JsonNode> {
 
   Color _valueColor(BuildContext context) {
     if (widget.data is String) return Colors.green;
-    if (widget.data is num)    return Colors.orange;
-    if (widget.data is bool)   return Colors.blue;
-    if (widget.data == null)   return Colors.grey;
+    if (widget.data is num) return Colors.orange;
+    if (widget.data is bool) return Colors.blue;
+    if (widget.data == null) return Colors.grey;
     return Theme.of(context).colorScheme.primary;
   }
 
   String _valueText() {
     if (widget.data is String) return '"${widget.data}"';
-    if (widget.data == null)   return 'null';
+    if (widget.data == null) return 'null';
     return widget.data.toString();
   }
 
@@ -149,7 +169,10 @@ class _JsonNodeState extends State<_JsonNode> {
           onLongPress: () {
             Clipboard.setData(ClipboardData(text: _valueText()));
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Copié'), duration: Duration(seconds: 1)),
+              const SnackBar(
+                content: Text('Copié'),
+                duration: Duration(seconds: 1),
+              ),
             );
           },
           child: Row(
@@ -157,15 +180,23 @@ class _JsonNodeState extends State<_JsonNode> {
             children: [
               const SizedBox(width: 16),
               if (widget.label != null)
-                Text('"${widget.label}": ',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontFamily: 'monospace', fontSize: 13)),
+                Text(
+                  '"${widget.label}": ',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                  ),
+                ),
               Flexible(
-                child: Text(_valueText(),
-                    style: TextStyle(
-                        color: _valueColor(context),
-                        fontFamily: 'monospace', fontSize: 13)),
+                child: Text(
+                  _valueText(),
+                  style: TextStyle(
+                    color: _valueColor(context),
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                  ),
+                ),
               ),
             ],
           ),
@@ -176,18 +207,22 @@ class _JsonNodeState extends State<_JsonNode> {
     final children = <Widget>[];
     if (widget.data is Map) {
       for (final entry in (widget.data as Map).entries) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: _JsonNode(data: entry.value, label: entry.key.toString()),
-        ));
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: _JsonNode(data: entry.value, label: entry.key.toString()),
+          ),
+        );
       }
     } else {
       final l = widget.data as List;
       for (int i = 0; i < l.length; i++) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: _JsonNode(data: l[i], label: i.toString()),
-        ));
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: _JsonNode(data: l[i], label: i.toString()),
+          ),
+        );
       }
     }
 
@@ -200,16 +235,28 @@ class _JsonNodeState extends State<_JsonNode> {
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(
               children: [
-                Icon(_expanded ? Icons.expand_more : Icons.chevron_right,
-                    size: 16, color: Colors.grey),
+                Icon(
+                  _expanded ? Icons.expand_more : Icons.chevron_right,
+                  size: 16,
+                  color: Colors.grey,
+                ),
                 if (widget.label != null)
-                  Text('"${widget.label}": ',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontFamily: 'monospace', fontSize: 13)),
-                Text(_preview,
-                    style: const TextStyle(
-                        color: Colors.grey, fontFamily: 'monospace', fontSize: 13)),
+                  Text(
+                    '"${widget.label}": ',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
+                  ),
+                Text(
+                  _preview,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),

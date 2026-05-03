@@ -25,8 +25,10 @@ class PdfSignatureService {
     }
     // Clamp dans [0, 1] : évite que Syncfusion reçoive des coords négatives
     // ou hors page si le caller a un bug dans son code de drag/resize.
-    if (rectNorm.left < 0 || rectNorm.top < 0 ||
-        rectNorm.right > 1 + 1e-6 || rectNorm.bottom > 1 + 1e-6) {
+    if (rectNorm.left < 0 ||
+        rectNorm.top < 0 ||
+        rectNorm.right > 1 + 1e-6 ||
+        rectNorm.bottom > 1 + 1e-6) {
       throw ArgumentError('Zone de signature hors page (doit être dans [0,1])');
     }
     final bytes = await File(sourcePath).readAsBytes();
@@ -38,15 +40,17 @@ class PdfSignatureService {
       final page = doc.pages[pageIndex];
       final pageSize = page.getClientSize();
       // Conversion normalisé → points PDF
-      final dx = rectNorm.left   * pageSize.width;
-      final dy = rectNorm.top    * pageSize.height;
-      final dw = rectNorm.width  * pageSize.width;
+      final dx = rectNorm.left * pageSize.width;
+      final dy = rectNorm.top * pageSize.height;
+      final dw = rectNorm.width * pageSize.width;
       final dh = rectNorm.height * pageSize.height;
       final bitmap = PdfBitmap(signaturePng);
       page.graphics.drawImage(bitmap, Rect.fromLTWH(dx, dy, dw, dh));
 
       final tmp = await getTemporaryDirectory();
-      final base = sourcePath.split(RegExp(r'[/\\]')).last
+      final base = sourcePath
+          .split(RegExp(r'[/\\]'))
+          .last
           .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
       final out = File('${tmp.path}/${base}_signe.pdf');
       await out.writeAsBytes(await doc.save());
@@ -56,4 +60,3 @@ class PdfSignatureService {
     }
   }
 }
-

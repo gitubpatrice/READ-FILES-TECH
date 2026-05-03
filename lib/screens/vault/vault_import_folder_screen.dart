@@ -70,7 +70,9 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
         return;
       }
       await for (final ent in dir.list(
-          recursive: _recursive, followLinks: false)) {
+        recursive: _recursive,
+        followLinks: false,
+      )) {
         if (ent is! File) continue;
         // Filtrage chemins système.
         final path = ent.path.replaceAll('\\', '/');
@@ -90,7 +92,9 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
         }
       }
       _entries.sort((a, b) => a.file.path.compareTo(b.file.path));
-    } catch (_) {/* ignore */}
+    } catch (_) {
+      /* ignore */
+    }
     if (mounted) setState(() => _scanning = false);
   }
 
@@ -116,8 +120,11 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded,
-              color: Colors.orange, size: 36),
+          icon: const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 36,
+          ),
           title: const Text('Supprimer les originaux ?'),
           content: Text(
             'Après chiffrement, ${selected.length} fichier'
@@ -129,8 +136,9 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Annuler')),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(context, true),
@@ -157,7 +165,9 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
           try {
             await e.file.delete();
             deleted++;
-          } catch (_) {/* on ne stoppe pas le flow pour ça */}
+          } catch (_) {
+            /* on ne stoppe pas le flow pour ça */
+          }
         }
       } on FileSystemException {
         // Homonyme déjà dans le coffre — on saute (ne pas écraser sans demander).
@@ -190,8 +200,7 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(folderName,
-            maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(folderName, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           if (!_scanning && !_running)
             IconButton(
@@ -209,159 +218,181 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
       ),
       body: _scanning
           ? const Center(child: CircularProgressIndicator())
-          : Column(children: [
-              // Options
-              Card(
-                margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                child: Column(children: [
-                  SwitchListTile(
-                    title: const Text('Inclure sous-dossiers'),
-                    value: _recursive,
-                    onChanged: _running
-                        ? null
-                        : (v) {
-                            setState(() => _recursive = v);
-                            _scan();
-                          },
-                    secondary: const Icon(Icons.folder_copy_outlined),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    title: const Text('Supprimer les originaux après'),
-                    subtitle: const Text(
-                        'Confirmation requise avant exécution',
-                        style: TextStyle(fontSize: 11)),
-                    value: _deleteOriginals,
-                    onChanged: _running
-                        ? null
-                        : (v) => setState(() => _deleteOriginals = v),
-                    secondary: Icon(
-                      Icons.delete_sweep_outlined,
-                      color: _deleteOriginals ? Colors.orange : null,
-                    ),
-                  ),
-                ]),
-              ),
-
-              if (_capReached)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: Colors.orange.withValues(alpha: 0.4)),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.orange, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Limite de $_maxEntries fichiers atteinte. '
-                        'Choisissez un sous-dossier plus précis pour tout voir.',
-                        style: const TextStyle(fontSize: 11),
+          : Column(
+              children: [
+                // Options
+                Card(
+                  margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Inclure sous-dossiers'),
+                        value: _recursive,
+                        onChanged: _running
+                            ? null
+                            : (v) {
+                                setState(() => _recursive = v);
+                                _scan();
+                              },
+                        secondary: const Icon(Icons.folder_copy_outlined),
                       ),
-                    ),
-                  ]),
+                      const Divider(height: 1),
+                      SwitchListTile(
+                        title: const Text('Supprimer les originaux après'),
+                        subtitle: const Text(
+                          'Confirmation requise avant exécution',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                        value: _deleteOriginals,
+                        onChanged: _running
+                            ? null
+                            : (v) => setState(() => _deleteOriginals = v),
+                        secondary: Icon(
+                          Icons.delete_sweep_outlined,
+                          color: _deleteOriginals ? Colors.orange : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
-              // Liste
-              Expanded(
-                child: _entries.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.folder_off_outlined,
-                                  size: 56, color: Colors.grey.shade400),
-                              const SizedBox(height: 12),
-                              const Text('Aucun fichier'),
-                              const SizedBox(height: 4),
-                              Text(
-                                _recursive
-                                    ? 'Le dossier (et ses sous-dossiers) est vide.'
-                                    : 'Le dossier est vide. Activez « Inclure sous-dossiers » ?',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                            ],
+                if (_capReached)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orange,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Limite de $_maxEntries fichiers atteinte. '
+                            'Choisissez un sous-dossier plus précis pour tout voir.',
+                            style: const TextStyle(fontSize: 11),
                           ),
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: _entries.length,
-                        itemBuilder: (_, i) {
-                          final e = _entries[i];
-                          final relative = _relative(e.file.path);
-                          return CheckboxListTile(
-                            dense: true,
-                            value: e.selected,
-                            onChanged: _running
-                                ? null
-                                : (v) => setState(
-                                    () => e.selected = v ?? false),
-                            title: Text(relative,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 13)),
-                            subtitle: Text(FormatUtils.bytes(e.size),
-                                style: const TextStyle(fontSize: 11)),
-                            secondary: Icon(_iconFor(e.file.path),
-                                color: cs.primary),
-                          );
-                        },
-                      ),
-              ),
-
-              // Footer : progress + bouton
-              SafeArea(
-                top: false,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    border: Border(
-                      top: BorderSide(color: cs.outlineVariant),
+                      ],
                     ),
                   ),
-                  child: Column(children: [
-                    if (_running) ...[
-                      LinearProgressIndicator(value: _progress),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Chiffrement en cours… '
-                        '${(_progress * 100).round()}%',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: (_running || _selectedCount == 0)
-                            ? null
-                            : _run,
-                        icon: const Icon(Icons.lock_outline),
-                        label: Text(
-                          _selectedCount == 0
-                              ? 'Aucun fichier sélectionné'
-                              : 'Chiffrer $_selectedCount fichier'
-                                  '${_selectedCount > 1 ? "s" : ""} '
-                                  '(${FormatUtils.bytes(_selectedBytes)}) '
-                                  '→ coffre',
+
+                // Liste
+                Expanded(
+                  child: _entries.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.folder_off_outlined,
+                                  size: 56,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text('Aucun fichier'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _recursive
+                                      ? 'Le dossier (et ses sous-dossiers) est vide.'
+                                      : 'Le dossier est vide. Activez « Inclure sous-dossiers » ?',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _entries.length,
+                          itemBuilder: (_, i) {
+                            final e = _entries[i];
+                            final relative = _relative(e.file.path);
+                            return CheckboxListTile(
+                              dense: true,
+                              value: e.selected,
+                              onChanged: _running
+                                  ? null
+                                  : (v) =>
+                                        setState(() => e.selected = v ?? false),
+                              title: Text(
+                                relative,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              subtitle: Text(
+                                FormatUtils.bytes(e.size),
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                              secondary: Icon(
+                                _iconFor(e.file.path),
+                                color: cs.primary,
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ),
-                  ]),
                 ),
-              ),
-            ]),
+
+                // Footer : progress + bouton
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                      border: Border(top: BorderSide(color: cs.outlineVariant)),
+                    ),
+                    child: Column(
+                      children: [
+                        if (_running) ...[
+                          LinearProgressIndicator(value: _progress),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Chiffrement en cours… '
+                            '${(_progress * 100).round()}%',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: (_running || _selectedCount == 0)
+                                ? null
+                                : _run,
+                            icon: const Icon(Icons.lock_outline),
+                            label: Text(
+                              _selectedCount == 0
+                                  ? 'Aucun fichier sélectionné'
+                                  : 'Chiffrer $_selectedCount fichier'
+                                        '${_selectedCount > 1 ? "s" : ""} '
+                                        '(${FormatUtils.bytes(_selectedBytes)}) '
+                                        '→ coffre',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 

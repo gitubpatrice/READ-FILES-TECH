@@ -1,8 +1,55 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/rft_picker_screen.dart';
+
+/// Capture le seul digest émis par une `Hash.startChunkedConversion`.
+class _DigestSink implements Sink<Digest> {
+  Digest? value;
+  @override
+  void add(Digest data) {
+    value = data;
+  }
+
+  @override
+  void close() {}
+}
+
+/// Calcule MD5/SHA-1/SHA-256/SHA-512 d'un fichier en streamant par chunks
+/// (alimente les 4 sinks en parallèle, pas de copie complète en RAM).
+/// Tourne dans un Isolate via [Isolate.run] — UI thread reste fluide même
+/// sur 50+ Mo. Retourne une map {algo: hex}.
+Future<Map<String, String>> _hashFileAllAlgos(String path) async {
+  return Isolate.run(() async {
+    final file = File(path);
+    final md5Sink = _DigestSink();
+    final md5Conv = md5.startChunkedConversion(md5Sink);
+    final sha1Sink = _DigestSink();
+    final sha1Conv = sha1.startChunkedConversion(sha1Sink);
+    final sha256Sink = _DigestSink();
+    final sha256Conv = sha256.startChunkedConversion(sha256Sink);
+    final sha512Sink = _DigestSink();
+    final sha512Conv = sha512.startChunkedConversion(sha512Sink);
+    await for (final chunk in file.openRead()) {
+      md5Conv.add(chunk);
+      sha1Conv.add(chunk);
+      sha256Conv.add(chunk);
+      sha512Conv.add(chunk);
+    }
+    md5Conv.close();
+    sha1Conv.close();
+    sha256Conv.close();
+    sha512Conv.close();
+    return {
+      'MD5': md5Sink.value!.toString(),
+      'SHA-1': sha1Sink.value!.toString(),
+      'SHA-256': sha256Sink.value!.toString(),
+      'SHA-512': sha512Sink.value!.toString(),
+    };
+  });
+}
 
 class HashScreen extends StatefulWidget {
   const HashScreen({super.key});
@@ -18,8 +65,10 @@ class _HashScreenState extends State<HashScreen> {
   int _fileSize = 0;
 
   Future<void> _pickFile() async {
-    final path = await RftPickerScreen.pickOne(context,
-        title: 'Calculer le hash');
+    final path = await RftPickerScreen.pickOne(
+      context,
+      title: 'Calculer le hash',
+    );
     if (path == null) return;
     final name = path.split(RegExp(r'[/\\]')).last;
     setState(() {
@@ -32,24 +81,31 @@ class _HashScreenState extends State<HashScreen> {
   }
 
   Future<void> _compute(String path) async {
-    final bytes = await File(path).readAsBytes();
-    setState(() {
-      _fileSize = bytes.length;
-      _hashes = {
-        'MD5':     md5.convert(bytes).toString(),
-        'SHA-1':   sha1.convert(bytes).toString(),
-        'SHA-256': sha256.convert(bytes).toString(),
-        'SHA-512': sha512.convert(bytes).toString(),
-      };
-      _isComputing = false;
-    });
+    try {
+      final size = await File(path).length();
+      final hashes = await _hashFileAllAlgos(path);
+      if (!mounted) return;
+      setState(() {
+        _fileSize = size;
+        _hashes = hashes;
+        _isComputing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isComputing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors du calcul du hash')),
+      );
+    }
   }
 
   void _copy(String value) {
     Clipboard.setData(ClipboardData(text: value));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Copié : $value'),
-          duration: const Duration(seconds: 2)),
+      SnackBar(
+        content: Text('Copié : $value'),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -74,14 +130,26 @@ class _HashScreenState extends State<HashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fingerprint, size: 88,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)),
+            Icon(
+              Icons.fingerprint,
+              size: 88,
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.35),
+            ),
             const SizedBox(height: 24),
-            Text('Hash de fichier', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Hash de fichier',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            Text("Calculez MD5, SHA-1, SHA-256, SHA-512 de n'importe quel fichier",
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                textAlign: TextAlign.center),
+            Text(
+              "Calculez MD5, SHA-1, SHA-256, SHA-512 de n'importe quel fichier",
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: _pickFile,
@@ -100,29 +168,40 @@ class _HashScreenState extends State<HashScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Icon(Icons.insert_drive_file_outlined, color: Colors.blue),
-            const SizedBox(width: 8),
-            Expanded(child: Text(_name!, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w500))),
-            TextButton(onPressed: _pickFile, child: const Text('Changer')),
-          ]),
+          Row(
+            children: [
+              const Icon(Icons.insert_drive_file_outlined, color: Colors.blue),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _name!,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+              TextButton(onPressed: _pickFile, child: const Text('Changer')),
+            ],
+          ),
           if (_fileSize > 0)
             Padding(
               padding: const EdgeInsets.only(left: 32, bottom: 4),
-              child: Text(_formatSize(_fileSize),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              child: Text(
+                _formatSize(_fileSize),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
             ),
           const Divider(height: 24),
           if (_isComputing)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
-                child: Column(children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Calcul en cours…'),
-                ]),
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Calcul en cours…'),
+                  ],
+                ),
               ),
             )
           else ...[
@@ -147,29 +226,37 @@ class _HashScreenState extends State<HashScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(algo,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  algo,
                   style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary)),
-            ),
-            const Spacer(),
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(Icons.copy, size: 18),
-              onPressed: () => _copy(hash),
-            ),
-          ]),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.copy, size: 18),
+                onPressed: () => _copy(hash),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
-          SelectableText(hash,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+          SelectableText(
+            hash,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
         ],
       ),
     );

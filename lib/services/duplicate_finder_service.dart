@@ -15,7 +15,11 @@ class FileEntry {
   final String path;
   final int size;
   final DateTime modified;
-  const FileEntry({required this.path, required this.size, required this.modified});
+  const FileEntry({
+    required this.path,
+    required this.size,
+    required this.modified,
+  });
 }
 
 class FinderResult {
@@ -64,11 +68,15 @@ class DuplicateFinderService {
         // Garde-fou : tout autre type signale un bug logique côté isolate.
         // Ne pas laisser le Completer pendre indéfiniment.
         completer.completeError(
-            StateError('Message Isolate inattendu : ${msg.runtimeType}'));
+          StateError('Message Isolate inattendu : ${msg.runtimeType}'),
+        );
         cancel();
       }
     });
-    _iso = await Isolate.spawn(_entry, _Args(_recv!.sendPort, root, topN, minSize));
+    _iso = await Isolate.spawn(
+      _entry,
+      _Args(_recv!.sendPort, root, topN, minSize),
+    );
     return completer.future;
   }
 
@@ -106,7 +114,11 @@ class DuplicateFinderService {
           continue;
         }
         if (stat.size < a.minSize) continue;
-        final entry = FileEntry(path: e.path, size: stat.size, modified: stat.modified);
+        final entry = FileEntry(
+          path: e.path,
+          size: stat.size,
+          modified: stat.modified,
+        );
         allFiles.add(entry);
         bySize.putIfAbsent(stat.size, () => []).add(entry);
       }

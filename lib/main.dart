@@ -61,11 +61,13 @@ Future<void> _requestStoragePermissions(BuildContext? context) async {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Plus tard')),
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Plus tard'),
+        ),
         FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ouvrir les Réglages')),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Ouvrir les Réglages'),
+        ),
       ],
     ),
   );
@@ -77,13 +79,13 @@ Future<void> _requestStoragePermissions(BuildContext? context) async {
 }
 
 ThemeData _githubDarkTheme() {
-  const bg       = Color(0xFF0D1117);
-  const surface  = Color(0xFF161B22);
+  const bg = Color(0xFF0D1117);
+  const surface = Color(0xFF161B22);
   const surface2 = Color(0xFF21262D);
-  const border   = Color(0xFF30363D);
-  const textPri  = Color(0xFFE6EDF3);
-  const textSec  = Color(0xFF8B949E);
-  const blue     = Color(0xFF58A6FF);
+  const border = Color(0xFF30363D);
+  const textPri = Color(0xFFE6EDF3);
+  const textSec = Color(0xFF8B949E);
+  const blue = Color(0xFF58A6FF);
   const blueCont = Color(0xFF1F6FEB);
 
   return ThemeData(
@@ -91,39 +93,49 @@ ThemeData _githubDarkTheme() {
     brightness: Brightness.dark,
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.dark(
-      primary: blue, onPrimary: Colors.white,
-      primaryContainer: blueCont, onPrimaryContainer: Colors.white,
-      secondary: blue, onSecondary: Colors.white,
-      surface: surface, onSurface: textPri,
+      primary: blue,
+      onPrimary: Colors.white,
+      primaryContainer: blueCont,
+      onPrimaryContainer: Colors.white,
+      secondary: blue,
+      onSecondary: Colors.white,
+      surface: surface,
+      onSurface: textPri,
       surfaceContainerHighest: surface2,
-      outline: border, error: Color(0xFFF85149),
+      outline: border,
+      error: Color(0xFFF85149),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: surface, foregroundColor: textPri,
-      surfaceTintColor: Colors.transparent, elevation: 0,
+      backgroundColor: surface,
+      foregroundColor: textPri,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
     ),
     cardTheme: CardThemeData(
-      color: surface, elevation: 0,
+      color: surface,
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: border),
       ),
     ),
     navigationBarTheme: const NavigationBarThemeData(
-      backgroundColor: surface, indicatorColor: blueCont,
+      backgroundColor: surface,
+      indicatorColor: blueCont,
     ),
     dividerTheme: const DividerThemeData(color: border, space: 1),
     inputDecorationTheme: const InputDecorationTheme(
-      filled: true, fillColor: surface2,
+      filled: true,
+      fillColor: surface2,
       border: OutlineInputBorder(borderSide: BorderSide(color: border)),
       enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: border)),
     ),
     textTheme: const TextTheme(
-      bodyMedium:  TextStyle(color: textPri),
-      bodySmall:   TextStyle(color: textSec),
+      bodyMedium: TextStyle(color: textPri),
+      bodySmall: TextStyle(color: textSec),
       titleMedium: TextStyle(color: textPri, fontWeight: FontWeight.w600),
-      titleSmall:  TextStyle(color: textSec),
-      titleLarge:  TextStyle(color: textPri, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(color: textSec),
+      titleLarge: TextStyle(color: textPri, fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -138,7 +150,7 @@ class ReadFilesTechApp extends StatefulWidget {
 class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     with WidgetsBindingObserver {
   static const _lifecycleChannel = MethodChannel('com.readfilestech/lifecycle');
-  static const _shortcutChannel  = MethodChannel('com.readfilestech/shortcut');
+  static const _shortcutChannel = MethodChannel('com.readfilestech/shortcut');
   ThemeMode _themeMode = ThemeMode.system;
   bool _lastKnownPermGranted = false;
 
@@ -162,9 +174,13 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     });
     // Cold start
     try {
-      final shortcut = await _shortcutChannel.invokeMethod<String>('getShortcut');
+      final shortcut = await _shortcutChannel.invokeMethod<String>(
+        'getShortcut',
+      );
       if (shortcut != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _handleShortcut(shortcut));
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _handleShortcut(shortcut),
+        );
       }
     } catch (_) {}
   }
@@ -175,9 +191,9 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     if (ctx == null) return;
     final Widget? target = switch (shortcut) {
       'scanner' => const ScannerScreen(),
-      'ocr'     => const OcrScreen(),
-      'vault'   => const VaultScreen(),
-      _         => null,
+      'ocr' => const OcrScreen(),
+      'vault' => const VaultScreen(),
+      _ => null,
     };
     if (target == null) return;
     Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => target));
@@ -214,10 +230,12 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('theme_mode');
     if (saved != null && mounted) {
-      setState(() => _themeMode = ThemeMode.values.firstWhere(
-            (m) => m.name == saved,
-            orElse: () => ThemeMode.system,
-          ));
+      setState(
+        () => _themeMode = ThemeMode.values.firstWhere(
+          (m) => m.name == saved,
+          orElse: () => ThemeMode.system,
+        ),
+      );
     }
   }
 
@@ -239,10 +257,7 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
       ),
       darkTheme: _githubDarkTheme(),
       themeMode: _themeMode,
-      home: HomeScreen(
-        themeMode: _themeMode,
-        onThemeChanged: _setTheme,
-      ),
+      home: HomeScreen(themeMode: _themeMode, onThemeChanged: _setTheme),
     );
   }
 }

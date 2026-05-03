@@ -23,12 +23,18 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
   }
 
   int _totalSize() => _files.fold(0, (sum, p) {
-        try { return sum + File(p).lengthSync(); } catch (_) { return sum; }
-      });
+    try {
+      return sum + File(p).lengthSync();
+    } catch (_) {
+      return sum;
+    }
+  });
 
   Future<void> _addFiles() async {
-    final paths = await RftPickerScreen.pickMany(context,
-        title: 'Choisir des fichiers à compresser');
+    final paths = await RftPickerScreen.pickMany(
+      context,
+      title: 'Choisir des fichiers à compresser',
+    );
     if (paths == null || paths.isEmpty) return;
     setState(() {
       for (final p in paths) {
@@ -58,14 +64,17 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(
-        content: Text(
-            'ZIP créé : ${_files.length} fichier${_files.length > 1 ? 's' : ''}'),
-        action: SnackBarAction(
-          label: 'Partager',
-          onPressed: () => Share.shareXFiles([XFile(outPath)]),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'ZIP créé : ${_files.length} fichier${_files.length > 1 ? 's' : ''}',
+          ),
+          action: SnackBarAction(
+            label: 'Partager',
+            onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          ),
         ),
-      ));
+      );
       setState(() => _files.clear());
     } catch (e) {
       if (!mounted) return;
@@ -90,13 +99,17 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.folder_zip_outlined),
-                  label: Text(_isProcessing
-                      ? 'Compression…'
-                      : 'Créer le ZIP (${_files.length} fichier${_files.length > 1 ? 's' : ''})'),
-                  style:
-                      FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+                  label: Text(
+                    _isProcessing
+                        ? 'Compression…'
+                        : 'Créer le ZIP (${_files.length} fichier${_files.length > 1 ? 's' : ''})',
+                  ),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
                 ),
               ),
             )
@@ -111,22 +124,21 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.folder_zip_outlined,
-                size: 88,
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.35)),
+            Icon(
+              Icons.folder_zip_outlined,
+              size: 88,
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.35),
+            ),
             const SizedBox(height: 24),
-            Text('Créer un ZIP',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text('Créer un ZIP', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               'Sélectionnez des fichiers à compresser en archive ZIP',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.grey),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -147,21 +159,29 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                  '${_files.length} fichier${_files.length > 1 ? 's' : ''}',
-                  style: Theme.of(context).textTheme.titleSmall),
-              Text(_formatSize(total),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ]),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _addFiles,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Ajouter'),
-            ),
-          ]),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_files.length} fichier${_files.length > 1 ? 's' : ''}',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  Text(
+                    _formatSize(total),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _addFiles,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Ajouter'),
+              ),
+            ],
+          ),
         ),
         const Divider(height: 1),
         Expanded(
@@ -172,26 +192,36 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
               final path = _files[i];
               final name = path.split(RegExp(r'[/\\]')).last;
               int? size;
-              try { size = File(path).lengthSync(); } catch (_) {}
+              try {
+                size = File(path).lengthSync();
+              } catch (_) {}
               return ListTile(
                 leading: Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color:
-                        Colors.orange.withValues(alpha: 0.12),
+                    color: Colors.orange.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.insert_drive_file_outlined,
-                      color: Colors.orange, size: 20),
+                  child: const Icon(
+                    Icons.insert_drive_file_outlined,
+                    color: Colors.orange,
+                    size: 20,
+                  ),
                 ),
-                title: Text(name,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13)),
+                title: Text(
+                  name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
+                ),
                 subtitle: size != null
-                    ? Text(_formatSize(size),
+                    ? Text(
+                        _formatSize(size),
                         style: const TextStyle(
-                            fontSize: 11, color: Colors.grey))
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      )
                     : null,
                 trailing: IconButton(
                   icon: const Icon(Icons.close, size: 18),

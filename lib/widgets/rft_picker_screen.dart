@@ -20,10 +20,12 @@ import '../screens/explorer/file_explorer_screen.dart';
 class RftPickerScreen extends StatefulWidget {
   final String title;
   final bool multi;
+
   /// Si true, le picker retourne un chemin de DOSSIER au tap d'un raccourci
   /// ou d'un dossier listé (au lieu d'ouvrir l'explorateur). L'onglet
   /// Récents est masqué (pas de récents pour les dossiers).
   final bool folderMode;
+
   /// Filtre d'extensions optionnel (ex: {'pdf','docx'}). Si null, accepte tout.
   final Set<String>? extensions;
   const RftPickerScreen({
@@ -35,31 +37,39 @@ class RftPickerScreen extends StatefulWidget {
   });
 
   /// Helper mono-sélection.
-  static Future<String?> pickOne(BuildContext context, {
+  static Future<String?> pickOne(
+    BuildContext context, {
     String? title,
     Set<String>? extensions,
   }) {
-    return Navigator.push<String>(context, MaterialPageRoute(
-      builder: (_) => RftPickerScreen(
-        title: title ?? 'Choisir un fichier',
-        multi: false,
-        extensions: extensions,
+    return Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RftPickerScreen(
+          title: title ?? 'Choisir un fichier',
+          multi: false,
+          extensions: extensions,
+        ),
       ),
-    ));
+    );
   }
 
   /// Helper multi-sélection.
-  static Future<List<String>?> pickMany(BuildContext context, {
+  static Future<List<String>?> pickMany(
+    BuildContext context, {
     String? title,
     Set<String>? extensions,
   }) {
-    return Navigator.push<List<String>>(context, MaterialPageRoute(
-      builder: (_) => RftPickerScreen(
-        title: title ?? 'Choisir des fichiers',
-        multi: true,
-        extensions: extensions,
+    return Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RftPickerScreen(
+          title: title ?? 'Choisir des fichiers',
+          multi: true,
+          extensions: extensions,
+        ),
       ),
-    ));
+    );
   }
 
   /// Helper sélection de dossier — UX cohérente avec le picker fichiers
@@ -67,12 +77,15 @@ class RftPickerScreen extends StatefulWidget {
   /// "Parcourir un autre dossier" en SAF). Tap sur un raccourci/dossier
   /// retourne directement son chemin.
   static Future<String?> pickFolder(BuildContext context, {String? title}) {
-    return Navigator.push<String>(context, MaterialPageRoute(
-      builder: (_) => RftPickerScreen(
-        title: title ?? 'Choisir un dossier',
-        folderMode: true,
+    return Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RftPickerScreen(
+          title: title ?? 'Choisir un dossier',
+          folderMode: true,
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -85,6 +98,7 @@ class _FolderShortcut {
   final String label;
   final String path;
   final Color color;
+
   /// Filtre d'extensions facultatif (ex: APKs n'affiche que .apk).
   final Set<String>? filter;
   const _FolderShortcut({
@@ -156,7 +170,8 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     _FolderShortcut(
       icon: Icons.chat_outlined,
       label: 'WhatsApp',
-      path: '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents',
+      path:
+          '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents',
       color: Color(0xFF25D366), // vert WhatsApp
     ),
     _FolderShortcut(
@@ -201,14 +216,18 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     // Filtre async : ne garde que les fichiers qui existent encore.
     // existsSync sur N entries jankerait sur stockage lent.
     final checks = await Future.wait(
-        all.map((f) async => (await File(f.path).exists()) ? f : null));
+      all.map((f) async => (await File(f.path).exists()) ? f : null),
+    );
     final existing = checks.whereType<RecentFile>().where((f) {
       // Applique aussi le filtre d'extensions si fourni
       if (widget.extensions == null || widget.extensions!.isEmpty) return true;
       return widget.extensions!.contains(f.extension.toLowerCase());
     }).toList();
     if (!mounted) return;
-    setState(() { _recents = existing; _loading = false; });
+    setState(() {
+      _recents = existing;
+      _loading = false;
+    });
   }
 
   /// Charge dynamiquement tous les dossiers de premier niveau du stockage
@@ -216,38 +235,31 @@ class _RftPickerScreenState extends State<RftPickerScreen>
   /// les dossiers système Android (`Android/`) et les fichiers cachés.
   /// Icône smart dérivée du nom du dossier : reconnaît les patterns
   /// fréquents (photos, vidéos, docs, etc.) en fr/en. Sinon folder neutre.
+  /// Les RegExp sont hissées en `static final` — un seul compile au lieu
+  /// de N par rebuild (la grille appelle ce helper pour chaque dossier).
+  static final _rePhoto = RegExp(r'photo|image|picture|dcim|camera');
+  static final _reVideo = RegExp(r'vid[ée]o|movie|film|cin[ée]ma');
+  static final _reMusic = RegExp(r'music|audio|sound|son|chanson|podcast');
+  static final _reDoc = RegExp(r'doc|text|note|word|excel|pdf');
+  static final _reDownload = RegExp(r'download|t[ée]l[ée]chargement');
+  static final _reBackup = RegExp(r'backup|sauvegarde|archive');
+  static final _reScreen = RegExp(r'screenshot|capture');
+  static final _reBook = RegExp(r'book|livre|epub|read|lecture');
+  static final _reChat = RegExp(r'whatsapp|telegram|signal|messenger|chat');
+  static final _reZip = RegExp(r'zip|tar|rar|7z|archive');
+
   IconData _smartIconFor(String name) {
     final n = name.toLowerCase();
-    if (RegExp(r'photo|image|picture|dcim|camera').hasMatch(n)) {
-      return Icons.photo_camera_outlined;
-    }
-    if (RegExp(r'vid[ée]o|movie|film|cin[ée]ma').hasMatch(n)) {
-      return Icons.videocam_outlined;
-    }
-    if (RegExp(r'music|audio|sound|son|chanson|podcast').hasMatch(n)) {
-      return Icons.music_note_outlined;
-    }
-    if (RegExp(r'doc|text|note|word|excel|pdf').hasMatch(n)) {
-      return Icons.description_outlined;
-    }
-    if (RegExp(r'download|t[ée]l[ée]chargement').hasMatch(n)) {
-      return Icons.download_outlined;
-    }
-    if (RegExp(r'backup|sauvegarde|archive').hasMatch(n)) {
-      return Icons.backup_outlined;
-    }
-    if (RegExp(r'screenshot|capture').hasMatch(n)) {
-      return Icons.screenshot_outlined;
-    }
-    if (RegExp(r'book|livre|epub|read|lecture').hasMatch(n)) {
-      return Icons.menu_book_outlined;
-    }
-    if (RegExp(r'whatsapp|telegram|signal|messenger|chat').hasMatch(n)) {
-      return Icons.chat_outlined;
-    }
-    if (RegExp(r'zip|tar|rar|7z|archive').hasMatch(n)) {
-      return Icons.folder_zip_outlined;
-    }
+    if (_rePhoto.hasMatch(n)) return Icons.photo_camera_outlined;
+    if (_reVideo.hasMatch(n)) return Icons.videocam_outlined;
+    if (_reMusic.hasMatch(n)) return Icons.music_note_outlined;
+    if (_reDoc.hasMatch(n)) return Icons.description_outlined;
+    if (_reDownload.hasMatch(n)) return Icons.download_outlined;
+    if (_reBackup.hasMatch(n)) return Icons.backup_outlined;
+    if (_reScreen.hasMatch(n)) return Icons.screenshot_outlined;
+    if (_reBook.hasMatch(n)) return Icons.menu_book_outlined;
+    if (_reChat.hasMatch(n)) return Icons.chat_outlined;
+    if (_reZip.hasMatch(n)) return Icons.folder_zip_outlined;
     return Icons.folder_outlined;
   }
 
@@ -278,6 +290,58 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     return _autoPalette[hash % _autoPalette.length];
   }
 
+  /// Formate les extensions en liste lisible : "txt, md, csv, json…".
+  String _formatExtensions(Set<String> exts) {
+    final list = exts.map((e) => '.$e').toList()..sort();
+    if (list.length <= 6) return list.join(', ');
+    return '${list.take(6).join(', ')}…';
+  }
+
+  /// Heuristique : un raccourci est pertinent pour un filtre donné si son
+  /// label suggère qu'il peut contenir ce type de fichier. Évite de proposer
+  /// "Photos" quand l'utilisateur cherche du .txt/.md/.dart.
+  static const _mediaExts = {
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'bmp',
+    'heic',
+    'mp4',
+    'mov',
+    'avi',
+    'mkv',
+    'webm',
+    'mp3',
+    'wav',
+    'flac',
+    'm4a',
+    'ogg',
+    'aac',
+  };
+  bool _shortcutMatchesFilter(_FolderShortcut s, Set<String>? filter) {
+    if (filter == null || filter.isEmpty) return true;
+    // Si le filtre contient un raccourci spécifique (ex: APKs filter={apk}),
+    // on garde tel quel.
+    if (s.filter != null && s.filter!.intersection(filter).isNotEmpty) {
+      return true;
+    }
+    final label = s.label.toLowerCase();
+    final filterIsMedia = filter.every(_mediaExts.contains);
+    final shortcutIsMedia =
+        label.contains('photo') ||
+        label.contains('galerie') ||
+        label.contains('vid') ||
+        label.contains('musique') ||
+        label.contains('capture');
+    // Filtre média : ne montre que les raccourcis média.
+    if (filterIsMedia) return shortcutIsMedia;
+    // Filtre non-média (code, docs) : masque les raccourcis purement média.
+    if (shortcutIsMedia) return false;
+    return true;
+  }
+
   Future<void> _loadAllFolders() async {
     try {
       final root = Directory('/storage/emulated/0');
@@ -285,22 +349,26 @@ class _RftPickerScreenState extends State<RftPickerScreen>
       final shortcutPaths = _shortcuts.map((s) => s.path).toSet();
       // Liste les enfants directs uniquement (pas récursif).
       final entries = await root.list(followLinks: false).toList();
-      final folders = entries
-          .whereType<Directory>()
-          .where((d) {
+      final folders =
+          entries.whereType<Directory>().where((d) {
             final name = d.path.split(RegExp(r'[/\\]')).last;
             if (name.startsWith('.')) return false;
             if (name == 'Android') return false; // dossiers data app peu utiles
             // Ne re-liste pas les chemins déjà dans les raccourcis colorés
             if (shortcutPaths.contains(d.path)) return false;
             return true;
-          })
-          .toList()
-        ..sort((a, b) => a.path.split(RegExp(r'[/\\]')).last.toLowerCase()
-            .compareTo(b.path.split(RegExp(r'[/\\]')).last.toLowerCase()));
+          }).toList()..sort(
+            (a, b) => a.path
+                .split(RegExp(r'[/\\]'))
+                .last
+                .toLowerCase()
+                .compareTo(b.path.split(RegExp(r'[/\\]')).last.toLowerCase()),
+          );
       if (!mounted) return;
       setState(() => _allFolders = folders);
-    } catch (_) {/* perm refusée — silent */}
+    } catch (_) {
+      /* perm refusée — silent */
+    }
   }
 
   void _pick(String path) {
@@ -331,19 +399,25 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     await _openInExplorer(dir, label.isEmpty ? 'Dossier' : label);
   }
 
-  Future<void> _openInExplorer(String path, String label,
-      {Set<String>? filter}) async {
+  Future<void> _openInExplorer(
+    String path,
+    String label, {
+    Set<String>? filter,
+  }) async {
     // En mode folder, on ne navigue pas dans l'explorateur — tap sur un
     // raccourci ou un dossier listé retourne directement le chemin.
     if (_folderMode) {
       final dir = Directory(path);
       if (!await dir.exists()) {
         if (label == 'Files Tech') {
-          try { await dir.create(recursive: true); } catch (_) {}
+          try {
+            await dir.create(recursive: true);
+          } catch (_) {}
         } else {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Dossier "$label" introuvable')));
+            SnackBar(content: Text('Dossier "$label" introuvable')),
+          );
           return;
         }
       }
@@ -356,24 +430,27 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     if (!dir.existsSync()) {
       // Auto-création silencieuse pour Files Tech (notre dossier app).
       if (label == 'Files Tech') {
-        try { await dir.create(recursive: true); } catch (_) {}
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Dossier "$label" introuvable')));
-        return;
+        try {
+          await dir.create(recursive: true);
+        } catch (_) {}
       }
+      // Pour les autres : on tente quand même la navigation. Si le dossier
+      // n'existe vraiment pas, l'explorateur l'affichera vide ; s'il existe
+      // mais permission manque, sa bannière prendra le relais.
     }
     if (!mounted) return;
     // Le picker utilise l'explorateur en mode "sélection au tap" : on capture
     // le path retourné via onPick callback. La navigation pop ramène le path.
-    final picked = await Navigator.push<String>(context, MaterialPageRoute(
-      builder: (_) => _PickerExplorerWrapper(
-        initialPath: path,
-        title: label,
-        extensionFilter: filter ?? widget.extensions,
+    final picked = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _PickerExplorerWrapper(
+          initialPath: path,
+          title: label,
+          extensionFilter: filter ?? widget.extensions,
+        ),
       ),
-    ));
+    );
     if (picked != null && mounted) _pick(picked);
   }
 
@@ -396,11 +473,11 @@ class _RftPickerScreenState extends State<RftPickerScreen>
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _folderMode
-              ? _buildBrowse()
-              : TabBarView(
-                  controller: _tabs,
-                  children: [_buildRecents(), _buildBrowse()],
-                ),
+          ? _buildBrowse()
+          : TabBarView(
+              controller: _tabs,
+              children: [_buildRecents(), _buildBrowse()],
+            ),
       floatingActionButton: widget.multi && _selected.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.pop(context, _selected),
@@ -419,11 +496,12 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.history,
-                  size: 56, color: Colors.grey.shade400),
+              Icon(Icons.history, size: 56, color: Colors.grey.shade400),
               const SizedBox(height: 12),
-              const Text('Aucun fichier récent',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const Text(
+                'Aucun fichier récent',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 6),
               const Text(
                 'Ouvrez un fichier depuis l\'onglet Parcourir pour le voir ici.',
@@ -442,10 +520,15 @@ class _RftPickerScreenState extends State<RftPickerScreen>
         final selected = _selected.contains(f.path);
         return ListTile(
           leading: const Icon(Icons.insert_drive_file_outlined),
-          title: Text(f.name, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13)),
-          subtitle: Text(f.formattedSize,
-              style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          title: Text(
+            f.name,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13),
+          ),
+          subtitle: Text(
+            f.formattedSize,
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
           trailing: widget.multi
               ? Checkbox(value: selected, onChanged: (_) => _toggle(f.path))
               : const Icon(Icons.chevron_right),
@@ -460,40 +543,44 @@ class _RftPickerScreenState extends State<RftPickerScreen>
     return SafeArea(
       top: false,
       child: ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
-          child: Text(
-            'Raccourcis',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade700,
-              letterSpacing: 0.3,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        children: [
+          if (widget.extensions != null && widget.extensions!.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.filter_alt_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Filtre actif : ${_formatExtensions(widget.extensions!)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
-        // Grille 2 colonnes : raccourcis colorés vers les dossiers Android
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-          childAspectRatio: 2.7,
-          children: _shortcuts.map((s) => _ShortcutCard(
-            shortcut: s,
-            onTap: () => _openInExplorer(s.path, s.label, filter: s.filter),
-          )).toList(),
-        ),
-        const SizedBox(height: 16),
-        if (_allFolders.isNotEmpty) ...[
-          const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
             child: Text(
-              'Tous les dossiers',
+              'Raccourcis',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -502,9 +589,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
               ),
             ),
           ),
-          // Grille 2 colonnes cohérente avec les raccourcis : couleur auto
-          // déterministe (hash du nom) + icône smart (caméra pour Photos,
-          // video pour Vidéos, doc pour Docs, etc.).
+          // Grille 2 colonnes : raccourcis colorés vers les dossiers Android
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -512,43 +597,85 @@ class _RftPickerScreenState extends State<RftPickerScreen>
             crossAxisSpacing: 6,
             mainAxisSpacing: 6,
             childAspectRatio: 2.7,
-            children: _allFolders.map((d) {
-              final name = d.path.split(RegExp(r'[/\\]')).last;
-              final shortcut = _FolderShortcut(
-                icon: _smartIconFor(name),
-                label: name,
-                path: d.path,
-                color: _autoColorFor(name),
-              );
-              return _ShortcutCard(
-                shortcut: shortcut,
-                onTap: () => _openInExplorer(d.path, name),
-              );
-            }).toList(),
+            children: _shortcuts
+                .where((s) => _shortcutMatchesFilter(s, widget.extensions))
+                .map(
+                  (s) => _ShortcutCard(
+                    shortcut: s,
+                    onTap: () =>
+                        _openInExplorer(s.path, s.label, filter: s.filter),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+          if (_allFolders.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+              child: Text(
+                'Tous les dossiers',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+            // Grille 2 colonnes cohérente avec les raccourcis : couleur auto
+            // déterministe (hash du nom) + icône smart (caméra pour Photos,
+            // video pour Vidéos, doc pour Docs, etc.).
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 6,
+              mainAxisSpacing: 6,
+              childAspectRatio: 2.7,
+              children: _allFolders.map((d) {
+                final name = d.path.split(RegExp(r'[/\\]')).last;
+                final shortcut = _FolderShortcut(
+                  icon: _smartIconFor(name),
+                  label: name,
+                  path: d.path,
+                  color: _autoColorFor(name),
+                );
+                return _ShortcutCard(
+                  shortcut: shortcut,
+                  onTap: () => _openInExplorer(d.path, name),
+                );
+              }).toList(),
+            ),
+          ],
+
+          // "Parcourir un autre dossier" en bas avec marge réduite + SafeArea
+          // au niveau du ListView pour ne pas être masqué par la barre de
+          // navigation système (geste / 3 boutons).
+          const SizedBox(height: 6),
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              dense: true,
+              leading: Icon(
+                Icons.folder_open,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              title: const Text(
+                'Parcourir un autre dossier',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Sélecteur (sous-dossiers, SD, etc.)',
+                style: TextStyle(fontSize: 11),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _browseAnyFolder,
+            ),
           ),
         ],
-
-        // "Parcourir un autre dossier" en bas avec marge réduite + SafeArea
-        // au niveau du ListView pour ne pas être masqué par la barre de
-        // navigation système (geste / 3 boutons).
-        const SizedBox(height: 6),
-        Card(
-          margin: EdgeInsets.zero,
-          child: ListTile(
-            dense: true,
-            leading: Icon(Icons.folder_open,
-                color: Theme.of(context).colorScheme.primary),
-            title: const Text('Parcourir un autre dossier',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text(
-                'Sélecteur (sous-dossiers, SD, etc.)',
-                style: TextStyle(fontSize: 11)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _browseAnyFolder,
-          ),
-        ),
-      ],
-    ));
+      ),
+    );
   }
 }
 
@@ -566,24 +693,31 @@ class _ShortcutCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(10),
-          child: Row(children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: shortcut.color.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(10),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: shortcut.color.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(shortcut.icon, color: shortcut.color, size: 22),
               ),
-              child: Icon(shortcut.icon, color: shortcut.color, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(shortcut.label,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  shortcut.label,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                   overflow: TextOverflow.ellipsis,
-                  maxLines: 2),
-            ),
-          ]),
+                  maxLines: 2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

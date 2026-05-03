@@ -14,8 +14,8 @@ class CloudShareRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => core.CloudShareRow(
-        path: path,
-        mime: mime,
-        channelName: 'com.readfilestech/open_file',
-      );
+    path: path,
+    mime: mime,
+    channelName: 'com.readfilestech/open_file',
+  );
 }

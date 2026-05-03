@@ -29,10 +29,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// **Anti brute-force** : compteur d'échecs persistant + back-off exponentiel
 /// au-delà de 5 essais (1, 2, 4, 8, 16 minutes).
 class VaultService {
-  static const _kSalt          = 'vault_salt_v1';
-  static const _kSetup         = 'vault_setup_v1';
-  static const _kFails         = 'vault_unlock_fails';
-  static const _kLockoutUntil  = 'vault_lockout_until_ms';
+  static const _kSalt = 'vault_salt_v1';
+  static const _kSetup = 'vault_setup_v1';
+  static const _kFails = 'vault_unlock_fails';
+  static const _kLockoutUntil = 'vault_lockout_until_ms';
 
   /// KDF utilisé pour dériver la clé maître depuis le password.
   /// - Absent (null) ou `'pbkdf2'` : PBKDF2-HMAC-SHA256 600 000 itérations
@@ -44,13 +44,13 @@ class VaultService {
   /// — ce serait nécessaire de re-chiffrer tous les fichiers). Les nouveaux
   /// coffres utilisent Argon2id par défaut.
   static const _kKdfVersion = 'vault_kdf_version';
-  static const _kdfPbkdf2   = 'pbkdf2';
+  static const _kdfPbkdf2 = 'pbkdf2';
   static const _kdfArgon2id = 'argon2id';
 
   /// Params Argon2id auto-calibrés stockés au setup (depuis v2.7.1).
   /// Permet à chaque device d'utiliser son maximum CPU sans freezer.
   /// Coffres v2.6.0–v2.7.0 (sans ces clés) : fallback sur params legacy.
-  static const _kArgon2MemoryKB   = 'vault_argon2_mem_kb';
+  static const _kArgon2MemoryKB = 'vault_argon2_mem_kb';
   static const _kArgon2Iterations = 'vault_argon2_iter';
 
   static const _iterations = 600000; // PBKDF2 (legacy)
@@ -60,37 +60,37 @@ class VaultService {
   // Algo : 1 bench à params min, calcul du facteur d'échelle, choix de
   // params dans des bornes [4Mo..32Mo] × [2..4] itérations.
 
-  static const _argon2BenchMemoryKB   = 4096; // 4 MB pour le bench
+  static const _argon2BenchMemoryKB = 4096; // 4 MB pour le bench
   static const _argon2BenchIterations = 2;
-  static const _argon2TargetMs        = 2500;
+  static const _argon2TargetMs = 2500;
   // Plancher absolu 8 Mo (pas 4) : protège contre un setup faussé par
   // thermal-throttle qui fixerait des params trop faibles à vie. 8 Mo
   // reste tenable même sur Redmi 9C 3GB.
-  static const _argon2MinMemoryKB     = 8192;  // 8 MB
-  static const _argon2MaxMemoryKB     = 32768; // 32 MB (cap haut Redmi 9C 3GB)
-  static const _argon2MinIterations   = 2;
-  static const _argon2MaxIterations   = 4;
+  static const _argon2MinMemoryKB = 8192; // 8 MB
+  static const _argon2MaxMemoryKB = 32768; // 32 MB (cap haut Redmi 9C 3GB)
+  static const _argon2MinIterations = 2;
+  static const _argon2MaxIterations = 4;
   // Nombre d'échantillons du bench. On garde le minimum (= meilleur cas
   // CPU non-throttled) pour éviter un calibrage trop bas si le device
   // est sous load au moment du setup.
-  static const _argon2BenchSamples    = 3;
+  static const _argon2BenchSamples = 3;
 
   // Legacy params pour coffres v2.6.0–v2.7.0 (sans calibrage stocké) :
   // m=16 Mo, t=4. Lus en fallback à l'unlock pour rétro-compat.
-  static const _argon2LegacyMemoryKB   = 16384; // 16 MB
+  static const _argon2LegacyMemoryKB = 16384; // 16 MB
   static const _argon2LegacyIterations = 4;
 
   // Params utilisés pour l'export `.rftvault` (fixes, indépendants du
   // calibrage du coffre — le fichier peut être restauré sur n'importe
   // quel device, donc on cible la sécurité plutôt que la vitesse).
-  static const _argon2ExportMemoryKB   = 16384; // 16 MB
+  static const _argon2ExportMemoryKB = 16384; // 16 MB
   static const _argon2ExportIterations = 4;
 
   static const _argon2Lanes = 1;
 
-  static const _saltLen  = 16;
+  static const _saltLen = 16;
   static const _nonceLen = 12;
-  static const _keyLen   = 32;
+  static const _keyLen = 32;
   static const _checkFile = '_check.enc';
   static const _checkPlain = 'read_files_tech_vault_v1';
 
@@ -110,8 +110,7 @@ class VaultService {
 
   /// Channel Kotlin exposant `encrypt` / `decrypt` AES-256-GCM natif.
   /// Voir MainActivity.kt section vault_crypto.
-  static const _nativeChannel =
-      MethodChannel('com.readfilestech/vault_crypto');
+  static const _nativeChannel = MethodChannel('com.readfilestech/vault_crypto');
 
   static Uint8List? _cachedKey;
 
@@ -140,9 +139,10 @@ class VaultService {
     // par dérivation, quel que soit le hardware.
     final calibrated = await _calibrateArgon2();
     final memKB = calibrated.memoryKB;
-    final iter  = calibrated.iterations;
-    final key   = await Isolate.run(
-        () => _deriveKeyArgon2id(password, salt, memKB, iter));
+    final iter = calibrated.iterations;
+    final key = await Isolate.run(
+      () => _deriveKeyArgon2id(password, salt, memKB, iter),
+    );
     final prefs = await SharedPreferences.getInstance();
 
     // ── Ordre atomicité-friendly ───────────────────────────────────────────
@@ -189,13 +189,14 @@ class VaultService {
     final Uint8List key;
     if (kdf == _kdfArgon2id) {
       final memKB = prefs.getInt(_kArgon2MemoryKB) ?? _argon2LegacyMemoryKB;
-      final iter  = prefs.getInt(_kArgon2Iterations) ?? _argon2LegacyIterations;
+      final iter = prefs.getInt(_kArgon2Iterations) ?? _argon2LegacyIterations;
       key = await Isolate.run(
-          () => _deriveKeyArgon2id(password, salt, memKB, iter));
+        () => _deriveKeyArgon2id(password, salt, memKB, iter),
+      );
     } else {
       key = await Isolate.run(() => _deriveKey(password, salt));
     }
-    final dir  = await _vaultDir();
+    final dir = await _vaultDir();
     final check = File('${dir.path}/$_checkFile');
     if (!await check.exists()) {
       _zeroize(key);
@@ -216,8 +217,10 @@ class VaultService {
       // Sentinelle décodable mais contenu inattendu → coffre corrompu,
       // pas un mauvais password. On ne lockout pas l'utilisateur.
       _zeroize(key);
-      throw StateError('Sentinelle invalide — coffre corrompu, '
-          'réinitialisez via Réglages.');
+      throw StateError(
+        'Sentinelle invalide — coffre corrompu, '
+        'réinitialisez via Réglages.',
+      );
     } on InvalidCipherTextException {
       // Bad tag GCM = vrai mauvais password → incrément compteur ci-dessous.
     } on PlatformException catch (e) {
@@ -273,7 +276,10 @@ class VaultService {
     final destName = '$name.enc';
     final dest = File('${dir.path}/$destName');
     if (await dest.exists() && !overwrite) {
-      throw FileSystemException('Fichier homonyme déjà dans le coffre', dest.path);
+      throw FileSystemException(
+        'Fichier homonyme déjà dans le coffre',
+        dest.path,
+      );
     }
     final plain = await source.readAsBytes();
     final ct = await _encryptMaybeIsolate(plain, key, destName);
@@ -350,11 +356,20 @@ class VaultService {
 
   // ── Export / Restore (.rftvault backup) ────────────────────────────────────
 
-  /// Magic header du format de sauvegarde `.rftvault` v1.
+  /// Magic header du format de sauvegarde `.rftvault`.
   static const _backupMagic = [0x52, 0x46, 0x54, 0x56, 0x41, 0x55, 0x4C, 0x54];
   // "RFTVAULT"
-  static const _backupVersion = 1;
-  static const _backupAad = 'rftvault-v1';
+  /// Version courante. v1 (legacy) ne stockait pas les params Argon2 et n'AAD-bindait
+  /// pas le header. v2 corrige ces deux points :
+  /// - Params Argon2id (memKB u32 BE + iter u32 BE) après reserved
+  /// - AAD = bytes complets du header (magic + version + reserved + params + salt + nonce)
+  ///   → tampering du header détecté par le tag GCM
+  static const _backupVersionV1 = 1;
+  static const _backupVersionV2 = 2;
+  static const _backupVersion = _backupVersionV2;
+
+  /// AAD legacy v1 (constante, ne lie rien au header réel). Conservé en lecture.
+  static const _backupAadV1 = 'rftvault-v1';
 
   /// Limite hard pour éviter OOM sur les low-end (Redmi 9C 3GB) lors de
   /// l'export ou restore qui matérialise tout le payload en RAM avant
@@ -384,8 +399,9 @@ class VaultService {
     }
     if (total > _backupMaxBytes) {
       throw StateError(
-          'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
-          'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.');
+        'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
+        'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.',
+      );
     }
 
     onProgress?.call(0.0);
@@ -427,26 +443,38 @@ class VaultService {
       // sécurité maximale plutôt que la vitesse. Cohérent avec les
       // anciens coffres v2.6.0–v2.7.0.
       final salt = _randomBytes(_saltLen);
-      final exportKeyLocal = await Isolate.run(() => _deriveKeyArgon2id(
+      final exportKeyLocal = await Isolate.run(
+        () => _deriveKeyArgon2id(
           exportPassword,
           salt,
           _argon2ExportMemoryKB,
-          _argon2ExportIterations));
+          _argon2ExportIterations,
+        ),
+      );
       exportKey = exportKeyLocal;
       onProgress?.call(0.85);
 
-      // Chiffrement enveloppe AES-GCM.
+      // Chiffrement enveloppe AES-GCM. v2 : AAD = bytes complets du header
+      // (magic|version|reserved|argon2_mem|argon2_iter|salt|nonce). Tout
+      // tampering du header (incl. params Argon2 ou sel) est détecté par
+      // le tag GCM lors du decrypt.
       final nonce = _randomBytes(_nonceLen);
-      final aad = Uint8List.fromList(utf8.encode(_backupAad));
+      final headerForAad =
+          (BytesBuilder()
+                ..add(_backupMagic)
+                ..addByte(_backupVersion)
+                ..add(const [0, 0, 0]) // reserved
+                ..add(_int32be(_argon2ExportMemoryKB))
+                ..add(_int32be(_argon2ExportIterations))
+                ..add(salt)
+                ..add(nonce))
+              .toBytes();
+      final aad = Uint8List.fromList(headerForAad);
       final ct = await _encryptRaw(payloadLocal, exportKeyLocal, nonce, aad);
 
-      // Construction du fichier final.
+      // Construction du fichier final = header (déjà construit pour AAD) + ct.
       final out = BytesBuilder()
-        ..add(_backupMagic)
-        ..addByte(_backupVersion)
-        ..add(const [0, 0, 0]) // reserved
-        ..add(salt)
-        ..add(nonce)
+        ..add(headerForAad)
         ..add(ct);
 
       final tmpDir = await getTemporaryDirectory();
@@ -492,54 +520,84 @@ class VaultService {
     final fileSize = await backupFile.length();
     if (fileSize > _backupMaxBytes * 1.2) {
       throw StateError(
-          'Fichier trop volumineux (max ${_backupMaxBytes ~/ (1024 * 1024)} Mo).');
+        'Fichier trop volumineux (max ${_backupMaxBytes ~/ (1024 * 1024)} Mo).',
+      );
     }
 
     final raw = await backupFile.readAsBytes();
-    final headerLen = 8 + 1 + 3 + _saltLen + _nonceLen;
-    if (raw.length < headerLen + 16) {
+    if (raw.length < 8 + 1 + 16) {
       throw StateError('Fichier .rftvault invalide (taille).');
     }
 
-    // Validation magic + version.
+    // Validation magic.
     for (var i = 0; i < _backupMagic.length; i++) {
       if (raw[i] != _backupMagic[i]) {
         throw StateError('Fichier .rftvault invalide (signature).');
       }
     }
+
     final version = raw[8];
-    if (version != _backupVersion) {
+    final int memKB;
+    final int iter;
+    final int headerLen;
+    final int saltOffset;
+    final Uint8List aad;
+
+    if (version == _backupVersionV1) {
+      // v1 (legacy) : pas de params en header → constantes export historiques.
+      // AAD = constante "rftvault-v1" (ne lie rien au header — accepté pour
+      // rétro-compat des sauvegardes existantes).
+      memKB = _argon2ExportMemoryKB;
+      iter = _argon2ExportIterations;
+      headerLen = 8 + 1 + 3 + _saltLen + _nonceLen;
+      saltOffset = 12;
+      aad = Uint8List.fromList(utf8.encode(_backupAadV1));
+    } else if (version == _backupVersionV2) {
+      // v2 : params Argon2id dans le header + AAD = bytes complets du header.
+      // Tampering du magic, version, params, sel ou nonce → tag GCM invalide.
+      headerLen = 8 + 1 + 3 + 4 + 4 + _saltLen + _nonceLen;
+      if (raw.length < headerLen + 16) {
+        throw StateError('Fichier .rftvault invalide (taille).');
+      }
+      memKB = _readU32be(raw, 12);
+      iter = _readU32be(raw, 16);
+      // Garde-fous : refuse params absurdes (forgé) pour éviter OOM/CPU DoS
+      // côté restore. Min 1 Mo / 1 iter, max 1 Go / 64 iter.
+      if (memKB < 1024 || memKB > 1024 * 1024 || iter < 1 || iter > 64) {
+        throw StateError('Fichier .rftvault invalide (params Argon2).');
+      }
+      saltOffset = 20;
+      aad = Uint8List.fromList(raw.sublist(0, headerLen));
+    } else {
       throw StateError('Version $version non supportée.');
     }
 
-    final salt  = Uint8List.sublistView(raw, 12, 12 + _saltLen);
+    final salt = Uint8List.sublistView(raw, saltOffset, saltOffset + _saltLen);
     final nonce = Uint8List.sublistView(
-        raw, 12 + _saltLen, 12 + _saltLen + _nonceLen);
-    final ct    = Uint8List.sublistView(raw, 12 + _saltLen + _nonceLen);
+      raw,
+      saltOffset + _saltLen,
+      saltOffset + _saltLen + _nonceLen,
+    );
+    final ct = Uint8List.sublistView(raw, headerLen);
 
     onProgress?.call(0.05);
 
-    // Dérivation Argon2id (~0.5-4s) avec params FIXES export
-    // (m=16Mo, t=4) — doit matcher ceux utilisés à l'export.
-    // Le format .rftvault v1 ne stocke PAS les params en header (volontaire
-    // pour figer le format) ; tout fichier v1 utilise donc ces constantes.
+    // Dérivation Argon2id avec params lus dans header (v2) ou constantes (v1).
     final saltCopy = Uint8List.fromList(salt);
-    final exportKey = await Isolate.run(() => _deriveKeyArgon2id(
-        exportPassword,
-        saltCopy,
-        _argon2ExportMemoryKB,
-        _argon2ExportIterations));
+    final exportKey = await Isolate.run(
+      () => _deriveKeyArgon2id(exportPassword, saltCopy, memKB, iter),
+    );
     onProgress?.call(0.4);
 
     // Décryptage enveloppe — lève si bad password / tampering (GCM tag).
-    final aad = Uint8List.fromList(utf8.encode(_backupAad));
     Uint8List payload;
     try {
       payload = await _decryptRaw(
-          Uint8List.fromList(ct),
-          exportKey,
-          Uint8List.fromList(nonce),
-          aad);
+        Uint8List.fromList(ct),
+        exportKey,
+        Uint8List.fromList(nonce),
+        aad,
+      );
     } finally {
       _zeroize(exportKey);
     }
@@ -567,7 +625,10 @@ class VaultService {
         // de planter tout le restore au milieu.
         try {
           final encrypted = await _encryptMaybeIsolate(
-              e.plain, masterKey, destName);
+            e.plain,
+            masterKey,
+            destName,
+          );
           await dest.writeAsBytes(encrypted);
           restored++;
         } catch (_) {
@@ -577,9 +638,10 @@ class VaultService {
       }
       onProgress?.call(1.0);
       return RestoreResult(
-          total: entries.length,
-          restored: restored,
-          skipped: skipped + failed);
+        total: entries.length,
+        restored: restored,
+        skipped: skipped + failed,
+      );
     } finally {
       // _parseBackupPayload alloue une COPIE pour chaque e.plain (via
       // Uint8List.fromList) — ce ne sont PAS des vues de payload. Donc
@@ -616,8 +678,7 @@ class VaultService {
       if (p + nameLen > payload.length) {
         throw StateError('Payload tronqué (name #$i).');
       }
-      final name = utf8.decode(
-          Uint8List.sublistView(payload, p, p + nameLen));
+      final name = utf8.decode(Uint8List.sublistView(payload, p, p + nameLen));
       p += nameLen;
       if (p + 4 > payload.length) {
         throw StateError('Payload tronqué (dataLen #$i).');
@@ -628,7 +689,8 @@ class VaultService {
         throw StateError('Payload tronqué (data #$i).');
       }
       final plain = Uint8List.fromList(
-          Uint8List.sublistView(payload, p, p + dataLen));
+        Uint8List.sublistView(payload, p, p + dataLen),
+      );
       p += dataLen;
       // Anti path-traversal STRICT : on garde uniquement les noms qui
       // restent IDENTIQUES après basename(). Si PathSafe modifie ou rejette,
@@ -651,16 +713,23 @@ class VaultService {
   /// Encrypt AES-GCM "raw" (sans magic header) — utilisé pour l'enveloppe
   /// `.rftvault`. Routing identique à [_encryptMaybeIsolate] (native >5Mo).
   Future<Uint8List> _encryptRaw(
-      Uint8List plain, Uint8List key, Uint8List nonce, Uint8List aad) async {
+    Uint8List plain,
+    Uint8List key,
+    Uint8List nonce,
+    Uint8List aad,
+  ) async {
     if (plain.length >= _nativeThreshold) {
       try {
-        final result = await _nativeChannel.invokeMethod<Uint8List>(
-            'encrypt', {
-          'key': key, 'nonce': nonce, 'aad': aad, 'plain': plain,
+        final result = await _nativeChannel.invokeMethod<Uint8List>('encrypt', {
+          'key': key,
+          'nonce': nonce,
+          'aad': aad,
+          'plain': plain,
         });
         if (result != null) return result;
-      } on MissingPluginException {/* fallback */}
-      on PlatformException catch (e) {
+      } on MissingPluginException {
+        /* fallback */
+      } on PlatformException catch (e) {
         if (_isCryptoErrorCode(e.code)) rethrow;
       }
     }
@@ -673,16 +742,23 @@ class VaultService {
   /// Decrypt AES-GCM "raw" (sans magic header) — propage [PlatformException]
   /// de code DECRYPT_ERROR si tampering / bad key (signal d'intégrité).
   Future<Uint8List> _decryptRaw(
-      Uint8List blob, Uint8List key, Uint8List nonce, Uint8List aad) async {
+    Uint8List blob,
+    Uint8List key,
+    Uint8List nonce,
+    Uint8List aad,
+  ) async {
     if (blob.length >= _nativeThreshold) {
       try {
-        final result = await _nativeChannel.invokeMethod<Uint8List>(
-            'decrypt', {
-          'key': key, 'nonce': nonce, 'aad': aad, 'blob': blob,
+        final result = await _nativeChannel.invokeMethod<Uint8List>('decrypt', {
+          'key': key,
+          'nonce': nonce,
+          'aad': aad,
+          'blob': blob,
         });
         if (result != null) return result;
-      } on MissingPluginException {/* fallback */}
-      on PlatformException catch (e) {
+      } on MissingPluginException {
+        /* fallback */
+      } on PlatformException catch (e) {
         if (_isCryptoErrorCode(e.code)) rethrow;
       }
     }
@@ -694,15 +770,22 @@ class VaultService {
 
   /// PointyCastle GCM brut, statique pour `Isolate.run`.
   static Uint8List _gcmRaw(
-      bool forEncryption, Uint8List input, Uint8List key,
-      Uint8List nonce, Uint8List aad) {
+    bool forEncryption,
+    Uint8List input,
+    Uint8List key,
+    Uint8List nonce,
+    Uint8List aad,
+  ) {
     final cipher = GCMBlockCipher(AESEngine())
-      ..init(forEncryption,
-          AEADParameters(KeyParameter(key), 128, nonce, aad));
+      ..init(forEncryption, AEADParameters(KeyParameter(key), 128, nonce, aad));
     return cipher.process(input);
   }
 
   // Helpers big-endian.
+  static int _readU32be(Uint8List b, int off) {
+    return (b[off] << 24) | (b[off + 1] << 16) | (b[off + 2] << 8) | b[off + 3];
+  }
+
   static Uint8List _int32be(int v) {
     final out = Uint8List(4);
     out[0] = (v >> 24) & 0xff;
@@ -711,16 +794,17 @@ class VaultService {
     out[3] = v & 0xff;
     return out;
   }
+
   static Uint8List _int16be(int v) {
     final out = Uint8List(2);
     out[0] = (v >> 8) & 0xff;
     out[1] = v & 0xff;
     return out;
   }
+
   static int _readInt32be(Uint8List b, int o) =>
       (b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3];
-  static int _readInt16be(Uint8List b, int o) =>
-      (b[o] << 8) | b[o + 1];
+  static int _readInt16be(Uint8List b, int o) => (b[o] << 8) | b[o + 1];
 
   /// Réinitialise complètement le coffre.
   Future<void> reset() async {
@@ -783,7 +867,11 @@ class VaultService {
   /// duplique aussi le password à l'envoi du message — ces bytes sont
   /// hors de notre contrôle (limitation Isolate.run).
   static Uint8List _deriveKeyArgon2id(
-      String password, Uint8List salt, int memoryKB, int iterations) {
+    String password,
+    Uint8List salt,
+    int memoryKB,
+    int iterations,
+  ) {
     final pwBytes = Uint8List.fromList(utf8.encode(password));
     try {
       final params = Argon2Parameters(
@@ -840,10 +928,7 @@ class VaultService {
     }
     if (benchMs >= _argon2TargetMs) {
       // Device déjà lent au bench min → params minimums.
-      return (
-        memoryKB: _argon2MinMemoryKB,
-        iterations: _argon2MinIterations,
-      );
+      return (memoryKB: _argon2MinMemoryKB, iterations: _argon2MinIterations);
     }
     // Argon2id est ~linéaire en (memory × iterations).
     const benchWork = _argon2BenchMemoryKB * _argon2BenchIterations; // 8192
@@ -862,8 +947,10 @@ class VaultService {
       iter = (targetWork / _argon2MaxMemoryKB).round();
     }
     // Arrondi à des multiples de 1024 KB (cohérence + lecture humaine).
-    mem = ((mem / 1024).round() * 1024)
-        .clamp(_argon2MinMemoryKB, _argon2MaxMemoryKB);
+    mem = ((mem / 1024).round() * 1024).clamp(
+      _argon2MinMemoryKB,
+      _argon2MaxMemoryKB,
+    );
     iter = iter.clamp(_argon2MinIterations, _argon2MaxIterations);
     return (memoryKB: mem, iterations: iter);
   }
@@ -923,7 +1010,7 @@ class VaultService {
         blob[3] == _magicV2[3]) {
       // Format v2
       final nonce = blob.sublist(4, 4 + _nonceLen);
-      final ct    = blob.sublist(4 + _nonceLen);
+      final ct = blob.sublist(4 + _nonceLen);
       final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
       final cipher = GCMBlockCipher(AESEngine())
         ..init(false, AEADParameters(KeyParameter(key), 128, nonce, aad));
@@ -932,9 +1019,10 @@ class VaultService {
     // Format v1 (legacy) : nonce + ciphertext+tag, AAD vide.
     if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
     final nonce = blob.sublist(0, _nonceLen);
-    final ct    = blob.sublist(_nonceLen);
-    final cipher = GCMBlockCipher(AESEngine())
-      ..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
+    final ct = blob.sublist(_nonceLen);
+    final cipher = GCMBlockCipher(
+      AESEngine(),
+    )..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
     return cipher.process(ct);
   }
 
@@ -946,7 +1034,10 @@ class VaultService {
   ///   indisponible (MissingPluginException) — JAMAIS sur erreur crypto
   ///   réelle (BAD_KEY, BAD_NONCE, ENCRYPT_ERROR) qui doit être propagée.
   Future<Uint8List> _encryptMaybeIsolate(
-      List<int> plain, Uint8List key, String filename) async {
+    List<int> plain,
+    Uint8List key,
+    String filename,
+  ) async {
     if (plain.length >= _nativeThreshold) {
       try {
         return await _encryptNative(plain, key, filename);
@@ -968,7 +1059,10 @@ class VaultService {
   /// si channel indisponible — JAMAIS sur AEAD bad tag (qui doit propager
   /// pour signaler le tampering).
   Future<Uint8List> _decryptMaybeIsolate(
-      Uint8List blob, Uint8List key, String filename) async {
+    Uint8List blob,
+    Uint8List key,
+    String filename,
+  ) async {
     if (blob.length >= _nativeThreshold) {
       try {
         return await _decryptNative(blob, key, filename);
@@ -998,7 +1092,10 @@ class VaultService {
   /// Chiffre v2 via Kotlin native (Cipher AES/GCM/NoPadding hardware-accel).
   /// Format de sortie identique à [_encryptV2] : magic "RFT2" + nonce + ct+tag.
   Future<Uint8List> _encryptNative(
-      List<int> plain, Uint8List key, String filename) async {
+    List<int> plain,
+    Uint8List key,
+    String filename,
+  ) async {
     final nonce = _randomBytes(_nonceLen);
     final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
     final result = await _nativeChannel.invokeMethod<Uint8List>('encrypt', {
@@ -1017,7 +1114,10 @@ class VaultService {
 
   /// Déchiffre via Kotlin native, auto-détection format v2 / v1.
   Future<Uint8List> _decryptNative(
-      Uint8List blob, Uint8List key, String filename) async {
+    Uint8List blob,
+    Uint8List key,
+    String filename,
+  ) async {
     Uint8List nonce;
     Uint8List ct;
     Uint8List aad;
@@ -1028,14 +1128,14 @@ class VaultService {
         blob[3] == _magicV2[3]) {
       // Format v2
       nonce = Uint8List.sublistView(blob, 4, 4 + _nonceLen);
-      ct    = Uint8List.sublistView(blob, 4 + _nonceLen);
-      aad   = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
+      ct = Uint8List.sublistView(blob, 4 + _nonceLen);
+      aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
     } else {
       // Format v1 (legacy) : nonce + ct+tag, AAD vide.
       if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
       nonce = Uint8List.sublistView(blob, 0, _nonceLen);
-      ct    = Uint8List.sublistView(blob, _nonceLen);
-      aad   = Uint8List(0);
+      ct = Uint8List.sublistView(blob, _nonceLen);
+      aad = Uint8List(0);
     }
     final result = await _nativeChannel.invokeMethod<Uint8List>('decrypt', {
       'key': key,

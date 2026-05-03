@@ -37,7 +37,11 @@ class _CompressScreenState extends State<CompressScreen> {
 
   Future<void> _compress() async {
     if (_sourcePath == null) return;
-    setState(() { _busy = true; _outputSize = null; _outputPath = null; });
+    setState(() {
+      _busy = true;
+      _outputSize = null;
+      _outputPath = null;
+    });
     final messenger = ScaffoldMessenger.of(context);
     try {
       final bytes = await File(_sourcePath!).readAsBytes();
@@ -47,8 +51,12 @@ class _CompressScreenState extends State<CompressScreen> {
       if (decoded.width > _maxWidth) {
         resized = img.copyResize(decoded, width: _maxWidth);
       }
-      final encoded = Uint8List.fromList(img.encodeJpg(resized, quality: _quality));
-      final base = _sourcePath!.split(RegExp(r'[/\\]')).last
+      final encoded = Uint8List.fromList(
+        img.encodeJpg(resized, quality: _quality),
+      );
+      final base = _sourcePath!
+          .split(RegExp(r'[/\\]'))
+          .last
           .replaceAll(RegExp(r'\.[^.]+$'), '');
       final out = await _storage.reserveFile(
         category: OutputCategory.compressions,
@@ -93,9 +101,11 @@ class _CompressScreenState extends State<CompressScreen> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.image_outlined),
-              title: Text(_sourcePath == null
-                  ? 'Choisir une image'
-                  : _sourcePath!.split(RegExp(r'[/\\]')).last),
+              title: Text(
+                _sourcePath == null
+                    ? 'Choisir une image'
+                    : _sourcePath!.split(RegExp(r'[/\\]')).last,
+              ),
               subtitle: _sourcePath == null
                   ? null
                   : Text('Taille : ${_fmt(_sourceSize)}'),
@@ -108,27 +118,39 @@ class _CompressScreenState extends State<CompressScreen> {
             const Text('Qualité JPEG'),
             Slider(
               value: _quality.toDouble(),
-              min: 10, max: 100, divisions: 18,
+              min: 10,
+              max: 100,
+              divisions: 18,
               label: '$_quality',
               onChanged: (v) => setState(() => _quality = v.toInt()),
             ),
-            Text('Qualité : $_quality / 100',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              'Qualité : $_quality / 100',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             const Text('Largeur maximum (px)'),
             Slider(
               value: _maxWidth.toDouble(),
-              min: 480, max: 4096, divisions: 18,
+              min: 480,
+              max: 4096,
+              divisions: 18,
               label: '$_maxWidth',
               onChanged: (v) => setState(() => _maxWidth = v.toInt()),
             ),
-            Text('Largeur max : $_maxWidth px',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              'Largeur max : $_maxWidth px',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _busy ? null : _compress,
               icon: _busy
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.compress),
               label: Text(_busy ? 'Compression…' : 'Compresser et partager'),
             ),
@@ -137,7 +159,10 @@ class _CompressScreenState extends State<CompressScreen> {
               Card(
                 color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
+                  side: BorderSide(
+                    color: Colors.lightBlue.shade300,
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Padding(
@@ -148,14 +173,22 @@ class _CompressScreenState extends State<CompressScreen> {
                       Text('Avant : ${_fmt(_sourceSize)}'),
                       Text('Après : ${_fmt(_outputSize!)}'),
                       if (ratio != null)
-                        Text('Réduction : -$ratio %',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Colors.lightBlue.shade900)),
+                        Text(
+                          'Réduction : -$ratio %',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.lightBlue.shade900,
+                          ),
+                        ),
                       if (_outputPath != null) ...[
                         const SizedBox(height: 8),
-                        Text(_outputPath!,
-                            style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                        Text(
+                          _outputPath!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         CloudShareRow(path: _outputPath!, mime: 'image/jpeg'),
                       ],

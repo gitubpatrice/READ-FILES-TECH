@@ -17,9 +17,9 @@ enum _Mode { sequence, prefixSuffix, regex }
 
 class _BulkRenameScreenState extends State<BulkRenameScreen> {
   _Mode _mode = _Mode.sequence;
-  final _baseCtrl   = TextEditingController(text: 'Photo');
-  final _startCtrl  = TextEditingController(text: '1');
-  final _padCtrl    = TextEditingController(text: '3');
+  final _baseCtrl = TextEditingController(text: 'Photo');
+  final _startCtrl = TextEditingController(text: '1');
+  final _padCtrl = TextEditingController(text: '3');
   final _prefixCtrl = TextEditingController();
   final _suffixCtrl = TextEditingController();
   final _patternCtrl = TextEditingController();
@@ -29,9 +29,13 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
 
   @override
   void dispose() {
-    _baseCtrl.dispose(); _startCtrl.dispose(); _padCtrl.dispose();
-    _prefixCtrl.dispose(); _suffixCtrl.dispose();
-    _patternCtrl.dispose(); _replaceCtrl.dispose();
+    _baseCtrl.dispose();
+    _startCtrl.dispose();
+    _padCtrl.dispose();
+    _prefixCtrl.dispose();
+    _suffixCtrl.dispose();
+    _patternCtrl.dispose();
+    _replaceCtrl.dispose();
     super.dispose();
   }
 
@@ -42,21 +46,27 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
     for (var i = 0; i < widget.paths.length; i++) {
       final old = widget.paths[i].split(RegExp(r'[/\\]')).last;
       final ext = old.contains('.') ? '.${old.split('.').last}' : '';
-      final stem = ext.isEmpty ? old : old.substring(0, old.length - ext.length);
+      final stem = ext.isEmpty
+          ? old
+          : old.substring(0, old.length - ext.length);
       String? next;
       try {
         switch (_mode) {
           case _Mode.sequence:
             final start = int.tryParse(_startCtrl.text) ?? 1;
-            final pad   = (int.tryParse(_padCtrl.text) ?? 3).clamp(0, 6);
-            final num   = (start + i).toString().padLeft(pad, '0');
+            final pad = (int.tryParse(_padCtrl.text) ?? 3).clamp(0, 6);
+            final num = (start + i).toString().padLeft(pad, '0');
             next = '${_baseCtrl.text}_$num${_keepExtension ? ext : ''}';
             break;
           case _Mode.prefixSuffix:
-            next = '${_prefixCtrl.text}$stem${_suffixCtrl.text}${_keepExtension ? ext : ''}';
+            next =
+                '${_prefixCtrl.text}$stem${_suffixCtrl.text}${_keepExtension ? ext : ''}';
             break;
           case _Mode.regex:
-            if (_patternCtrl.text.isEmpty) { next = old; break; }
+            if (_patternCtrl.text.isEmpty) {
+              next = old;
+              break;
+            }
             final reg = RegExp(_patternCtrl.text);
             final base = stem.replaceAllMapped(reg, (m) => _replaceCtrl.text);
             next = '$base${_keepExtension ? ext : ''}';
@@ -96,22 +106,41 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
       final (_, newName) = preview[i];
       final oldPath = widget.paths[i];
       try {
-        final dir = oldPath.substring(0, oldPath.lastIndexOf(RegExp(r'[/\\]')));
+        final sepIdx = oldPath.lastIndexOf(RegExp(r'[/\\]'));
+        if (sepIdx < 0) {
+          fail++;
+          continue;
+        }
+        final dir = oldPath.substring(0, sepIdx);
+        final newPath = '$dir/$newName';
+        // Évite d'écraser silencieusement un fichier homonyme préexistant.
+        if (newPath != oldPath &&
+            await FileSystemEntity.type(newPath) !=
+                FileSystemEntityType.notFound) {
+          fail++;
+          continue;
+        }
         final type = FileSystemEntity.typeSync(oldPath);
         if (type == FileSystemEntityType.directory) {
-          await Directory(oldPath).rename('$dir/$newName');
+          await Directory(oldPath).rename(newPath);
         } else {
-          await File(oldPath).rename('$dir/$newName');
+          await File(oldPath).rename(newPath);
         }
         ok++;
-      } catch (_) { fail++; }
+      } catch (_) {
+        fail++;
+      }
     }
     if (!mounted) return;
     setState(() => _busy = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('$ok renommé${ok > 1 ? 's' : ''}'
-          '${fail > 0 ? ' · $fail échec(s)' : ''}'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$ok renommé${ok > 1 ? 's' : ''}'
+          '${fail > 0 ? ' · $fail échec(s)' : ''}',
+        ),
+      ),
+    );
     Navigator.pop(context, ok);
   }
 
@@ -122,7 +151,9 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Renommer ${widget.paths.length} fichier${widget.paths.length > 1 ? 's' : ''}'),
+        title: Text(
+          'Renommer ${widget.paths.length} fichier${widget.paths.length > 1 ? 's' : ''}',
+        ),
       ),
       body: Column(
         children: [
@@ -132,9 +163,21 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: SegmentedButton<_Mode>(
               segments: const [
-                ButtonSegment(value: _Mode.sequence, label: Text('Numéroter'), icon: Icon(Icons.format_list_numbered)),
-                ButtonSegment(value: _Mode.prefixSuffix, label: Text('Préfixe'), icon: Icon(Icons.text_fields)),
-                ButtonSegment(value: _Mode.regex, label: Text('Regex'), icon: Icon(Icons.find_replace)),
+                ButtonSegment(
+                  value: _Mode.sequence,
+                  label: Text('Numéroter'),
+                  icon: Icon(Icons.format_list_numbered),
+                ),
+                ButtonSegment(
+                  value: _Mode.prefixSuffix,
+                  label: Text('Préfixe'),
+                  icon: Icon(Icons.text_fields),
+                ),
+                ButtonSegment(
+                  value: _Mode.regex,
+                  label: Text('Regex'),
+                  icon: Icon(Icons.find_replace),
+                ),
               ],
               selected: {_mode},
               onSelectionChanged: (s) => setState(() => _mode = s.first),
@@ -142,17 +185,17 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
           ),
 
           // Champs selon mode
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: _modeFields(),
-          ),
+          Padding(padding: const EdgeInsets.all(12), child: _modeFields()),
 
           // Preserve extension
           CheckboxListTile(
             dense: true,
             value: _keepExtension,
             onChanged: (v) => setState(() => _keepExtension = v ?? true),
-            title: const Text('Conserver l\'extension', style: TextStyle(fontSize: 13)),
+            title: const Text(
+              'Conserver l\'extension',
+              style: TextStyle(fontSize: 13),
+            ),
             controlAffinity: ListTileControlAffinity.leading,
           ),
 
@@ -161,7 +204,10 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               color: Colors.red.withValues(alpha: 0.10),
-              child: Text(err, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              child: Text(
+                err,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
             ),
 
           // Aperçu
@@ -180,16 +226,20 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
                     size: 16,
                     color: changed ? Colors.green : Colors.grey,
                   ),
-                  title: Text(old,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      overflow: TextOverflow.ellipsis),
-                  subtitle: Text(neu ?? '⚠ invalide',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: neu == null ? Colors.red : null,
-                      ),
-                      overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    old,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    neu ?? '⚠ invalide',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: neu == null ? Colors.red : null,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               },
             ),
@@ -212,93 +262,101 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
   Widget _modeFields() {
     switch (_mode) {
       case _Mode.sequence:
-        return Column(children: [
-          TextField(
-            controller: _baseCtrl,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Nom de base',
-              hintText: 'ex : Photo',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: _startCtrl,
-                onChanged: (_) => setState(() {}),
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Début',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
+        return Column(
+          children: [
+            TextField(
+              controller: _baseCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Nom de base',
+                hintText: 'ex : Photo',
+                border: OutlineInputBorder(),
+                isDense: true,
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _padCtrl,
-                onChanged: (_) => setState(() {}),
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Chiffres',
-                  helperText: 'ex 3 → 001',
-                  border: OutlineInputBorder(),
-                  isDense: true,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _startCtrl,
+                    onChanged: (_) => setState(() {}),
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Début',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _padCtrl,
+                    onChanged: (_) => setState(() {}),
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Chiffres',
+                      helperText: 'ex 3 → 001',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ]),
-        ]);
+          ],
+        );
       case _Mode.prefixSuffix:
-        return Column(children: [
-          TextField(
-            controller: _prefixCtrl,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Préfixe',
-              border: OutlineInputBorder(),
-              isDense: true,
+        return Column(
+          children: [
+            TextField(
+              controller: _prefixCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Préfixe',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _suffixCtrl,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Suffixe (avant l\'extension)',
-              border: OutlineInputBorder(),
-              isDense: true,
+            const SizedBox(height: 8),
+            TextField(
+              controller: _suffixCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Suffixe (avant l\'extension)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
             ),
-          ),
-        ]);
+          ],
+        );
       case _Mode.regex:
-        return Column(children: [
-          TextField(
-            controller: _patternCtrl,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Motif (regex)',
-              hintText: r'ex : IMG_(\d+)',
-              border: OutlineInputBorder(),
-              isDense: true,
+        return Column(
+          children: [
+            TextField(
+              controller: _patternCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Motif (regex)',
+                hintText: r'ex : IMG_(\d+)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _replaceCtrl,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Remplacement',
-              hintText: r'ex : Photo_$1',
-              border: OutlineInputBorder(),
-              isDense: true,
+            const SizedBox(height: 8),
+            TextField(
+              controller: _replaceCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Remplacement',
+                hintText: r'ex : Photo_$1',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
             ),
-          ),
-        ]);
+          ],
+        );
     }
   }
 }

@@ -23,7 +23,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
   int _pageLimit = 10;
 
   Future<void> _scan() async {
-    setState(() { _busy = true; _error = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     DocumentScanner? scanner;
     try {
       scanner = DocumentScanner(
@@ -40,7 +43,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
       final pdfRes = result.pdf;
       if (pdfRes == null) {
         if (!mounted) return;
-        setState(() { _busy = false; _error = 'Aucun document scanné'; });
+        setState(() {
+          _busy = false;
+          _error = 'Aucun document scanné';
+        });
         return;
       }
       final src = File(pdfRes.uri.replaceFirst('file://', ''));
@@ -57,16 +63,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
       // src appartient à ML Kit — on ne le supprime pas, c'est leur cache.
       final autoShare = await _storage.getAutoShare();
       if (!mounted) return;
-      setState(() { _busy = false; _lastPdfPath = dest.path; });
+      setState(() {
+        _busy = false;
+        _lastPdfPath = dest.path;
+      });
       if (autoShare) {
         await Share.shareXFiles([XFile(dest.path)]);
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = 'Erreur scanner : $e'; });
+      setState(() {
+        _busy = false;
+        _error = 'Erreur scanner : $e';
+      });
     } finally {
       // Libère les ressources natives du scanner.
-      try { await scanner?.close(); } catch (_) {}
+      try {
+        await scanner?.close();
+      } catch (_) {}
     }
   }
 
@@ -95,14 +109,21 @@ class _ScannerScreenState extends State<ScannerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    Icon(Icons.document_scanner, size: 32, color: cs.primary),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text('Scanner un document',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
-                  ]),
+                  Row(
+                    children: [
+                      Icon(Icons.document_scanner, size: 32, color: cs.primary),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Scanner un document',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'Détection des bords automatique, redressement perspective '
@@ -115,13 +136,19 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('Pages maximum : $_pageLimit',
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(
+            'Pages maximum : $_pageLimit',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
           Slider(
             value: _pageLimit.toDouble(),
-            min: 1, max: 25, divisions: 24,
+            min: 1,
+            max: 25,
+            divisions: 24,
             label: '$_pageLimit',
-            onChanged: _busy ? null : (v) => setState(() => _pageLimit = v.toInt()),
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _pageLimit = v.toInt()),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
@@ -138,8 +165,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
-              child: Text(_error!,
-                  style: const TextStyle(fontSize: 12, color: Colors.red)),
+              child: Text(
+                _error!,
+                style: const TextStyle(fontSize: 12, color: Colors.red),
+              ),
             ),
           ],
           if (_lastPdfPath != null) ...[
@@ -155,18 +184,29 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      Icon(Icons.check_circle, color: Colors.lightBlue.shade700, size: 24),
-                      const SizedBox(width: 8),
-                      Text('Scan sauvegardé sur votre téléphone',
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.lightBlue.shade700,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Scan sauvegardé sur votre téléphone',
                           style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Colors.lightBlue.shade900)),
-                    ]),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.lightBlue.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
-                    const Text('Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :',
-                        style: TextStyle(fontSize: 12)),
+                    const Text(
+                      'Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -174,23 +214,37 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         color: Colors.black.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(_lastPdfPath!,
-                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                      child: Text(
+                        _lastPdfPath!,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: () {
                         final dir = _lastPdfPath!.substring(
-                            0, _lastPdfPath!.lastIndexOf(RegExp(r'[/\\]')));
-                        Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => FileExplorerScreen(initialPath: dir)));
+                          0,
+                          _lastPdfPath!.lastIndexOf(RegExp(r'[/\\]')),
+                        );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                FileExplorerScreen(initialPath: dir),
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.folder_open),
                       label: const Text('Voir le fichier dans l\'explorateur'),
                     ),
                     const SizedBox(height: 10),
-                    const Text('Ou envoyer vers :',
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text(
+                      'Ou envoyer vers :',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                     const SizedBox(height: 6),
                     CloudShareRow(path: _lastPdfPath!, mime: 'application/pdf'),
                   ],

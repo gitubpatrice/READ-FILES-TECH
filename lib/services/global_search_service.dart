@@ -6,11 +6,13 @@ import 'dart:isolate';
 /// Critères de recherche globale.
 class SearchQuery {
   final String rootPath;
-  final String? namePattern;     // sous-chaîne casse-insensitive ; null = pas de filtre
-  final String? contentPattern;  // sous-chaîne casse-insensitive ; null = pas de recherche contenu
-  final Set<String> extensions;  // si vide → tout
-  final int maxContentBytes;     // ne lit pas le contenu au-delà de cette taille
-  final int maxResults;          // arrêt après ce nombre de hits
+  final String?
+  namePattern; // sous-chaîne casse-insensitive ; null = pas de filtre
+  final String?
+  contentPattern; // sous-chaîne casse-insensitive ; null = pas de recherche contenu
+  final Set<String> extensions; // si vide → tout
+  final int maxContentBytes; // ne lit pas le contenu au-delà de cette taille
+  final int maxResults; // arrêt après ce nombre de hits
   const SearchQuery({
     required this.rootPath,
     this.namePattern,
@@ -60,19 +62,24 @@ class GlobalSearchService {
   /// - [progress] : nombre de fichiers scannés (informationnel)
   /// La méthode retourne quand l'isolate est terminé OU annulé.
   Stream<dynamic> search(SearchQuery q) {
-    final controller = StreamController<dynamic>(); // dynamic = SearchHit | int progress | 'done'
+    final controller =
+        StreamController<
+          dynamic
+        >(); // dynamic = SearchHit | int progress | 'done'
     _receive = ReceivePort();
     final cancelPort = ReceivePort();
     _cancelPort = cancelPort.sendPort;
     Isolate.spawn<_StartArgs>(
-      _entry,
-      _StartArgs(_receive!.sendPort, cancelPort.sendPort, q),
-    ).then((iso) {
-      _isolate = iso;
-    }).catchError((e) {
-      controller.addError(e);
-      controller.close();
-    });
+          _entry,
+          _StartArgs(_receive!.sendPort, cancelPort.sendPort, q),
+        )
+        .then((iso) {
+          _isolate = iso;
+        })
+        .catchError((e) {
+          controller.addError(e);
+          controller.close();
+        });
     _receive!.listen((msg) {
       if (msg is! _Msg) return;
       switch (msg.type) {
@@ -93,12 +100,16 @@ class GlobalSearchService {
           break;
       }
     });
-    controller.onCancel = () { cancel(); };
+    controller.onCancel = () {
+      cancel();
+    };
     return controller.stream;
   }
 
   void cancel() {
-    try { _cancelPort?.send('cancel'); } catch (_) {}
+    try {
+      _cancelPort?.send('cancel');
+    } catch (_) {}
     _cleanup();
   }
 
@@ -113,8 +124,29 @@ class GlobalSearchService {
   // ── Isolate worker ──────────────────────────────────────────────────────────
 
   static const _textExts = {
-    'txt','md','csv','xml','json','html','htm','css','js','php','dart',
-    'yaml','yml','ini','conf','log','tsv','rst','tex','sh','py','java','kt',
+    'txt',
+    'md',
+    'csv',
+    'xml',
+    'json',
+    'html',
+    'htm',
+    'css',
+    'js',
+    'php',
+    'dart',
+    'yaml',
+    'yml',
+    'ini',
+    'conf',
+    'log',
+    'tsv',
+    'rst',
+    'tex',
+    'sh',
+    'py',
+    'java',
+    'kt',
   };
 
   static Future<void> _entry(_StartArgs args) async {
@@ -122,7 +154,9 @@ class GlobalSearchService {
     bool cancelled = false;
     final cancelReceive = ReceivePort();
     args.cancelAck.send(cancelReceive.sendPort);
-    cancelReceive.listen((m) { if (m == 'cancel') cancelled = true; });
+    cancelReceive.listen((m) {
+      if (m == 'cancel') cancelled = true;
+    });
 
     final q = args.query;
     final root = Directory(q.rootPath);
@@ -132,7 +166,7 @@ class GlobalSearchService {
       return;
     }
 
-    final namePat    = q.namePattern?.toLowerCase();
+    final namePat = q.namePattern?.toLowerCase();
     final contentPat = q.contentPattern?.toLowerCase();
     final batch = <SearchHit>[];
     var hits = 0;
@@ -147,7 +181,10 @@ class GlobalSearchService {
     }
 
     try {
-      await for (final entity in root.list(recursive: true, followLinks: false)) {
+      await for (final entity in root.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (cancelled || hits >= q.maxResults) break;
         if (entity is! File) continue;
         final name = entity.path.split(RegExp(r'[/\\]')).last;
@@ -173,7 +210,11 @@ class GlobalSearchService {
             if (!nameMatches) continue;
           } else {
             FileStat? stat;
-            try { stat = await entity.stat(); } catch (_) { continue; }
+            try {
+              stat = await entity.stat();
+            } catch (_) {
+              continue;
+            }
             if (stat.size > q.maxContentBytes) {
               if (!nameMatches) continue;
             } else {
@@ -184,11 +225,19 @@ class GlobalSearchService {
         }
 
         FileStat stat;
-        try { stat = await entity.stat(); } catch (_) { continue; }
-        batch.add(SearchHit(
-          path: entity.path, size: stat.size, modified: stat.modified,
-          snippet: snippet,
-        ));
+        try {
+          stat = await entity.stat();
+        } catch (_) {
+          continue;
+        }
+        batch.add(
+          SearchHit(
+            path: entity.path,
+            size: stat.size,
+            modified: stat.modified,
+            snippet: snippet,
+          ),
+        );
         hits++;
         if (batch.length >= 20 ||
             DateTime.now().difference(lastFlush).inMilliseconds > 200) {
@@ -208,7 +257,8 @@ class GlobalSearchService {
   /// éviter l'OOM sur un fichier texte de 50 Mo.
   static Future<String?> _findSnippet(File f, String patternLower) async {
     try {
-      final stream = f.openRead()
+      final stream = f
+          .openRead()
           .transform(utf8.decoder)
           .transform(const LineSplitter());
       await for (final line in stream) {

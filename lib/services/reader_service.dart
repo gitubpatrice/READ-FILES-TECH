@@ -21,12 +21,21 @@ class ReaderService {
   List<ReaderBlock> htmlToBlocks(String htmlSource) {
     final doc = html_parser.parse(htmlSource);
     // Préfère <article> > <main> > <body>
-    dom.Element? root = doc.querySelector('article')
-        ?? doc.querySelector('main')
-        ?? doc.body;
+    dom.Element? root =
+        doc.querySelector('article') ?? doc.querySelector('main') ?? doc.body;
     if (root == null) return [];
     // Retire éléments parasites
-    for (final tag in const ['script', 'style', 'iframe', 'form', 'noscript', 'nav', 'aside', 'footer', 'header']) {
+    for (final tag in const [
+      'script',
+      'style',
+      'iframe',
+      'form',
+      'noscript',
+      'nav',
+      'aside',
+      'footer',
+      'header',
+    ]) {
       for (final e in root.querySelectorAll(tag)) {
         e.remove();
       }
@@ -44,16 +53,25 @@ class ReaderService {
 
     // 1. container.xml → trouve le rootfile (OPF)
     final container = archive.findFile('META-INF/container.xml');
-    if (container == null) throw const FormatException('EPUB invalide : container.xml manquant');
-    final containerXml = utf8.decode(container.content as List<int>, allowMalformed: true);
+    if (container == null)
+      throw const FormatException('EPUB invalide : container.xml manquant');
+    final containerXml = utf8.decode(
+      container.content as List<int>,
+      allowMalformed: true,
+    );
     final opfMatch = RegExp(r'full-path="([^"]+)"').firstMatch(containerXml);
-    if (opfMatch == null) throw const FormatException('EPUB invalide : OPF non trouvé');
+    if (opfMatch == null)
+      throw const FormatException('EPUB invalide : OPF non trouvé');
     final opfPath = opfMatch.group(1)!;
 
     // 2. OPF → manifest (id → href) + spine (ordre des id)
     final opfFile = archive.findFile(opfPath);
-    if (opfFile == null) throw const FormatException('EPUB invalide : OPF introuvable');
-    final opfXml = utf8.decode(opfFile.content as List<int>, allowMalformed: true);
+    if (opfFile == null)
+      throw const FormatException('EPUB invalide : OPF introuvable');
+    final opfXml = utf8.decode(
+      opfFile.content as List<int>,
+      allowMalformed: true,
+    );
     final basePath = p.dirname(opfPath);
 
     final manifest = <String, String>{};
@@ -79,21 +97,29 @@ class ReaderService {
       if (href == null) continue;
       // Garde-fou : un EPUB malveillant peut avoir un href avec `..` qui sort
       // du dossier OPF. p.normalize les résout — on rejette si on sort.
-      final fullPath = p.normalize(p.join(basePath, href)).replaceAll('\\', '/');
+      final fullPath = p
+          .normalize(p.join(basePath, href))
+          .replaceAll('\\', '/');
       if (basePath.isNotEmpty &&
-          !fullPath.startsWith(basePrefix) && fullPath != basePath) {
+          !fullPath.startsWith(basePrefix) &&
+          fullPath != basePath) {
         continue;
       }
       // Un href absolu (`/etc/passwd`) est aussi rejeté.
       if (href.startsWith('/') || href.contains('://')) continue;
       final entry = archive.findFile(fullPath);
       if (entry == null) continue;
-      final xhtml = utf8.decode(entry.content as List<int>, allowMalformed: true);
+      final xhtml = utf8.decode(
+        entry.content as List<int>,
+        allowMalformed: true,
+      );
       final doc = html_parser.parse(xhtml);
       final root = doc.body;
       if (root == null) continue;
       for (final tag in const ['script', 'style']) {
-        for (final e in root.querySelectorAll(tag)) { e.remove(); }
+        for (final e in root.querySelectorAll(tag)) {
+          e.remove();
+        }
       }
       final blocks = _walk(root);
       // Titre du chapitre : premier h1/h2 trouvé, sinon nom du fichier.
@@ -139,6 +165,7 @@ class ReaderService {
         visit(c);
       }
     }
+
     visit(root);
     return out;
   }

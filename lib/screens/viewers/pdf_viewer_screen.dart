@@ -39,8 +39,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text('$_currentPage / $_totalPages',
-                    style: const TextStyle(fontSize: 13)),
+                child: Text(
+                  '$_currentPage / $_totalPages',
+                  style: const TextStyle(fontSize: 13),
+                ),
               ),
             ),
           IconButton(
@@ -65,17 +67,32 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (v) {
-              if (v == 'first')  _ctrl.firstPage();
-              if (v == 'last')   _ctrl.lastPage();
-              if (v == 'jump')   _showJumpDialog();
+              if (v == 'first') _ctrl.firstPage();
+              if (v == 'last') _ctrl.lastPage();
+              if (v == 'jump') _showJumpDialog();
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'first', child: ListTile(
-                  leading: Icon(Icons.first_page), title: Text('Première page'))),
-              PopupMenuItem(value: 'last', child: ListTile(
-                  leading: Icon(Icons.last_page), title: Text('Dernière page'))),
-              PopupMenuItem(value: 'jump', child: ListTile(
-                  leading: Icon(Icons.input), title: Text('Aller à la page…'))),
+              PopupMenuItem(
+                value: 'first',
+                child: ListTile(
+                  leading: Icon(Icons.first_page),
+                  title: Text('Première page'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'last',
+                child: ListTile(
+                  leading: Icon(Icons.last_page),
+                  title: Text('Dernière page'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'jump',
+                child: ListTile(
+                  leading: Icon(Icons.input),
+                  title: Text('Aller à la page…'),
+                ),
+              ),
             ],
           ),
         ],
@@ -100,11 +117,15 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                     icon: const Icon(Icons.chevron_left),
                     onPressed: _currentPage > 1 ? _ctrl.previousPage : null,
                   ),
-                  Text('$_currentPage / $_totalPages',
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    '$_currentPage / $_totalPages',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right),
-                    onPressed: _currentPage < _totalPages ? _ctrl.nextPage : null,
+                    onPressed: _currentPage < _totalPages
+                        ? _ctrl.nextPage
+                        : null,
                   ),
                 ],
               ),
@@ -123,10 +144,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     // 2. Pose sur la page courante du PDF
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => SignaturePlaceScreen(
-        pdfPath: widget.path,
-        pngBytes: png,
-      )),
+      MaterialPageRoute(
+        builder: (_) =>
+            SignaturePlaceScreen(pdfPath: widget.path, pngBytes: png),
+      ),
     );
   }
 
@@ -146,7 +167,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             onPressed: () {
               final page = int.tryParse(ctrl.text);

@@ -39,26 +39,42 @@ class _ExifScreenState extends State<ExifScreen> {
   }
 
   Future<void> _load(String path) async {
-    setState(() { _busy = true; _error = null; _sourcePath = path; _outputPath = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+      _sourcePath = path;
+      _outputPath = null;
+    });
     try {
       final meta = await _service.inspect(File(path));
       if (!mounted) return;
-      setState(() { _metadata = meta; _busy = false; });
+      setState(() {
+        _metadata = meta;
+        _busy = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = '$e'; _busy = false; });
+      setState(() {
+        _error = '$e';
+        _busy = false;
+      });
     }
   }
 
   Future<void> _strip() async {
     if (_sourcePath == null) return;
-    setState(() { _busy = true; _error = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       // 1. Strip → fichier en cache temp
       final tmp = await _service.stripExif(File(_sourcePath!));
       // 2. Copie persistante dans <Files Tech>/Sans-EXIF/
       final ext = tmp.path.split('.').last.toLowerCase();
-      final base = _sourcePath!.split(RegExp(r'[/\\]')).last
+      final base = _sourcePath!
+          .split(RegExp(r'[/\\]'))
+          .last
           .replaceAll(RegExp(r'\.[^.]+$'), '');
       final dest = await _storage.reserveFile(
         category: OutputCategory.exifClean,
@@ -67,12 +83,20 @@ class _ExifScreenState extends State<ExifScreen> {
       );
       await tmp.copy(dest.path);
       // Nettoyage du temp
-      try { await tmp.delete(); } catch (_) {}
+      try {
+        await tmp.delete();
+      } catch (_) {}
       if (!mounted) return;
-      setState(() { _outputPath = dest.path; _busy = false; });
+      setState(() {
+        _outputPath = dest.path;
+        _busy = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = '$e'; _busy = false; });
+      setState(() {
+        _error = '$e';
+        _busy = false;
+      });
     }
   }
 
@@ -88,21 +112,27 @@ class _ExifScreenState extends State<ExifScreen> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.image_outlined),
-              title: Text(_sourcePath == null
-                  ? 'Choisir une image'
-                  : _sourcePath!.split(RegExp(r'[/\\]')).last),
+              title: Text(
+                _sourcePath == null
+                    ? 'Choisir une image'
+                    : _sourcePath!.split(RegExp(r'[/\\]')).last,
+              ),
               trailing: const Icon(Icons.folder_open),
               onTap: _busy ? null : _pick,
             ),
           ),
           if (_sourcePath != null) ...[
             const SizedBox(height: 16),
-            const Text('Métadonnées détectées',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text(
+              'Métadonnées détectées',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             if (_metadata.isEmpty)
-              const Text('Aucune métadonnée notable',
-                  style: TextStyle(fontSize: 13, color: Colors.grey))
+              const Text(
+                'Aucune métadonnée notable',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              )
             else
               Card(
                 child: Column(
@@ -116,8 +146,13 @@ class _ExifScreenState extends State<ExifScreen> {
                         color: isPrivacy ? Colors.orange : Colors.grey,
                       ),
                       title: Text(e.key, style: const TextStyle(fontSize: 13)),
-                      trailing: Text(e.value,
-                          style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      trailing: Text(
+                        e.value,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
                     );
                   }).toList(),
                 ),
@@ -129,17 +164,27 @@ class _ExifScreenState extends State<ExifScreen> {
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.4),
+                  ),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.location_on_outlined, size: 18, color: Colors.orange),
-                  SizedBox(width: 8),
-                  Expanded(child: Text(
-                    'Cette image contient une localisation GPS — '
-                    'effacez avant tout partage public.',
-                    style: TextStyle(fontSize: 11),
-                  )),
-                ]),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 18,
+                      color: Colors.orange,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cette image contient une localisation GPS — '
+                        'effacez avant tout partage public.',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 16),
@@ -153,7 +198,10 @@ class _ExifScreenState extends State<ExifScreen> {
               Card(
                 color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
+                  side: BorderSide(
+                    color: Colors.lightBlue.shade300,
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Padding(
@@ -161,22 +209,38 @@ class _ExifScreenState extends State<ExifScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        Icon(Icons.verified_outlined, color: Colors.lightBlue.shade700, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Image nettoyée et sauvegardée',
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.verified_outlined,
+                            color: Colors.lightBlue.shade700,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Image nettoyée et sauvegardée',
                             style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: Colors.lightBlue.shade900)),
-                      ]),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Colors.lightBlue.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 6),
-                      Text(_outputPath!,
-                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                      Text(
+                        _outputPath!,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       CloudShareRow(
                         path: _outputPath!,
-                        mime: _outputPath!.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg',
+                        mime: _outputPath!.toLowerCase().endsWith('.png')
+                            ? 'image/png'
+                            : 'image/jpeg',
                       ),
                     ],
                   ),
@@ -186,7 +250,10 @@ class _ExifScreenState extends State<ExifScreen> {
           ],
           if (_error != null) ...[
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
           ],
         ],
       ),

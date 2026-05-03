@@ -18,12 +18,18 @@ enum OutputCategory {
 extension OutputCategoryX on OutputCategory {
   String get folderName {
     switch (this) {
-      case OutputCategory.scans:        return 'Scans';
-      case OutputCategory.conversions:  return 'Conversions';
-      case OutputCategory.compressions: return 'Compressions';
-      case OutputCategory.signatures:   return 'Signatures';
-      case OutputCategory.exifClean:    return 'Sans-EXIF';
-      case OutputCategory.ocr:          return 'OCR';
+      case OutputCategory.scans:
+        return 'Scans';
+      case OutputCategory.conversions:
+        return 'Conversions';
+      case OutputCategory.compressions:
+        return 'Compressions';
+      case OutputCategory.signatures:
+        return 'Signatures';
+      case OutputCategory.exifClean:
+        return 'Sans-EXIF';
+      case OutputCategory.ocr:
+        return 'OCR';
     }
   }
 }
@@ -40,7 +46,7 @@ extension OutputCategoryX on OutputCategory {
 ///   toujours visible mais sans avoir besoin de MANAGE_EXTERNAL_STORAGE.
 /// - Filenames : `<base>_<yyyyMMdd_HHmmss>.<ext>` ; collision → suffixe `_N`.
 class OutputStorageService {
-  static const _kBasePath  = 'output_base_path';
+  static const _kBasePath = 'output_base_path';
   static const _kAutoShare = 'output_auto_share';
   static const _defaultBase = '/storage/emulated/0/Files Tech';
 
@@ -55,19 +61,22 @@ class OutputStorageService {
   /// pointant vers une autre app (`/data/data/<other-pkg>/`) : Android l'aurait
   /// bloqué de toute façon, mais on évite de stocker une préférence cassée.
   Future<void> setBasePath(String path) async {
-    final allowed = path.startsWith('/storage/emulated/0') ||
-                    path.startsWith('/storage/') ||
-                    path.startsWith('/sdcard/') ||
-                    path == '/sdcard' ||
-                    path == _defaultBase;
+    final allowed =
+        path.startsWith('/storage/emulated/0') ||
+        path.startsWith('/storage/') ||
+        path.startsWith('/sdcard/') ||
+        path == '/sdcard' ||
+        path == _defaultBase;
     // On laisse aussi passer les paths app (récupérés via path_provider) :
     // ils contiennent typiquement `/files/` ou `/cache/` à la fin.
-    final isAppDir = path.contains('/Android/data/') ||
-                     path.contains('/files/') ||
-                     path.contains('/cache/');
+    final isAppDir =
+        path.contains('/Android/data/') ||
+        path.contains('/files/') ||
+        path.contains('/cache/');
     if (!allowed && !isAppDir) {
       throw ArgumentError(
-          'Chemin non autorisé. Choisissez un dossier sur le stockage interne.');
+        'Chemin non autorisé. Choisissez un dossier sur le stockage interne.',
+      );
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kBasePath, path);
@@ -146,7 +155,9 @@ class OutputStorageService {
     // 2. Fallback : dossier app-privé externe (toujours accessible).
     final ext = await getExternalStorageDirectory();
     if (ext != null) {
-      final fallbackDir = Directory('${ext.path}/Files Tech/${category.folderName}');
+      final fallbackDir = Directory(
+        '${ext.path}/Files Tech/${category.folderName}',
+      );
       final fallback = await _tryCreateAndReserve(fallbackDir, fileName);
       if (fallback != null) return fallback;
     }
@@ -172,7 +183,7 @@ class OutputStorageService {
       while (await dest.exists()) {
         final dot = fileName.lastIndexOf('.');
         final base = dot >= 0 ? fileName.substring(0, dot) : fileName;
-        final ext  = dot >= 0 ? fileName.substring(dot) : '';
+        final ext = dot >= 0 ? fileName.substring(dot) : '';
         dest = File('${dir.path}/${base}_$counter$ext');
         counter++;
       }
@@ -188,7 +199,8 @@ class OutputStorageService {
   /// Utile pour afficher un avertissement dans Settings.
   Future<bool> canWriteToConfiguredBase() async {
     final basePath = await getBasePath();
-    if (basePath.startsWith('/storage/emulated/0') || basePath.startsWith('/sdcard')) {
+    if (basePath.startsWith('/storage/emulated/0') ||
+        basePath.startsWith('/sdcard')) {
       if (!Platform.isAndroid) return true;
       return await Permission.manageExternalStorage.isGranted;
     }
@@ -196,7 +208,9 @@ class OutputStorageService {
     try {
       final dir = Directory(basePath);
       if (!await dir.exists()) await dir.create(recursive: true);
-      final probe = File('${dir.path}/.probe_${DateTime.now().millisecondsSinceEpoch}');
+      final probe = File(
+        '${dir.path}/.probe_${DateTime.now().millisecondsSinceEpoch}',
+      );
       await probe.writeAsString('');
       await probe.delete();
       return true;
@@ -213,5 +227,4 @@ class OutputStorageService {
     String two(int v) => v.toString().padLeft(2, '0');
     return '${n.year}${two(n.month)}${two(n.day)}_${two(n.hour)}${two(n.minute)}${two(n.second)}';
   }
-
 }

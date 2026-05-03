@@ -17,6 +17,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   late WebViewController _controller;
   bool _isLoading = true;
   bool _viewSource = false;
+
   /// JavaScript désactivé par défaut (sécurité). L'utilisateur peut
   /// l'activer manuellement via le bouton dans l'AppBar — opt-in
   /// explicite pour rendu fidèle d'HTML interactif.
@@ -38,21 +39,23 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
 
   void _initController() {
     _controller = WebViewController()
-      ..setJavaScriptMode(_jsEnabled
-          ? JavaScriptMode.unrestricted
-          : JavaScriptMode.disabled)
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) =>
-            mounted ? setState(() => _isLoading = false) : null,
-        onNavigationRequest: (req) {
-          // Bloquer toute navigation hors du fichier local d'origine.
-          // Empêche un HTML malveillant d'exfiltrer en redirigeant vers https://attacker.
-          if (req.url.startsWith('file://') || req.url.startsWith('about:')) {
-            return NavigationDecision.navigate;
-          }
-          return NavigationDecision.prevent;
-        },
-      ));
+      ..setJavaScriptMode(
+        _jsEnabled ? JavaScriptMode.unrestricted : JavaScriptMode.disabled,
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) =>
+              mounted ? setState(() => _isLoading = false) : null,
+          onNavigationRequest: (req) {
+            // Bloquer toute navigation hors du fichier local d'origine.
+            // Empêche un HTML malveillant d'exfiltrer en redirigeant vers https://attacker.
+            if (req.url.startsWith('file://') || req.url.startsWith('about:')) {
+              return NavigationDecision.navigate;
+            }
+            return NavigationDecision.prevent;
+          },
+        ),
+      );
   }
 
   Future<void> _toggleJs() async {
@@ -71,11 +74,13 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Annuler')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Activer')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Activer'),
+            ),
           ],
         ),
       );
@@ -137,7 +142,9 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
         title: Text(_name, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
-            tooltip: _jsEnabled ? 'JS activé (clic = désactiver)' : 'JS désactivé (clic = activer)',
+            tooltip: _jsEnabled
+                ? 'JS activé (clic = désactiver)'
+                : 'JS désactivé (clic = activer)',
             icon: Icon(
               _jsEnabled ? Icons.javascript : Icons.javascript_outlined,
               color: _jsEnabled ? Theme.of(context).colorScheme.error : null,
@@ -152,8 +159,13 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
           IconButton(
             tooltip: 'Mode lecture (texte désencombré)',
             icon: const Icon(Icons.menu_book_outlined),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => ReaderViewerScreen(path: widget.path, isEpub: false))),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ReaderViewerScreen(path: widget.path, isEpub: false),
+              ),
+            ),
           ),
           IconButton(
             tooltip: 'Partager',
@@ -169,14 +181,21 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
             child: _viewSource
                 ? SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
-                    child: SelectableText(_htmlContent,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+                    child: SelectableText(
+                      _htmlContent,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
                   )
-                : Stack(children: [
-                    WebViewWidget(controller: _controller),
-                    if (_isLoading)
-                      const Center(child: CircularProgressIndicator()),
-                  ]),
+                : Stack(
+                    children: [
+                      WebViewWidget(controller: _controller),
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -188,7 +207,10 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _colors.length,
@@ -199,22 +221,29 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
             onTap: () {
               Clipboard.setData(ClipboardData(text: c.code));
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Copié : ${c.code}'),
-                    duration: const Duration(seconds: 1)),
+                SnackBar(
+                  content: Text('Copié : ${c.code}'),
+                  duration: const Duration(seconds: 1),
+                ),
               );
             },
-            child: Row(children: [
-              Container(
-                width: 22, height: 22,
-                decoration: BoxDecoration(
-                  color: c.color,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.4)),
+            child: Row(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: c.color,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.4),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(c.code, style: const TextStyle(fontSize: 11)),
-            ]),
+                const SizedBox(width: 4),
+                Text(c.code, style: const TextStyle(fontSize: 11)),
+              ],
+            ),
           );
         },
       ),

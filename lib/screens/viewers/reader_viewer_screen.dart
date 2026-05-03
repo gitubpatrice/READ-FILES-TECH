@@ -8,7 +8,11 @@ import '../../services/reader_service.dart';
 class ReaderViewerScreen extends StatefulWidget {
   final String path;
   final bool isEpub;
-  const ReaderViewerScreen({super.key, required this.path, required this.isEpub});
+  const ReaderViewerScreen({
+    super.key,
+    required this.path,
+    required this.isEpub,
+  });
 
   @override
   State<ReaderViewerScreen> createState() => _ReaderViewerScreenState();
@@ -44,16 +48,21 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
         final blocks = _service.htmlToBlocks(raw);
         if (!mounted) return;
         setState(() {
-          _chapters = [EpubChapter(
-            title: widget.path.split(RegExp(r'[/\\]')).last,
-            blocks: blocks,
-          )];
+          _chapters = [
+            EpubChapter(
+              title: widget.path.split(RegExp(r'[/\\]')).last,
+              blocks: blocks,
+            ),
+          ];
           _loading = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = '$e'; _loading = false; });
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
     }
   }
 
@@ -65,11 +74,15 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Mode lecture')),
-        body: Center(child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Erreur : $_error',
-              style: const TextStyle(color: Colors.red)),
-        )),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Erreur : $_error',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
       );
     }
     final ch = _chapters[_index];
@@ -82,7 +95,10 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
             tooltip: 'Taille du texte',
             onSelected: (v) => setState(() => _fontSize = v),
             itemBuilder: (_) => [12, 14, 16, 18, 20, 24]
-                .map((s) => PopupMenuItem(value: s.toDouble(), child: Text('$s pt')))
+                .map(
+                  (s) =>
+                      PopupMenuItem(value: s.toDouble(), child: Text('$s pt')),
+                )
                 .toList(),
           ),
           if (_chapters.length > 1)
@@ -94,8 +110,10 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
                 for (var i = 0; i < _chapters.length; i++)
                   PopupMenuItem(
                     value: i,
-                    child: Text('${i + 1}. ${_chapters[i].title}',
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      '${i + 1}. ${_chapters[i].title}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
               ],
             ),
@@ -115,10 +133,14 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.chevron_left),
-                    onPressed: _index > 0 ? () => setState(() => _index--) : null,
+                    onPressed: _index > 0
+                        ? () => setState(() => _index--)
+                        : null,
                   ),
-                  Text('Chapitre ${_index + 1} / ${_chapters.length}',
-                      style: const TextStyle(fontSize: 12)),
+                  Text(
+                    'Chapitre ${_index + 1} / ${_chapters.length}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right),
                     onPressed: _index < _chapters.length - 1
@@ -138,33 +160,54 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
       case 'h1':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: SelectableText(b.text,
-              style: base.copyWith(fontSize: _fontSize * 1.6, fontWeight: FontWeight.w700)),
+          child: SelectableText(
+            b.text,
+            style: base.copyWith(
+              fontSize: _fontSize * 1.6,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         );
       case 'h2':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: SelectableText(b.text,
-              style: base.copyWith(fontSize: _fontSize * 1.35, fontWeight: FontWeight.w700)),
+          child: SelectableText(
+            b.text,
+            style: base.copyWith(
+              fontSize: _fontSize * 1.35,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         );
       case 'h3':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: SelectableText(b.text,
-              style: base.copyWith(fontSize: _fontSize * 1.15, fontWeight: FontWeight.w600)),
+          child: SelectableText(
+            b.text,
+            style: base.copyWith(
+              fontSize: _fontSize * 1.15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         );
       case 'quote':
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
           decoration: BoxDecoration(
-            border: Border(left: BorderSide(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-              width: 3,
-            )),
+            border: Border(
+              left: BorderSide(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.5),
+                width: 3,
+              ),
+            ),
           ),
-          child: SelectableText(b.text,
-              style: base.copyWith(fontStyle: FontStyle.italic)),
+          child: SelectableText(
+            b.text,
+            style: base.copyWith(fontStyle: FontStyle.italic),
+          ),
         );
       case 'li':
         return Padding(

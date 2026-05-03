@@ -18,9 +18,8 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   bool _isSaving = false;
   String _resolvedPath = '';
 
-  String get _name => _resolvedPath.isEmpty
-      ? ''
-      : _resolvedPath.split(RegExp(r'[/\\]')).last;
+  String get _name =>
+      _resolvedPath.isEmpty ? '' : _resolvedPath.split(RegExp(r'[/\\]')).last;
 
   @override
   void initState() {
@@ -32,11 +31,15 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   Future<void> _init() async {
     if (_resolvedPath.isEmpty) {
       final nav = Navigator.of(context);
-      final path = await RftPickerScreen.pickOne(context,
-          title: 'Choisir un CSV à éditer',
-          extensions: const {'csv'});
+      final path = await RftPickerScreen.pickOne(
+        context,
+        title: 'Choisir un CSV à éditer',
+        extensions: const {'csv'},
+      );
       if (path == null) {
-        if (mounted) { nav.pop(); }
+        if (mounted) {
+          nav.pop();
+        }
         return;
       }
       _resolvedPath = path;
@@ -49,16 +52,15 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
       final content = await File(_resolvedPath).readAsString();
       final parsed = const CsvToListConverter().convert(content, eol: '\n');
       setState(() {
-        _rows = parsed
-            .map((r) => r.map((c) => c.toString()).toList())
-            .toList();
+        _rows = parsed.map((r) => r.map((c) => c.toString()).toList()).toList();
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
       }
     }
   }
@@ -69,11 +71,16 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
     try {
       final csv = const ListToCsvConverter().convert(_rows);
       await File(_resolvedPath).writeAsString(csv);
-      setState(() { _modified = false; _isSaving = false; });
+      setState(() {
+        _modified = false;
+        _isSaving = false;
+      });
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
-            content: Text('Sauvegardé'), duration: Duration(seconds: 1)),
+          content: Text('Sauvegardé'),
+          duration: Duration(seconds: 1),
+        ),
       );
     } catch (e) {
       setState(() => _isSaving = false);
@@ -87,9 +94,9 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(row == 0
-            ? 'En-tête · col ${col + 1}'
-            : 'Ligne $row · col ${col + 1}'),
+        title: Text(
+          row == 0 ? 'En-tête · col ${col + 1}' : 'Ligne $row · col ${col + 1}',
+        ),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -99,8 +106,9 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             onPressed: () {
               setState(() {
@@ -160,15 +168,19 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
         content: const Text('Voulez-vous sauvegarder avant de quitter ?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Ignorer')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ignorer'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Annuler')),
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             onPressed: () async {
               await _save();
-              if (mounted) { Navigator.of(context).pop(true); }
+              if (mounted) {
+                Navigator.of(context).pop(true);
+              }
             },
             child: const Text('Sauvegarder'),
           ),
@@ -191,26 +203,35 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Row(children: [
-            Expanded(
-              child: Text(_name.isEmpty ? 'Éditeur CSV' : _name,
-                  overflow: TextOverflow.ellipsis),
-            ),
-            if (_modified)
-              Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                  border:
-                      Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _name.isEmpty ? 'Éditeur CSV' : _name,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: const Text('modifié',
-                    style: TextStyle(fontSize: 11, color: Colors.orange)),
               ),
-          ]),
+              if (_modified)
+                Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Text(
+                    'modifié',
+                    style: TextStyle(fontSize: 11, color: Colors.orange),
+                  ),
+                ),
+            ],
+          ),
           actions: [
             if (_modified)
               IconButton(
@@ -219,7 +240,8 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.save),
                 onPressed: _isSaving ? null : _save,
               ),
@@ -230,15 +252,19 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(
-                    value: 'add_row',
-                    child: ListTile(
-                        leading: Icon(Icons.add),
-                        title: Text('Ajouter une ligne'))),
+                  value: 'add_row',
+                  child: ListTile(
+                    leading: Icon(Icons.add),
+                    title: Text('Ajouter une ligne'),
+                  ),
+                ),
                 PopupMenuItem(
-                    value: 'add_col',
-                    child: ListTile(
-                        leading: Icon(Icons.add),
-                        title: Text('Ajouter une colonne'))),
+                  value: 'add_col',
+                  child: ListTile(
+                    leading: Icon(Icons.add),
+                    title: Text('Ajouter une colonne'),
+                  ),
+                ),
               ],
             ),
           ],
@@ -246,8 +272,8 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _rows.isEmpty
-                ? const Center(child: Text('Fichier vide'))
-                : _buildTable(),
+            ? const Center(child: Text('Fichier vide'))
+            : _buildTable(),
         floatingActionButton: _modified
             ? FloatingActionButton.extended(
                 onPressed: _isSaving ? null : _save,
@@ -261,8 +287,7 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   }
 
   Widget _buildTable() {
-    final cols =
-        _rows.fold(0, (max, r) => r.length > max ? r.length : max);
+    final cols = _rows.fold(0, (max, r) => r.length > max ? r.length : max);
     final theme = Theme.of(context);
     const cellW = 120.0;
     const rowNumW = 36.0;
@@ -274,24 +299,25 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
         child: Column(
           children: [
             // Delete-column buttons row
-            Row(children: [
-              const SizedBox(width: rowNumW),
-              ...List.generate(
+            Row(
+              children: [
+                const SizedBox(width: rowNumW),
+                ...List.generate(
                   cols,
                   (c) => SizedBox(
-                        width: cellW,
-                        child: Center(
-                          child: IconButton(
-                            icon: const Icon(Icons.remove_circle_outline,
-                                size: 16),
-                            color: Colors.red.withValues(alpha: 0.6),
-                            onPressed:
-                                cols > 1 ? () => _deleteColumn(c) : null,
-                            tooltip: 'Supprimer col ${c + 1}',
-                          ),
-                        ),
-                      )),
-            ]),
+                    width: cellW,
+                    child: Center(
+                      child: IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, size: 16),
+                        color: Colors.red.withValues(alpha: 0.6),
+                        onPressed: cols > 1 ? () => _deleteColumn(c) : null,
+                        tooltip: 'Supprimer col ${c + 1}',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             // Data rows
             Expanded(
               child: ListView.builder(
@@ -304,63 +330,69 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
                       color: isHeader
                           ? theme.colorScheme.surfaceContainerHighest
                           : rowIdx.isOdd
-                              ? theme.colorScheme.surface
-                              : theme.colorScheme.surfaceContainerLow,
+                          ? theme.colorScheme.surface
+                          : theme.colorScheme.surfaceContainerLow,
                       border: Border(
                         bottom: BorderSide(
                           color: theme.dividerColor.withValues(alpha: 0.3),
                         ),
                       ),
                     ),
-                    child: Row(children: [
-                      // Row delete button (skip for header)
-                      SizedBox(
-                        width: rowNumW,
-                        child: rowIdx == 0
-                            ? const SizedBox()
-                            : IconButton(
-                                icon: const Icon(Icons.remove_circle_outline,
-                                    size: 14),
-                                color: Colors.red.withValues(alpha: 0.5),
-                                onPressed: () => _deleteRow(rowIdx),
-                                padding: EdgeInsets.zero,
-                                tooltip: 'Supprimer ligne',
+                    child: Row(
+                      children: [
+                        // Row delete button (skip for header)
+                        SizedBox(
+                          width: rowNumW,
+                          child: rowIdx == 0
+                              ? const SizedBox()
+                              : IconButton(
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 14,
+                                  ),
+                                  color: Colors.red.withValues(alpha: 0.5),
+                                  onPressed: () => _deleteRow(rowIdx),
+                                  padding: EdgeInsets.zero,
+                                  tooltip: 'Supprimer ligne',
+                                ),
+                        ),
+                        // Cells
+                        ...List.generate(cols, (colIdx) {
+                          final val = colIdx < row.length ? row[colIdx] : '';
+                          return InkWell(
+                            onTap: () => _editCell(rowIdx, colIdx),
+                            child: Container(
+                              width: cellW,
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
-                      ),
-                      // Cells
-                      ...List.generate(cols, (colIdx) {
-                        final val =
-                            colIdx < row.length ? row[colIdx] : '';
-                        return InkWell(
-                          onTap: () => _editCell(rowIdx, colIdx),
-                          child: Container(
-                            width: cellW,
-                            height: 36,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                right: BorderSide(
-                                  color: theme.dividerColor
-                                      .withValues(alpha: 0.3),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(
+                                    color: theme.dividerColor.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                val,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isHeader
+                                      ? FontWeight.w700
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
-                            child: Text(
-                              val,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isHeader
-                                    ? FontWeight.w700
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ]),
+                          );
+                        }),
+                      ],
+                    ),
                   );
                 },
               ),

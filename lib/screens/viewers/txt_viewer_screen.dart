@@ -10,7 +10,11 @@ class TxtViewerScreen extends StatefulWidget {
   final String path;
   final String? highlightLanguage; // css, js, php, xml, json, etc.
 
-  const TxtViewerScreen({super.key, required this.path, this.highlightLanguage});
+  const TxtViewerScreen({
+    super.key,
+    required this.path,
+    this.highlightLanguage,
+  });
 
   @override
   State<TxtViewerScreen> createState() => _TxtViewerScreenState();
@@ -43,7 +47,10 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
         _showColors = colors.isNotEmpty;
       });
     } catch (e) {
-      setState(() { _content = 'Erreur de lecture : $e'; _isLoading = false; });
+      setState(() {
+        _content = 'Erreur de lecture : $e';
+        _isLoading = false;
+      });
     }
   }
 
@@ -83,8 +90,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
     return v != null ? Color(v) : null;
   }
 
-  bool get _isDark =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +101,12 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           if (_colorMatches.isNotEmpty)
             IconButton(
               tooltip: 'Couleurs',
-              icon: Icon(Icons.palette_outlined,
-                  color: _showColors ? Theme.of(context).colorScheme.primary : null),
+              icon: Icon(
+                Icons.palette_outlined,
+                color: _showColors
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+              ),
               onPressed: () => setState(() => _showColors = !_showColors),
             ),
           IconButton(
@@ -108,11 +118,19 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
             icon: const Icon(Icons.text_fields),
             onSelected: (v) => setState(() => _fontSize = v),
             itemBuilder: (_) => [10, 12, 13, 14, 16, 18, 20]
-                .map((s) => PopupMenuItem(
-                      value: s.toDouble(),
-                      child: Text('$s pt',
-                          style: TextStyle(fontWeight: _fontSize == s ? FontWeight.bold : FontWeight.normal)),
-                    ))
+                .map(
+                  (s) => PopupMenuItem(
+                    value: s.toDouble(),
+                    child: Text(
+                      '$s pt',
+                      style: TextStyle(
+                        fontWeight: _fontSize == s
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -121,8 +139,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                if (_showColors && _colorMatches.isNotEmpty)
-                  _buildColorBar(),
+                if (_showColors && _colorMatches.isNotEmpty) _buildColorBar(),
                 Expanded(child: _buildContent()),
               ],
             ),
@@ -134,8 +151,9 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(
-            color: Theme.of(context).dividerColor)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -147,24 +165,31 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
             onTap: () {
               Clipboard.setData(ClipboardData(text: m.code));
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Copié : ${m.code}'),
-                    duration: const Duration(seconds: 1)),
+                SnackBar(
+                  content: Text('Copié : ${m.code}'),
+                  duration: const Duration(seconds: 1),
+                ),
               );
             },
             child: Tooltip(
               message: m.code,
-              child: Row(children: [
-                Container(
-                  width: 22, height: 22,
-                  decoration: BoxDecoration(
-                    color: m.color,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.4)),
+              child: Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: m.color,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: Colors.grey.withValues(alpha: 0.4),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Text(m.code, style: const TextStyle(fontSize: 11)),
-              ]),
+                  const SizedBox(width: 4),
+                  Text(m.code, style: const TextStyle(fontSize: 11)),
+                ],
+              ),
             ),
           );
         },

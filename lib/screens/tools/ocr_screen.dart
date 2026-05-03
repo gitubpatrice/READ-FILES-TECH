@@ -31,13 +31,24 @@ class _OcrScreenState extends State<OcrScreen> {
   }
 
   Future<void> _process(String imagePath) async {
-    setState(() { _busy = true; _error = null; _imagePath = imagePath; _text = ''; });
+    setState(() {
+      _busy = true;
+      _error = null;
+      _imagePath = imagePath;
+      _text = '';
+    });
     try {
       final input = InputImage.fromFilePath(imagePath);
       final result = await _recognizer.processImage(input);
-      setState(() { _text = result.text; _busy = false; });
+      setState(() {
+        _text = result.text;
+        _busy = false;
+      });
     } catch (e) {
-      setState(() { _busy = false; _error = 'Erreur OCR : $e'; });
+      setState(() {
+        _busy = false;
+        _error = 'Erreur OCR : $e';
+      });
     }
   }
 
@@ -71,10 +82,12 @@ class _OcrScreenState extends State<OcrScreen> {
     final autoShare = await storage.getAutoShare();
     if (!mounted) return;
     setState(() => _lastTxtPath = out.path);
-    messenger.showSnackBar(SnackBar(
-      content: Text('Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}'),
-      duration: const Duration(seconds: 4),
-    ));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}'),
+        duration: const Duration(seconds: 4),
+      ),
+    );
     if (autoShare) {
       await Share.shareXFiles([XFile(out.path)]);
     }
@@ -82,9 +95,9 @@ class _OcrScreenState extends State<OcrScreen> {
 
   void _copy() {
     Clipboard.setData(ClipboardData(text: _text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Texte copié')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Texte copié')));
   }
 
   @override
@@ -93,16 +106,18 @@ class _OcrScreenState extends State<OcrScreen> {
       appBar: AppBar(
         title: const Text('OCR — Image vers texte'),
         actions: [
-          if (_text.isNotEmpty) IconButton(
-            icon: const Icon(Icons.copy),
-            tooltip: 'Copier',
-            onPressed: _copy,
-          ),
-          if (_text.isNotEmpty) IconButton(
-            icon: const Icon(Icons.save_alt),
-            tooltip: 'Enregistrer en .txt',
-            onPressed: _saveAsTxt,
-          ),
+          if (_text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.copy),
+              tooltip: 'Copier',
+              onPressed: _copy,
+            ),
+          if (_text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.save_alt),
+              tooltip: 'Enregistrer en .txt',
+              onPressed: _saveAsTxt,
+            ),
         ],
       ),
       body: Column(
@@ -117,7 +132,10 @@ class _OcrScreenState extends State<OcrScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
             ),
           Expanded(
             child: _text.isEmpty && !_busy
@@ -127,22 +145,32 @@ class _OcrScreenState extends State<OcrScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.text_snippet_outlined, size: 64, color: Colors.grey.shade400),
+                          Icon(
+                            Icons.text_snippet_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
                           const SizedBox(height: 12),
-                          const Text('Choisissez une image pour extraire le texte',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey)),
+                          const Text(
+                            'Choisissez une image pour extraire le texte',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
                           const SizedBox(height: 4),
-                          const Text('Reconnaissance 100 % locale (latin)',
-                              style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          const Text(
+                            'Reconnaissance 100 % locale (latin)',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
                         ],
                       ),
                     ),
                   )
                 : SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
-                    child: SelectableText(_text,
-                        style: const TextStyle(fontSize: 14, height: 1.5)),
+                    child: SelectableText(
+                      _text,
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    ),
                   ),
           ),
           if (_lastTxtPath != null)
@@ -157,18 +185,27 @@ class _OcrScreenState extends State<OcrScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    Icon(Icons.check_circle, color: Colors.lightBlue.shade700, size: 18),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.lightBlue.shade700,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
                           'Sauvegardé : ${_lastTxtPath!.split(RegExp(r'[/\\]')).last}',
                           style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 12,
-                              color: Colors.lightBlue.shade900),
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ]),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: Colors.lightBlue.shade900,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   CloudShareRow(path: _lastTxtPath!, mime: 'text/plain'),
                 ],

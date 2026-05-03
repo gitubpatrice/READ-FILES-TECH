@@ -42,9 +42,11 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     final name = _nameCtrl.text.trim();
     final content = _contentCtrl.text.trim();
     if (name.isEmpty && content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Saisissez un nom OU un contenu à rechercher'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saisissez un nom OU un contenu à rechercher'),
+        ),
+      );
       return;
     }
     _sub?.cancel();
@@ -53,11 +55,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       _scanned = 0;
       _searching = true;
     });
-    final stream = _service.search(SearchQuery(
-      rootPath: _root,
-      namePattern: name.isEmpty ? null : name,
-      contentPattern: content.isEmpty ? null : content,
-    ));
+    final stream = _service.search(
+      SearchQuery(
+        rootPath: _root,
+        namePattern: name.isEmpty ? null : name,
+        contentPattern: content.isEmpty ? null : content,
+      ),
+    );
     _sub = stream.listen(
       (event) {
         if (event is SearchHit) {
@@ -69,7 +73,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       onError: (e) {
         if (!mounted) return;
         setState(() => _searching = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
       },
       onDone: () {
         if (!mounted) return;
@@ -86,9 +92,16 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   void _open(SearchHit hit) {
     // Ouvre le dossier parent dans l'explorateur, plus utile que d'ouvrir
     // le fichier directement (cohérent avec la philosophie "explorateur").
-    final parent = hit.path.substring(0, hit.path.lastIndexOf(RegExp(r'[/\\]')));
-    Navigator.push(context, MaterialPageRoute(
-        builder: (_) => FileExplorerScreen(initialPath: parent)));
+    final parent = hit.path.substring(
+      0,
+      hit.path.lastIndexOf(RegExp(r'[/\\]')),
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FileExplorerScreen(initialPath: parent),
+      ),
+    );
   }
 
   @override
@@ -100,121 +113,174 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
           if (_results.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Center(child: Text('${_results.length} résultat${_results.length > 1 ? 's' : ''}',
-                  style: const TextStyle(fontSize: 12))),
+              child: Center(
+                child: Text(
+                  '${_results.length} résultat${_results.length > 1 ? 's' : ''}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
             ),
         ],
       ),
-      body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Column(children: [
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nom du fichier contient',
-                hintText: 'ex : facture',
-                prefixIcon: Icon(Icons.title),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onSubmitted: (_) => _start(),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _contentCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Contenu contient (texte uniquement)',
-                hintText: 'ex : SIRET',
-                prefixIcon: Icon(Icons.find_in_page_outlined),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onSubmitted: (_) => _start(),
-            ),
-            const SizedBox(height: 8),
-            Row(children: [
-              IconButton(
-                tooltip: 'Choisir le dossier de recherche',
-                icon: const Icon(Icons.folder_open),
-                onPressed: _searching ? null : _pickRoot,
-              ),
-              Expanded(
-                child: Text(_root,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    overflow: TextOverflow.ellipsis),
-              ),
-              if (!_searching)
-                FilledButton.icon(
-                  onPressed: _start,
-                  icon: const Icon(Icons.search),
-                  label: const Text('Lancer'),
-                )
-              else
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: _stop,
-                  icon: const Icon(Icons.stop),
-                  label: const Text('Arrêter'),
-                ),
-            ]),
-          ]),
-        ),
-        if (_searching)
+      body: Column(
+        children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(children: [
-              const SizedBox(
-                width: 12, height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 8),
-              Text('Scan : $_scanned fichiers — ${_results.length} trouvés',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ]),
-          ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: _results.isEmpty
-              ? Center(child: Text(
-                  _searching ? 'Recherche…' : 'Aucun résultat — saisissez vos critères',
-                  style: const TextStyle(color: Colors.grey)))
-              : ListView.builder(
-                  itemCount: _results.length,
-                  itemBuilder: (_, i) {
-                    final hit = _results[i];
-                    final name = hit.path.split(RegExp(r'[/\\]')).last;
-                    final parent = hit.path.substring(0, hit.path.lastIndexOf(RegExp(r'[/\\]')));
-                    return ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.insert_drive_file_outlined, size: 20),
-                      title: Text(name, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(parent, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                          if (hit.snippet != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(hit.snippet!,
-                                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11, fontFamily: 'monospace',
-                                    color: Theme.of(context).colorScheme.primary,
-                                  )),
-                            ),
-                        ],
-                      ),
-                      trailing: Text(_fmt(hit.size),
-                          style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                      onTap: () => _open(hit),
-                    );
-                  },
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nom du fichier contient',
+                    hintText: 'ex : facture',
+                    prefixIcon: Icon(Icons.title),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _start(),
                 ),
-        ),
-      ]),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _contentCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Contenu contient (texte uniquement)',
+                    hintText: 'ex : SIRET',
+                    prefixIcon: Icon(Icons.find_in_page_outlined),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _start(),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Choisir le dossier de recherche',
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: _searching ? null : _pickRoot,
+                    ),
+                    Expanded(
+                      child: Text(
+                        _root,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (!_searching)
+                      FilledButton.icon(
+                        onPressed: _start,
+                        icon: const Icon(Icons.search),
+                        label: const Text('Lancer'),
+                      )
+                    else
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        onPressed: _stop,
+                        icon: const Icon(Icons.stop),
+                        label: const Text('Arrêter'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (_searching)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Scan : $_scanned fichiers — ${_results.length} trouvés',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: _results.isEmpty
+                ? Center(
+                    child: Text(
+                      _searching
+                          ? 'Recherche…'
+                          : 'Aucun résultat — saisissez vos critères',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _results.length,
+                    itemBuilder: (_, i) {
+                      final hit = _results[i];
+                      final name = hit.path.split(RegExp(r'[/\\]')).last;
+                      final parent = hit.path.substring(
+                        0,
+                        hit.path.lastIndexOf(RegExp(r'[/\\]')),
+                      );
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(
+                          Icons.insert_drive_file_outlined,
+                          size: 20,
+                        ),
+                        title: Text(
+                          name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              parent,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            if (hit.snippet != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  hit.snippet!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        trailing: Text(
+                          _fmt(hit.size),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        onTap: () => _open(hit),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

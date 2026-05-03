@@ -25,9 +25,25 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
   int _scannedFiles = 0;
 
   static const _textExts = {
-    'txt','md','csv','xml','json','html','htm',
-    'css','js','php','dart','ts','yaml','yml',
-    'ini','conf','log','sh','bat',
+    'txt',
+    'md',
+    'csv',
+    'xml',
+    'json',
+    'html',
+    'htm',
+    'css',
+    'js',
+    'php',
+    'dart',
+    'ts',
+    'yaml',
+    'yml',
+    'ini',
+    'conf',
+    'log',
+    'sh',
+    'bat',
   };
 
   @override
@@ -45,7 +61,11 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
     final query = _queryCtrl.text.trim();
     if (query.isEmpty || _folderPath == null) return;
 
-    setState(() { _isSearching = true; _results = []; _scannedFiles = 0; });
+    setState(() {
+      _isSearching = true;
+      _results = [];
+      _scannedFiles = 0;
+    });
 
     final dir = Directory(_folderPath!);
     final allFiles = <File>[];
@@ -68,12 +88,14 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
         for (int i = 0; i < lines.length; i++) {
           final line = lines[i];
           final haystack = _caseSensitive ? line : line.toLowerCase();
-          final needle   = _caseSensitive ? query : query.toLowerCase();
+          final needle = _caseSensitive ? query : query.toLowerCase();
           bool hit;
           if (_useRegex) {
             try {
               hit = RegExp(query, caseSensitive: _caseSensitive).hasMatch(line);
-            } catch (_) { hit = false; }
+            } catch (_) {
+              hit = false;
+            }
           } else {
             hit = haystack.contains(needle);
           }
@@ -86,18 +108,26 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
       setState(() => _scannedFiles++);
     }
 
-    setState(() { _results = results; _isSearching = false; });
+    setState(() {
+      _results = results;
+      _isSearching = false;
+    });
   }
 
   Widget? _viewerFor(String path) {
     final ext = path.split('.').last.toLowerCase();
     switch (ext) {
-      case 'md':   return MdViewerScreen(path: path);
-      case 'json': return JsonViewerScreen(path: path);
-      case 'html': case 'htm': return HtmlViewerScreen(path: path);
-      case 'csv':  return CsvViewerScreen(path: path);
+      case 'md':
+        return MdViewerScreen(path: path);
+      case 'json':
+        return JsonViewerScreen(path: path);
+      case 'html':
+      case 'htm':
+        return HtmlViewerScreen(path: path);
+      case 'csv':
+        return CsvViewerScreen(path: path);
       default:
-        final hl = ['css','js','php','xml'].contains(ext) ? ext : null;
+        final hl = ['css', 'js', 'php', 'xml'].contains(ext) ? ext : null;
         return TxtViewerScreen(path: path, highlightLanguage: hl);
     }
   }
@@ -124,75 +154,104 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
                 GestureDetector(
                   onTap: _pickFolder,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Theme.of(context).dividerColor),
                     ),
-                    child: Row(children: [
-                      Icon(Icons.folder_outlined,
-                          color: Theme.of(context).colorScheme.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(
-                        _folderPath?.split('/').last ?? 'Choisir un dossier…',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: _folderPath == null ? Colors.grey : null,
-                            fontSize: 13),
-                      )),
-                      const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
-                    ]),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.folder_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _folderPath?.split('/').last ??
+                                'Choisir un dossier…',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _folderPath == null ? Colors.grey : null,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
 
                 // Recherche
-                Row(children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _queryCtrl,
-                      decoration: InputDecoration(
-                        hintText: 'Mot, phrase ou regex…',
-                        prefixIcon: const Icon(Icons.search),
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        suffixIcon: _queryCtrl.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () { _queryCtrl.clear(); setState(() => _results = []); },
-                              )
-                            : null,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _queryCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Mot, phrase ou regex…',
+                          prefixIcon: const Icon(Icons.search),
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          suffixIcon: _queryCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    _queryCtrl.clear();
+                                    setState(() => _results = []);
+                                  },
+                                )
+                              : null,
+                        ),
+                        onSubmitted: (_) => _search(),
+                        onChanged: (_) => setState(() {}),
                       ),
-                      onSubmitted: (_) => _search(),
-                      onChanged: (_) => setState(() {}),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _isSearching ? null : _search,
-                    child: const Text('Chercher'),
-                  ),
-                ]),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: _isSearching ? null : _search,
+                      child: const Text('Chercher'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 6),
 
                 // Options
-                Wrap(spacing: 8, children: [
-                  FilterChip(
-                    label: const Text('Aa', style: TextStyle(fontSize: 12)),
-                    tooltip: 'Respecter la casse',
-                    selected: _caseSensitive,
-                    onSelected: (v) => setState(() => _caseSensitive = v),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  FilterChip(
-                    label: const Text('.*', style: TextStyle(fontFamily: 'monospace', fontSize: 12)),
-                    tooltip: 'Expression régulière',
-                    selected: _useRegex,
-                    onSelected: (v) => setState(() => _useRegex = v),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ]),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('Aa', style: TextStyle(fontSize: 12)),
+                      tooltip: 'Respecter la casse',
+                      selected: _caseSensitive,
+                      onSelected: (v) => setState(() => _caseSensitive = v),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    FilterChip(
+                      label: const Text(
+                        '.*',
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                      tooltip: 'Expression régulière',
+                      selected: _useRegex,
+                      onSelected: (v) => setState(() => _useRegex = v),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -206,11 +265,15 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
           if (!_isSearching && _results.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(children: [
-                Text('$totalMatches résultat${totalMatches > 1 ? 's' : ''} '
+              child: Row(
+                children: [
+                  Text(
+                    '$totalMatches résultat${totalMatches > 1 ? 's' : ''} '
                     'dans ${_results.length} fichier${_results.length > 1 ? 's' : ''}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ]),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
 
           Expanded(
@@ -219,14 +282,20 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.manage_search,
-                            size: 72,
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
+                        Icon(
+                          Icons.manage_search,
+                          size: 72,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.25),
+                        ),
                         const SizedBox(height: 16),
-                        Text(_folderPath == null
-                            ? 'Choisissez un dossier pour commencer'
-                            : 'Entrez un terme et appuyez sur Chercher',
-                            style: const TextStyle(color: Colors.grey)),
+                        Text(
+                          _folderPath == null
+                              ? 'Choisissez un dossier pour commencer'
+                              : 'Entrez un terme et appuyez sur Chercher',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   )
@@ -237,27 +306,43 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
                       return Card(
                         margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
                         child: ExpansionTile(
-                          leading: const Icon(Icons.insert_drive_file_outlined, size: 20),
-                          title: Text(_relativePath(r.path),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                              overflow: TextOverflow.ellipsis),
-                          subtitle: Text(
-                              '${r.matches.length} occurrence${r.matches.length > 1 ? 's' : ''}',
-                              style: const TextStyle(fontSize: 11)),
-                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                            IconButton(
-                              icon: const Icon(Icons.open_in_new, size: 18),
-                              tooltip: 'Ouvrir',
-                              onPressed: () {
-                                final screen = _viewerFor(r.path);
-                                if (screen != null) {
-                                  Navigator.push(context,
-                                      MaterialPageRoute(builder: (_) => screen));
-                                }
-                              },
+                          leading: const Icon(
+                            Icons.insert_drive_file_outlined,
+                            size: 20,
+                          ),
+                          title: Text(
+                            _relativePath(r.path),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ]),
-                          children: r.matches.map((m) => _matchTile(m, _queryCtrl.text)).toList(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${r.matches.length} occurrence${r.matches.length > 1 ? 's' : ''}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.open_in_new, size: 18),
+                                tooltip: 'Ouvrir',
+                                onPressed: () {
+                                  final screen = _viewerFor(r.path);
+                                  if (screen != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => screen),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          children: r.matches
+                              .map((m) => _matchTile(m, _queryCtrl.text))
+                              .toList(),
                         ),
                       );
                     },
@@ -284,14 +369,16 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
           break;
         }
         if (idx > pos) spans.add(TextSpan(text: line.substring(pos, idx)));
-        spans.add(TextSpan(
-          text: line.substring(idx, idx + query.length),
-          style: TextStyle(
-            backgroundColor: Colors.yellow.withValues(alpha: 0.5),
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
+        spans.add(
+          TextSpan(
+            text: line.substring(idx, idx + query.length),
+            style: TextStyle(
+              backgroundColor: Colors.yellow.withValues(alpha: 0.5),
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ));
+        );
         pos = idx + query.length;
       }
     } else {
@@ -301,17 +388,26 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       decoration: BoxDecoration(
-        border: Border(left: BorderSide(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), width: 3)),
+        border: Border(
+          left: BorderSide(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            width: 3,
+          ),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 36,
-            child: Text('${m.line_}',
-                style: const TextStyle(fontSize: 11, color: Colors.grey,
-                    fontFamily: 'monospace')),
+            child: Text(
+              '${m.line_}',
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
           Expanded(
             child: RichText(

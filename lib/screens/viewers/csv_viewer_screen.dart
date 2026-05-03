@@ -41,7 +41,11 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
     try {
       final content = await File(widget.path).readAsString();
       final rows = const CsvToListConverter().convert(content, eol: '\n');
-      setState(() { _rows = rows; _filtered = rows; _isLoading = false; });
+      setState(() {
+        _rows = rows;
+        _filtered = rows;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -82,8 +86,14 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
         _filtered = _rows;
       } else {
         final header = _rows[0];
-        final data = _dataRows.where((row) =>
-            row.any((cell) => cell.toString().toLowerCase().contains(query.toLowerCase()))).toList();
+        final data = _dataRows
+            .where(
+              (row) => row.any(
+                (cell) =>
+                    cell.toString().toLowerCase().contains(query.toLowerCase()),
+              ),
+            )
+            .toList();
         _filtered = [header, ...data];
       }
     });
@@ -98,9 +108,12 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
           IconButton(
             tooltip: 'Éditer',
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => CsvEditorScreen(path: widget.path))),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CsvEditorScreen(path: widget.path),
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.share),
@@ -119,7 +132,11 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
                 suffixIcon: _search.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () { _searchCtrl.clear(); _applySearch(''); })
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          _applySearch('');
+                        },
+                      )
                     : null,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -132,19 +149,26 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _rows.isEmpty
-              ? const Center(child: Text('Fichier CSV vide'))
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                      child: Row(children: [
-                        Text('${_dataRows.length} lignes  ·  ${_headers.length} colonnes',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      ]),
-                    ),
-                    Expanded(child: _buildTable()),
-                  ],
+          ? const Center(child: Text('Fichier CSV vide'))
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${_dataRows.length} lignes  ·  ${_headers.length} colonnes',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                Expanded(child: _buildTable()),
+              ],
+            ),
     );
   }
 
@@ -158,7 +182,8 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(
-              Theme.of(context).colorScheme.surfaceContainerHighest),
+            Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
           columnSpacing: 16,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 48,
@@ -166,9 +191,11 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
             return DataColumn(
               label: SizedBox(
                 width: colWidth,
-                child: Text(_headers[i].toString(),
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(
+                  _headers[i].toString(),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
               onSort: (col, _) => _sort(col),
             );
@@ -177,10 +204,12 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
             return DataRow(
               cells: List.generate(cols, (i) {
                 final val = i < row.length ? row[i].toString() : '';
-                return DataCell(SizedBox(
-                  width: colWidth,
-                  child: Text(val, overflow: TextOverflow.ellipsis),
-                ));
+                return DataCell(
+                  SizedBox(
+                    width: colWidth,
+                    child: Text(val, overflow: TextOverflow.ellipsis),
+                  ),
+                );
               }),
             );
           }).toList(),

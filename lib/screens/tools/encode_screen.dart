@@ -10,7 +10,7 @@ class EncodeScreen extends StatefulWidget {
 }
 
 class _EncodeScreenState extends State<EncodeScreen> {
-  final _inputCtrl  = TextEditingController();
+  final _inputCtrl = TextEditingController();
   final _outputCtrl = TextEditingController();
   String _mode = 'base64';
   bool _encode = true;
@@ -24,7 +24,10 @@ class _EncodeScreenState extends State<EncodeScreen> {
 
   void _process() {
     final input = _inputCtrl.text;
-    if (input.isEmpty) { _outputCtrl.text = ''; return; }
+    if (input.isEmpty) {
+      _outputCtrl.text = '';
+      return;
+    }
     try {
       String result;
       switch (_mode) {
@@ -70,7 +73,10 @@ class _EncodeScreenState extends State<EncodeScreen> {
   void _copy() {
     Clipboard.setData(ClipboardData(text: _outputCtrl.text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Résultat copié'), duration: Duration(seconds: 1)),
+      const SnackBar(
+        content: Text('Résultat copié'),
+        duration: Duration(seconds: 1),
+      ),
     );
   }
 
@@ -86,34 +92,59 @@ class _EncodeScreenState extends State<EncodeScreen> {
             // Mode selector
             SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'base64', label: Text('Base64'), icon: Icon(Icons.numbers, size: 16)),
-                ButtonSegment(value: 'url',    label: Text('URL'),    icon: Icon(Icons.link, size: 16)),
-                ButtonSegment(value: 'html',   label: Text('HTML'),   icon: Icon(Icons.html_outlined, size: 16)),
+                ButtonSegment(
+                  value: 'base64',
+                  label: Text('Base64'),
+                  icon: Icon(Icons.numbers, size: 16),
+                ),
+                ButtonSegment(
+                  value: 'url',
+                  label: Text('URL'),
+                  icon: Icon(Icons.link, size: 16),
+                ),
+                ButtonSegment(
+                  value: 'html',
+                  label: Text('HTML'),
+                  icon: Icon(Icons.html_outlined, size: 16),
+                ),
               ],
               selected: {_mode},
-              onSelectionChanged: (v) => setState(() { _mode = v.first; _process(); }),
+              onSelectionChanged: (v) => setState(() {
+                _mode = v.first;
+                _process();
+              }),
             ),
             const SizedBox(height: 16),
 
             // Encode / Decode toggle
-            Row(children: [
-              ChoiceChip(
-                label: const Text('Encoder'),
-                selected: _encode,
-                onSelected: (_) => setState(() { _encode = true; _process(); }),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Décoder'),
-                selected: !_encode,
-                onSelected: (_) => setState(() { _encode = false; _process(); }),
-              ),
-            ]),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('Encoder'),
+                  selected: _encode,
+                  onSelected: (_) => setState(() {
+                    _encode = true;
+                    _process();
+                  }),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Décoder'),
+                  selected: !_encode,
+                  onSelected: (_) => setState(() {
+                    _encode = false;
+                    _process();
+                  }),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
 
             // Input
-            Text(_encode ? 'Texte source' : 'Texte encodé',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              _encode ? 'Texte source' : 'Texte encodé',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _inputCtrl,
@@ -128,39 +159,48 @@ class _EncodeScreenState extends State<EncodeScreen> {
             const SizedBox(height: 8),
 
             // Action buttons
-            Row(children: [
-              FilledButton.icon(
-                onPressed: _process,
-                icon: const Icon(Icons.play_arrow, size: 18),
-                label: Text(_encode ? 'Encoder' : 'Décoder'),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: _swap,
-                icon: const Icon(Icons.swap_vert, size: 18),
-                label: const Text('Inverser'),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () { _inputCtrl.clear(); _outputCtrl.clear(); },
-                icon: const Icon(Icons.clear),
-                tooltip: 'Effacer',
-              ),
-            ]),
+            Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: _process,
+                  icon: const Icon(Icons.play_arrow, size: 18),
+                  label: Text(_encode ? 'Encoder' : 'Décoder'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _swap,
+                  icon: const Icon(Icons.swap_vert, size: 18),
+                  label: const Text('Inverser'),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () {
+                    _inputCtrl.clear();
+                    _outputCtrl.clear();
+                  },
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Effacer',
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
 
             // Output
-            Row(children: [
-              Text(_encode ? 'Résultat encodé' : 'Résultat décodé',
-                  style: Theme.of(context).textTheme.titleSmall),
-              const Spacer(),
-              if (_outputCtrl.text.isNotEmpty)
-                TextButton.icon(
-                  onPressed: _copy,
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('Copier'),
+            Row(
+              children: [
+                Text(
+                  _encode ? 'Résultat encodé' : 'Résultat décodé',
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-            ]),
+                const Spacer(),
+                if (_outputCtrl.text.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: _copy,
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text('Copier'),
+                  ),
+              ],
+            ),
             const SizedBox(height: 6),
             Container(
               width: double.infinity,

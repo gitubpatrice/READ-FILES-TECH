@@ -59,7 +59,9 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
       );
       // 2. Copie persistante dans <Files Tech>/Signatures/
       final storage = OutputStorageService();
-      final base = widget.pdfPath.split(RegExp(r'[/\\]')).last
+      final base = widget.pdfPath
+          .split(RegExp(r'[/\\]'))
+          .last
           .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
       final dest = await storage.reserveFile(
         category: OutputCategory.signatures,
@@ -67,7 +69,9 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
         extension: 'pdf',
       );
       await tmp.copy(dest.path);
-      try { await tmp.delete(); } catch (_) {}
+      try {
+        await tmp.delete();
+      } catch (_) {}
       if (!mounted) return;
       setState(() => _saving = false);
       // Bottom sheet de résultat avec partage / cloud direct (kDrive, Google
@@ -99,22 +103,31 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle,
-                  color: Colors.lightBlue.shade700, size: 44),
+              Icon(
+                Icons.check_circle,
+                color: Colors.lightBlue.shade700,
+                size: 44,
+              ),
               const SizedBox(height: 8),
-              const Text('PDF signé',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              const Text(
+                'PDF signé',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
               const SizedBox(height: 4),
-              Text(fileName,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
+              Text(
+                fileName,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 14),
               const Divider(height: 1),
               const SizedBox(height: 12),
-              const Text('Partager ou envoyer',
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const Text(
+                'Partager ou envoyer',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
               const SizedBox(height: 8),
               CloudShareRow(path: path, mime: 'application/pdf'),
             ],
@@ -134,112 +147,139 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text('Page $_currentPage / $_totalPages',
-                    style: const TextStyle(fontSize: 13)),
+                child: Text(
+                  'Page $_currentPage / $_totalPages',
+                  style: const TextStyle(fontSize: 13),
+                ),
               ),
             ),
         ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          return Stack(children: [
-            // PDF underlay
-            SfPdfViewer.file(
-              File(widget.pdfPath),
-              key: _viewerKey,
-              controller: _ctrl,
-              onDocumentLoaded: (d) =>
-                  setState(() => _totalPages = d.document.pages.count),
-              onPageChanged: (d) =>
-                  setState(() => _currentPage = d.newPageNumber),
-            ),
-            // Signature overlay : Positioned + drag/resize
-            Positioned(
-              left:   _x * constraints.maxWidth,
-              top:    _y * constraints.maxHeight,
-              width:  _width  * constraints.maxWidth,
-              height: _height * constraints.maxHeight,
-              child: GestureDetector(
-                onPanUpdate: (d) {
-                  setState(() {
-                    _x = (_x + d.delta.dx / constraints.maxWidth)
-                        .clamp(0.0, 1.0 - _width);
-                    _y = (_y + d.delta.dy / constraints.maxHeight)
-                        .clamp(0.0, 1.0 - _height);
-                  });
-                },
-                child: Stack(children: [
-                  // PNG transparent : fond blanc semi-transparent pour visibilité
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 2,
-                      ),
-                    ),
-                    child: Image.memory(widget.pngBytes, fit: BoxFit.contain),
-                  ),
-                  // Poignée resize (corner bottom-right)
-                  Positioned(
-                    right: 0, bottom: 0,
-                    child: GestureDetector(
-                      onPanUpdate: (d) {
-                        setState(() {
-                          _width = (_width + d.delta.dx / constraints.maxWidth)
-                              .clamp(0.05, 1.0 - _x);
-                          _height = (_height + d.delta.dy / constraints.maxHeight)
-                              .clamp(0.03, 1.0 - _y);
-                        });
-                      },
-                      child: Container(
-                        width: 24, height: 24,
+          return Stack(
+            children: [
+              // PDF underlay
+              SfPdfViewer.file(
+                File(widget.pdfPath),
+                key: _viewerKey,
+                controller: _ctrl,
+                onDocumentLoaded: (d) =>
+                    setState(() => _totalPages = d.document.pages.count),
+                onPageChanged: (d) =>
+                    setState(() => _currentPage = d.newPageNumber),
+              ),
+              // Signature overlay : Positioned + drag/resize
+              Positioned(
+                left: _x * constraints.maxWidth,
+                top: _y * constraints.maxHeight,
+                width: _width * constraints.maxWidth,
+                height: _height * constraints.maxHeight,
+                child: GestureDetector(
+                  onPanUpdate: (d) {
+                    setState(() {
+                      _x = (_x + d.delta.dx / constraints.maxWidth).clamp(
+                        0.0,
+                        1.0 - _width,
+                      );
+                      _y = (_y + d.delta.dy / constraints.maxHeight).clamp(
+                        0.0,
+                        1.0 - _height,
+                      );
+                    });
+                  },
+                  child: Stack(
+                    children: [
+                      // PNG transparent : fond blanc semi-transparent pour visibilité
+                      Container(
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(8)),
+                          color: Colors.white.withValues(alpha: 0.5),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
                         ),
-                        child: const Icon(Icons.open_in_full,
-                            color: Colors.white, size: 14),
+                        child: Image.memory(
+                          widget.pngBytes,
+                          fit: BoxFit.contain,
+                        ),
                       ),
-                    ),
+                      // Poignée resize (corner bottom-right)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: GestureDetector(
+                          onPanUpdate: (d) {
+                            setState(() {
+                              _width =
+                                  (_width + d.delta.dx / constraints.maxWidth)
+                                      .clamp(0.05, 1.0 - _x);
+                              _height =
+                                  (_height + d.delta.dy / constraints.maxHeight)
+                                      .clamp(0.03, 1.0 - _y);
+                            });
+                          },
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.open_in_full,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ]),
+                ),
               ),
-            ),
-            if (_saving)
-              Container(
-                color: Colors.black54,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-          ]);
+              if (_saving)
+                Container(
+                  color: Colors.black54,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+            ],
+          );
         },
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-          child: Row(children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left),
-              tooltip: 'Page précédente',
-              onPressed: _currentPage > 1 ? _ctrl.previousPage : null,
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              tooltip: 'Page suivante',
-              onPressed: _currentPage < _totalPages ? _ctrl.nextPage : null,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (ctx, _) => FilledButton.icon(
-                  onPressed: _saving ? null : () => _save(BoxConstraints.tight(MediaQuery.of(ctx).size)),
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(_saving ? 'Sauvegarde…' : 'Apposer'),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                tooltip: 'Page précédente',
+                onPressed: _currentPage > 1 ? _ctrl.previousPage : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                tooltip: 'Page suivante',
+                onPressed: _currentPage < _totalPages ? _ctrl.nextPage : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (ctx, _) => FilledButton.icon(
+                    onPressed: _saving
+                        ? null
+                        : () => _save(
+                            BoxConstraints.tight(MediaQuery.of(ctx).size),
+                          ),
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(_saving ? 'Sauvegarde…' : 'Apposer'),
+                  ),
                 ),
               ),
-            ),
-          ]),
+            ],
+          ),
         ),
       ),
     );

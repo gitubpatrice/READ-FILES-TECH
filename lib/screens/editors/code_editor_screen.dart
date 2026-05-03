@@ -21,9 +21,8 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
   String _resolvedPath = '';
   double _fontSize = 13;
 
-  String get _name => _resolvedPath.isEmpty
-      ? ''
-      : _resolvedPath.split(RegExp(r'[/\\]')).last;
+  String get _name =>
+      _resolvedPath.isEmpty ? '' : _resolvedPath.split(RegExp(r'[/\\]')).last;
 
   @override
   void initState() {
@@ -42,11 +41,26 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
   Future<void> _init() async {
     if (_resolvedPath.isEmpty) {
       final nav = Navigator.of(context);
-      final path = await RftPickerScreen.pickOne(context,
-          title: 'Choisir un fichier à éditer',
-          extensions: const {'txt','md','csv','xml','json','html','css','js','php','dart'});
+      final path = await RftPickerScreen.pickOne(
+        context,
+        title: 'Choisir un fichier à éditer',
+        extensions: const {
+          'txt',
+          'md',
+          'csv',
+          'xml',
+          'json',
+          'html',
+          'css',
+          'js',
+          'php',
+          'dart',
+        },
+      );
       if (path == null) {
-        if (mounted) { nav.pop(); }
+        if (mounted) {
+          nav.pop();
+        }
         return;
       }
       _resolvedPath = path;
@@ -67,9 +81,9 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur de lecture : $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur de lecture : $e')));
       }
     }
   }
@@ -85,11 +99,13 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       final ts = DateTime.now().millisecondsSinceEpoch;
       await File(_resolvedPath).copy('${histDir.path}/${base}_$ts.bak');
 
-      final baks = histDir.listSync()
-          .whereType<File>()
-          .where((f) => f.path.contains('${base}_'))
-          .toList()
-        ..sort((a, b) => a.path.compareTo(b.path));
+      final baks =
+          histDir
+              .listSync()
+              .whereType<File>()
+              .where((f) => f.path.contains('${base}_'))
+              .toList()
+            ..sort((a, b) => a.path.compareTo(b.path));
       if (baks.length > 10) {
         for (final old in baks.sublist(0, baks.length - 10)) {
           await old.delete();
@@ -109,11 +125,15 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       return;
     }
     final base = _name.replaceAll(RegExp(r'[^\w.]'), '_');
-    final baks = histDir.listSync()
-        .whereType<File>()
-        .where((f) => f.path.contains('${base}_') && f.path.endsWith('.bak'))
-        .toList()
-      ..sort((a, b) => b.path.compareTo(a.path));
+    final baks =
+        histDir
+            .listSync()
+            .whereType<File>()
+            .where(
+              (f) => f.path.contains('${base}_') && f.path.endsWith('.bak'),
+            )
+            .toList()
+          ..sort((a, b) => b.path.compareTo(a.path));
 
     if (!mounted) return;
     if (baks.isEmpty) {
@@ -130,8 +150,10 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Historique — $_name',
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              'Historique — $_name',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           const Divider(height: 1),
           Flexible(
@@ -144,9 +166,9 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
                 final tsStr = fname.split('_').last.replaceAll('.bak', '');
                 final ms = int.tryParse(tsStr);
                 final label = ms != null
-                    ? DateTime.fromMillisecondsSinceEpoch(ms)
-                        .toString()
-                        .substring(0, 19)
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        ms,
+                      ).toString().substring(0, 19)
                     : fname;
                 return ListTile(
                   leading: const Icon(Icons.history),
@@ -162,7 +184,10 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
                       setState(() => _modified = true);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Version restaurée — pensez à sauvegarder')),
+                          content: Text(
+                            'Version restaurée — pensez à sauvegarder',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -183,15 +208,23 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       await _backup();
       await File(_resolvedPath).writeAsString(_ctrl.text);
       _original = _ctrl.text;
-      setState(() { _modified = false; _isSaving = false; });
+      setState(() {
+        _modified = false;
+        _isSaving = false;
+      });
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Fichier sauvegardé'), duration: Duration(seconds: 1)),
+        const SnackBar(
+          content: Text('Fichier sauvegardé'),
+          duration: Duration(seconds: 1),
+        ),
       );
     } catch (e) {
       setState(() => _isSaving = false);
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Erreur de sauvegarde : $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Erreur de sauvegarde : $e')),
+      );
     }
   }
 
@@ -214,7 +247,9 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
           FilledButton(
             onPressed: () async {
               await _save();
-              if (mounted) { Navigator.of(context).pop(true); }
+              if (mounted) {
+                Navigator.of(context).pop(true);
+              }
             },
             child: const Text('Sauvegarder'),
           ),
@@ -237,29 +272,45 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Row(children: [
-            Expanded(child: Text(_name.isEmpty ? 'Éditeur' : _name,
-                overflow: TextOverflow.ellipsis)),
-            if (_modified)
-              Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _name.isEmpty ? 'Éditeur' : _name,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: const Text('modifié',
-                    style: TextStyle(fontSize: 11, color: Colors.orange)),
               ),
-          ]),
+              if (_modified)
+                Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Text(
+                    'modifié',
+                    style: TextStyle(fontSize: 11, color: Colors.orange),
+                  ),
+                ),
+            ],
+          ),
           actions: [
             if (_modified)
               IconButton(
                 tooltip: 'Sauvegarder',
                 icon: _isSaving
-                    ? const SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.save),
                 onPressed: _isSaving ? null : _save,
               ),
@@ -278,12 +329,17 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
               icon: const Icon(Icons.text_fields),
               onSelected: (v) => setState(() => _fontSize = v),
               itemBuilder: (_) => [10, 11, 12, 13, 14, 16, 18]
-                  .map((s) => PopupMenuItem(
-                        value: s.toDouble(),
-                        child: Text('$s pt',
-                            style: TextStyle(
-                                fontWeight: _fontSize == s ? FontWeight.bold : null)),
-                      ))
+                  .map(
+                    (s) => PopupMenuItem(
+                      value: s.toDouble(),
+                      child: Text(
+                        '$s pt',
+                        style: TextStyle(
+                          fontWeight: _fontSize == s ? FontWeight.bold : null,
+                        ),
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ],

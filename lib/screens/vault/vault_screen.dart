@@ -34,6 +34,12 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // FLAG_SECURE actif dès l'entrée dans VaultScreen, AVANT toute saisie de
+    // mot de passe (Setup ou Unlock). Empêche la capture de l'écran de saisie
+    // ainsi que sa présence dans l'aperçu Recents si l'utilisateur swipe en
+    // plein typing. Désactivé seulement quand on quitte VaultScreen ou qu'on
+    // lock explicitement.
+    SecureWindow.enable();
     // Au boot du coffre, purger d'éventuels fichiers déchiffrés laissés.
     _service.purgeTempDecrypted();
     _bootstrap();
@@ -43,6 +49,10 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   void dispose() {
     _pendingLockTimer?.cancel();
     _pendingLockTimer = null;
+    // Quand on quitte VaultScreen, on ne masque plus l'app (l'utilisateur peut
+    // vouloir capturer l'écran ailleurs). Si le coffre est déverrouillé, le
+    // lock+disable se fera via _lockNow / lifecycle.
+    SecureWindow.disable();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -82,7 +92,11 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   Future<void> _bootstrap() async {
     final setup = await _service.isSetup();
     if (!mounted) return;
-    setState(() { _setup = setup; _checking = false; _unlocked = _service.isUnlocked; });
+    setState(() {
+      _setup = setup;
+      _checking = false;
+      _unlocked = _service.isUnlocked;
+    });
   }
 
   @override
@@ -91,10 +105,15 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (!_setup) {
-      return _SetupScreen(onCreated: () async {
-        SecureWindow.enable();
-        setState(() { _setup = true; _unlocked = true; });
-      });
+      return _SetupScreen(
+        onCreated: () async {
+          SecureWindow.enable();
+          setState(() {
+            _setup = true;
+            _unlocked = true;
+          });
+        },
+      );
     }
     if (!_unlocked) {
       return _UnlockScreen(
@@ -107,16 +126,23 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
           if (ok) {
             await _service.reset();
             SecureWindow.disable();
-            if (mounted) setState(() { _setup = false; _unlocked = false; });
+            if (mounted)
+              setState(() {
+                _setup = false;
+                _unlocked = false;
+              });
           }
         },
       );
     }
-    return _VaultContent(service: _service, onLock: () {
-      _service.lock();
-      SecureWindow.disable();
-      setState(() => _unlocked = false);
-    });
+    return _VaultContent(
+      service: _service,
+      onLock: () {
+        _service.lock();
+        SecureWindow.disable();
+        setState(() => _unlocked = false);
+      },
+    );
   }
 
   Future<bool> _confirmReset(BuildContext context) async {
@@ -124,10 +150,15 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Réinitialiser le coffre ?'),
-        content: const Text('Tous les fichiers chiffrés seront supprimés. '
-            'Cette action est irréversible.'),
+        content: const Text(
+          'Tous les fichiers chiffrés seront supprimés. '
+          'Cette action est irréversible.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
@@ -174,7 +205,9 @@ class _SetupScreenState extends State<_SetupScreen> {
   }
 
   Future<void> _create() async {
-    setState(() { _error = null; });
+    setState(() {
+      _error = null;
+    });
     final p1 = _pwd1.text;
     final p2 = _pwd2.text;
     if (p1.length < 8) {
@@ -202,11 +235,12 @@ class _SetupScreenState extends State<_SetupScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Création du coffre…',
-                  style: TextStyle(fontSize: 13)),
+              Text('Création du coffre…', style: TextStyle(fontSize: 13)),
               SizedBox(height: 6),
-              Text('Optimisation pour votre appareil',
-                  style: TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                'Optimisation pour votre appareil',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -219,15 +253,20 @@ class _SetupScreenState extends State<_SetupScreen> {
       // Ferme l'overlay
       Navigator.of(context, rootNavigator: true).pop();
       // Snackbar de confirmation (auto-dismiss)
-      messenger.showSnackBar(const SnackBar(
-        content: Text('✓ Coffre fort créé'),
-        duration: Duration(seconds: 2),
-      ));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('✓ Coffre fort créé'),
+          duration: Duration(seconds: 2),
+        ),
+      );
       widget.onCreated();
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      setState(() { _error = 'Erreur : $e'; _busy = false; });
+      setState(() {
+        _error = 'Erreur : $e';
+        _busy = false;
+      });
     }
   }
 
@@ -261,8 +300,10 @@ class _SetupScreenState extends State<_SetupScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_showPwd ? Icons.visibility_off : Icons.visibility,
-                    size: 20),
+                icon: Icon(
+                  _showPwd ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                ),
                 tooltip: _showPwd ? 'Masquer' : 'Afficher',
                 onPressed: () => setState(() => _showPwd = !_showPwd),
               ),
@@ -284,13 +325,20 @@ class _SetupScreenState extends State<_SetupScreen> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
           ],
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _busy ? null : _create,
             icon: _busy
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.check),
             label: Text(_busy ? 'Création…' : 'Créer le coffre'),
           ),
@@ -302,15 +350,19 @@ class _SetupScreenState extends State<_SetupScreen> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
             ),
-            child: const Row(children: [
-              Icon(Icons.warning_amber, color: Colors.amber, size: 18),
-              SizedBox(width: 8),
-              Expanded(child: Text(
-                'Aucune récupération possible : si vous oubliez le mot de passe, '
-                'les fichiers chiffrés seront irrécupérables.',
-                style: TextStyle(fontSize: 11),
-              )),
-            ]),
+            child: const Row(
+              children: [
+                Icon(Icons.warning_amber, color: Colors.amber, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Aucune récupération possible : si vous oubliez le mot de passe, '
+                    'les fichiers chiffrés seront irrécupérables.',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -346,19 +398,28 @@ class _UnlockScreenState extends State<_UnlockScreen> {
   }
 
   Future<void> _unlock() async {
-    setState(() { _busy = true; _error = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       final ok = await VaultService().unlockWithPassword(_pwd.text);
       if (!mounted) return;
       if (ok) {
         widget.onUnlocked();
       } else {
-        setState(() { _error = 'Mot de passe incorrect'; _busy = false; });
+        setState(() {
+          _error = 'Mot de passe incorrect';
+          _busy = false;
+        });
       }
     } on StateError catch (e) {
       // Verrouillage temporaire après trop d'échecs.
       if (!mounted) return;
-      setState(() { _error = e.message; _busy = false; });
+      setState(() {
+        _error = e.message;
+        _busy = false;
+      });
     }
   }
 
@@ -372,9 +433,11 @@ class _UnlockScreenState extends State<_UnlockScreen> {
           const SizedBox(height: 20),
           const Icon(Icons.lock_outline, size: 56),
           const SizedBox(height: 16),
-          const Text('Coffre verrouillé',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const Text(
+            'Coffre verrouillé',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 24),
           TextField(
             controller: _pwd,
@@ -389,8 +452,10 @@ class _UnlockScreenState extends State<_UnlockScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_showPwd ? Icons.visibility_off : Icons.visibility,
-                    size: 20),
+                icon: Icon(
+                  _showPwd ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                ),
                 tooltip: _showPwd ? 'Masquer' : 'Afficher',
                 onPressed: () => setState(() => _showPwd = !_showPwd),
               ),
@@ -398,21 +463,30 @@ class _UnlockScreenState extends State<_UnlockScreen> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
           ],
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _busy ? null : _unlock,
             icon: _busy
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.lock_open),
             label: const Text('Déverrouiller'),
           ),
           const SizedBox(height: 32),
           TextButton.icon(
             icon: const Icon(Icons.delete_forever_outlined, color: Colors.red),
-            label: const Text('Réinitialiser le coffre',
-                style: TextStyle(color: Colors.red)),
+            label: const Text(
+              'Réinitialiser le coffre',
+              style: TextStyle(color: Colors.red),
+            ),
             onPressed: widget.onReset,
           ),
         ],
@@ -439,19 +513,27 @@ class _VaultContentState extends State<_VaultContent> {
   bool _loading = true;
 
   @override
-  void initState() { super.initState(); _refresh(); }
+  void initState() {
+    super.initState();
+    _refresh();
+  }
 
   Future<void> _refresh() async {
     setState(() => _loading = true);
     final files = await widget.service.listFiles();
     if (!mounted) return;
-    setState(() { _files = files; _loading = false; });
+    setState(() {
+      _files = files;
+      _loading = false;
+    });
   }
 
   Future<void> _import() async {
     final messenger = ScaffoldMessenger.of(context);
-    final paths = await RftPickerScreen.pickMany(context,
-        title: 'Importer dans le coffre');
+    final paths = await RftPickerScreen.pickMany(
+      context,
+      title: 'Importer dans le coffre',
+    );
     if (paths == null || paths.isEmpty) return;
     int ok = 0, skip = 0, fail = 0;
     for (final p in paths) {
@@ -464,10 +546,18 @@ class _VaultContentState extends State<_VaultContent> {
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Fichier déjà présent'),
-            content: Text('"${p.split(RegExp(r'[/\\\\]')).last}" existe déjà dans le coffre. Écraser ?'),
+            content: Text(
+              '"${p.split(RegExp(r'[/\\\\]')).last}" existe déjà dans le coffre. Écraser ?',
+            ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Garder')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Écraser')),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Garder'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Écraser'),
+              ),
             ],
           ),
         );
@@ -475,14 +565,20 @@ class _VaultContentState extends State<_VaultContent> {
           try {
             await widget.service.importFileSafe(File(p), overwrite: true);
             ok++;
-          } catch (_) { fail++; }
-        } else { skip++; }
-      } catch (_) { fail++; }
+          } catch (_) {
+            fail++;
+          }
+        } else {
+          skip++;
+        }
+      } catch (_) {
+        fail++;
+      }
     }
     await _refresh();
     if (!mounted) return;
     final parts = <String>[
-      if (ok > 0)   '$ok chiffré${ok > 1 ? 's' : ''}',
+      if (ok > 0) '$ok chiffré${ok > 1 ? 's' : ''}',
       if (skip > 0) '$skip ignoré${skip > 1 ? 's' : ''}',
       if (fail > 0) '$fail erreur${fail > 1 ? 's' : ''}',
     ];
@@ -506,7 +602,9 @@ class _VaultContentState extends State<_VaultContent> {
     try {
       final out = await widget.service.exportFile(enc, destDir);
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Exporté : ${out.path.split('/').last}')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Exporté : ${out.path.split('/').last}')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
@@ -517,13 +615,19 @@ class _VaultContentState extends State<_VaultContent> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Supprimer du coffre'),
-        content: Text('Supprimer "${_displayName(enc)}" ? Action irréversible.'),
+        content: Text(
+          'Supprimer "${_displayName(enc)}" ? Action irréversible.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Supprimer')),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer'),
+          ),
         ],
       ),
     );
@@ -567,14 +671,15 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _exportBackup() async {
     if (_files.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Coffre vide — rien à exporter.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Coffre vide — rien à exporter.')),
+      );
       return;
     }
     final pwd = await _askPassword(
       title: 'Exporter le coffre',
-      info: 'Choisissez un mot de passe pour la sauvegarde. '
+      info:
+          'Choisissez un mot de passe pour la sauvegarde. '
           'Il sera nécessaire pour la restaurer.\n\n'
           '⚠ Distinct du mot de passe principal — choisissez-le bien : '
           'sans lui, la sauvegarde est irrécupérable.',
@@ -601,10 +706,9 @@ class _VaultContentState extends State<_VaultContent> {
       if (!mounted) return;
       progressDialog.close();
       // Partage du fichier produit (l'utilisateur choisit où le sauver).
-      await Share.shareXFiles(
-        [XFile(out.path, mimeType: 'application/octet-stream')],
-        subject: 'Sauvegarde Read Files Tech',
-      );
+      await Share.shareXFiles([
+        XFile(out.path, mimeType: 'application/octet-stream'),
+      ], subject: 'Sauvegarde Read Files Tech');
     } catch (e) {
       if (!mounted) return;
       progressDialog.close();
@@ -630,14 +734,17 @@ class _VaultContentState extends State<_VaultContent> {
         builder: (_) => AlertDialog(
           title: const Text('Extension inattendue'),
           content: const Text(
-              'Le fichier ne se termine pas par .rftvault. Continuer quand même ?'),
+            'Le fichier ne se termine pas par .rftvault. Continuer quand même ?',
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Annuler')),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Continuer')),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Continuer'),
+            ),
           ],
         ),
       );
@@ -646,7 +753,8 @@ class _VaultContentState extends State<_VaultContent> {
 
     final pwd = await _askPassword(
       title: 'Restaurer un coffre',
-      info: 'Entrez le mot de passe utilisé lors de l\'export.\n'
+      info:
+          'Entrez le mot de passe utilisé lors de l\'export.\n'
           'Les fichiers déjà présents dans le coffre actuel '
           'seront ignorés (pas écrasés).',
       confirm: false,
@@ -683,11 +791,15 @@ class _VaultContentState extends State<_VaultContent> {
       if (!mounted) return;
       progressDialog.close();
       // Tampering ou mauvais password → message neutre (pas d'oracle).
-      messenger.showSnackBar(SnackBar(
-        content: Text(e is StateError
-            ? e.message
-            : 'Mot de passe incorrect ou fichier invalide'),
-      ));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            e is StateError
+                ? e.message
+                : 'Mot de passe incorrect ou fichier invalide',
+          ),
+        ),
+      );
     }
   }
 
@@ -704,25 +816,29 @@ class _VaultContentState extends State<_VaultContent> {
       barrierDismissible: false,
       builder: (ctx) {
         controller._ctx = ctx;
-        return StatefulBuilder(builder: (_, setSt) {
-          controller._setSt = setSt;
-          return AlertDialog(
-            content: SizedBox(
-              height: 110,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 13)),
-                  const SizedBox(height: 14),
-                  LinearProgressIndicator(value: progressOf()),
-                  const SizedBox(height: 8),
-                  Text('${(progressOf() * 100).round()}%',
-                      style: const TextStyle(fontSize: 11)),
-                ],
+        return StatefulBuilder(
+          builder: (_, setSt) {
+            controller._setSt = setSt;
+            return AlertDialog(
+              content: SizedBox(
+                height: 110,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 13)),
+                    const SizedBox(height: 14),
+                    LinearProgressIndicator(value: progressOf()),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${(progressOf() * 100).round()}%',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       },
     );
     return controller;
@@ -763,9 +879,15 @@ class _VaultContentState extends State<_VaultContent> {
             tooltip: 'Plus d\'actions',
             onSelected: (v) {
               switch (v) {
-                case 'folder': _importFolder(); break;
-                case 'export': _exportBackup(); break;
-                case 'restore': _restoreBackup(); break;
+                case 'folder':
+                  _importFolder();
+                  break;
+                case 'export':
+                  _exportBackup();
+                  break;
+                case 'restore':
+                  _restoreBackup();
+                  break;
               }
             },
             itemBuilder: (_) => const [
@@ -774,8 +896,10 @@ class _VaultContentState extends State<_VaultContent> {
                 child: ListTile(
                   leading: Icon(Icons.folder_copy_outlined),
                   title: Text('Importer un dossier'),
-                  subtitle: Text('Chiffrement batch',
-                      style: TextStyle(fontSize: 11)),
+                  subtitle: Text(
+                    'Chiffrement batch',
+                    style: TextStyle(fontSize: 11),
+                  ),
                 ),
               ),
               PopupMenuDivider(),
@@ -784,8 +908,10 @@ class _VaultContentState extends State<_VaultContent> {
                 child: ListTile(
                   leading: Icon(Icons.archive_outlined),
                   title: Text('Exporter le coffre'),
-                  subtitle: Text('Sauvegarde .rftvault',
-                      style: TextStyle(fontSize: 11)),
+                  subtitle: Text(
+                    'Sauvegarde .rftvault',
+                    style: TextStyle(fontSize: 11),
+                  ),
                 ),
               ),
               PopupMenuItem(
@@ -793,8 +919,10 @@ class _VaultContentState extends State<_VaultContent> {
                 child: ListTile(
                   leading: Icon(Icons.unarchive_outlined),
                   title: Text('Restaurer un coffre'),
-                  subtitle: Text('Depuis .rftvault',
-                      style: TextStyle(fontSize: 11)),
+                  subtitle: Text(
+                    'Depuis .rftvault',
+                    style: TextStyle(fontSize: 11),
+                  ),
                 ),
               ),
             ],
@@ -809,47 +937,70 @@ class _VaultContentState extends State<_VaultContent> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _files.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 64, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      const Text('Coffre vide'),
-                      const SizedBox(height: 4),
-                      Text('Importez un fichier pour le chiffrer',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Coffre vide'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Importez un fichier pour le chiffrer',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _files.length,
+              itemBuilder: (_, i) {
+                final f = _files[i];
+                final size = f.lengthSync();
+                return ListTile(
+                  leading: const Icon(Icons.lock, color: Colors.green),
+                  title: Text(_displayName(f), overflow: TextOverflow.ellipsis),
+                  subtitle: Text(_fmt(size)),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (v) {
+                      if (v == 'share') _share(f);
+                      if (v == 'export') _export(f);
+                      if (v == 'delete') _delete(f);
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'share',
+                        child: ListTile(
+                          leading: Icon(Icons.share),
+                          title: Text('Partager (déchiffré)'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'export',
+                        child: ListTile(
+                          leading: Icon(Icons.download_outlined),
+                          title: Text('Exporter…'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
+                          title: Text('Supprimer'),
+                        ),
+                      ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _files.length,
-                  itemBuilder: (_, i) {
-                    final f = _files[i];
-                    final size = f.lengthSync();
-                    return ListTile(
-                      leading: const Icon(Icons.lock, color: Colors.green),
-                      title: Text(_displayName(f), overflow: TextOverflow.ellipsis),
-                      subtitle: Text(_fmt(size)),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (v) {
-                          if (v == 'share')  _share(f);
-                          if (v == 'export') _export(f);
-                          if (v == 'delete') _delete(f);
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'share', child: ListTile(
-                              leading: Icon(Icons.share), title: Text('Partager (déchiffré)'))),
-                          PopupMenuItem(value: 'export', child: ListTile(
-                              leading: Icon(Icons.download_outlined), title: Text('Exporter…'))),
-                          PopupMenuItem(value: 'delete', child: ListTile(
-                              leading: Icon(Icons.delete_outline, color: Colors.red),
-                              title: Text('Supprimer'))),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _import,
         icon: const Icon(Icons.add),
@@ -948,8 +1099,10 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.info,
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text(
+            widget.info,
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _pwd1,
@@ -966,8 +1119,10 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_show ? Icons.visibility_off : Icons.visibility,
-                    size: 20),
+                icon: Icon(
+                  _show ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                ),
                 tooltip: _show ? 'Masquer' : 'Afficher',
                 onPressed: () => setState(() => _show = !_show),
               ),
@@ -992,8 +1147,10 @@ class _PasswordDialogState extends State<_PasswordDialog> {
           ],
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
           ],
         ],
       ),
@@ -1002,10 +1159,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Annuler'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(widget.submitLabel),
-        ),
+        FilledButton(onPressed: _submit, child: Text(widget.submitLabel)),
       ],
     );
   }

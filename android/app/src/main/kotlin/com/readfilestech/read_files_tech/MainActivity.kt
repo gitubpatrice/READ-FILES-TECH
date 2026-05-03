@@ -19,34 +19,50 @@ import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : FlutterFragmentActivity() {
 
+    companion object {
+        /// Whitelist stricte des shortcuts acceptés depuis un Intent. Toute
+        /// valeur hors de cette liste est ignorée silencieusement, empêchant
+        /// une app tierce de déclencher une action arbitraire via Intent.
+        private val ALLOWED_SHORTCUTS = setOf("scanner", "ocr", "vault")
+    }
+
     /// Racines autorisées pour list_dir / open_file. Le path passé par Dart
     /// est canonicalisé (suit les symlinks) puis comparé à ces racines.
     /// Empêche un path Dart compromis ou un symlink de viser /data/data/<other>.
     private val allowedRoots: List<File> by lazy {
-        listOf(
-            Environment.getExternalStorageDirectory().canonicalFile,
+        listOfNotNull(
+            Environment.getExternalStorageDirectory()?.canonicalFile,
             File("/storage").canonicalFile,
             filesDir.canonicalFile,
             cacheDir.canonicalFile,
             // Le répertoire docs externe de l'app (extractions de zip, exports)
             getExternalFilesDir(null)?.canonicalFile
-        ).filterNotNull()
+        )
     }
 
-    /// Vérifie qu'un path est dans une racine autorisée. Utilise canonicalFile
-    /// pour résoudre les symlinks (un symlink dans /sdcard pointant vers
-    /// /data/data/<other> sera rejeté).
-    private fun isAllowedPath(path: String): Boolean {
+    /// Retourne le `File` canonicalisé d'un path s'il est dans une racine
+    /// autorisée, ou null sinon. Utiliser ce résultat pour TOUTES les
+    /// opérations subséquentes (listFiles, FileProvider.getUriForFile, etc.)
+    /// afin d'éviter les TOCTOU symlink-pivot entre check et usage.
+    private fun safeCanonical(path: String): File? {
         return try {
             val canonical = File(path).canonicalFile
-            allowedRoots.any { root ->
-                canonical.absolutePath == root.absolutePath ||
-                canonical.absolutePath.startsWith(root.absolutePath + File.separator)
+            // Refus explicite des dossiers data/obb d'autres apps via SD card.
+            val abs = canonical.absolutePath
+            val pkgFiles = "/Android/data/$packageName"
+            val pkgObb   = "/Android/obb/$packageName"
+            if (abs.contains("/Android/data/") && !abs.contains(pkgFiles)) return null
+            if (abs.contains("/Android/obb/")  && !abs.contains(pkgObb))   return null
+            val ok = allowedRoots.any { root ->
+                abs == root.absolutePath || abs.startsWith(root.absolutePath + File.separator)
             }
+            if (ok) canonical else null
         } catch (_: Exception) {
-            false
+            null
         }
     }
+
+    private fun isAllowedPath(path: String): Boolean = safeCanonical(path) != null
 
     /// Channel partagé pour pousser un shortcut quand l'activity est déjà
     /// vivante (singleTop) — déclenché par onNewIntent.
@@ -56,10 +72,11 @@ class MainActivity : FlutterFragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val shortcut = intent.getStringExtra("shortcut")
-        if (shortcut != null) {
+        if (shortcut != null && shortcut in ALLOWED_SHORTCUTS) {
             shortcutChannel?.invokeMethod("onShortcut", shortcut)
-            intent.removeExtra("shortcut")
         }
+        // Toujours retirer l'extra, même si rejeté, pour ne pas le rejouer.
+        intent.removeExtra("shortcut")
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -70,8 +87,10 @@ class MainActivity : FlutterFragmentActivity() {
         shortcutChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.readfilestech/shortcut")
         shortcutChannel!!.setMethodCallHandler { call, result ->
             if (call.method == "getShortcut") {
-                val shortcut = intent?.getStringExtra("shortcut")
+                val raw = intent?.getStringExtra("shortcut")
                 intent?.removeExtra("shortcut")
+                // Whitelist : ignorer tout extra hors de la liste autorisée.
+                val shortcut = if (raw != null && raw in ALLOWED_SHORTCUTS) raw else null
                 result.success(shortcut)
             } else {
                 result.notImplemented()
@@ -160,12 +179,12 @@ class MainActivity : FlutterFragmentActivity() {
                     if (path == null) {
                         result.error("NO_PATH", "path manquant", null); return@setMethodCallHandler
                     }
-                    if (!isAllowedPath(path)) {
+                    val dir = safeCanonical(path)
+                    if (dir == null) {
                         result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
                         return@setMethodCallHandler
                     }
                     try {
-                        val dir = File(path)
                         if (!dir.exists() || !dir.isDirectory) {
                             result.error("NOT_DIR", "Pas un dossier : $path", null)
                             return@setMethodCallHandler
@@ -200,13 +219,13 @@ class MainActivity : FlutterFragmentActivity() {
                     val path = call.argument<String>("path")
                     val mime = call.argument<String>("mime") ?: "*/*"
                     if (path == null) { result.error("NO_PATH", "path manquant", null); return@setMethodCallHandler }
-                    if (!isAllowedPath(path)) {
+                    val file = safeCanonical(path)
+                    if (file == null) {
                         result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
                         return@setMethodCallHandler
                     }
                     val chooser = call.argument<Boolean>("chooser") ?: false
                     try {
-                        val file = File(path)
                         val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                             FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
                         } else {
@@ -263,7 +282,8 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("NO_ARGS", "path/package manquant", null)
                         return@setMethodCallHandler
                     }
-                    if (!isAllowedPath(path)) {
+                    val file = safeCanonical(path)
+                    if (file == null) {
                         result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
                         return@setMethodCallHandler
                     }
@@ -276,14 +296,19 @@ class MainActivity : FlutterFragmentActivity() {
                             result.error("NOT_INSTALLED", "Application non installée : $pkg", null)
                             return@setMethodCallHandler
                         }
-                        val file = File(path)
                         val uri: Uri = FileProvider.getUriForFile(
                             this, "$packageName.fileprovider", file)
+                        // FLAG_GRANT_WRITE_URI_PERMISSION accordé UNIQUEMENT
+                        // au flow PDF Tech ↔ Read Files Tech (édition PDF).
+                        // Toute autre app reçoit READ-only pour éviter qu'elle
+                        // n'écrase silencieusement le fichier source.
+                        val grantWrite =
+                            pkg == "com.pdftech.pdf_tech" && mime == "application/pdf"
                         val intent = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(uri, mime)
                             setPackage(pkg)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                            if (grantWrite) addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         startActivity(intent)
@@ -301,7 +326,8 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("NO_ARGS", "path/package manquant", null)
                         return@setMethodCallHandler
                     }
-                    if (!isAllowedPath(path)) {
+                    val file = safeCanonical(path)
+                    if (file == null) {
                         result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
                         return@setMethodCallHandler
                     }
@@ -313,7 +339,6 @@ class MainActivity : FlutterFragmentActivity() {
                             result.error("NOT_INSTALLED", "Application non installée : $pkg", null)
                             return@setMethodCallHandler
                         }
-                        val file = File(path)
                         val uri: Uri = FileProvider.getUriForFile(
                             this, "$packageName.fileprovider", file)
                         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -356,15 +381,15 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "encrypt" -> {
-                        val key   = call.argument<ByteArray>("key")
-                        val nonce = call.argument<ByteArray>("nonce")
-                        val aad   = call.argument<ByteArray>("aad")
-                        val plain = call.argument<ByteArray>("plain")
-                        if (key == null || nonce == null || aad == null || plain == null) {
+                        val keyArg = call.argument<ByteArray>("key")
+                        val nonce  = call.argument<ByteArray>("nonce")
+                        val aad    = call.argument<ByteArray>("aad")
+                        val plain  = call.argument<ByteArray>("plain")
+                        if (keyArg == null || nonce == null || aad == null || plain == null) {
                             result.error("NO_ARGS", "args", null)
                             return@setMethodCallHandler
                         }
-                        if (key.size != 32) {
+                        if (keyArg.size != 32) {
                             result.error("BAD_KEY", "key", null)
                             return@setMethodCallHandler
                         }
@@ -372,6 +397,10 @@ class MainActivity : FlutterFragmentActivity() {
                             result.error("BAD_NONCE", "nonce", null)
                             return@setMethodCallHandler
                         }
+                        // Copie locale défensive : ne jamais zéroiser le buffer
+                        // partagé avec Dart via MethodChannel — sinon la clé
+                        // cachée côté Dart serait corrompue après le 1er appel.
+                        val key = keyArg.copyOf()
                         try {
                             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
                             cipher.init(
@@ -387,23 +416,20 @@ class MainActivity : FlutterFragmentActivity() {
                             // (peut contenir du contenu sensible selon impl JCE).
                             result.error("ENCRYPT_ERROR", "crypto", null)
                         } finally {
-                            // Zeroize la clé reçue côté JVM pour réduire la
-                            // fenêtre d'extraction par memory forensics.
-                            // Note : le SecretKeySpec a fait sa propre copie,
-                            // mais on efface au moins la copie qu'on contrôle.
+                            // Efface UNIQUEMENT notre copie locale.
                             java.util.Arrays.fill(key, 0)
                         }
                     }
                     "decrypt" -> {
-                        val key   = call.argument<ByteArray>("key")
-                        val nonce = call.argument<ByteArray>("nonce")
-                        val aad   = call.argument<ByteArray>("aad")
-                        val blob  = call.argument<ByteArray>("blob") // ciphertext+tag
-                        if (key == null || nonce == null || aad == null || blob == null) {
+                        val keyArg = call.argument<ByteArray>("key")
+                        val nonce  = call.argument<ByteArray>("nonce")
+                        val aad    = call.argument<ByteArray>("aad")
+                        val blob   = call.argument<ByteArray>("blob") // ciphertext+tag
+                        if (keyArg == null || nonce == null || aad == null || blob == null) {
                             result.error("NO_ARGS", "args", null)
                             return@setMethodCallHandler
                         }
-                        if (key.size != 32) {
+                        if (keyArg.size != 32) {
                             result.error("BAD_KEY", "key", null)
                             return@setMethodCallHandler
                         }
@@ -411,6 +437,7 @@ class MainActivity : FlutterFragmentActivity() {
                             result.error("BAD_NONCE", "nonce", null)
                             return@setMethodCallHandler
                         }
+                        val key = keyArg.copyOf()
                         try {
                             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
                             cipher.init(

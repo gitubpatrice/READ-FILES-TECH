@@ -23,9 +23,11 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
   List<List<dynamic>> get _dataRows => _rows.length > 1 ? _rows.sublist(1) : [];
 
   Future<void> _pickFile() async {
-    final path = await RftPickerScreen.pickOne(context,
-        title: 'Choisir un CSV',
-        extensions: const {'csv'});
+    final path = await RftPickerScreen.pickOne(
+      context,
+      title: 'Choisir un CSV',
+      extensions: const {'csv'},
+    );
     if (path == null) return;
     if (!mounted) return;
     final content = await File(path).readAsString();
@@ -44,49 +46,73 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     setState(() => _isProcessing = true);
     try {
       final doc = PdfDocument();
-      final page = doc.pages.add();
-      final size = page.getClientSize();
-      final font  = PdfStandardFont(PdfFontFamily.helvetica, 9);
-      final bold  = PdfStandardFont(PdfFontFamily.helvetica, 9, style: PdfFontStyle.bold);
+      final font = PdfStandardFont(PdfFontFamily.helvetica, 9);
+      final bold = PdfStandardFont(
+        PdfFontFamily.helvetica,
+        9,
+        style: PdfFontStyle.bold,
+      );
       final brush = PdfSolidBrush(PdfColor(30, 30, 30));
       final headerBrush = PdfSolidBrush(PdfColor(21, 101, 192));
 
       final colCount = _headers.length;
-      final colW = (size.width - 20) / colCount;
+      const double headerH = 16;
+      const double rowH = 14;
+      const double bottomMargin = 20;
+
+      PdfPage page = doc.pages.add();
+      var size = page.getClientSize();
+      double colW = (size.width - 20) / colCount;
       double y = 0;
 
-      // En-têtes
-      for (int i = 0; i < colCount; i++) {
-        page.graphics.drawRectangle(
-          brush: PdfSolidBrush(PdfColor(220, 230, 245)),
-          bounds: Rect.fromLTWH(i * colW, y, colW, 16),
-        );
-        page.graphics.drawString(
-          _headers[i].toString(), bold,
-          brush: headerBrush,
-          bounds: Rect.fromLTWH(i * colW + 2, y + 2, colW - 4, 14),
-        );
+      // Helper : dessine la ligne d'en-tête en haut d'une page.
+      void drawHeader() {
+        for (int i = 0; i < colCount; i++) {
+          page.graphics.drawRectangle(
+            brush: PdfSolidBrush(PdfColor(220, 230, 245)),
+            bounds: Rect.fromLTWH(i * colW, y, colW, headerH),
+          );
+          page.graphics.drawString(
+            _headers[i].toString(),
+            bold,
+            brush: headerBrush,
+            bounds: Rect.fromLTWH(i * colW + 2, y + 2, colW - 4, headerH - 2),
+          );
+        }
+        y += headerH;
       }
-      y += 16;
 
-      // Lignes
-      for (int r = 0; r < _dataRows.length && y < size.height - 20; r++) {
+      drawHeader();
+
+      // Lignes — pagination automatique : nouvelle page quand on dépasse.
+      for (int r = 0; r < _dataRows.length; r++) {
+        if (y + rowH > size.height - bottomMargin) {
+          page = doc.pages.add();
+          size = page.getClientSize();
+          colW = (size.width - 20) / colCount;
+          y = 0;
+          drawHeader();
+        }
         if (r % 2 == 0) {
           page.graphics.drawRectangle(
             brush: PdfSolidBrush(PdfColor(248, 248, 248)),
-            bounds: Rect.fromLTWH(0, y, size.width - 20, 14),
+            bounds: Rect.fromLTWH(0, y, size.width - 20, rowH),
           );
         }
         for (int i = 0; i < colCount; i++) {
           final val = i < _dataRows[r].length ? _dataRows[r][i].toString() : '';
-          page.graphics.drawString(val, font, brush: brush,
-              bounds: Rect.fromLTWH(i * colW + 2, y + 1, colW - 4, 13));
+          page.graphics.drawString(
+            val,
+            font,
+            brush: brush,
+            bounds: Rect.fromLTWH(i * colW + 2, y + 1, colW - 4, rowH - 1),
+          );
         }
-        y += 14;
+        y += rowH;
       }
 
       final dir = await getApplicationDocumentsDirectory();
-      final ts  = DateTime.now().millisecondsSinceEpoch;
+      final ts = DateTime.now().millisecondsSinceEpoch;
       final base = (_name ?? 'data').replaceAll('.csv', '');
       final outPath = '${dir.path}/${base}_$ts.pdf';
       await File(outPath).writeAsBytes(await doc.save());
@@ -94,11 +120,15 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(
-        content: Text('PDF créé : ${outPath.split('/').last}'),
-        action: SnackBarAction(label: 'Partager',
-            onPressed: () => Share.shareXFiles([XFile(outPath)])),
-      ));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('PDF créé : ${outPath.split('/').last}'),
+          action: SnackBarAction(
+            label: 'Partager',
+            onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
@@ -107,9 +137,11 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
   }
 
   Future<void> _mergeCsv() async {
-    final paths = await RftPickerScreen.pickMany(context,
-        title: 'Fusionner des CSV',
-        extensions: const {'csv'});
+    final paths = await RftPickerScreen.pickMany(
+      context,
+      title: 'Fusionner des CSV',
+      extensions: const {'csv'},
+    );
     if (paths == null || paths.isEmpty) return;
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -131,17 +163,21 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
 
       final csv = const ListToCsvConverter().convert(allRows);
       final dir = await getApplicationDocumentsDirectory();
-      final ts  = DateTime.now().millisecondsSinceEpoch;
+      final ts = DateTime.now().millisecondsSinceEpoch;
       final outPath = '${dir.path}/fusion_csv_$ts.csv';
       await File(outPath).writeAsString(csv);
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(
-        content: Text('${allRows.length - 1} lignes fusionnées'),
-        action: SnackBarAction(label: 'Partager',
-            onPressed: () => Share.shareXFiles([XFile(outPath)])),
-      ));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${allRows.length - 1} lignes fusionnées'),
+          action: SnackBarAction(
+            label: 'Partager',
+            onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
@@ -164,14 +200,23 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.table_chart_outlined, size: 88,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)),
+            Icon(
+              Icons.table_chart_outlined,
+              size: 88,
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.35),
+            ),
             const SizedBox(height: 24),
             Text('Outils CSV', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text('Analysez, exportez et fusionnez vos fichiers CSV',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                textAlign: TextAlign.center),
+            Text(
+              'Analysez, exportez et fusionnez vos fichiers CSV',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: _pickFile,
@@ -196,30 +241,48 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Icon(Icons.table_chart_outlined, color: Colors.green),
-            const SizedBox(width: 8),
-            Expanded(child: Text(_name!, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w500))),
-            TextButton(onPressed: _pickFile, child: const Text('Changer')),
-          ]),
+          Row(
+            children: [
+              const Icon(Icons.table_chart_outlined, color: Colors.green),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _name!,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+              TextButton(onPressed: _pickFile, child: const Text('Changer')),
+            ],
+          ),
           const Divider(height: 24),
 
           // Stats
-          Row(children: [
-            _statCard('Lignes', _dataRows.length.toString(), Colors.green),
-            const SizedBox(width: 8),
-            _statCard('Colonnes', _headers.length.toString(), Colors.blue),
-          ]),
+          Row(
+            children: [
+              _statCard('Lignes', _dataRows.length.toString(), Colors.green),
+              const SizedBox(width: 8),
+              _statCard('Colonnes', _headers.length.toString(), Colors.blue),
+            ],
+          ),
           const SizedBox(height: 24),
 
           // Colonnes
           Text('Colonnes', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 6, runSpacing: 6,
-            children: _headers.map((h) => Chip(label: Text(h.toString(),
-                style: const TextStyle(fontSize: 12)))).toList(),
+            spacing: 6,
+            runSpacing: 6,
+            children: _headers
+                .map(
+                  (h) => Chip(
+                    label: Text(
+                      h.toString(),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
           const SizedBox(height: 24),
 
@@ -259,10 +322,22 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
-        child: Column(children: [
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: color)),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        ]),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }

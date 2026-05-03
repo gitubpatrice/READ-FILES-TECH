@@ -12,8 +12,10 @@ class ColorPickerScreen extends StatefulWidget {
 class _ColorPickerScreenState extends State<ColorPickerScreen> {
   Color _color = const Color(0xFF1565C0);
 
-  String get _hex => '#${_color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
-  String get _rgb => 'rgb(${(_color.r * 255).round()}, ${(_color.g * 255).round()}, ${(_color.b * 255).round()})';
+  String get _hex =>
+      '#${_color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+  String get _rgb =>
+      'rgb(${(_color.r * 255).round()}, ${(_color.g * 255).round()}, ${(_color.b * 255).round()})';
   String get _hsl {
     final h = HSLColor.fromColor(_color);
     return 'hsl(${h.hue.toStringAsFixed(0)}, ${(h.saturation * 100).toStringAsFixed(0)}%, ${(h.lightness * 100).toStringAsFixed(0)}%)';
@@ -22,7 +24,10 @@ class _ColorPickerScreenState extends State<ColorPickerScreen> {
   void _copy(String value) {
     Clipboard.setData(ClipboardData(text: value));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Copié : $value'), duration: const Duration(seconds: 1)),
+      SnackBar(
+        content: Text('Copié : $value'),
+        duration: const Duration(seconds: 1),
+      ),
     );
   }
 
@@ -66,31 +71,50 @@ class _ColorPickerScreenState extends State<ColorPickerScreen> {
             const SizedBox(height: 24),
 
             // Nuancier rapide
-            Text('Couleurs récentes', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Couleurs récentes',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 10),
             Wrap(
-              spacing: 8, runSpacing: 8,
-              children: [
-                '#FF0000', '#FF6600', '#FFCC00', '#33CC33',
-                '#0066FF', '#9900CC', '#FF0099', '#000000',
-                '#FFFFFF', '#666666', '#1565C0', '#C62828',
-              ].map((hex) {
-                var h = hex.replaceFirst('#', '');
-                final v = int.tryParse('FF$h', radix: 16);
-                final c = v != null ? Color(v) : Colors.grey;
-                return GestureDetector(
-                  onTap: () => setState(() => _color = c),
-                  child: Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(
-                      color: c, shape: BoxShape.circle,
-                      border: Border.all(
-                          color: _color == c ? Theme.of(context).colorScheme.primary : Colors.grey.withValues(alpha: 0.3),
-                          width: _color == c ? 2.5 : 1),
-                    ),
-                  ),
-                );
-              }).toList(),
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  [
+                    '#FF0000',
+                    '#FF6600',
+                    '#FFCC00',
+                    '#33CC33',
+                    '#0066FF',
+                    '#9900CC',
+                    '#FF0099',
+                    '#000000',
+                    '#FFFFFF',
+                    '#666666',
+                    '#1565C0',
+                    '#C62828',
+                  ].map((hex) {
+                    var h = hex.replaceFirst('#', '');
+                    final v = int.tryParse('FF$h', radix: 16);
+                    final c = v != null ? Color(v) : Colors.grey;
+                    return GestureDetector(
+                      onTap: () => setState(() => _color = c),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _color == c
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.withValues(alpha: 0.3),
+                            width: _color == c ? 2.5 : 1,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
           ],
         ),
@@ -114,16 +138,21 @@ class _ColorPickerScreenState extends State<ColorPickerScreen> {
               color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.primary)),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+            child: Text(
+              value,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+            ),
           ),
           IconButton(
             padding: EdgeInsets.zero,

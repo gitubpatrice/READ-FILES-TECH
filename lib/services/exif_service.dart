@@ -18,13 +18,19 @@ class ExifService {
     final bytes = await source.readAsBytes();
     final ext = source.path.toLowerCase().split('.').last;
     // Décode + ré-encode dans un Isolate pour ne pas geler l'UI.
-    final result = await Isolate.run(() => _stripBytes(bytes, ext, jpegQuality));
+    final result = await Isolate.run(
+      () => _stripBytes(bytes, ext, jpegQuality),
+    );
     if (result == null) {
-      throw const FormatException('Image illisible — impossible d\'effacer EXIF');
+      throw const FormatException(
+        'Image illisible — impossible d\'effacer EXIF',
+      );
     }
 
     final tmp = await getTemporaryDirectory();
-    var base = source.path.split(RegExp(r'[/\\]')).last
+    var base = source.path
+        .split(RegExp(r'[/\\]'))
+        .last
         .replaceAll(RegExp(r'\.[^.]+$'), '')
         .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_');
     if (base.isEmpty || base == '.' || base == '..') base = 'image';
@@ -35,7 +41,10 @@ class ExifService {
 
   /// Worker Isolate : retourne (bytes, extension de sortie) ou null si KO.
   static (Uint8List, String)? _stripBytes(
-      Uint8List bytes, String ext, int jpegQuality) {
+    Uint8List bytes,
+    String ext,
+    int jpegQuality,
+  ) {
     final decoded = img.decodeImage(bytes);
     if (decoded == null) return null;
     // Vide l'EXIF in-place — tous les IFDs (image, exif, gps, interop, thumbnail).

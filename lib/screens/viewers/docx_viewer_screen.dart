@@ -33,9 +33,15 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
       final text = _ext == 'odt' || _ext == 'odp'
           ? _extractOdt(bytes)
           : _extractDocx(bytes);
-      setState(() { _text = text; _isLoading = false; });
+      setState(() {
+        _text = text;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); _isLoading = false; });
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -72,7 +78,10 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     final archive = ZipDecoder().decodeBytes(bytes);
     final contentFile = archive.findFile('content.xml');
     if (contentFile == null) return 'Impossible de lire le document.';
-    final xml = utf8.decode(contentFile.content as List<int>, allowMalformed: true);
+    final xml = utf8.decode(
+      contentFile.content as List<int>,
+      allowMalformed: true,
+    );
     return _xmlToText(xml, tagName: 'text:p');
   }
 
@@ -110,7 +119,10 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
             icon: const Icon(Icons.text_fields),
             onSelected: (v) => setState(() => _fontSize = v),
             itemBuilder: (_) => [12, 13, 14, 16, 18, 20]
-                .map((s) => PopupMenuItem(value: s.toDouble(), child: Text('$s pt')))
+                .map(
+                  (s) =>
+                      PopupMenuItem(value: s.toDouble(), child: Text('$s pt')),
+                )
                 .toList(),
           ),
         ],
@@ -118,16 +130,16 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text('Erreur : $_error'))
-              : _text.isEmpty
-                  ? const Center(child: Text('Document vide ou format non supporté'))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: SelectableText(
-                        _text,
-                        style: TextStyle(fontSize: _fontSize, height: 1.7),
-                      ),
-                    ),
+          ? Center(child: Text('Erreur : $_error'))
+          : _text.isEmpty
+          ? const Center(child: Text('Document vide ou format non supporté'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: SelectableText(
+                _text,
+                style: TextStyle(fontSize: _fontSize, height: 1.7),
+              ),
+            ),
     );
   }
 }
