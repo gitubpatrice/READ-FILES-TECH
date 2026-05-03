@@ -47,7 +47,7 @@ dependencies:
   # HTTP (utilisé par UpdateService pour GitHub Releases API)
   http: ^1.2.0
 
-  # Dates
+  # Dates — verrouillé à 0.19 par syncfusion 27 (bloquant pour 0.20)
   intl: ^0.19.0
 
   # Liens externes (mailto / https) pour Aide & Support
@@ -71,13 +71,13 @@ dependencies:
   path: ^1.9.0
 
   # Version de l'app — source unique depuis pubspec
-  package_info_plus: ^8.0.0
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.0
 
 flutter_launcher_icons:
   android: "launcher_icon"
