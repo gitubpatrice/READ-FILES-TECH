@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
-import '../../widgets/cloud_share_row.dart';
+import '../../widgets/output_actions_row.dart';
 import '../explorer/file_explorer_screen.dart';
 
 /// Scanner de document via ML Kit (Google) — on-device, gratuit.
@@ -246,7 +246,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 6),
-                    CloudShareRow(path: _lastPdfPath!, mime: 'application/pdf'),
+                    OutputActionsRow(
+                      path: _lastPdfPath!,
+                      mime: 'application/pdf',
+                    ),
                   ],
                 ),
               ),

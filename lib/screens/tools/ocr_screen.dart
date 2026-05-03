@@ -6,7 +6,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
-import '../../widgets/cloud_share_row.dart';
+import '../../widgets/output_actions_row.dart';
 
 class OcrScreen extends StatefulWidget {
   const OcrScreen({super.key});
@@ -207,7 +207,7 @@ class _OcrScreenState extends State<OcrScreen> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  CloudShareRow(path: _lastTxtPath!, mime: 'text/plain'),
+                  OutputActionsRow(path: _lastTxtPath!, mime: 'text/plain'),
                 ],
               ),
             ),

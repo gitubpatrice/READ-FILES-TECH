@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../services/exif_service.dart';
 import '../../services/output_storage_service.dart';
-import '../../widgets/cloud_share_row.dart';
+import '../../widgets/output_actions_row.dart';
 
 class ExifScreen extends StatefulWidget {
   /// Path optionnel : si fourni, l'écran traite directement ce fichier
@@ -236,7 +236,7 @@ class _ExifScreenState extends State<ExifScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      CloudShareRow(
+                      OutputActionsRow(
                         path: _outputPath!,
                         mime: _outputPath!.toLowerCase().endsWith('.png')
                             ? 'image/png'

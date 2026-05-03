@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
-import '../../widgets/cloud_share_row.dart';
+import '../../widgets/output_actions_row.dart';
 
 class CompressScreen extends StatefulWidget {
   const CompressScreen({super.key});
@@ -190,7 +190,10 @@ class _CompressScreenState extends State<CompressScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        CloudShareRow(path: _outputPath!, mime: 'image/jpeg'),
+                        OutputActionsRow(
+                          path: _outputPath!,
+                          mime: 'image/jpeg',
+                        ),
                       ],
                     ],
                   ),

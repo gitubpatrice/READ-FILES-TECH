@@ -10,7 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
 import '../../services/text_extraction_service.dart';
-import '../../widgets/cloud_share_row.dart';
+import '../../widgets/output_actions_row.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class ConvertScreen extends StatefulWidget {
@@ -396,7 +396,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    CloudShareRow(path: _lastPath!),
+                    OutputActionsRow(path: _lastPath!),
                   ],
                 ),
               ),

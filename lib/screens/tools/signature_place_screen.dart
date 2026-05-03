@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../services/output_storage_service.dart';
 import '../../services/pdf_signature_service.dart';
-import '../../widgets/cloud_share_row.dart';
+import '../../widgets/output_actions_row.dart';
 
 /// Permet de poser une signature [pngBytes] sur un PDF source [pdfPath].
 /// L'utilisateur navigue dans le PDF (SfPdfViewer), choisit la page courante,
@@ -129,7 +129,7 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 8),
-              CloudShareRow(path: path, mime: 'application/pdf'),
+              OutputActionsRow(path: path, mime: 'application/pdf'),
             ],
           ),
         ),
