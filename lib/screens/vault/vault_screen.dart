@@ -126,11 +126,12 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
           if (ok) {
             await _service.reset();
             SecureWindow.disable();
-            if (mounted)
+            if (mounted) {
               setState(() {
                 _setup = false;
                 _unlocked = false;
               });
+            }
           }
         },
       );

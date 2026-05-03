@@ -483,8 +483,9 @@ class _HomeTabState extends State<_HomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.isLoading)
+    if (widget.isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
 
     final favorites = widget.recentFiles.where((f) => f.isFavorite).toList();
     final recents = widget.recentFiles.where((f) => !f.isFavorite).toList();

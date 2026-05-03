@@ -53,21 +53,24 @@ class ReaderService {
 
     // 1. container.xml → trouve le rootfile (OPF)
     final container = archive.findFile('META-INF/container.xml');
-    if (container == null)
+    if (container == null) {
       throw const FormatException('EPUB invalide : container.xml manquant');
+    }
     final containerXml = utf8.decode(
       container.content as List<int>,
       allowMalformed: true,
     );
     final opfMatch = RegExp(r'full-path="([^"]+)"').firstMatch(containerXml);
-    if (opfMatch == null)
+    if (opfMatch == null) {
       throw const FormatException('EPUB invalide : OPF non trouvé');
+    }
     final opfPath = opfMatch.group(1)!;
 
     // 2. OPF → manifest (id → href) + spine (ordre des id)
     final opfFile = archive.findFile(opfPath);
-    if (opfFile == null)
+    if (opfFile == null) {
       throw const FormatException('EPUB invalide : OPF introuvable');
+    }
     final opfXml = utf8.decode(
       opfFile.content as List<int>,
       allowMalformed: true,

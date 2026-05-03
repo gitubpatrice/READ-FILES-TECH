@@ -1222,8 +1222,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         return false;
       }
       if (_search.isNotEmpty &&
-          !name.toLowerCase().contains(_search.toLowerCase()))
+          !name.toLowerCase().contains(_search.toLowerCase())) {
         return false;
+      }
       return true;
     }).toList();
   }
@@ -1731,46 +1732,55 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                                         )
                                       : PopupMenuButton<String>(
                                           onSelected: (v) {
-                                            if (v == 'open') _openFile(e.path);
-                                            if (v == 'open_system')
-                                              _openWithSystem(e.path, ext);
-                                            if (v == 'open_chooser')
-                                              _openWithSystem(
-                                                e.path,
-                                                ext,
-                                                chooser: true,
-                                              );
-                                            if (v == 'preview')
-                                              _showPreview(e.path);
-                                            if (v == 'edit') _editFile(e.path);
-                                            if (v == 'edit_pdftech')
-                                              _editInPdfTech(e.path);
-                                            if (v == 'strip_exif')
-                                              _stripExif(e.path);
-                                            if (v == 'kdrive')
-                                              _sendToCloud(
-                                                e.path,
-                                                _kDrivePackage,
-                                                'kDrive',
-                                              );
-                                            if (v == 'proton')
-                                              _sendToCloud(
-                                                e.path,
-                                                _protonDrivePackage,
-                                                'Proton Drive',
-                                              );
-                                            if (v == 'share')
-                                              Share.shareXFiles([
-                                                XFile(
+                                            switch (v) {
+                                              case 'open':
+                                                _openFile(e.path);
+                                              case 'open_system':
+                                                _openWithSystem(e.path, ext);
+                                              case 'open_chooser':
+                                                _openWithSystem(
                                                   e.path,
-                                                  mimeType: _mime(ext),
-                                                ),
-                                              ]);
-                                            if (v == 'rename') _rename(e);
-                                            if (v == 'copy') _copyFile(e.path);
-                                            if (v == 'move') _moveFile(e.path);
-                                            if (v == 'info') _showFileInfo(e);
-                                            if (v == 'delete') _delete(e);
+                                                  ext,
+                                                  chooser: true,
+                                                );
+                                              case 'preview':
+                                                _showPreview(e.path);
+                                              case 'edit':
+                                                _editFile(e.path);
+                                              case 'edit_pdftech':
+                                                _editInPdfTech(e.path);
+                                              case 'strip_exif':
+                                                _stripExif(e.path);
+                                              case 'kdrive':
+                                                _sendToCloud(
+                                                  e.path,
+                                                  _kDrivePackage,
+                                                  'kDrive',
+                                                );
+                                              case 'proton':
+                                                _sendToCloud(
+                                                  e.path,
+                                                  _protonDrivePackage,
+                                                  'Proton Drive',
+                                                );
+                                              case 'share':
+                                                Share.shareXFiles([
+                                                  XFile(
+                                                    e.path,
+                                                    mimeType: _mime(ext),
+                                                  ),
+                                                ]);
+                                              case 'rename':
+                                                _rename(e);
+                                              case 'copy':
+                                                _copyFile(e.path);
+                                              case 'move':
+                                                _moveFile(e.path);
+                                              case 'info':
+                                                _showFileInfo(e);
+                                              case 'delete':
+                                                _delete(e);
+                                            }
                                           },
                                           itemBuilder: (_) => [
                                             if (canView)
