@@ -2,7 +2,10 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:files_tech_core/files_tech_core.dart';
+import 'package:share_plus/share_plus.dart';
 import '../screens/explorer/file_explorer_screen.dart';
+import '../screens/editors/code_editor_screen.dart';
+import 'file_viewer_router.dart';
 
 /// Picker custom pour Read Files Tech : remplace le Storage Access Framework
 /// Android brut par une UI à 2 onglets, plus claire pour l'utilisateur.
@@ -518,12 +521,28 @@ class _RftPickerScreenState extends State<RftPickerScreen>
       itemBuilder: (_, i) {
         final f = _recents[i];
         final selected = _selected.contains(f.path);
+        final ext = f.extension.toLowerCase();
         return ListTile(
-          leading: const Icon(Icons.insert_drive_file_outlined),
+          // Pas de dense: les Récents sont peu nombreux (max 20), on laisse
+          // respirer pour faciliter le tap au pouce. Cohérent avec les cards
+          // de file_explorer (icone colorée + tap zone confortable).
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: _colorForExt(ext).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(_iconForExt(ext), color: _colorForExt(ext), size: 22),
+          ),
           title: Text(
             f.name,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 13),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           ),
           subtitle: Text(
             f.formattedSize,
@@ -531,12 +550,160 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           ),
           trailing: widget.multi
               ? Checkbox(value: selected, onChanged: (_) => _toggle(f.path))
-              : const Icon(Icons.chevron_right),
+              : PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  tooltip: 'Actions',
+                  onSelected: (v) => _onRecentAction(v, f.path),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'open',
+                      child: ListTile(
+                        leading: Icon(Icons.visibility_outlined),
+                        title: Text('Ouvrir'),
+                        dense: true,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('Modifier'),
+                        dense: true,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'share',
+                      child: ListTile(
+                        leading: Icon(Icons.share_outlined),
+                        title: Text('Partager'),
+                        dense: true,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'remove',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.history_toggle_off_outlined,
+                          color: Colors.orange,
+                        ),
+                        title: Text('Retirer des récents'),
+                        dense: true,
+                      ),
+                    ),
+                  ],
+                ),
           selected: selected,
+          // Tap simple : ouvre directement (UX standard) — comportement
+          // historique préservé pour ne pas casser les flows picker.
           onTap: () => widget.multi ? _toggle(f.path) : _pick(f.path),
         );
       },
     );
+  }
+
+  /// Routage des actions du menu ⋮ d'un récent.
+  Future<void> _onRecentAction(String action, String path) async {
+    switch (action) {
+      case 'open':
+        await FileViewerRouter.open(context, path);
+      case 'edit':
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CodeEditorScreen(path: path)),
+        );
+      case 'share':
+        await Share.shareXFiles([XFile(path)]);
+      case 'remove':
+        await _recentService.remove(_recents, path);
+        if (!mounted) return;
+        await _load();
+    }
+  }
+
+  /// Couleur déterministe par extension — cohérent avec le file_explorer.
+  Color _colorForExt(String ext) {
+    switch (ext) {
+      case 'pdf':
+        return Colors.red;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'webp':
+        return Colors.purple;
+      case 'js':
+      case 'ts':
+        return Colors.amber.shade700;
+      case 'html':
+      case 'htm':
+        return Colors.orange;
+      case 'css':
+        return Colors.blue;
+      case 'json':
+        return Colors.deepPurple;
+      case 'docx':
+      case 'doc':
+        return Colors.blue.shade700;
+      case 'xlsx':
+      case 'xls':
+      case 'csv':
+        return Colors.green;
+      case 'txt':
+      case 'md':
+        return Colors.blueGrey;
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return Colors.brown;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _iconForExt(String ext) {
+    switch (ext) {
+      case 'pdf':
+        return Icons.picture_as_pdf_outlined;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'webp':
+        return Icons.image_outlined;
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+        return Icons.videocam_outlined;
+      case 'mp3':
+      case 'wav':
+      case 'flac':
+        return Icons.audiotrack_outlined;
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return Icons.folder_zip_outlined;
+      case 'docx':
+      case 'doc':
+      case 'odt':
+        return Icons.article_outlined;
+      case 'xlsx':
+      case 'xls':
+      case 'csv':
+        return Icons.table_chart_outlined;
+      case 'html':
+      case 'htm':
+        return Icons.html_outlined;
+      case 'js':
+      case 'ts':
+        return Icons.javascript_outlined;
+      case 'json':
+        return Icons.data_object;
+      case 'md':
+        return Icons.text_snippet_outlined;
+      default:
+        return Icons.insert_drive_file_outlined;
+    }
   }
 
   Widget _buildBrowse() {
