@@ -5,20 +5,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
-import '../viewers/txt_viewer_screen.dart';
-import '../viewers/md_viewer_screen.dart';
-import '../viewers/json_viewer_screen.dart';
-import '../viewers/html_viewer_screen.dart';
-import '../viewers/csv_viewer_screen.dart';
-import '../viewers/xlsx_viewer_screen.dart';
-import '../viewers/docx_viewer_screen.dart';
-import '../viewers/pdf_viewer_screen.dart';
-import '../viewers/zip_viewer_screen.dart';
 import '../editors/code_editor_screen.dart';
-import '../viewers/image_viewer_screen.dart';
-import '../viewers/reader_viewer_screen.dart';
 import '../tools/exif_screen.dart';
 import '../tools/bulk_rename_screen.dart';
+import '../../widgets/file_viewer_router.dart';
 
 class FileExplorerScreen extends StatefulWidget {
   final String? initialPath;
@@ -588,48 +578,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     }
   }
 
-  Widget? _screenFor(String path) {
-    final ext = _ext(path);
-    if (_editableExts.contains(ext)) {
-      switch (ext) {
-        case 'md':
-          return MdViewerScreen(path: path);
-        case 'json':
-          return JsonViewerScreen(path: path);
-        case 'html':
-        case 'htm':
-          return HtmlViewerScreen(path: path);
-        case 'csv':
-          return CsvViewerScreen(path: path);
-        default:
-          return TxtViewerScreen(
-            path: path,
-            highlightLanguage: ['css', 'js', 'php', 'xml'].contains(ext)
-                ? ext
-                : null,
-          );
-      }
-    }
-    switch (ext) {
-      case 'docx':
-      case 'doc':
-      case 'odt':
-      case 'odp':
-        return DocxViewerScreen(path: path);
-      case 'xlsx':
-      case 'xls':
-      case 'ods':
-        return XlsxViewerScreen(path: path);
-      case 'pdf':
-        return PdfViewerScreen(path: path);
-      case 'zip':
-        return ZipViewerScreen(path: path);
-      case 'epub':
-        return ReaderViewerScreen(path: path, isEpub: true);
-      default:
-        return null;
-    }
-  }
+  // _screenFor a été supprimé : on utilise FileViewerRouter (source unique)
+  // pour éviter la divergence d'extensions entre l'explorer et les outils.
+  // Voir lib/widgets/file_viewer_router.dart.
 
   static const _previewExts = {
     'txt',
@@ -795,29 +746,17 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   void _openFile(String path) {
-    final ext = _ext(path);
-    if (_imageExts.contains(ext)) {
-      final siblings = _filtered
-          .whereType<File>()
-          .where((f) => _imageExts.contains(_ext(f.path)))
-          .map((f) => f.path)
-          .toList();
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ImageViewerScreen(path: path, siblings: siblings),
-        ),
-      );
-      return;
-    }
-    final screen = _screenFor(path);
-    if (screen != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Format .${_ext(path)} non supporté')),
-      );
-    }
+    // Pour les images, on calcule les siblings du dossier courant pour
+    // permettre le swipe entre images. Les outils (qui produisent une seule
+    // image) n'envoient pas de siblings (cf. FileViewerRouter signature).
+    final imageSiblings = _imageExts.contains(_ext(path))
+        ? _filtered
+              .whereType<File>()
+              .where((f) => _imageExts.contains(_ext(f.path)))
+              .map((f) => f.path)
+              .toList()
+        : const <String>[];
+    FileViewerRouter.open(context, path, imageSiblings: imageSiblings);
   }
 
   void _editFile(String path) {

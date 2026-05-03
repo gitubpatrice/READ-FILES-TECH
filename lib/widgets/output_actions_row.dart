@@ -5,14 +5,10 @@ import 'file_viewer_router.dart';
 /// Carte d'actions standard à afficher sous chaque fichier produit par un
 /// outil (convert, scanner, ocr, signature, compress, exif…).
 ///
-/// Trois lignes d'actions :
-/// 1. **Ouvrir** : viewer interne Read Files Tech (txt/pdf/csv/xlsx/image…).
-///    Bouton masqué si l'extension n'est pas supportée nativement.
-/// 2. [CloudShareRow] : Ouvrir avec… (chooser système), kDrive, Proton, Partager.
-///
-/// L'objectif est de ne plus laisser l'utilisateur avec « Sauvegardé : path »
-/// sans moyen de visualiser ce qu'il vient de produire.
-class OutputActionsRow extends StatelessWidget {
+/// - **Ouvrir** : viewer interne Read Files Tech (txt/pdf/csv/xlsx/image…).
+///   Bouton masqué si l'extension n'est pas supportée nativement.
+/// - [CloudShareRow] : Ouvrir avec… (chooser système), kDrive, Proton, Partager.
+class OutputActionsRow extends StatefulWidget {
   final String path;
   final String mime;
   const OutputActionsRow({
@@ -22,8 +18,27 @@ class OutputActionsRow extends StatelessWidget {
   });
 
   @override
+  State<OutputActionsRow> createState() => _OutputActionsRowState();
+}
+
+class _OutputActionsRowState extends State<OutputActionsRow> {
+  /// Garde anti-double-tap : tant qu'une navigation est en cours,
+  /// les taps suivants sont ignorés (sinon → 2 viewers empilés).
+  bool _opening = false;
+
+  Future<void> _open() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    try {
+      await FileViewerRouter.open(context, widget.path);
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final canView = FileViewerRouter.canViewInternally(path);
+    final canView = FileViewerRouter.canViewInternally(widget.path);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -33,7 +48,7 @@ class OutputActionsRow extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () => FileViewerRouter.open(context, path),
+                onPressed: _opening ? null : _open,
                 icon: const Icon(Icons.visibility_outlined, size: 18),
                 label: const Text('Ouvrir'),
                 style: FilledButton.styleFrom(
@@ -42,7 +57,7 @@ class OutputActionsRow extends StatelessWidget {
               ),
             ),
           ),
-        CloudShareRow(path: path, mime: mime),
+        CloudShareRow(path: widget.path, mime: widget.mime),
       ],
     );
   }

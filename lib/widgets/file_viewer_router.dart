@@ -60,10 +60,17 @@ class FileViewerRouter {
 
   /// Retourne l'écran viewer adapté à ce path, ou null si non géré
   /// (l'appelant peut alors fallback sur un chooser système).
-  static Widget? screenFor(String path) {
+  ///
+  /// [imageSiblings] : pour les images, liste des paths frères du même
+  /// dossier pour activer le swipe entre images (utilisé par l'explorateur).
+  /// Laisser vide pour les outputs des outils (un seul fichier produit).
+  static Widget? screenFor(
+    String path, {
+    List<String> imageSiblings = const [],
+  }) {
     final ext = _ext(path);
     if (_imageExts.contains(ext)) {
-      return ImageViewerScreen(path: path, siblings: [path]);
+      return ImageViewerScreen(path: path, siblings: imageSiblings);
     }
     if (_editableExts.contains(ext)) {
       switch (ext) {
@@ -108,7 +115,13 @@ class FileViewerRouter {
   /// Ouvre le fichier dans le viewer interne adapté. Si aucun viewer ne
   /// correspond, ou si le fichier n'existe pas, affiche un SnackBar d'erreur.
   /// Retourne true si la navigation a eu lieu.
-  static Future<bool> open(BuildContext context, String path) async {
+  ///
+  /// [imageSiblings] : voir [screenFor].
+  static Future<bool> open(
+    BuildContext context,
+    String path, {
+    List<String> imageSiblings = const [],
+  }) async {
     final file = File(path);
     if (!await file.exists()) {
       if (!context.mounted) return false;
@@ -117,7 +130,7 @@ class FileViewerRouter {
       ).showSnackBar(const SnackBar(content: Text('Fichier introuvable')));
       return false;
     }
-    final screen = screenFor(path);
+    final screen = screenFor(path, imageSiblings: imageSiblings);
     if (screen == null) {
       if (!context.mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
