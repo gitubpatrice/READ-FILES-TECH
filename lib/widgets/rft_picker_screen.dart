@@ -214,23 +214,91 @@ class _RftPickerScreenState extends State<RftPickerScreen>
   }
 
   Future<void> _load() async {
+    // 1. Charge la liste persistée des Récents (SharedPreferences).
     final all = await _recentService.load();
     if (!mounted) return;
-    // Filtre async : ne garde que les fichiers qui existent encore.
-    // existsSync sur N entries jankerait sur stockage lent.
+    // 2. Filtre async : ne garde que les fichiers qui existent encore.
     final checks = await Future.wait(
       all.map((f) async => (await File(f.path).exists()) ? f : null),
     );
-    final existing = checks.whereType<RecentFile>().where((f) {
-      // Applique aussi le filtre d'extensions si fourni
-      if (widget.extensions == null || widget.extensions!.isEmpty) return true;
-      return widget.extensions!.contains(f.extension.toLowerCase());
-    }).toList();
+    final fromPrefs = checks.whereType<RecentFile>().toList();
+
+    // 3. Auto-découverte : scanne les dossiers d'output produits par les
+    //    outils (Files Tech/Conversions/, OCR/, Scanner/, …) pour faire
+    //    apparaître AUSSI les fichiers produits avant que l'app ne tienne
+    //    un index Récents (ou si l'index a été vidé).
+    final fromOutput = await _scanOutputFolders();
+    if (!mounted) return;
+
+    // 4. Fusion : on prend tous les paths uniques, prefs prioritaires (gardent
+    //    leur lastOpened d'origine) ; les fichiers d'output non-prefs sont
+    //    ajoutés avec leur mtime comme lastOpened approximatif.
+    final byPath = <String, RecentFile>{for (final f in fromPrefs) f.path: f};
+    for (final f in fromOutput) {
+      byPath.putIfAbsent(f.path, () => f);
+    }
+    var merged = byPath.values.toList()
+      ..sort((a, b) => b.lastOpened.compareTo(a.lastOpened));
+
+    // 5. Filtre extensions si le picker en demande.
+    if (widget.extensions != null && widget.extensions!.isNotEmpty) {
+      merged = merged
+          .where((f) => widget.extensions!.contains(f.extension.toLowerCase()))
+          .toList();
+    }
     if (!mounted) return;
     setState(() {
-      _recents = existing;
+      _recents = merged;
       _loading = false;
     });
+  }
+
+  /// Scanne les sous-dossiers de `Files Tech/` produits par nos outils
+  /// (Conversions, OCR, Scanner, Compressions, Signatures…) pour pré-peupler
+  /// les Récents. Ainsi, l'utilisateur retrouve toujours ses derniers fichiers
+  /// produits, même sans avoir interagi avec eux après leur création.
+  static const _outputFolders = [
+    '/storage/emulated/0/Files Tech/Conversions',
+    '/storage/emulated/0/Files Tech/OCR',
+    '/storage/emulated/0/Files Tech/Scanner',
+    '/storage/emulated/0/Files Tech/Compressions',
+    '/storage/emulated/0/Files Tech/Signatures',
+    '/storage/emulated/0/Files Tech/EXIF',
+  ];
+
+  Future<List<RecentFile>> _scanOutputFolders() async {
+    final out = <RecentFile>[];
+    for (final folder in _outputFolders) {
+      try {
+        final dir = Directory(folder);
+        if (!await dir.exists()) continue;
+        final entries = await dir
+            .list(followLinks: false)
+            .where((e) => e is File)
+            .cast<File>()
+            .toList();
+        for (final f in entries) {
+          try {
+            final stat = await f.stat();
+            final name = f.path.split(RegExp(r'[/\\]')).last;
+            if (name.startsWith('.')) continue; // fichiers cachés
+            out.add(
+              RecentFile(
+                path: f.path,
+                name: name,
+                lastOpened: stat.modified,
+                sizeBytes: stat.size,
+              ),
+            );
+          } catch (_) {
+            /* fichier inaccessible — skip */
+          }
+        }
+      } catch (_) {
+        /* perm refusée sur le dossier — skip */
+      }
+    }
+    return out;
   }
 
   /// Charge dynamiquement tous les dossiers de premier niveau du stockage

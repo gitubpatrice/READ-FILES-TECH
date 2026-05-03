@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class TxtToolsScreen extends StatefulWidget {
@@ -128,7 +129,19 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Outils TXT')),
+      appBar: AppBar(
+        title: const Text('Outils TXT'),
+        actions: [
+          // Accès rapide : si on a un fichier chargé et qu'on veut juste
+          // le LIRE (pas l'analyser), un tap → viewer interne.
+          if (_path != null)
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined),
+              tooltip: 'Visualiser',
+              onPressed: () => FileViewerRouter.open(context, _path!),
+            ),
+        ],
+      ),
       body: _path == null ? _buildPicker() : _buildTools(),
     );
   }
