@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -703,7 +704,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   Widget _previewCsv(String raw) {
-    final rows = raw.split('\n').take(10).map((l) => l.split(',')).toList();
+    // Borne aux ~10 premières lignes avant parsing : évite de décoder un
+    // CSV de 100 Mo pour la preview. Csv() auto-détecte le délimiteur
+    // (`,` `;` `\t`) et gère les cellules quotées contenant des virgules
+    // (Excel FR, exports tableurs).
+    final rows = (() {
+      final head = raw.split('\n').take(11).join('\n');
+      try {
+        return Csv()
+            .decode(head)
+            .take(10)
+            .map((r) => r.map((c) => c?.toString() ?? '').toList())
+            .toList();
+      } catch (_) {
+        // Fallback permissif si csv lève sur header tronqué.
+        return raw.split('\n').take(10).map((l) => l.split(',')).toList();
+      }
+    })();
     if (rows.isEmpty) return const Text('Fichier vide');
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

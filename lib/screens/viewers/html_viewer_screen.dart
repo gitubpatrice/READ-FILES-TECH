@@ -37,6 +37,17 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
     _load();
   }
 
+  /// Dossier parent du fichier d'origine — sert à restreindre les navigations
+  /// `file://` à ce sous-arbre. Empêche un HTML malveillant de `<a href>` vers
+  /// d'autres fichiers du téléphone via le viewer.
+  late final String _allowedFilePrefix = () {
+    final parent = File(widget.path).parent.path;
+    // Normalise vers une URL file:// avec slash final pour le startsWith.
+    return Uri.file(parent).toString().endsWith('/')
+        ? Uri.file(parent).toString()
+        : '${Uri.file(parent)}/';
+  }();
+
   void _initController() {
     _controller = WebViewController()
       ..setJavaScriptMode(
@@ -47,9 +58,14 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
           onPageFinished: (_) =>
               mounted ? setState(() => _isLoading = false) : null,
           onNavigationRequest: (req) {
-            // Bloquer toute navigation hors du fichier local d'origine.
-            // Empêche un HTML malveillant d'exfiltrer en redirigeant vers https://attacker.
-            if (req.url.startsWith('file://') || req.url.startsWith('about:')) {
+            // about: → toujours autorisé (about:blank, about:srcdoc).
+            if (req.url.startsWith('about:')) {
+              return NavigationDecision.navigate;
+            }
+            // file:// → restreint au dossier parent du fichier ouvert.
+            // Empêche un HTML local malveillant de naviguer vers
+            // /sdcard/Android/data/... ou autres zones sensibles.
+            if (req.url.startsWith(_allowedFilePrefix)) {
               return NavigationDecision.navigate;
             }
             return NavigationDecision.prevent;

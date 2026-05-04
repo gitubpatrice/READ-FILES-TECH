@@ -99,9 +99,12 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       final ts = DateTime.now().millisecondsSinceEpoch;
       await File(_resolvedPath).copy('${histDir.path}/${base}_$ts.bak');
 
+      // list().toList() async pour ne pas bloquer le thread UI quand le
+      // dossier history grossit (rotation à 10 mais d'autres fichiers .bak
+      // d'autres fichiers édités cohabitent).
+      final entries = await histDir.list().toList();
       final baks =
-          histDir
-              .listSync()
+          entries
               .whereType<File>()
               .where((f) => f.path.contains('${base}_'))
               .toList()
@@ -125,9 +128,11 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       return;
     }
     final base = _name.replaceAll(RegExp(r'[^\w.]'), '_');
+    // Async list() pour ne pas freezer l'UI sur dossier history volumineux.
+    final entries = await histDir.list().toList();
+    if (!mounted) return;
     final baks =
-        histDir
-            .listSync()
+        entries
             .whereType<File>()
             .where(
               (f) => f.path.contains('${base}_') && f.path.endsWith('.bak'),
