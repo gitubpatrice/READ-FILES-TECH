@@ -53,7 +53,7 @@ class _OcrScreenState extends State<OcrScreen> {
   }
 
   Future<void> _pickImage() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.image);
+    final res = await FilePicker.pickFiles(type: FileType.image);
     if (res == null || res.files.single.path == null) return;
     await _process(res.files.single.path!);
   }

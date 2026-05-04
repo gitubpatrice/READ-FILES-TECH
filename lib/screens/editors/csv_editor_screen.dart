@@ -50,7 +50,7 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   Future<void> _load() async {
     try {
       final content = await File(_resolvedPath).readAsString();
-      final parsed = const CsvToListConverter().convert(content, eol: '\n');
+      final parsed = Csv().decode(content);
       setState(() {
         _rows = parsed.map((r) => r.map((c) => c.toString()).toList()).toList();
         _isLoading = false;
@@ -69,7 +69,7 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isSaving = true);
     try {
-      final csv = const ListToCsvConverter().convert(_rows);
+      final csv = Csv().encode(_rows);
       await File(_resolvedPath).writeAsString(csv);
       setState(() {
         _modified = false;

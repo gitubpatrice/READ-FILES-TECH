@@ -75,7 +75,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   // ── Images → PDF ────────────────────────────────────────────────────────────
   Future<File?> _imagesToPdf() async {
-    final res = await FilePicker.platform.pickFiles(
+    final res = await FilePicker.pickFiles(
       type: FileType.image,
       allowMultiple: true,
     );
@@ -114,10 +114,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     );
     if (path == null) return null;
     final raw = await File(path).readAsString();
-    final rows = const CsvToListConverter(
-      eol: '\n',
-      shouldParseNumbers: false,
-    ).convert(raw);
+    final rows = Csv(dynamicTyping: false).decode(raw);
     final excel = xls.Excel.createExcel();
     final sheet = excel['Sheet1'];
     for (var r = 0; r < rows.length; r++) {
@@ -272,7 +269,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   // ── Image conversion (any → JPG/PNG/WebP) ──────────────────────────────────
   Future<File?> _convertImage(String targetExt) async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.image);
+    final res = await FilePicker.pickFiles(type: FileType.image);
     if (res == null || res.files.single.path == null) return null;
     final bytes = await File(res.files.single.path!).readAsBytes();
     final decoded = img.decodeImage(bytes);

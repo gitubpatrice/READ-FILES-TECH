@@ -25,7 +25,7 @@ class _CompressScreenState extends State<CompressScreen> {
   bool _busy = false;
 
   Future<void> _pick() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.image);
+    final res = await FilePicker.pickFiles(type: FileType.image);
     if (res == null || res.files.single.path == null) return;
     final file = File(res.files.single.path!);
     setState(() {

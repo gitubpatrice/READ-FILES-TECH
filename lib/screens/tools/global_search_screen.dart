@@ -34,7 +34,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   }
 
   Future<void> _pickRoot() async {
-    final dir = await FilePicker.platform.getDirectoryPath();
+    final dir = await FilePicker.getDirectoryPath();
     if (dir != null) setState(() => _root = dir);
   }
 

@@ -598,7 +598,7 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _export(File enc) async {
     final messenger = ScaffoldMessenger.of(context);
-    final destDir = await FilePicker.platform.getDirectoryPath();
+    final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
       final out = await widget.service.exportFile(enc, destDir);

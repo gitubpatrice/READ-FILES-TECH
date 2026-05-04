@@ -53,7 +53,7 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
   }
 
   Future<void> _pickFolder() async {
-    final result = await FilePicker.platform.getDirectoryPath();
+    final result = await FilePicker.getDirectoryPath();
     if (result != null) setState(() => _folderPath = result);
   }
 

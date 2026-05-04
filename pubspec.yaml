@@ -16,15 +16,18 @@ dependencies:
     path: ../files_tech_core
 
   # Fichiers
-  file_picker: ^8.1.2
+  file_picker: ^11.0.0
   path_provider: ^2.1.4
   permission_handler: ^12.0.1
+  # share_plus 13 + package_info_plus 10 exigent win32 ^6, mais file_picker 11
+  # déclare encore win32 ^5.9. Override impossible (file_picker Windows utilise
+  # API win32 5.x). On reste sur share_plus 10 / package_info_plus 9.
   share_plus: ^10.0.3
   shared_preferences: ^2.3.2
 
   # Formats documents
   excel: ^4.0.6              # XLSX / ODS
-  csv: ^6.0.0                # CSV
+  csv: ^8.0.0                # CSV
   archive: ^3.6.1            # DOCX / ODT (ZIP + XML)
   webview_flutter: ^4.10.0   # rendu HTML
 
@@ -41,14 +44,14 @@ dependencies:
   crypto: ^3.0.3
 
   # Export PDF + viewer
-  syncfusion_flutter_pdf: ^27.1.48
-  syncfusion_flutter_pdfviewer: ^27.1.48
+  syncfusion_flutter_pdf: ^33.2.4
+  syncfusion_flutter_pdfviewer: ^33.2.4
 
   # HTTP (utilisé par UpdateService pour GitHub Releases API)
   http: ^1.2.0
 
-  # Dates — verrouillé à 0.19 par syncfusion 27 (bloquant pour 0.20)
-  intl: ^0.19.0
+  # Dates
+  intl: ^0.20.0
 
   # Liens externes (mailto / https) pour Aide & Support
   url_launcher: ^6.3.1

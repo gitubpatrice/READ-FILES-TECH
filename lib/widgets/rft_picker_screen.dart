@@ -496,7 +496,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
   }
 
   Future<void> _browseAnyFolder() async {
-    final dir = await FilePicker.platform.getDirectoryPath();
+    final dir = await FilePicker.getDirectoryPath();
     if (dir == null || !mounted) return;
     if (_folderMode) {
       // Mode folder : retour direct du path SAF, pas d'ouverture explorer.

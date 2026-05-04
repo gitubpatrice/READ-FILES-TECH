@@ -51,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _changeBase() async {
     final messenger = ScaffoldMessenger.of(context);
-    final dir = await FilePicker.platform.getDirectoryPath();
+    final dir = await FilePicker.getDirectoryPath();
     if (dir == null) return;
     try {
       await _service.setBasePath(dir);

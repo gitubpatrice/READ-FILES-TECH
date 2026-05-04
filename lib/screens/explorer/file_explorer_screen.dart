@@ -188,7 +188,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   Future<void> _copySelected({required bool move}) async {
     final messenger = ScaffoldMessenger.of(context);
-    final destDir = await FilePicker.platform.getDirectoryPath();
+    final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     int ok = 0, fail = 0;
     for (final p in _selected.toList()) {
@@ -956,7 +956,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   Future<void> _copyFile(String sourcePath) async {
     final messenger = ScaffoldMessenger.of(context);
-    final destDir = await FilePicker.platform.getDirectoryPath();
+    final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
       final name = sourcePath.split('/').last;
@@ -1136,7 +1136,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   Future<void> _moveFile(String sourcePath) async {
     final messenger = ScaffoldMessenger.of(context);
-    final destDir = await FilePicker.platform.getDirectoryPath();
+    final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
       final name = sourcePath.split('/').last;

@@ -32,7 +32,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     if (path == null) return;
     if (!mounted) return;
     final content = await File(path).readAsString();
-    final rows = const CsvToListConverter().convert(content, eol: '\n');
+    final rows = Csv().decode(content);
     if (!mounted) return;
     setState(() {
       _path = path;
@@ -155,7 +155,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       bool firstFile = true;
       for (final p in paths) {
         final content = await File(p).readAsString();
-        final rows = const CsvToListConverter().convert(content, eol: '\n');
+        final rows = Csv().decode(content);
         if (firstFile) {
           allRows.addAll(rows);
           firstFile = false;
@@ -165,7 +165,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         }
       }
 
-      final csv = const ListToCsvConverter().convert(allRows);
+      final csv = Csv().encode(allRows);
       final out = await OutputStorageService().reserveFile(
         category: OutputCategory.conversions,
         suggestedName: 'fusion_csv',

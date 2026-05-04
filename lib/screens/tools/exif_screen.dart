@@ -33,7 +33,7 @@ class _ExifScreenState extends State<ExifScreen> {
   }
 
   Future<void> _pick() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.image);
+    final res = await FilePicker.pickFiles(type: FileType.image);
     if (res == null || res.files.single.path == null) return;
     await _load(res.files.single.path!);
   }

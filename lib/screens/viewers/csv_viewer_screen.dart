@@ -40,7 +40,7 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
   Future<void> _load() async {
     try {
       final content = await File(widget.path).readAsString();
-      final rows = const CsvToListConverter().convert(content, eol: '\n');
+      final rows = Csv().decode(content);
       setState(() {
         _rows = rows;
         _filtered = rows;
