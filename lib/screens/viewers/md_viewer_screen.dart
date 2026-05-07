@@ -5,6 +5,7 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:share_plus/share_plus.dart';
+import '../explorer/file_type_helpers.dart';
 
 class MdViewerScreen extends StatefulWidget {
   final String path;
@@ -20,8 +21,11 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
   bool _showSource = false;
   double _fontSize = 14;
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  /// Cap dur à l'ouverture pour éviter OOM sur low-end.
+  static const _maxBytes = 50 * 1024 * 1024; // 50 Mo
 
   @override
   void initState() {
@@ -31,12 +35,23 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
 
   Future<void> _load() async {
     try {
+      final size = await File(widget.path).length();
+      if (size > _maxBytes) {
+        if (!mounted) return;
+        setState(() {
+          _content = 'Fichier trop volumineux (>50 Mo)';
+          _isLoading = false;
+        });
+        return;
+      }
       final content = await File(widget.path).readAsString();
+      if (!mounted) return;
       setState(() {
         _content = content;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _content = 'Erreur : $e';
         _isLoading = false;

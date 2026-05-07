@@ -5,6 +5,7 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:share_plus/share_plus.dart';
+import '../explorer/file_type_helpers.dart';
 
 class TxtViewerScreen extends StatefulWidget {
   final String path;
@@ -27,7 +28,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
   bool _showColors = false;
   List<_ColorMatch> _colorMatches = [];
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
   bool get _hasHighlight => widget.highlightLanguage != null;
 
   @override

@@ -8,7 +8,7 @@ Future<void> showFileInfoDialog(
   BuildContext context,
   FileSystemEntity e,
 ) async {
-  final name = e.path.split('/').last;
+  final name = e.path.basename;
   final isDir = e is Directory;
   int size = 0;
   int items = 0;

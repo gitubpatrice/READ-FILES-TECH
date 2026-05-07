@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'reader_viewer_screen.dart';
+import '../explorer/file_type_helpers.dart';
 
 class HtmlViewerScreen extends StatefulWidget {
   final String path;
@@ -29,7 +30,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   /// Limite la taille du HTML chargé (DoS local, OOM sur fichiers énormes).
   static const _maxHtmlBytes = 20 * 1024 * 1024;
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
 
   @override
   void initState() {

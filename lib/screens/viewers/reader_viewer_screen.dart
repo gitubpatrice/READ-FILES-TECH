@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/reader_service.dart';
+import '../explorer/file_type_helpers.dart';
 
 /// Affiche du HTML brut OU un EPUB en mode lecture désencombré.
 /// - HTML : un seul "chapitre" avec tous les blocs.
@@ -49,10 +50,7 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
         if (!mounted) return;
         setState(() {
           _chapters = [
-            EpubChapter(
-              title: widget.path.split(RegExp(r'[/\\]')).last,
-              blocks: blocks,
-            ),
+            EpubChapter(title: widget.path.basename, blocks: blocks),
           ];
           _loading = false;
         });

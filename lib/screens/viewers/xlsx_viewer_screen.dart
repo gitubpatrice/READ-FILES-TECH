@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart';
 import 'package:share_plus/share_plus.dart';
+import '../explorer/file_type_helpers.dart';
 
 class XlsxViewerScreen extends StatefulWidget {
   final String path;
@@ -54,7 +55,7 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
   String? _error;
   int _sheetIndex = 0;
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
 
   @override
   void initState() {

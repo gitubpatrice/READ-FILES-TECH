@@ -5,6 +5,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:share_plus/share_plus.dart';
 import '../tools/signature_capture_screen.dart';
 import '../tools/signature_place_screen.dart';
+import '../explorer/file_type_helpers.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final String path;
@@ -21,7 +22,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   int _currentPage = 1;
   int _totalPages = 0;
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
 
   @override
   void dispose() {

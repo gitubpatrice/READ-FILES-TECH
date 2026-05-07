@@ -197,6 +197,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       _permissionDenied =
           entries.isEmpty && _requiresManageStorage(dir.path) && !permOk;
       _sortSvc.sort(entries, sizeOf: _cachedSize, modifiedOf: _cachedModified);
+      if (!mounted) return;
       setState(() {
         if (_current != null) _history.add(_current!);
         _current = dir;
@@ -204,12 +205,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Accès refusé : $e')));
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Accès refusé : $e')));
     }
   }
 
@@ -220,17 +220,15 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       _statCache.clear();
       final entries = await _listDirNative(_current!);
       _sortSvc.sort(entries, sizeOf: _cachedSize, modifiedOf: _cachedModified);
+      if (!mounted) return;
       setState(() {
         _entries = entries;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('$e')));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
@@ -334,7 +332,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   Future<void> _rename(FileSystemEntity e) async {
-    final name = e.path.split('/').last;
+    final name = e.path.basename;
     final newName = await promptName(
       context,
       title: 'Renommer',
@@ -371,7 +369,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   Future<void> _delete(FileSystemEntity e) async {
-    final name = e.path.split('/').last;
+    final name = e.path.basename;
     final confirm = await confirmDelete(
       context,
       title: 'Supprimer',
@@ -427,7 +425,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
-      final name = sourcePath.split('/').last;
+      final name = sourcePath.basename;
       await File(sourcePath).copy('$destDir/$name');
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Fichier copié')));
@@ -442,7 +440,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
-      final name = sourcePath.split('/').last;
+      final name = sourcePath.basename;
       await File(sourcePath).copy('$destDir/$name');
       await File(sourcePath).delete();
       if (!mounted) return;
@@ -533,7 +531,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   List<FileSystemEntity> get _filtered {
     final extFilter = widget.extensionFilter;
     return _entries.where((e) {
-      final name = e.path.split('/').last;
+      final name = e.path.basename;
       if (!_showHidden && name.startsWith('.')) return false;
       if (extFilter != null &&
           e is File &&

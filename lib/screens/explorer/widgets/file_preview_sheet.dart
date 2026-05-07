@@ -9,7 +9,7 @@ Future<void> showFilePreviewSheet(
   required VoidCallback onOpen,
 }) async {
   final ext = fileExt(path);
-  final name = path.split('/').last;
+  final name = path.basename;
   String preview = '';
   String type = 'text';
   try {

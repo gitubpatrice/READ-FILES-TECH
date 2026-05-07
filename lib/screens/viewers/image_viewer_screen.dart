@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../explorer/file_type_helpers.dart';
 
 class ImageViewerScreen extends StatefulWidget {
   final String path;
@@ -25,7 +26,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       widget.siblings.isNotEmpty ? widget.siblings : [widget.path];
 
   String get _currentPath => _images[_currentIndex];
-  String get _currentName => _currentPath.split(RegExp(r'[/\\]')).last;
+  String get _currentName => _currentPath.basename;
 
   @override
   void initState() {

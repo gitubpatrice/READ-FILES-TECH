@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
+import '../explorer/file_type_helpers.dart';
 
 class DocxViewerScreen extends StatefulWidget {
   final String path;
@@ -19,7 +20,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
   String? _error;
   double _fontSize = 14;
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
   String get _ext => _name.split('.').last.toLowerCase();
 
   @override

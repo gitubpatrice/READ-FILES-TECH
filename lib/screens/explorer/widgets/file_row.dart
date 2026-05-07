@@ -69,7 +69,7 @@ class FileRow extends StatelessWidget {
     final canEdit = editableExts.contains(ext);
     final canView =
         canEdit || viewableExts.contains(ext) || imageExts.contains(ext);
-    final name = e.path.split('/').last;
+    final name = e.path.basename;
     final cs = Theme.of(context).colorScheme;
 
     return ListTile(

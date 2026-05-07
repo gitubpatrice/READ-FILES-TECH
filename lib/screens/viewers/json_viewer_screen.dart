@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import '../explorer/file_type_helpers.dart';
 
 class JsonViewerScreen extends StatefulWidget {
   final String path;
@@ -20,7 +21,7 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
   bool _treeMode = true;
   String _raw = '';
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
 
   @override
   void initState() {

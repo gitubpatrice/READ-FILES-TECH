@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 
 class BatchResult {
   final int ok;
@@ -42,7 +43,7 @@ class BatchOpsService {
           fail++;
           continue;
         }
-        final name = p.split('/').last;
+        final name = PathSafe.basename(p);
         await File(p).copy('$destDir/$name');
         if (move) await File(p).delete();
         ok++;

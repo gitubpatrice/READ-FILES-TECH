@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
 import '../editors/csv_editor_screen.dart';
+import '../explorer/file_type_helpers.dart';
 
 class CsvViewerScreen extends StatefulWidget {
   final String path;
@@ -22,7 +23,7 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
   String _search = '';
   final _searchCtrl = TextEditingController();
 
-  String get _name => widget.path.split(RegExp(r'[/\\]')).last;
+  String get _name => widget.path.basename;
   List<dynamic> get _headers => _rows.isNotEmpty ? _rows[0] : [];
   List<List<dynamic>> get _dataRows => _rows.length > 1 ? _rows.sublist(1) : [];
 

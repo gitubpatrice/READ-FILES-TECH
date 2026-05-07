@@ -1,5 +1,21 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:files_tech_core/files_tech_core.dart';
+
+/// Extension dédupliquant `path.split(...)` partout : usage `widget.path.basename`.
+/// Variante non-throwing : retourne la dernière composante brute si invalide
+/// (afin d'être utilisable pour l'affichage ; pour un usage sécurité-critique,
+/// utiliser directement `PathSafe.basename`).
+extension PathBasename on String {
+  String get basename {
+    try {
+      return PathSafe.basename(this);
+    } catch (_) {
+      final parts = split(RegExp(r'[/\\]'));
+      return parts.isEmpty ? this : parts.last;
+    }
+  }
+}
 
 const editableExts = {
   'txt',

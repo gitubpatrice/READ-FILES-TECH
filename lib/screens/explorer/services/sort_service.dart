@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 
 enum SortMode { name, date, size }
 
@@ -37,6 +38,18 @@ class SortService {
     required int Function(FileSystemEntity) sizeOf,
     required int Function(FileSystemEntity) modifiedOf,
   }) {
+    // Schwartzian transform : pré-calcule basename.toLowerCase() une seule
+    // fois par path (évite O(n log n) splits + .toLowerCase pendant le tri).
+    final Map<String, String> lowerNameCache = {};
+    if (mode == SortMode.name) {
+      for (final e in entries) {
+        try {
+          lowerNameCache[e.path] = PathSafe.basename(e.path).toLowerCase();
+        } catch (_) {
+          lowerNameCache[e.path] = e.path.toLowerCase();
+        }
+      }
+    }
     entries.sort((a, b) {
       final aDir = a is Directory;
       final bDir = b is Directory;
@@ -47,11 +60,7 @@ class SortService {
         case SortMode.date:
           return modifiedOf(b).compareTo(modifiedOf(a));
         case SortMode.name:
-          return a.path
-              .split('/')
-              .last
-              .toLowerCase()
-              .compareTo(b.path.split('/').last.toLowerCase());
+          return lowerNameCache[a.path]!.compareTo(lowerNameCache[b.path]!);
       }
     });
   }
