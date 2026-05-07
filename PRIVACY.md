@@ -74,7 +74,8 @@ See [SECURITY.md](./SECURITY.md) for the vulnerability disclosure policy.
 | `INTERNET`                          | Update check via GitHub Releases API.                                                                   |
 | `MANAGE_EXTERNAL_STORAGE`           | File explorer feature: browse, read, edit any file on shared storage selected by the user.              |
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Display and preview media files chosen by the user (Android 13+).                                  |
-| `REQUEST_INSTALL_PACKAGES`          | Trigger the Android package installer when the user taps an `.apk` file in the explorer.                 |
+| `REQUEST_INSTALL_PACKAGES`          | Trigger the Android package installer when the user taps an `.apk` file in the explorer (e.g. installing the companion app PDF Tech). |
+| `CAMERA`                            | Document scanner and OCR (optional, runtime-granted on demand).                                          |
 
 ## 10. Children
 
