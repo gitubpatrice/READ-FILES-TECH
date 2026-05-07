@@ -6,6 +6,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:files_tech_core/files_tech_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
@@ -29,6 +30,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// **Anti brute-force** : compteur d'échecs persistant + back-off exponentiel
 /// au-delà de 5 essais (1, 2, 4, 8, 16 minutes).
 class VaultService {
+  /// Singleton : la clé maître est cachée en static `_cachedKey`. Toute
+  /// instanciation multiple partageait déjà cet état — on rend la chose
+  /// explicite pour éviter qu'un futur appelant n'oublie le pattern.
+  VaultService._();
+  static final VaultService instance = VaultService._();
+
   static const _kSalt = 'vault_salt_v1';
   static const _kSetup = 'vault_setup_v1';
   static const _kFails = 'vault_unlock_fails';
@@ -179,7 +186,15 @@ class VaultService {
       throw StateError('Trop d\'essais. Réessayez dans $remaining s.');
     }
     final saltB64 = prefs.getString(_kSalt);
-    if (saltB64 == null) return false;
+    if (saltB64 == null) {
+      // Salt absent alors que `_kSetup=true` (vérifié par l'appelant via
+      // [isSetup]) → coffre incohérent. On lève plutôt que retourner false
+      // (qui afficherait "mauvais mot de passe", trompeur).
+      throw StateError(
+        'Coffre corrompu : salt introuvable. '
+        'Réinitialisez via Réglages.',
+      );
+    }
     final salt = base64Decode(saltB64);
     // Sélectionne le KDF selon la version stockée :
     // - 'argon2id' (v2.6.0+) → Argon2id avec params en prefs (v2.7.1+
@@ -199,8 +214,14 @@ class VaultService {
     final dir = await _vaultDir();
     final check = File('${dir.path}/$_checkFile');
     if (!await check.exists()) {
+      // Sentinelle absente alors que les params KDF sont présents → coffre
+      // incohérent (suppression manuelle du fichier ?). Lever plutôt que
+      // retourner false pour ne pas afficher "mauvais mot de passe".
       _zeroize(key);
-      return false;
+      throw StateError(
+        'Coffre corrompu : sentinelle introuvable. '
+        'Réinitialisez via Réglages.',
+      );
     }
     try {
       final blob = await check.readAsBytes();
@@ -255,14 +276,16 @@ class VaultService {
     return false;
   }
 
-  /// Marque le coffre comme déverrouillé en cache (après biométrique réussie).
+  /// Indique si le coffre est actuellement déverrouillé (clé en cache).
   bool get isUnlocked => _cachedKey != null;
 
   void lock() {
     final k = _cachedKey;
     if (k != null) _zeroize(k);
     _cachedKey = null;
-    // Best-effort : nettoyer les fichiers déchiffrés laissés en tmp.
+    // Best-effort : nettoyer les fichiers déchiffrés laissés en tmp
+    // (vault_decrypt/ + cache/share/ utilisé par share_plus pour les
+    // fichiers issus du coffre).
     purgeTempDecrypted();
   }
 
@@ -316,10 +339,8 @@ class VaultService {
     final tmpRoot = await getTemporaryDirectory();
     final tmp = Directory('${tmpRoot.path}/vault_decrypt');
     if (!await tmp.exists()) await tmp.create(recursive: true);
-    final encName = encrypted.path.split(RegExp(r'[/\\]')).last;
-    final originalName = encName.endsWith('.enc')
-        ? encName.substring(0, encName.length - 4)
-        : encName;
+    final encName = PathSafe.basename(encrypted.path);
+    final originalName = _stripEnc(encName);
     final out = File('${tmp.path}/$originalName');
     final blob = await encrypted.readAsBytes();
     final plain = await _decryptMaybeIsolate(blob, key, encName);
@@ -327,22 +348,35 @@ class VaultService {
     return out;
   }
 
-  /// Supprime tous les fichiers déchiffrés laissés dans le cache.
+  /// Supprime tous les fichiers déchiffrés laissés dans le cache :
+  /// - `cache/vault_decrypt/` : staging déchiffrement viewer/share
+  /// - `cache/share/` : staging utilisé par share_plus / FileProvider qui
+  ///   peut conserver des copies en clair après un Share depuis le coffre.
   Future<void> purgeTempDecrypted() async {
     try {
       final tmpRoot = await getTemporaryDirectory();
       final tmp = Directory('${tmpRoot.path}/vault_decrypt');
       if (await tmp.exists()) await tmp.delete(recursive: true);
-    } catch (_) {}
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('purgeTempDecrypted vault_decrypt: $e\n$st');
+    }
+    // Purge defensive du dossier share/ (créé par share_plus). On ne supprime
+    // que ce sous-dossier, pas tout cache/, pour ne pas casser d'autres
+    // caches d'app (thumbnails, plugins).
+    try {
+      final tmpRoot = await getTemporaryDirectory();
+      final share = Directory('${tmpRoot.path}/share');
+      if (await share.exists()) await share.delete(recursive: true);
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('purgeTempDecrypted share/: $e\n$st');
+    }
   }
 
   /// Exporte (déchiffre) un fichier du coffre vers un dossier de destination.
   Future<File> exportFile(File encrypted, String destDir) async {
     final key = _requireKey();
-    final encName = encrypted.path.split(RegExp(r'[/\\]')).last;
-    final originalName = encName.endsWith('.enc')
-        ? encName.substring(0, encName.length - 4)
-        : encName;
+    final encName = PathSafe.basename(encrypted.path);
+    final originalName = _stripEnc(encName);
     final out = File('$destDir/$originalName');
     final blob = await encrypted.readAsBytes();
     final plain = await _decryptMaybeIsolate(blob, key, encName);
@@ -416,10 +450,8 @@ class VaultService {
       builder.add(_int32be(files.length));
       for (var i = 0; i < files.length; i++) {
         final f = files[i];
-        final encName = f.path.split(RegExp(r'[/\\]')).last;
-        final plainName = encName.endsWith('.enc')
-            ? encName.substring(0, encName.length - 4)
-            : encName;
+        final encName = PathSafe.basename(f.path);
+        final plainName = _stripEnc(encName);
         final blob = await f.readAsBytes();
         final plain = await _decryptMaybeIsolate(blob, masterKey, encName);
         plains.add(plain);
@@ -698,7 +730,10 @@ class VaultService {
       final String safeName;
       try {
         safeName = PathSafe.basename(name);
-      } catch (_) {
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('vault: parseBackupPayload basename failed: $e');
+        }
         continue;
       }
       if (safeName != name) continue;
@@ -969,8 +1004,9 @@ class VaultService {
     for (var i = 0; i < _argon2BenchSamples; i++) {
       try {
         samples.add(await Isolate.run(_benchArgon2id));
-      } catch (_) {
+      } catch (e) {
         // OOM, isolate crash → on saute cet échantillon.
+        if (kDebugMode) debugPrint('vault: calibrateArgon2 fail: $e');
       }
     }
     if (samples.isEmpty) {
@@ -981,11 +1017,15 @@ class VaultService {
     return _calibrateFromBench(samples.first);
   }
 
-  void _zeroize(Uint8List bytes) {
+  static void _zeroize(Uint8List bytes) {
     for (var i = 0; i < bytes.length; i++) {
       bytes[i] = 0;
     }
   }
+
+  /// Retire le suffixe `.enc` d'un nom de fichier du coffre s'il est présent.
+  static String _stripEnc(String name) =>
+      name.endsWith('.enc') ? name.substring(0, name.length - 4) : name;
 
   /// Chiffre en v2 (magic "RFT2" + nonce + ciphertext+tag, AAD = prefix|filename).
   Uint8List _encryptV2(List<int> plain, Uint8List key, String filename) {

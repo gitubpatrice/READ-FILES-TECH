@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
+
 /// Critères de recherche globale.
 class SearchQuery {
   final String rootPath;
@@ -266,7 +268,11 @@ class GlobalSearchService {
           return line.length > 200 ? '${line.substring(0, 200)}…' : line;
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      // Lecture impossible (encodage non-UTF8, perm, fichier modifié pendant
+      // le scan) — on ignore ce fichier mais on log en debug pour diagnose.
+      if (kDebugMode) debugPrint('global_search snippet ${f.path}: $e');
+    }
     return null;
   }
 }

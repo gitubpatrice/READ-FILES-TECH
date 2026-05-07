@@ -6,14 +6,32 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
-    <!-- Accès tous fichiers Android 11+ (gestionnaire de fichiers) -->
+    <!--
+        MANAGE_EXTERNAL_STORAGE (Android 11+, "Tous les fichiers") :
+        REQUISE pour la fonction CŒUR de Read Files Tech : explorateur de
+        fichiers universel capable de parcourir, lire et éditer n'importe
+        quel fichier sur le stockage partagé (Documents, Download, dossiers
+        utilisateur). Le Storage Access Framework (SAF) ne couvre pas
+        l'usage "file manager généraliste" (pas de listing arbitraire,
+        pas d'accès cross-folders fluide). Aucune lecture/écriture en
+        arrière-plan : l'utilisateur reste explicitement aux commandes.
+        Documenté dans PRIVACY.md §9.
+    -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
-    <!-- Médias Android 13+ -->
+    <!-- Médias Android 13+ : preview images/videos/audio dans les viewers. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <!-- Lancer l'installateur d'APK depuis l'explorateur -->
+    <!--
+        REQUEST_INSTALL_PACKAGES :
+        Permet à l'utilisateur de lancer l'installateur Android (PackageInstaller)
+        en tapant sur un fichier .apk depuis l'explorateur — incluant les APK
+        de Files Tech (ex: PDF Tech, Pass Tech) qu'il peut transférer
+        manuellement entre ses appareils. L'app n'installe RIEN automatiquement :
+        c'est l'OS qui prend le relais avec son écran de confirmation.
+        Documenté dans PRIVACY.md §9.
+    -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- OCR : capture caméra -->
     <uses-permission android:name="android.permission.CAMERA" />

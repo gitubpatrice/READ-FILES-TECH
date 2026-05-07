@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -99,7 +100,11 @@ class OutputStorageService {
         if (!await sub.exists()) await sub.create(recursive: true);
       }
       return base.path;
-    } catch (_) {}
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('OutputStorage.ensureFolders primary failed: $e\n$st');
+      }
+    }
     // Fallback : app-private external
     try {
       final ext = await getExternalStorageDirectory();
@@ -112,7 +117,11 @@ class OutputStorageService {
         }
         return fbBase.path;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('OutputStorage.ensureFolders fallback failed: $e\n$st');
+      }
+    }
     return null;
   }
 

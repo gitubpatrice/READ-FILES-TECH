@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'reader_viewer_screen.dart';
@@ -40,13 +41,22 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   /// Dossier parent du fichier d'origine — sert à restreindre les navigations
   /// `file://` à ce sous-arbre. Empêche un HTML malveillant de `<a href>` vers
   /// d'autres fichiers du téléphone via le viewer.
-  late final String _allowedFilePrefix = () {
-    final parent = File(widget.path).parent.path;
-    // Normalise vers une URL file:// avec slash final pour le startsWith.
-    return Uri.file(parent).toString().endsWith('/')
-        ? Uri.file(parent).toString()
-        : '${Uri.file(parent)}/';
-  }();
+  late final String _allowedParentDir = File(widget.path).parent.path;
+
+  /// True si l'URL `file://...` cible un fichier strictement dans le dossier
+  /// parent du HTML d'origine. Utilise `p.isWithin` (package:path) pour
+  /// gérer correctement les séparateurs Windows/POSIX et les `..` éventuels
+  /// — plus robuste qu'un `startsWith` sur String.
+  bool _isFileUrlAllowed(String url) {
+    if (!url.startsWith('file://')) return false;
+    try {
+      final target = Uri.parse(url).toFilePath();
+      return p.equals(target, _allowedParentDir) ||
+          p.isWithin(_allowedParentDir, target);
+    } catch (_) {
+      return false;
+    }
+  }
 
   void _initController() {
     _controller = WebViewController()
@@ -65,7 +75,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
             // file:// → restreint au dossier parent du fichier ouvert.
             // Empêche un HTML local malveillant de naviguer vers
             // /sdcard/Android/data/... ou autres zones sensibles.
-            if (req.url.startsWith(_allowedFilePrefix)) {
+            if (_isFileUrlAllowed(req.url)) {
               return NavigationDecision.navigate;
             }
             return NavigationDecision.prevent;
@@ -137,6 +147,10 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
 
   List<_ColorInfo> _extractColors(String html) {
     final results = <_ColorInfo>[];
+    // Cap dur 1 Mo : sur très gros HTML, l'allMatches est O(n) et inutile
+    // (on aurait des centaines de couleurs identiques). Bypass = barre
+    // couleurs vide, le rendu HTML reste OK.
+    if (html.length > 1024 * 1024) return results;
     final seen = <String>{};
     final hexReg = RegExp(r'#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b');
     for (final m in hexReg.allMatches(html)) {

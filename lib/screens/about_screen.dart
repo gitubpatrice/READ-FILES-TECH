@@ -57,7 +57,7 @@ class _AboutScreenState extends State<AboutScreen> {
     (
       icon: Icons.shield_outlined,
       label: 'Coffre fort',
-      desc: 'Fichiers chiffrés AES-256-GCM (PBKDF2 600k, biométrique)',
+      desc: 'Fichiers chiffrés AES-256-GCM (Argon2id, AAD bindée au nom)',
     ),
     (
       icon: Icons.transform,

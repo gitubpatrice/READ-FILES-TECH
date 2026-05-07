@@ -1,12 +1,22 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/secure_window.dart';
 import '../../services/vault_service.dart';
 import '../../widgets/rft_picker_screen.dart';
 import 'vault_import_folder_screen.dart';
+
+/// Scrub best-effort d'un controller de mot de passe : remplace le contenu
+/// par des null-bytes puis vide. Ne garantit PAS l'effacement RAM (les
+/// String Dart sont immuables et non-zeroizables — limitation langage),
+/// mais retire la référence forte du controller, accélérant le GC potentiel.
+void _scrubPasswordController(TextEditingController c) {
+  if (c.text.isNotEmpty) c.text = '\x00' * c.text.length;
+  c.text = '';
+}
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -16,7 +26,7 @@ class VaultScreen extends StatefulWidget {
 }
 
 class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
-  final _service = VaultService();
+  final _service = VaultService.instance;
   bool _checking = true;
   bool _unlocked = false;
   bool _setup = false;
@@ -193,16 +203,11 @@ class _SetupScreenState extends State<_SetupScreen> {
 
   @override
   void dispose() {
-    _scrubPwd(_pwd1);
-    _scrubPwd(_pwd2);
+    _scrubPasswordController(_pwd1);
+    _scrubPasswordController(_pwd2);
     _pwd1.dispose();
     _pwd2.dispose();
     super.dispose();
-  }
-
-  static void _scrubPwd(TextEditingController c) {
-    if (c.text.isNotEmpty) c.text = '\x00' * c.text.length;
-    c.text = '';
   }
 
   Future<void> _create() async {
@@ -249,7 +254,7 @@ class _SetupScreenState extends State<_SetupScreen> {
     );
 
     try {
-      await VaultService().setupWithPassword(p1);
+      await VaultService.instance.setupWithPassword(p1);
       if (!mounted) return;
       // Ferme l'overlay
       Navigator.of(context, rootNavigator: true).pop();
@@ -392,8 +397,7 @@ class _UnlockScreenState extends State<_UnlockScreen> {
 
   @override
   void dispose() {
-    if (_pwd.text.isNotEmpty) _pwd.text = '\x00' * _pwd.text.length;
-    _pwd.text = '';
+    _scrubPasswordController(_pwd);
     _pwd.dispose();
     super.dispose();
   }
@@ -404,7 +408,7 @@ class _UnlockScreenState extends State<_UnlockScreen> {
       _error = null;
     });
     try {
-      final ok = await VaultService().unlockWithPassword(_pwd.text);
+      final ok = await VaultService.instance.unlockWithPassword(_pwd.text);
       if (!mounted) return;
       if (ok) {
         widget.onUnlocked();
@@ -548,7 +552,7 @@ class _VaultContentState extends State<_VaultContent> {
           builder: (_) => AlertDialog(
             title: const Text('Fichier déjà présent'),
             content: Text(
-              '"${p.split(RegExp(r'[/\\\\]')).last}" existe déjà dans le coffre. Écraser ?',
+              '"${PathSafe.basename(p)}" existe déjà dans le coffre. Écraser ?',
             ),
             actions: [
               TextButton(
@@ -604,7 +608,7 @@ class _VaultContentState extends State<_VaultContent> {
       final out = await widget.service.exportFile(enc, destDir);
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Exporté : ${out.path.split('/').last}')),
+        SnackBar(content: Text('Exporté : ${PathSafe.basename(out.path)}')),
       );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
@@ -865,7 +869,7 @@ class _VaultContentState extends State<_VaultContent> {
   }
 
   String _displayName(File f) {
-    final n = f.path.split(RegExp(r'[/\\]')).last;
+    final n = PathSafe.basename(f.path);
     return n.endsWith('.enc') ? n.substring(0, n.length - 4) : n;
   }
 
@@ -1060,22 +1064,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
 
   @override
   void dispose() {
-    // Scrub best-effort : remplace le contenu par des null-bytes puis vide.
-    // Ne garantit PAS l'effacement RAM (les String Dart sont immuables et
-    // non-zeroizables — limitation langage). Mais retire la référence
-    // forte du controller, accélérant le GC potentiel.
-    _scrub(_pwd1);
-    _scrub(_pwd2);
+    _scrubPasswordController(_pwd1);
+    _scrubPasswordController(_pwd2);
     _pwd1.dispose();
     _pwd2.dispose();
     super.dispose();
-  }
-
-  static void _scrub(TextEditingController c) {
-    if (c.text.isNotEmpty) {
-      c.text = '\x00' * c.text.length;
-    }
-    c.text = '';
   }
 
   void _submit() {

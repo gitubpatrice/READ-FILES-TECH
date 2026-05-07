@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
@@ -37,16 +38,37 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
     super.dispose();
   }
 
+  /// Seuil au-delà duquel le parsing CSV passe en Isolate pour ne pas geler
+  /// le main thread (Csv().decode() est purement CPU-bound).
+  static const _isolateThreshold = 1024 * 1024; // 1 Mo
+
+  /// Cap dur à l'ouverture pour éviter OOM sur low-end.
+  static const _maxBytes = 50 * 1024 * 1024; // 50 Mo
+
+  static List<List<dynamic>> _parseCsvInIsolate(String content) {
+    return Csv().decode(content);
+  }
+
   Future<void> _load() async {
     try {
+      final size = await File(widget.path).length();
+      if (size > _maxBytes) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        return;
+      }
       final content = await File(widget.path).readAsString();
-      final rows = Csv().decode(content);
+      final rows = size > _isolateThreshold
+          ? await Isolate.run(() => _parseCsvInIsolate(content))
+          : _parseCsvInIsolate(content);
+      if (!mounted) return;
       setState(() {
         _rows = rows;
         _filtered = rows;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

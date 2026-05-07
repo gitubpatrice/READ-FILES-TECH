@@ -167,8 +167,11 @@ class DuplicateFinderService {
     }
   }
 
-  /// SHA-1 sur les 64 KB de tête + 64 KB de queue (rapide, suffisant pour
+  /// SHA-256 sur les 64 KB de tête + 64 KB de queue (rapide, suffisant pour
   /// pré-filtrer). On préfixe avec la taille via la clé du bucket parent.
+  /// Avant v2.9.x : SHA-1, déprécié pour usage cryptographique. SHA-256
+  /// retire le risque de collision malicieuse (clé de bucket Map) sans coût
+  /// perceptible (128 Ko hashés ≈ identique CPU sur ARMv8).
   static Future<String> _partialHash(File f, int size) async {
     const head = 64 * 1024;
     final raf = await f.open();
@@ -180,7 +183,7 @@ class DuplicateFinderService {
         tailBytes = await raf.read(head);
       }
       final all = [...headBytes, ...tailBytes];
-      return sha1.convert(all).toString();
+      return sha256.convert(all).toString();
     } finally {
       await raf.close();
     }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
@@ -27,17 +28,34 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     _load();
   }
 
+  /// Seuil au-delà duquel l'extraction (unzip + parse XML) passe en Isolate :
+  /// ZipDecoder + regex full-doc sont CPU-bound, freeze visible >1 Mo sur S9.
+  static const _isolateThreshold = 1024 * 1024; // 1 Mo
+
   Future<void> _load() async {
     try {
+      final size = await File(widget.path).length();
       final bytes = await File(widget.path).readAsBytes();
-      final text = _ext == 'odt' || _ext == 'odp'
-          ? _extractOdt(bytes)
-          : _extractDocx(bytes);
+      final ext = _ext;
+      final String text;
+      if (size > _isolateThreshold) {
+        text = await Isolate.run(() {
+          return ext == 'odt' || ext == 'odp'
+              ? _extractOdtStatic(bytes)
+              : _extractDocxStatic(bytes);
+        });
+      } else {
+        text = ext == 'odt' || ext == 'odp'
+            ? _extractOdtStatic(bytes)
+            : _extractDocxStatic(bytes);
+      }
+      if (!mounted) return;
       setState(() {
         _text = text;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -45,7 +63,8 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     }
   }
 
-  String _extractDocx(List<int> bytes) {
+  // Static helpers : pas de capture de `this`, donc Isolate-safe.
+  static String _extractDocxStatic(List<int> bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
     final docFile = archive.findFile('word/document.xml');
     if (docFile == null) return 'Impossible de lire le document.';
@@ -66,7 +85,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     return out.toString().trim();
   }
 
-  String _decodeEntities(String s) => s
+  static String _decodeEntities(String s) => s
       .replaceAll('&amp;', '&')
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>')
@@ -74,7 +93,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
       .replaceAll('&apos;', "'")
       .replaceAll('&#xD;', '\n');
 
-  String _extractOdt(List<int> bytes) {
+  static String _extractOdtStatic(List<int> bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
     final contentFile = archive.findFile('content.xml');
     if (contentFile == null) return 'Impossible de lire le document.';
@@ -85,7 +104,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     return _xmlToText(xml, tagName: 'text:p');
   }
 
-  String _xmlToText(String xml, {required String tagName}) {
+  static String _xmlToText(String xml, {required String tagName}) {
     final buffer = StringBuffer();
     final reg = RegExp('<$tagName[^>]*>(.*?)</$tagName>', dotAll: true);
     for (final m in reg.allMatches(xml)) {

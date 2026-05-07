@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -423,7 +424,11 @@ class _HomeTabState extends State<_HomeTab> {
           _freeBytes = (res['free'] as num).toInt();
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      // Channel KO (hot-reload, plateforme non-Android) — la carte stockage
+      // reste à 0 / 0. Pas critique mais utile à voir en debug.
+      if (kDebugMode) debugPrint('home_screen getStorageInfo: $e');
+    }
   }
 
   String _formatBytes(int bytes) => FormatUtils.bytesStorage(bytes);

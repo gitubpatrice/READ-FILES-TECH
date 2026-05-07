@@ -1,5 +1,13 @@
+// TODO(refactor v2.10): ce fichier dépasse 1900 lignes. Extraire :
+//   - SortService (tri par nom/taille/date/type, stockage prefs)
+//   - SelectionController (multi-select state + actions de masse)
+//   - BatchOpsService (copie/déplacement/suppression batch + progress)
+//   - Widgets feuilles : FileRow, BreadcrumbBar, ToolbarActions, FilterChipsRow
+// Cible : <800 lignes pour le screen, le reste en services/widgets testables.
+
 import 'dart:io';
 import 'package:csv/csv.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -1061,7 +1069,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       } else {
         size = stat.size;
       }
-    } catch (_) {}
+    } catch (err) {
+      // Stat / list refusé (perm SAF, fichier disparu pendant le tap) —
+      // on affiche les champs disponibles, on log juste en debug.
+      if (kDebugMode) debugPrint('showFileInfo ${e.path}: $err');
+    }
 
     final ext = isDir ? '—' : (_ext(e.path).isEmpty ? '—' : _ext(e.path));
     final mime = isDir ? '—' : (_mime(_ext(e.path)) ?? 'inconnu');
