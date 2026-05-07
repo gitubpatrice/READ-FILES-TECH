@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../explorer/file_type_helpers.dart';
@@ -54,11 +55,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     }
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
+  String _formatSize(int bytes) => FormatUtils.bytesStorage(bytes);
 
   void _showInfo() {
     final stat = _stat(_currentPath);

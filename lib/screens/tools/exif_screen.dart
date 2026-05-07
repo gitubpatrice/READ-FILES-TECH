@@ -73,10 +73,9 @@ class _ExifScreenState extends State<ExifScreen> {
       final tmp = await _service.stripExif(File(_sourcePath!));
       // 2. Copie persistante dans <Files Tech>/Sans-EXIF/
       final ext = PathUtils.fileExt(tmp.path).toLowerCase();
-      final base = _sourcePath!
-          .split(RegExp(r'[/\\]'))
-          .last
-          .replaceAll(RegExp(r'\.[^.]+$'), '');
+      final base = PathUtils.fileName(
+        _sourcePath!,
+      ).replaceAll(RegExp(r'\.[^.]+$'), '');
       final dest = await _storage.reserveFile(
         category: OutputCategory.exifClean,
         suggestedName: '${base}_no_exif',
@@ -116,7 +115,7 @@ class _ExifScreenState extends State<ExifScreen> {
               title: Text(
                 _sourcePath == null
                     ? 'Choisir une image'
-                    : _sourcePath!.split(RegExp(r'[/\\]')).last,
+                    : PathUtils.fileName(_sourcePath!),
               ),
               trailing: const Icon(Icons.folder_open),
               onTap: _busy ? null : _pick,

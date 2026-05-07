@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../services/output_storage_service.dart';
@@ -59,10 +60,9 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
       );
       // 2. Copie persistante dans <Files Tech>/Signatures/
       final storage = OutputStorageService();
-      final base = widget.pdfPath
-          .split(RegExp(r'[/\\]'))
-          .last
-          .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
+      final base = PathUtils.fileName(
+        widget.pdfPath,
+      ).replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
       final dest = await storage.reserveFile(
         category: OutputCategory.signatures,
         suggestedName: '${base}_signe',
@@ -90,7 +90,7 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
   /// + envoi cloud direct (kDrive / Google Drive / Proton Drive). Cohérent
   /// avec les autres flows de génération de fichiers de l'app.
   Future<void> _showResultSheet(String path) async {
-    final fileName = path.split(RegExp(r'[/\\]')).last;
+    final fileName = PathUtils.fileName(path);
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -39,7 +40,7 @@ class _DiffScreenState extends State<DiffScreen> {
       },
     );
     if (path == null) return;
-    final name = path.split(RegExp(r'[/\\]')).last;
+    final name = PathUtils.fileName(path);
     setState(() {
       if (isA) {
         _pathA = path;

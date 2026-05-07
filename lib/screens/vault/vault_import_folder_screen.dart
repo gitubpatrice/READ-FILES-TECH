@@ -196,7 +196,7 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final folderName = widget.folderPath.split(RegExp(r'[/\\]')).last;
+    final folderName = PathUtils.fileName(widget.folderPath);
 
     return Scaffold(
       appBar: AppBar(
@@ -402,9 +402,9 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
       if (rel.startsWith('/') || rel.startsWith('\\')) {
         rel = rel.substring(1);
       }
-      return rel.isEmpty ? path.split(RegExp(r'[/\\]')).last : rel;
+      return rel.isEmpty ? PathUtils.fileName(path) : rel;
     }
-    return path.split(RegExp(r'[/\\]')).last;
+    return PathUtils.fileName(path);
   }
 
   IconData _iconFor(String path) {

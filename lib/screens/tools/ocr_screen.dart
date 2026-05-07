@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -84,7 +85,7 @@ class _OcrScreenState extends State<OcrScreen> {
     setState(() => _lastTxtPath = out.path);
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}'),
+        content: Text('Sauvegardé : ${PathUtils.fileName(out.path)}'),
         duration: const Duration(seconds: 4),
       ),
     );
@@ -195,7 +196,7 @@ class _OcrScreenState extends State<OcrScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Sauvegardé : ${_lastTxtPath!.split(RegExp(r'[/\\]')).last}',
+                          'Sauvegardé : ${PathUtils.fileName(_lastTxtPath!)}',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 12,

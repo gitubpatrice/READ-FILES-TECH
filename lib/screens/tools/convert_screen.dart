@@ -4,6 +4,7 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as xls;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show compute;
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:share_plus/share_plus.dart';
@@ -59,7 +60,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       setState(() {
         _busy = false;
         _lastPath = out.path;
-        _status = 'Sauvegardé : ${out.path.split(RegExp(r'[/\\]')).last}';
+        _status = 'Sauvegardé : ${PathUtils.fileName(out.path)}';
       });
       if (autoShare) {
         await Share.shareXFiles([XFile(out.path)]);
@@ -128,10 +129,9 @@ class _ConvertScreenState extends State<ConvertScreen> {
     }
     final bytes = excel.save();
     if (bytes == null) throw 'Échec génération XLSX';
-    final base = path
-        .split(RegExp(r'[/\\]'))
-        .last
-        .replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
+    final base = PathUtils.fileName(
+      path,
+    ).replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
     final out = await _reserve(base, 'xlsx');
     await out.writeAsBytes(bytes);
     return out;
@@ -146,7 +146,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     );
     if (path == null) return null;
     final text = await File(path).readAsString();
-    final name = path.split(RegExp(r'[/\\]')).last;
+    final name = PathUtils.fileName(path);
     return _generateTextPdf(text, name);
   }
 
@@ -208,10 +208,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     final result = await compute(extractPdfText, bytes);
     if (result.error != null) throw result.error!;
 
-    final base = path
-        .split(RegExp(r'[/\\]'))
-        .last
-        .replaceAll(RegExp(r'\.[^.]+$'), '');
+    final base = PathUtils.fileName(path).replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'txt');
     await out.writeAsString(result.text!);
     return out;
@@ -258,10 +255,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     final result = await compute(extractDocxText, bytes);
     if (result.error != null) throw result.error!;
 
-    final base = path
-        .split(RegExp(r'[/\\]'))
-        .last
-        .replaceAll(RegExp(r'\.[^.]+$'), '');
+    final base = PathUtils.fileName(path).replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'txt');
     await out.writeAsString(result.text!);
     return out;

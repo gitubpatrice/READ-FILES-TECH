@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'package:crypto/crypto.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/rft_picker_screen.dart';
@@ -70,7 +71,7 @@ class _HashScreenState extends State<HashScreen> {
       title: 'Calculer le hash',
     );
     if (path == null) return;
-    final name = path.split(RegExp(r'[/\\]')).last;
+    final name = PathUtils.fileName(path);
     setState(() {
       _path = path;
       _name = name;
@@ -109,11 +110,7 @@ class _HashScreenState extends State<HashScreen> {
     );
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
-  }
+  String _formatSize(int bytes) => FormatUtils.bytesStorage(bytes);
 
   @override
   Widget build(BuildContext context) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/global_search_service.dart';
 import '../explorer/file_explorer_screen.dart';
@@ -222,7 +223,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                     itemCount: _results.length,
                     itemBuilder: (_, i) {
                       final hit = _results[i];
-                      final name = hit.path.split(RegExp(r'[/\\]')).last;
+                      final name = PathUtils.fileName(hit.path);
                       final parent = hit.path.substring(
                         0,
                         hit.path.lastIndexOf(RegExp(r'[/\\]')),

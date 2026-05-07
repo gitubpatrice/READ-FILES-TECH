@@ -44,7 +44,7 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
     if (!mounted) return;
     setState(() {
       _path = path;
-      _name = path.split(RegExp(r'[/\\]')).last;
+      _name = PathUtils.fileName(path);
       _content = content;
       _matchCount = 0;
     });

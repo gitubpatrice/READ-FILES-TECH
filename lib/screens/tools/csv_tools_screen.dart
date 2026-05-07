@@ -37,7 +37,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     if (!mounted) return;
     setState(() {
       _path = path;
-      _name = path.split(RegExp(r'[/\\]')).last;
+      _name = PathUtils.fileName(path);
       _rows = rows;
     });
   }

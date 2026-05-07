@@ -45,7 +45,7 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
   List<(String, String?)> _computePreview() {
     final out = <(String, String?)>[];
     for (var i = 0; i < widget.paths.length; i++) {
-      final old = widget.paths[i].split(RegExp(r'[/\\]')).last;
+      final old = PathUtils.fileName(widget.paths[i]);
       final ext = old.contains('.') ? '.${PathUtils.fileExt(old)}' : '';
       final stem = ext.isEmpty
           ? old

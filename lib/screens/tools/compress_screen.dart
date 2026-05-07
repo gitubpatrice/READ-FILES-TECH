@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:share_plus/share_plus.dart';
@@ -54,10 +55,9 @@ class _CompressScreenState extends State<CompressScreen> {
       final encoded = Uint8List.fromList(
         img.encodeJpg(resized, quality: _quality),
       );
-      final base = _sourcePath!
-          .split(RegExp(r'[/\\]'))
-          .last
-          .replaceAll(RegExp(r'\.[^.]+$'), '');
+      final base = PathUtils.fileName(
+        _sourcePath!,
+      ).replaceAll(RegExp(r'\.[^.]+$'), '');
       final out = await _storage.reserveFile(
         category: OutputCategory.compressions,
         suggestedName: '${base}_compressed',
@@ -104,7 +104,7 @@ class _CompressScreenState extends State<CompressScreen> {
               title: Text(
                 _sourcePath == null
                     ? 'Choisir une image'
-                    : _sourcePath!.split(RegExp(r'[/\\]')).last,
+                    : PathUtils.fileName(_sourcePath!),
               ),
               subtitle: _sourcePath == null
                   ? null
