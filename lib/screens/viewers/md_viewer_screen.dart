@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
@@ -97,38 +97,13 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
                 ),
               ),
             )
-          : Markdown(
-              data: _content,
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              styleSheet: MarkdownStyleSheet(
-                h1: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                h2: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                h3: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                p: Theme.of(
+              child: GptMarkdown(
+                _content,
+                style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(height: 1.7),
-                code: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest,
-                ),
-                blockquoteDecoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 4,
-                    ),
-                  ),
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                ),
               ),
             ),
     );

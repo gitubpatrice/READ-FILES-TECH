@@ -1,7 +1,7 @@
 name: read_files_tech
 description: "Couteau suisse Android pour vos fichiers : explorateur, lecteur universel, scanner, OCR, coffre-fort, conversion, anti-EXIF — 100 % local."
 publish_to: 'none'
-version: 2.9.1+2091
+version: 2.10.0+2100
 
 environment:
   sdk: ^3.11.5
@@ -37,8 +37,8 @@ dependencies:
   # Outil couleur
   flutter_colorpicker: ^1.1.0
 
-  # Markdown rendu
-  flutter_markdown: ^0.7.4
+  # Markdown rendu (gpt_markdown : remplaçant maintenu de flutter_markdown archivé)
+  gpt_markdown: ^1.0.0
 
   # Hash fichier
   crypto: ^3.0.3
