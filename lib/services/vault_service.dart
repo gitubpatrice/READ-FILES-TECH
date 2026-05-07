@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:files_tech_core/files_tech_core.dart';
@@ -869,10 +868,7 @@ class VaultService {
     return k;
   }
 
-  Uint8List _randomBytes(int n) {
-    final rng = Random.secure();
-    return Uint8List.fromList(List<int>.generate(n, (_) => rng.nextInt(256)));
-  }
+  Uint8List _randomBytes(int n) => SecretBytes.randomBytes(n);
 
   /// PBKDF2 legacy (coffres < v2.6.0). Static pour `Isolate.run`.
   ///
@@ -1017,11 +1013,7 @@ class VaultService {
     return _calibrateFromBench(samples.first);
   }
 
-  static void _zeroize(Uint8List bytes) {
-    for (var i = 0; i < bytes.length; i++) {
-      bytes[i] = 0;
-    }
-  }
+  static void _zeroize(Uint8List bytes) => SecretBytes.wipe(bytes);
 
   /// Retire le suffixe `.enc` d'un nom de fichier du coffre s'il est présent.
   static String _stripEnc(String name) =>

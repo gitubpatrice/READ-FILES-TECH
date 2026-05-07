@@ -1,7 +1,7 @@
 name: read_files_tech
 description: "Couteau suisse Android pour vos fichiers : explorateur, lecteur universel, scanner, OCR, coffre-fort, conversion, anti-EXIF — 100 % local."
 publish_to: 'none'
-version: 2.10.0+2100
+version: 2.10.1+2101
 
 environment:
   sdk: ^3.11.5
