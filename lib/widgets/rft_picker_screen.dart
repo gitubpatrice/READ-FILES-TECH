@@ -459,18 +459,16 @@ class _RftPickerScreenState extends State<RftPickerScreen>
       final entries = await root.list(followLinks: false).toList();
       final folders =
           entries.whereType<Directory>().where((d) {
-            final name = d.path.split(RegExp(r'[/\\]')).last;
+            final name = PathUtils.fileName(d.path);
             if (name.startsWith('.')) return false;
             if (name == 'Android') return false; // dossiers data app peu utiles
             // Ne re-liste pas les chemins déjà dans les raccourcis colorés
             if (shortcutPaths.contains(d.path)) return false;
             return true;
           }).toList()..sort(
-            (a, b) => a.path
-                .split(RegExp(r'[/\\]'))
-                .last
-                .toLowerCase()
-                .compareTo(b.path.split(RegExp(r'[/\\]')).last.toLowerCase()),
+            (a, b) => PathUtils.fileName(
+              a.path,
+            ).toLowerCase().compareTo(PathUtils.fileName(b.path).toLowerCase()),
           );
       if (!mounted) return;
       setState(() => _allFolders = folders);
@@ -503,7 +501,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
       Navigator.pop(context, dir);
       return;
     }
-    final label = dir.split(RegExp(r'[/\\]')).last;
+    final label = PathUtils.fileName(dir);
     await _openInExplorer(dir, label.isEmpty ? 'Dossier' : label);
   }
 
@@ -928,7 +926,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
               mainAxisSpacing: 6,
               childAspectRatio: 2.7,
               children: _allFolders.map((d) {
-                final name = d.path.split(RegExp(r'[/\\]')).last;
+                final name = PathUtils.fileName(d.path);
                 final shortcut = _FolderShortcut(
                   icon: _smartIconFor(name),
                   label: name,

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:files_tech_core/files_tech_core.dart';
+import '../../widgets/file_viewer_router.dart';
 
 /// Extension dédupliquant `path.split(...)` partout : usage `widget.path.basename`.
 /// Variante non-throwing : retourne la dernière composante brute si invalide
@@ -11,39 +12,17 @@ extension PathBasename on String {
     try {
       return PathSafe.basename(this);
     } catch (_) {
-      final parts = split(RegExp(r'[/\\]'));
-      return parts.isEmpty ? this : parts.last;
+      return PathUtils.fileName(this);
     }
   }
 }
 
-const editableExts = {
-  'txt',
-  'md',
-  'csv',
-  'xml',
-  'json',
-  'html',
-  'css',
-  'js',
-  'php',
-  'dart',
-};
-
-const viewableExts = {
-  'docx',
-  'doc',
-  'odt',
-  'xlsx',
-  'xls',
-  'ods',
-  'odp',
-  'pdf',
-  'zip',
-  'epub',
-};
-
-const imageExts = {'jpg', 'jpeg', 'png', 'gif', 'webp'};
+/// Re-exports vers la source unique [FileViewerRouter]. Conservés ici
+/// (alias) pour compat des imports existants ; les nouveaux usages doivent
+/// préférer `FileViewerRouter.canViewInternally(path)`.
+const editableExts = FileViewerRouter.editableExts;
+const viewableExts = FileViewerRouter.viewableExts;
+const imageExts = FileViewerRouter.imageExts;
 
 const previewExts = {
   'txt',
@@ -64,8 +43,8 @@ const previewExts = {
   'log',
 };
 
-String fileExt(String path) =>
-    path.contains('.') ? path.split('.').last.toLowerCase() : '';
+/// Alias rétrocompat — préférer [PathUtils.fileExt] dans les nouveaux usages.
+String fileExt(String path) => PathUtils.fileExt(path);
 
 String? mimeOf(String ext) {
   switch (ext) {
@@ -195,11 +174,8 @@ Color colorFor(FileSystemEntity e) {
   }
 }
 
-String formatSize(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-}
+/// Alias rétrocompat — délègue à [FormatUtils.bytesStorage] (style EN B/KB/MB/GB).
+String formatSize(int bytes) => FormatUtils.bytesStorage(bytes);
 
 bool isValidFileName(String name) {
   if (name.contains('/') || name.contains('\\')) return false;

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
@@ -16,11 +17,7 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
   final List<String> _files = [];
   bool _isProcessing = false;
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
+  String _formatSize(int bytes) => FormatUtils.bytesStorage(bytes);
 
   int _totalSize() => _files.fold(0, (sum, p) {
     try {
@@ -50,7 +47,7 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
     try {
       final archive = Archive();
       for (final path in _files) {
-        final name = path.split(RegExp(r'[/\\]')).last;
+        final name = PathUtils.fileName(path);
         final bytes = await File(path).readAsBytes();
         archive.addFile(ArchiveFile(name, bytes.length, bytes));
       }
@@ -195,7 +192,7 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
             itemCount: _files.length,
             itemBuilder: (_, i) {
               final path = _files[i];
-              final name = path.split(RegExp(r'[/\\]')).last;
+              final name = PathUtils.fileName(path);
               int? size;
               try {
                 size = File(path).lengthSync();

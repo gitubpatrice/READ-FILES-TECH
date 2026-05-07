@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/duplicate_finder_service.dart';
 
@@ -249,7 +250,7 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
           child: ExpansionTile(
             leading: const Icon(Icons.content_copy_outlined),
             title: Text(
-              set.files.first.path.split(RegExp(r'[/\\]')).last,
+              PathUtils.fileName(set.files.first.path),
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 13),
             ),
@@ -307,7 +308,7 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
           value: _selected.contains(f.path),
           onChanged: (_) => _toggle(f.path),
           title: Text(
-            f.path.split(RegExp(r'[/\\]')).last,
+            PathUtils.fileName(f.path),
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 13),
           ),
@@ -325,14 +326,7 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
     );
   }
 
-  String _fmt(int b) {
-    if (b < 1024) return '$b B';
-    if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
-    if (b < 1024 * 1024 * 1024) {
-      return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(b / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
+  String _fmt(int b) => FormatUtils.bytesStorage(b);
 
   String _dateFmt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';

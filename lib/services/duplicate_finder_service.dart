@@ -2,6 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:crypto/crypto.dart';
+import 'package:files_tech_core/files_tech_core.dart';
+
+/// Sous-dossiers système Android à ignorer (caches, miniatures, corbeille).
+/// Match par substring sur le path complet — anchoré entre `/` pour éviter
+/// les faux positifs.
+const _skipDirSubstrings = <String>['/.thumbnails/', '/.trash/', '/cache/'];
 
 class DuplicateSet {
   final String hash;
@@ -99,14 +105,10 @@ class DuplicateFinderService {
       final bySize = <int, List<FileEntry>>{};
       await for (final e in root.list(recursive: true, followLinks: false)) {
         if (e is! File) continue;
-        final name = e.path.split(RegExp(r'[/\\]')).last;
+        final name = PathUtils.fileName(e.path);
         if (name.startsWith('.')) continue;
-        // Skip dossiers système Android
-        if (e.path.contains('/.thumbnails/') ||
-            e.path.contains('/.trash/') ||
-            e.path.contains('/cache/')) {
-          continue;
-        }
+        // Skip dossiers système Android (substring match anchored entre `/`).
+        if (_skipDirSubstrings.any(e.path.contains)) continue;
         FileStat stat;
         try {
           stat = await e.stat();

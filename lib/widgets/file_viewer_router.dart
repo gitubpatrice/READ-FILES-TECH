@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../screens/viewers/txt_viewer_screen.dart';
 import '../screens/viewers/md_viewer_screen.dart';
@@ -18,7 +19,8 @@ import '../screens/viewers/reader_viewer_screen.dart';
 class FileViewerRouter {
   FileViewerRouter._();
 
-  static const _editableExts = {
+  /// Source unique de vérité — extensions textuelles éditables.
+  static const editableExts = {
     'txt',
     'md',
     'csv',
@@ -36,7 +38,9 @@ class FileViewerRouter {
     'ini',
     'conf',
   };
-  static const _viewableExts = {
+
+  /// Source unique de vérité — extensions binaires visualisables (viewer dédié).
+  static const viewableExts = {
     'docx',
     'doc',
     'odt',
@@ -48,14 +52,16 @@ class FileViewerRouter {
     'zip',
     'epub',
   };
-  static const _imageExts = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'};
+
+  /// Source unique de vérité — extensions images (viewer image + swipe siblings).
+  static const imageExts = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'};
 
   /// Retourne true si Read Files Tech sait visualiser ce fichier en interne.
   static bool canViewInternally(String path) {
     final ext = _ext(path);
-    return _editableExts.contains(ext) ||
-        _viewableExts.contains(ext) ||
-        _imageExts.contains(ext);
+    return editableExts.contains(ext) ||
+        viewableExts.contains(ext) ||
+        imageExts.contains(ext);
   }
 
   /// Retourne l'écran viewer adapté à ce path, ou null si non géré
@@ -69,10 +75,10 @@ class FileViewerRouter {
     List<String> imageSiblings = const [],
   }) {
     final ext = _ext(path);
-    if (_imageExts.contains(ext)) {
+    if (imageExts.contains(ext)) {
       return ImageViewerScreen(path: path, siblings: imageSiblings);
     }
-    if (_editableExts.contains(ext)) {
+    if (editableExts.contains(ext)) {
       switch (ext) {
         case 'md':
           return MdViewerScreen(path: path);
@@ -147,21 +153,9 @@ class FileViewerRouter {
     return true;
   }
 
-  /// Extension fichier en minuscules. Gère correctement :
-  /// - `foo.txt`        → `txt`
-  /// - `archive.tar.gz` → `gz` (dernière extension)
-  /// - `.bashrc`        → `''`  (dotfile, pas d'extension)
-  /// - `Makefile`       → `''`
-  static String _ext(String path) {
-    final basename = path.split(_kSepRe).last;
-    // Dotfile (commence par '.') sans autre point → pas d'extension.
-    if (basename.startsWith('.') && basename.lastIndexOf('.') == 0) {
-      return '';
-    }
-    final dot = basename.lastIndexOf('.');
-    if (dot < 0) return '';
-    return basename.substring(dot + 1).toLowerCase();
-  }
-
-  static final _kSepRe = RegExp(r'[/\\]');
+  /// Extension fichier en minuscules. Délègue à [PathUtils.fileExt] qui gère
+  /// correctement les séparateurs `/` `\\`, les dotfiles (`.bashrc` → `''`),
+  /// les double-extensions (`archive.tar.gz` → `gz`) et les fichiers sans
+  /// extension (`Makefile` → `''`).
+  static String _ext(String path) => PathUtils.fileExt(path);
 }

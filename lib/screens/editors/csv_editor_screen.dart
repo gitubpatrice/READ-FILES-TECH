@@ -1,6 +1,7 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
+import 'package:files_tech_core/files_tech_core.dart';
+import 'package:flutter/material.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class CsvEditorScreen extends StatefulWidget {
@@ -19,7 +20,7 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   String _resolvedPath = '';
 
   String get _name =>
-      _resolvedPath.isEmpty ? '' : _resolvedPath.split(RegExp(r'[/\\]')).last;
+      _resolvedPath.isEmpty ? '' : PathUtils.fileName(_resolvedPath);
 
   @override
   void initState() {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -46,6 +47,12 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   Directory? _current;
   final List<Directory> _history = [];
   List<FileSystemEntity> _entries = [];
+
+  /// Vue filtrée mémoïsée — recalculée uniquement quand [_entries], [_search],
+  /// [_showHidden] ou [widget.extensionFilter] changent. Avant : getter
+  /// `_filtered` recompilait la liste à chaque rebuild (jusqu'à 10× / sec
+  /// pendant scroll), introduisant un O(n) inutile sur dossiers larges.
+  List<FileSystemEntity> _filtered = const [];
   bool _isLoading = true;
   bool _showHidden = false;
   String _search = '';
@@ -85,17 +92,20 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) async {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     if (!_permissionDenied || _current == null) return;
-    final permOk = await _hasManageStorage();
-    if (permOk) {
+    // Flutter recommande de ne pas marquer ce callback async ; on dispatch
+    // le travail asynchrone via unawaited(...) pour rester non-bloquant.
+    unawaited(() async {
+      final permOk = await _hasManageStorage();
+      if (!permOk) return;
       try {
         await _lifecycleChannel.invokeMethod('recreateActivity');
       } catch (_) {
         if (mounted) _refresh();
       }
-    }
+    }());
   }
 
   Future<bool> _hasManageStorage() async {
@@ -185,6 +195,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       if (!await root.exists()) root = await getExternalStorageDirectory();
     }
     root ??= await getApplicationDocumentsDirectory();
+    if (!mounted) return;
     _navigate(root);
   }
 
@@ -202,6 +213,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         if (_current != null) _history.add(_current!);
         _current = dir;
         _entries = entries;
+        _recomputeFiltered();
         _isLoading = false;
       });
     } catch (e) {
@@ -223,6 +235,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       if (!mounted) return;
       setState(() {
         _entries = entries;
+        _recomputeFiltered();
         _isLoading = false;
       });
     } catch (e) {
@@ -528,9 +541,13 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   // ---------- Filtering ----------
 
-  List<FileSystemEntity> get _filtered {
+  /// Recalcule [_filtered] à partir de [_entries] + filtres courants.
+  /// À appeler dans tout `setState` qui modifie [_entries], [_search] ou
+  /// [_showHidden] (lui-même appelé dans le même `setState` callback).
+  void _recomputeFiltered() {
     final extFilter = widget.extensionFilter;
-    return _entries.where((e) {
+    final query = _search.toLowerCase();
+    _filtered = _entries.where((e) {
       final name = e.path.basename;
       if (!_showHidden && name.startsWith('.')) return false;
       if (extFilter != null &&
@@ -538,8 +555,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
           !extFilter.contains(fileExt(e.path))) {
         return false;
       }
-      if (_search.isNotEmpty &&
-          !name.toLowerCase().contains(_search.toLowerCase())) {
+      if (query.isNotEmpty && !name.toLowerCase().contains(query)) {
         return false;
       }
       return true;
@@ -575,7 +591,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-                onChanged: (v) => setState(() => _search = v),
+                onChanged: (v) => setState(() {
+                  _search = v;
+                  _recomputeFiltered();
+                }),
               ),
             ),
             if (_permissionDenied)
@@ -653,7 +672,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
           showHidden: _showHidden,
           sortKey: SortService.toKey(_sortSvc.mode),
           onRefresh: _refresh,
-          onToggleHidden: () => setState(() => _showHidden = !_showHidden),
+          onToggleHidden: () => setState(() {
+            _showHidden = !_showHidden;
+            _recomputeFiltered();
+          }),
           onSortSelected: (v) => setState(() {
             _sortSvc.mode = SortService.fromString(v);
             if (_current != null) _navigate(_current!);
@@ -741,10 +763,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
           return;
         }
         final ext = fileExt(e.path);
-        final canEdit = editableExts.contains(ext);
-        final canView =
-            canEdit || viewableExts.contains(ext) || imageExts.contains(ext);
-        if (canView) {
+        if (FileViewerRouter.canViewInternally(e.path)) {
           _openFile(e.path);
         } else {
           _openWithSystem(e.path, ext);

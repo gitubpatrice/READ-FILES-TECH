@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -22,7 +23,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
   double _fontSize = 13;
 
   String get _name =>
-      _resolvedPath.isEmpty ? '' : _resolvedPath.split(RegExp(r'[/\\]')).last;
+      _resolvedPath.isEmpty ? '' : PathUtils.fileName(_resolvedPath);
 
   @override
   void initState() {
@@ -167,7 +168,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
               itemCount: baks.length,
               itemBuilder: (ctx, i) {
                 final f = baks[i];
-                final fname = f.path.split(RegExp(r'[/\\]')).last;
+                final fname = PathUtils.fileName(f.path);
                 final tsStr = fname.split('_').last.replaceAll('.bak', '');
                 final ms = int.tryParse(tsStr);
                 final label = ms != null

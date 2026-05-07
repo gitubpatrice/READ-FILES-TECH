@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/foundation.dart';
 
 /// Critères de recherche globale.
@@ -189,7 +190,7 @@ class GlobalSearchService {
       )) {
         if (cancelled || hits >= q.maxResults) break;
         if (entity is! File) continue;
-        final name = entity.path.split(RegExp(r'[/\\]')).last;
+        final name = PathUtils.fileName(entity.path);
         if (name.startsWith('.')) continue; // cache
 
         final lower = name.toLowerCase();

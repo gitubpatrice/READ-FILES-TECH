@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../widgets/file_viewer_router.dart';
 import '../file_type_helpers.dart';
 
 /// Actions appelées depuis le menu kebab de la tuile fichier.
@@ -66,9 +67,8 @@ class FileRow extends StatelessWidget {
     final e = entity;
     final isDir = e is Directory;
     final ext = isDir ? '' : fileExt(e.path);
-    final canEdit = editableExts.contains(ext);
-    final canView =
-        canEdit || viewableExts.contains(ext) || imageExts.contains(ext);
+    final canEdit = FileViewerRouter.editableExts.contains(ext);
+    final canView = !isDir && FileViewerRouter.canViewInternally(e.path);
     final name = e.path.basename;
     final cs = Theme.of(context).colorScheme;
 
