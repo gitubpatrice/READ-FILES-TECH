@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
@@ -126,7 +127,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       setState(() => _isProcessing = false);
       messenger.showSnackBar(
         SnackBar(
-          content: Text('PDF créé : ${outPath.split('/').last}'),
+          content: Text('PDF créé : ${PathUtils.fileName(outPath)}'),
           action: SnackBarAction(
             label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)]),

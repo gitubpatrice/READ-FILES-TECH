@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../viewers/txt_viewer_screen.dart';
@@ -72,7 +73,7 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
     try {
       await for (final e in dir.list(recursive: true)) {
         if (e is File) {
-          final ext = e.path.split('.').last.toLowerCase();
+          final ext = PathUtils.fileExt(e.path).toLowerCase();
           if (_textExts.contains(ext)) allFiles.add(e);
         }
       }
@@ -115,7 +116,7 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
   }
 
   Widget? _viewerFor(String path) {
-    final ext = path.split('.').last.toLowerCase();
+    final ext = PathUtils.fileExt(path).toLowerCase();
     switch (ext) {
       case 'md':
         return MdViewerScreen(path: path);
@@ -133,7 +134,7 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
   }
 
   String _relativePath(String path) {
-    if (_folderPath == null) return path.split('/').last;
+    if (_folderPath == null) return PathUtils.fileName(path);
     return path.replaceFirst('$_folderPath/', '');
   }
 
@@ -175,8 +176,9 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _folderPath?.split('/').last ??
-                                'Choisir un dossier…',
+                            _folderPath != null
+                                ? PathUtils.fileName(_folderPath!)
+                                : 'Choisir un dossier…',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: _folderPath == null ? Colors.grey : null,

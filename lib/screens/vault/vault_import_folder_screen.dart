@@ -408,7 +408,7 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
   }
 
   IconData _iconFor(String path) {
-    final ext = path.toLowerCase().split('.').last;
+    final ext = PathUtils.fileExt(path);
     switch (ext) {
       case 'jpg':
       case 'jpeg':

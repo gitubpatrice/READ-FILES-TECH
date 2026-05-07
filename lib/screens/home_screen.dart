@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _recentFiles = updated);
     }
     if (!mounted) return;
-    final ext = path.split('.').last.toLowerCase();
+    final ext = PathUtils.fileExt(path).toLowerCase();
     final screen = _screenForExt(ext, path);
     if (screen == null) {
       ScaffoldMessenger.of(

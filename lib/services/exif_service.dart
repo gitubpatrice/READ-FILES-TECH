@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
@@ -16,7 +17,7 @@ class ExifService {
   /// Retourne un nouveau fichier dans le cache avec EXIF effacé. JPEG ou PNG.
   Future<File> stripExif(File source, {int jpegQuality = 95}) async {
     final bytes = await source.readAsBytes();
-    final ext = source.path.toLowerCase().split('.').last;
+    final ext = PathUtils.fileExt(source.path);
     // Décode + ré-encode dans un Isolate pour ne pas geler l'UI.
     final result = await Isolate.run(
       () => _stripBytes(bytes, ext, jpegQuality),

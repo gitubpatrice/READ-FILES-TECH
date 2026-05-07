@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -31,10 +32,10 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
 
   /// Seuil au-delà duquel le parsing JSON passe en Isolate (json.decode est
   /// CPU-bound, freeze visible >1 Mo).
-  static const _isolateThreshold = 1024 * 1024; // 1 Mo
+  // v2.11.1 — utilise PerfThresholds.isolateThreshold (files_tech_core)
 
   /// Cap dur à l'ouverture pour éviter OOM sur low-end.
-  static const _maxBytes = 50 * 1024 * 1024; // 50 Mo
+  // v2.11.1 — utilise PerfThresholds.viewerMaxBytes (files_tech_core)
 
   /// Parse JSON statique (appel sûr depuis `Isolate.run`).
   static dynamic _parseJson(String content) => json.decode(content);
@@ -42,7 +43,7 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
   Future<void> _load() async {
     try {
       final size = await File(widget.path).length();
-      if (size > _maxBytes) {
+      if (size > PerfThresholds.viewerMaxBytes) {
         if (!mounted) return;
         setState(() {
           _error = 'Fichier trop volumineux (>50 Mo)';
@@ -52,7 +53,7 @@ class _JsonViewerScreenState extends State<JsonViewerScreen> {
       }
       _raw = await File(widget.path).readAsString();
       final raw = _raw;
-      final data = size > _isolateThreshold
+      final data = size > PerfThresholds.isolateThreshold
           ? await Isolate.run(() => _parseJson(raw))
           : _parseJson(raw);
       if (!mounted) return;

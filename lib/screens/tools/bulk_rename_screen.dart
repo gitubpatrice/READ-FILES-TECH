@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 
 /// Renommage en masse — propose un aperçu temps réel des nouveaux noms
@@ -45,7 +46,7 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
     final out = <(String, String?)>[];
     for (var i = 0; i < widget.paths.length; i++) {
       final old = widget.paths[i].split(RegExp(r'[/\\]')).last;
-      final ext = old.contains('.') ? '.${old.split('.').last}' : '';
+      final ext = old.contains('.') ? '.${PathUtils.fileExt(old)}' : '';
       final stem = ext.isEmpty
           ? old
           : old.substring(0, old.length - ext.length);

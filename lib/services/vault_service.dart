@@ -104,9 +104,8 @@ class VaultService {
   static const _magicV2 = [0x52, 0x46, 0x54, 0x32];
   static const _aadPrefix = 'rft-vault-v2|';
 
-  /// Seuil au-delà duquel on bascule l'op crypto sur un Isolate (évite UI freeze).
-  /// 1 Mo = ~30 ms PointyCastle GCM sur S9 → acceptable. Au-dessus, isolate.
-  static const _isolateThreshold = 1024 * 1024;
+  // v2.11.1 — utilise PerfThresholds.isolateThreshold (files_tech_core).
+  // 1 Mo = ~30 ms PointyCastle GCM sur S9 → acceptable. Au-dessus, isolate.
 
   /// Seuil au-delà duquel on bascule sur le crypto NATIF Kotlin (10-50× plus
   /// rapide grâce à l'accélération matérielle ARMv8). 5 Mo = ~150 ms en
@@ -767,7 +766,7 @@ class VaultService {
         if (_isCryptoErrorCode(e.code)) rethrow;
       }
     }
-    if (plain.length < _isolateThreshold) {
+    if (plain.length < PerfThresholds.isolateThreshold) {
       return _gcmRaw(true, plain, key, nonce, aad);
     }
     return Isolate.run(() => _gcmRaw(true, plain, key, nonce, aad));
@@ -796,7 +795,7 @@ class VaultService {
         if (_isCryptoErrorCode(e.code)) rethrow;
       }
     }
-    if (blob.length < _isolateThreshold) {
+    if (blob.length < PerfThresholds.isolateThreshold) {
       return _gcmRaw(false, blob, key, nonce, aad);
     }
     return Isolate.run(() => _gcmRaw(false, blob, key, nonce, aad));
@@ -1081,7 +1080,7 @@ class VaultService {
         // Autres codes inconnus → fallback prudent + log debug.
       }
     }
-    if (plain.length < _isolateThreshold) {
+    if (plain.length < PerfThresholds.isolateThreshold) {
       return _encryptV2(plain, key, filename);
     }
     return Isolate.run(() => _encryptV2(plain, key, filename));
@@ -1104,7 +1103,7 @@ class VaultService {
         if (_isCryptoErrorCode(e.code)) rethrow;
       }
     }
-    if (blob.length < _isolateThreshold) {
+    if (blob.length < PerfThresholds.isolateThreshold) {
       return _decryptAuto(blob, key, filename);
     }
     return Isolate.run(() => _decryptAuto(blob, key, filename));

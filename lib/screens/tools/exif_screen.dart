@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/exif_service.dart';
 import '../../services/output_storage_service.dart';
@@ -71,7 +72,7 @@ class _ExifScreenState extends State<ExifScreen> {
       // 1. Strip → fichier en cache temp
       final tmp = await _service.stripExif(File(_sourcePath!));
       // 2. Copie persistante dans <Files Tech>/Sans-EXIF/
-      final ext = tmp.path.split('.').last.toLowerCase();
+      final ext = PathUtils.fileExt(tmp.path).toLowerCase();
       final base = _sourcePath!
           .split(RegExp(r'[/\\]'))
           .last

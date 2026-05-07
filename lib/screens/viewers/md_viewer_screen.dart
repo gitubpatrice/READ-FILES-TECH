@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
@@ -25,7 +26,7 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   /// Cap dur à l'ouverture pour éviter OOM sur low-end.
-  static const _maxBytes = 50 * 1024 * 1024; // 50 Mo
+  // v2.11.1 — utilise PerfThresholds.viewerMaxBytes (files_tech_core)
 
   @override
   void initState() {
@@ -36,7 +37,7 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
   Future<void> _load() async {
     try {
       final size = await File(widget.path).length();
-      if (size > _maxBytes) {
+      if (size > PerfThresholds.viewerMaxBytes) {
         if (!mounted) return;
         setState(() {
           _content = 'Fichier trop volumineux (>50 Mo)';

@@ -194,7 +194,7 @@ class GlobalSearchService {
         if (name.startsWith('.')) continue; // cache
 
         final lower = name.toLowerCase();
-        final ext = lower.contains('.') ? lower.split('.').last : '';
+        final ext = lower.contains('.') ? PathUtils.fileExt(lower) : '';
         if (q.extensions.isNotEmpty && !q.extensions.contains(ext)) continue;
 
         scanned++;

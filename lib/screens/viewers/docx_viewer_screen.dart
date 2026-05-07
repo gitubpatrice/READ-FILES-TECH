@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
@@ -21,7 +22,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
   double _fontSize = 14;
 
   String get _name => widget.path.basename;
-  String get _ext => _name.split('.').last.toLowerCase();
+  String get _ext => PathUtils.fileExt(_name).toLowerCase();
 
   @override
   void initState() {
@@ -31,7 +32,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
 
   /// Seuil au-delà duquel l'extraction (unzip + parse XML) passe en Isolate :
   /// ZipDecoder + regex full-doc sont CPU-bound, freeze visible >1 Mo sur S9.
-  static const _isolateThreshold = 1024 * 1024; // 1 Mo
+  // v2.11.1 — utilise PerfThresholds.isolateThreshold (files_tech_core)
 
   Future<void> _load() async {
     try {
@@ -39,7 +40,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
       final bytes = await File(widget.path).readAsBytes();
       final ext = _ext;
       final String text;
-      if (size > _isolateThreshold) {
+      if (size > PerfThresholds.isolateThreshold) {
         text = await Isolate.run(() {
           return ext == 'odt' || ext == 'odp'
               ? _extractOdtStatic(bytes)
