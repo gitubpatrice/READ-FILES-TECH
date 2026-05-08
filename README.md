@@ -5,7 +5,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/gitubpatrice/READ-FILES-TECH)](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B?logo=flutter)](https://flutter.dev)
 
-**Le couteau suisse Android pour vos fichiers — version 2.9.1.**
+**Le couteau suisse Android pour vos fichiers — version 2.11.3.**
 
 Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fort, conversion, anti-EXIF — 100 % local, sans cloud, sans tracker.
 
