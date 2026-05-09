@@ -101,8 +101,9 @@ class _AboutScreenState extends State<AboutScreen> {
     ),
     (
       icon: Icons.cloud_upload_outlined,
-      label: 'Cloud',
-      desc: 'Envoi direct vers kDrive Infomaniak ou Proton Drive',
+      label: 'Partage cloud',
+      desc:
+          'Envoi explicite vers les apps cloud installées (kDrive, Drive, Proton Drive)',
     ),
     (
       icon: Icons.draw_outlined,
@@ -169,7 +170,7 @@ class _AboutScreenState extends State<AboutScreen> {
                             ),
                             const SizedBox(width: 6),
                             const Text(
-                              'SHA-256 attendu (APK arm64-v8a)',
+                              'SHA-256 attendu (APK splits ABI)',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
