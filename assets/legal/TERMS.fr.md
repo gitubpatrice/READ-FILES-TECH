@@ -1,6 +1,6 @@
 # Conditions d'utilisation — Read Files Tech
 
-**Version du document** : 28 avril 2026
+**Version du document** : 9 mai 2026 (v2.12.0)
 **App** : Read Files Tech
 **Site officiel** : https://www.files-tech.com
 **Contact** : contact@files-tech.com

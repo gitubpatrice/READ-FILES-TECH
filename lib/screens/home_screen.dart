@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import '../services/app_update.dart';
 import 'viewers/txt_viewer_screen.dart';
@@ -55,7 +56,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _service = RecentFilesService();
+  final _service = const RecentFilesService();
   List<RecentFile> _recentFiles = [];
   int _navIndex = 0;
   bool _isLoading = true;
@@ -96,9 +97,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final info = await AppUpdate.checkForUpdate();
     if (info == null) return;
     if (!mounted) return;
+    final apkUrl = info.apkUrl;
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: Text('Mise à jour v${info.version} disponible'),
         content: Text(
           info.body.isNotEmpty
@@ -107,13 +109,27 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Plus tard'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
+          // P0 branchements — ouvre la release GitHub si apkUrl présent.
+          if (apkUrl != null)
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                launchUrl(
+                  Uri.parse(apkUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              icon: const Icon(Icons.download),
+              label: const Text('Télécharger'),
+            )
+          else
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
         ],
       ),
     );
@@ -353,7 +369,7 @@ class _HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<_HomeTab> {
-  static final _storageChannel = MethodChannel('com.readfilestech/storage');
+  static const _storageChannel = MethodChannel('com.readfilestech/storage');
   int _totalBytes = 0;
   int _freeBytes = 0;
 
@@ -980,7 +996,7 @@ class _ToolsTab extends StatelessWidget {
         label: 'Éditeur',
         subtitle: 'Modifier et sauvegarder',
         color: Colors.cyan,
-        screen: CodeEditorScreen(path: ''),
+        screen: const CodeEditorScreen(path: ''),
       ),
       (
         icon: Icons.manage_search,
@@ -994,7 +1010,7 @@ class _ToolsTab extends StatelessWidget {
         label: 'Éditeur CSV',
         subtitle: 'Modifier cellules, lignes, colonnes',
         color: Colors.green,
-        screen: CsvEditorScreen(path: ''),
+        screen: const CsvEditorScreen(path: ''),
       ),
       (
         icon: Icons.folder_zip_outlined,

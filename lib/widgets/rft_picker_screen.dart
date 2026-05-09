@@ -118,7 +118,7 @@ class _FolderShortcut {
 class _RftPickerScreenState extends State<RftPickerScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  final _recentService = RecentFilesService();
+  final _recentService = const RecentFilesService();
   List<RecentFile> _recents = [];
   late bool _loading;
   final List<String> _selected = [];

@@ -174,19 +174,19 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                   fit: BoxFit.contain,
                   cacheWidth: maxPx,
                   filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, e, _) => Center(
+                  errorBuilder: (_, e, _) => const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.broken_image_outlined,
                           color: Colors.grey,
                           size: 64,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Text(
                           'Impossible d\'afficher cette image',
-                          style: const TextStyle(color: Colors.grey),
+                          style: TextStyle(color: Colors.grey),
                         ),
                       ],
                     ),

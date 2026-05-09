@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/tools/scanner_screen.dart';
 import 'screens/tools/ocr_screen.dart';
 import 'screens/vault/vault_screen.dart';
+import 'services/vault_service.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -26,6 +28,9 @@ void main() {
       _requestStoragePermissions(_navigatorKey.currentContext);
     });
   }
+  // F6 : purge des fichiers vault déchiffrés laissés au cycle précédent
+  // (cas process-kill avant lock). Best-effort, fire-and-forget.
+  unawaited(VaultService.instance.purgeTempDecrypted());
 }
 
 /// Au 1er lancement, affiche un dialog welcome explicatif puis demande
@@ -153,6 +158,11 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
   static const _shortcutChannel = MethodChannel('com.readfilestech/shortcut');
   ThemeMode _themeMode = ThemeMode.system;
   bool _lastKnownPermGranted = false;
+  Timer? _autoLockTimer;
+
+  /// Délai de verrouillage automatique du coffre après mise en pause.
+  /// Aligné sur Bitwarden : 30 s. Lock immédiat sur `detached`.
+  static const _autoLockDelay = Duration(seconds: 30);
 
   @override
   void initState() {
@@ -201,6 +211,7 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
 
   @override
   void dispose() {
+    _autoLockTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -212,6 +223,38 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
+    // Auto-lock vault GLOBAL (P0 sécu) — couvre tous les écrans, pas
+    // seulement VaultScreen. Si l'app est tuée par OS LMK pendant les 30 s,
+    // F6 (purge boot) nettoiera les plaintexts au prochain lancement.
+    if (Platform.isAndroid) {
+      switch (state) {
+        case AppLifecycleState.paused:
+        case AppLifecycleState.hidden:
+        case AppLifecycleState.inactive:
+          if (VaultService.instance.isUnlocked) {
+            _autoLockTimer?.cancel();
+            _autoLockTimer = Timer(_autoLockDelay, () {
+              if (VaultService.instance.isUnlocked) {
+                VaultService.instance.lock();
+              }
+            });
+          }
+          // Purge defensive immédiate (avant 30 s) du staging plaintext.
+          unawaited(VaultService.instance.purgeTempDecrypted());
+          break;
+        case AppLifecycleState.resumed:
+          _autoLockTimer?.cancel();
+          break;
+        case AppLifecycleState.detached:
+          // Process en train d'être tué : lock IMMÉDIAT pour éviter la
+          // fenêtre où la clé reste en RAM.
+          _autoLockTimer?.cancel();
+          if (VaultService.instance.isUnlocked) {
+            VaultService.instance.lock();
+          }
+          break;
+      }
+    }
     if (state != AppLifecycleState.resumed || !Platform.isAndroid) return;
     final granted = await Permission.manageExternalStorage.isGranted;
     // Transition denied → granted : Samsung n'applique pas la nouvelle perm

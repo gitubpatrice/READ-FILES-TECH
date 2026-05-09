@@ -2,9 +2,12 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../services/output_storage_service.dart';
 import '../../services/pdf_signature_service.dart';
+import '../../services/secure_window.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/output_actions_row.dart';
 
 /// Permet de poser une signature [pngBytes] sur un PDF source [pdfPath].
@@ -42,14 +45,22 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    // P0 branchements — bloque captures pendant pose de signature.
+    SecureWindow.enable();
+  }
+
+  @override
   void dispose() {
+    SecureWindow.disable();
     _ctrl.dispose();
     super.dispose();
   }
 
   Future<void> _save(BoxConstraints viewerBox) async {
+    if (_saving) return;
     setState(() => _saving = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       // 1. Sign : produit un PDF en cache temp
       final tmp = await PdfSignatureService().sign(
@@ -74,15 +85,21 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
       } catch (_) {}
       if (!mounted) return;
       setState(() => _saving = false);
+      // Auto-share centralisé (alignement avec Convert / Compress / Scanner).
+      final autoShare = await storage.getAutoShare();
+      if (autoShare && mounted) {
+        await Share.shareXFiles([XFile(dest.path)]);
+      }
       // Bottom sheet de résultat avec partage / cloud direct (kDrive, Google
       // Drive, Proton Drive). Cohérent avec Scanner / Convert / Compress / EXIF.
+      if (!mounted) return;
       await _showResultSheet(dest.path);
       if (!mounted) return;
       Navigator.pop(context, dest.path);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      showErrorSnack(context, 'Erreur : $e');
     }
   }
 

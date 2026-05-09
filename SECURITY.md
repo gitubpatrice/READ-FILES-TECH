@@ -6,8 +6,8 @@ Seule la dernière version publiée sur GitHub Releases est activement maintenue
 
 | Version       | Supportée  |
 | ------------- | ---------- |
-| 2.9.x         | ✅          |
-| < 2.9.0       | ❌          |
+| 2.12.x        | ✅          |
+| < 2.12.0      | ❌          |
 
 ## Signaler une vulnérabilité
 
@@ -37,7 +37,7 @@ Merci de ne pas divulguer publiquement la vulnérabilité avant qu'un correctif 
 
 ## Vérification de l'intégrité d'un APK
 
-Chaque release publiée sur GitHub contient un hash SHA-256 attendu pour l'APK arm64-v8a dans les notes. Avant install, vous pouvez vérifier :
+Chaque release publiée sur GitHub contient les hashs SHA-256 attendus pour les APK splits ABI (`arm64-v8a`, `armeabi-v7a`, `x86_64`) dans les notes. Avant install, vous pouvez vérifier :
 
 ```bash
 sha256sum app-arm64-v8a-release.apk

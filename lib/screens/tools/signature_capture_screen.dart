@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../services/secure_window.dart';
 
 /// Capture une signature manuscrite. Retourne via Navigator.pop(Uint8List png)
 /// un PNG **avec fond transparent** prêt à être posé sur un PDF.
@@ -15,6 +16,19 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
   final List<List<Offset>> _strokes = [];
   Color _color = Colors.black;
   double _strokeWidth = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    // P0 branchements — bloque captures d'écran d'une signature manuscrite.
+    SecureWindow.enable();
+  }
+
+  @override
+  void dispose() {
+    SecureWindow.disable();
+    super.dispose();
+  }
 
   void _addPoint(Offset p) {
     if (_strokes.isEmpty) return;

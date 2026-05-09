@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
+import '../../utils/atomic_write.dart';
+import '../../utils/file_caps.dart';
+import '../../utils/image_bounds.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/output_actions_row.dart';
 
 class CompressScreen extends StatefulWidget {
@@ -37,15 +41,20 @@ class _CompressScreenState extends State<CompressScreen> {
   }
 
   Future<void> _compress() async {
-    if (_sourcePath == null) return;
+    if (_sourcePath == null || _busy) return;
     setState(() {
       _busy = true;
       _outputSize = null;
       _outputPath = null;
     });
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      final bytes = await File(_sourcePath!).readAsBytes();
+      final src = File(_sourcePath!);
+      // F5 : cap fichier + dimensions (anti image-bomb).
+      final capErr = await checkFileCap(src, FileCaps.imageFile);
+      if (capErr != null) throw capErr;
+      final bytes = await src.readAsBytes();
+      final dimErr = ImageBounds.assertSafeBounds(bytes);
+      if (dimErr != null) throw dimErr;
       final decoded = img.decodeImage(bytes);
       if (decoded == null) throw 'Image illisible';
       img.Image resized = decoded;
@@ -63,7 +72,7 @@ class _CompressScreenState extends State<CompressScreen> {
         suggestedName: '${base}_compressed',
         extension: 'jpg',
       );
-      await out.writeAsBytes(encoded);
+      await atomicWriteBytes(out.path, encoded);
       final autoShare = await _storage.getAutoShare();
       if (!mounted) return;
       setState(() {
@@ -77,15 +86,12 @@ class _CompressScreenState extends State<CompressScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      showErrorSnack(context, 'Erreur : $e');
     }
   }
 
-  String _fmt(int b) {
-    if (b < 1024) return '$b B';
-    if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
-    return '${(b / (1024 * 1024)).toStringAsFixed(2)} MB';
-  }
+  // Alias local — délègue à FormatUtils (uniformise affichage tailles).
+  String _fmt(int b) => FormatUtils.bytesStorage(b);
 
   @override
   Widget build(BuildContext context) {

@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart' as dom;
 import 'package:path/path.dart' as p;
+import '../utils/file_caps.dart';
 
 /// Extraction de texte "Reader Mode" depuis HTML brut ou EPUB.
 ///
@@ -21,7 +22,7 @@ class ReaderService {
   List<ReaderBlock> htmlToBlocks(String htmlSource) {
     final doc = html_parser.parse(htmlSource);
     // Préfère <article> > <main> > <body>
-    dom.Element? root =
+    final dom.Element? root =
         doc.querySelector('article') ?? doc.querySelector('main') ?? doc.body;
     if (root == null) return [];
     // Retire éléments parasites
@@ -48,6 +49,13 @@ class ReaderService {
   /// Implémentation minimale : on lit `META-INF/container.xml` → chemin OPF →
   /// `<spine>` ordonne les chapitres → on lit chaque XHTML.
   Future<List<EpubChapter>> readEpub(File file) async {
+    // F4 : cap EPUB anti-DoS OOM (fichier piégé multi-Go).
+    final size = await file.length();
+    if (size > FileCaps.epubFile) {
+      throw const FormatException(
+        'EPUB trop volumineux (max ${FileCaps.epubFile ~/ (1024 * 1024)} Mo).',
+      );
+    }
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -112,6 +120,8 @@ class ReaderService {
       if (href.startsWith('/') || href.contains('://')) continue;
       final entry = archive.findFile(fullPath);
       if (entry == null) continue;
+      // F4 : cap par chapitre (anti zip-bomb XHTML 2 Go).
+      if (entry.size > FileCaps.epubChapter) continue;
       final xhtml = utf8.decode(
         entry.content as List<int>,
         allowMalformed: true,

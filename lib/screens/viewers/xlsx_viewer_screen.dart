@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/file_caps.dart';
 import '../explorer/file_type_helpers.dart';
 
 class XlsxViewerScreen extends StatefulWidget {
@@ -65,6 +66,19 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
 
   Future<void> _load() async {
     try {
+      // F3 : cap fichier source (anti XLSX-bomb).
+      final capErr = await checkFileCap(
+        File(widget.path),
+        FileCaps.spreadsheet,
+      );
+      if (capErr != null) {
+        if (!mounted) return;
+        setState(() {
+          _error = capErr;
+          _isLoading = false;
+        });
+        return;
+      }
       final data = await _decodeXlsx(widget.path);
       if (!mounted) return;
       setState(() {
@@ -87,6 +101,7 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
         title: Text(_name, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
+            tooltip: 'Partager',
             icon: const Icon(Icons.share),
             onPressed: () => Share.shareXFiles([XFile(widget.path)]),
           ),

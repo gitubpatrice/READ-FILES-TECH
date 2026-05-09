@@ -94,7 +94,7 @@ class _ColorPickerScreenState extends State<ColorPickerScreen> {
                     '#1565C0',
                     '#C62828',
                   ].map((hex) {
-                    var h = hex.replaceFirst('#', '');
+                    final h = hex.replaceFirst('#', '');
                     final v = int.tryParse('FF$h', radix: 16);
                     final c = v != null ? Color(v) : Colors.grey;
                     return GestureDetector(

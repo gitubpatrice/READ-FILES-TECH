@@ -1,6 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/output_storage_service.dart';
+import '../services/panic_service.dart';
+import '../utils/snack_utils.dart';
 import 'explorer/file_explorer_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -50,7 +52,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _changeBase() async {
-    final messenger = ScaffoldMessenger.of(context);
     final dir = await FilePicker.getDirectoryPath();
     if (dir == null) return;
     try {
@@ -58,7 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _load();
     } on ArgumentError catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('${e.message}')));
+      showErrorSnack(context, '${e.message}');
     }
   }
 
@@ -70,6 +71,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleAutoShare(bool v) async {
     setState(() => _autoShare = v);
     await _service.setAutoShare(v);
+  }
+
+  Future<void> _confirmPanic() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber, color: Colors.red, size: 36),
+        title: const Text('Mode panique'),
+        content: const Text(
+          'Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n'
+          '• Le coffre-fort entier (tous les fichiers chiffrés)\n'
+          '• Tous les paramètres (sel, sentinelle, params Argon2)\n'
+          '• Les caches plaintext (vault_decrypt, share)\n'
+          '• La liste des fichiers récents\n\n'
+          'Aucune récupération possible sans sauvegarde .rftvault.\n\n'
+          'Continuer ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.withValues(alpha: 0.15),
+              foregroundColor: Colors.red.shade900,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Effacer tout'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final report = await PanicService.instance.wipeAll();
+    if (!mounted) return;
+    if (report.isComplete) {
+      showFloatingSnack(context, 'Wipe complet effectué.');
+    } else {
+      showErrorSnack(context, 'Wipe partiel — voir logs : $report');
+    }
   }
 
   @override
@@ -213,6 +255,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          _section('Sécurité'),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                Icons.local_fire_department_outlined,
+                color: Colors.red.shade700,
+              ),
+              title: const Text('Mode panique — Effacer tout'),
+              subtitle: const Text(
+                'Wipe immédiat du coffre, paramètres, caches plaintext et '
+                'récents. Irréversible sans sauvegarde .rftvault.',
+                style: TextStyle(fontSize: 11),
+              ),
+              trailing: Icon(Icons.chevron_right, color: Colors.red.shade700),
+              onTap: _confirmPanic,
             ),
           ),
 

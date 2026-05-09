@@ -5,6 +5,7 @@ import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/file_caps.dart';
 import '../explorer/file_type_helpers.dart';
 
 class DocxViewerScreen extends StatefulWidget {
@@ -36,8 +37,19 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
 
   Future<void> _load() async {
     try {
-      final size = await File(widget.path).length();
-      final bytes = await File(widget.path).readAsBytes();
+      final f = File(widget.path);
+      // F2 : cap fichier source (anti zip-bomb par taille brute).
+      final capErr = await checkFileCap(f, FileCaps.docZipped);
+      if (capErr != null) {
+        if (!mounted) return;
+        setState(() {
+          _error = capErr;
+          _isLoading = false;
+        });
+        return;
+      }
+      final size = await f.length();
+      final bytes = await f.readAsBytes();
       final ext = _ext;
       final String text;
       if (size > PerfThresholds.isolateThreshold) {
@@ -70,6 +82,10 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     final archive = ZipDecoder().decodeBytes(bytes);
     final docFile = archive.findFile('word/document.xml');
     if (docFile == null) return 'Impossible de lire le document.';
+    // F2 : cap entry décompressée anti zip-bomb XML.
+    if (docFile.size > FileCaps.zipEntryDecompressed) {
+      return 'Contenu suspect (zip-bomb potentielle).';
+    }
     final xml = utf8.decode(docFile.content as List<int>, allowMalformed: true);
     // Split paragraphs first, then concat all <w:t> inside each.
     final paragraphs = RegExp(r'<w:p[^>]*>(.*?)</w:p>', dotAll: true);
@@ -99,6 +115,9 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     final archive = ZipDecoder().decodeBytes(bytes);
     final contentFile = archive.findFile('content.xml');
     if (contentFile == null) return 'Impossible de lire le document.';
+    if (contentFile.size > FileCaps.zipEntryDecompressed) {
+      return 'Contenu suspect (zip-bomb potentielle).';
+    }
     final xml = utf8.decode(
       contentFile.content as List<int>,
       allowMalformed: true,
@@ -133,6 +152,7 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
         title: Text(_name, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
+            tooltip: 'Partager',
             icon: const Icon(Icons.share),
             onPressed: () => Share.shareXFiles([XFile(widget.path)]),
           ),

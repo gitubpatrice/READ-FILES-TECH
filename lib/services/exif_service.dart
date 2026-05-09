@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
+import '../utils/atomic_write.dart';
+import '../utils/file_caps.dart';
+import '../utils/image_bounds.dart';
 
 /// Suppression des métadonnées EXIF (GPS, date, appareil, orientation rotative…).
 ///
@@ -16,7 +19,16 @@ import 'package:path_provider/path_provider.dart';
 class ExifService {
   /// Retourne un nouveau fichier dans le cache avec EXIF effacé. JPEG ou PNG.
   Future<File> stripExif(File source, {int jpegQuality = 95}) async {
+    // F5 : cap fichier + dimensions IHDR avant decode (anti image-bomb).
+    final size = await source.length();
+    if (size > FileCaps.imageFile) {
+      throw const FormatException(
+        'Image trop volumineuse (max ${FileCaps.imageFile ~/ (1024 * 1024)} Mo).',
+      );
+    }
     final bytes = await source.readAsBytes();
+    final dimErr = ImageBounds.assertSafeBounds(bytes);
+    if (dimErr != null) throw FormatException(dimErr);
     final ext = PathUtils.fileExt(source.path);
     // Décode + ré-encode dans un Isolate pour ne pas geler l'UI.
     final result = await Isolate.run(
@@ -36,7 +48,7 @@ class ExifService {
         .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_');
     if (base.isEmpty || base == '.' || base == '..') base = 'image';
     final dest = File('${tmp.path}/${base}_no_exif.${result.$2}');
-    await dest.writeAsBytes(result.$1);
+    await atomicWriteUint8(dest.path, result.$1);
     return dest;
   }
 

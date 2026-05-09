@@ -11,6 +11,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/atomic_write.dart';
+
 /// Coffre fort local : fichiers chiffrés AES-256-GCM.
 ///
 /// **Format v2 (depuis v2.5.5)** :
@@ -39,6 +41,13 @@ class VaultService {
   static const _kSetup = 'vault_setup_v1';
   static const _kFails = 'vault_unlock_fails';
   static const _kLockoutUntil = 'vault_lockout_until_ms';
+
+  /// True quand le coffre n'a JAMAIS contenu de fichiers v1 → on refuse le
+  /// fallback v1 (anti-confusion d'oracle de format si un attaquant ayant
+  /// écriture remplace un .enc v2 par un v1 forgé). Set à true au setup d'un
+  /// coffre neuf (v2.12.0+). Coffres pré-v2.12.0 (legacy) gardent le
+  /// fallback v1 pour rétro-compat.
+  static const _kV2Only = 'vault_v2_only';
 
   /// KDF utilisé pour dériver la clé maître depuis le password.
   /// - Absent (null) ou `'pbkdf2'` : PBKDF2-HMAC-SHA256 600 000 itérations
@@ -119,6 +128,10 @@ class VaultService {
 
   static Uint8List? _cachedKey;
 
+  /// Cache du flag `_kV2Only` lu au unlock pour éviter un await dans le
+  /// chemin chaud `_decryptAuto`. `null` = inconnu (legacy avant lookup).
+  static bool? _v2OnlyCache;
+
   Future<Directory> _vaultDir() async {
     final docs = await getApplicationDocumentsDirectory();
     final vault = Directory('${docs.path}/vault');
@@ -166,9 +179,12 @@ class VaultService {
     // 2. Sentinelle disque (preuve crypto)
     final dir = await _vaultDir();
     final encrypted = _encryptV2(utf8.encode(_checkPlain), key, _checkFile);
-    await File('${dir.path}/$_checkFile').writeAsBytes(encrypted);
+    await atomicWriteBytes('${dir.path}/$_checkFile', encrypted);
     // 3. Flag final SEULEMENT si tout précède a réussi
     await prefs.setBool(_kSetup, true);
+    // Coffre neuf (v2.12.0+) → refuse le fallback v1 (anti-format-confusion).
+    await prefs.setBool(_kV2Only, true);
+    _v2OnlyCache = true;
     _cachedKey = key;
   }
 
@@ -229,6 +245,7 @@ class VaultService {
         final old = _cachedKey;
         if (old != null) _zeroize(old);
         _cachedKey = key;
+        _v2OnlyCache = prefs.getBool(_kV2Only) ?? false;
         await prefs.remove(_kFails);
         await prefs.remove(_kLockoutUntil);
         return true;
@@ -304,7 +321,7 @@ class VaultService {
     }
     final plain = await source.readAsBytes();
     final ct = await _encryptMaybeIsolate(plain, key, destName);
-    await dest.writeAsBytes(ct);
+    await atomicWriteBytes(dest.path, ct);
     return dest.path;
   }
 
@@ -327,7 +344,7 @@ class VaultService {
     final dest = File('${dir.path}/$destName');
     final plain = await source.readAsBytes();
     final ct = await _encryptMaybeIsolate(plain, key, destName);
-    await dest.writeAsBytes(ct);
+    await atomicWriteBytes(dest.path, ct);
     return dest.path;
   }
 
@@ -342,7 +359,7 @@ class VaultService {
     final out = File('${tmp.path}/$originalName');
     final blob = await encrypted.readAsBytes();
     final plain = await _decryptMaybeIsolate(blob, key, encName);
-    await out.writeAsBytes(plain);
+    await atomicWriteBytes(out.path, plain);
     return out;
   }
 
@@ -378,7 +395,7 @@ class VaultService {
     final out = File('$destDir/$originalName');
     final blob = await encrypted.readAsBytes();
     final plain = await _decryptMaybeIsolate(blob, key, encName);
-    await out.writeAsBytes(plain);
+    await atomicWriteBytes(out.path, plain);
     return out;
   }
 
@@ -513,7 +530,7 @@ class VaultService {
           .substring(0, 19)
           .replaceAll(':', '-');
       final outFile = File('${tmpDir.path}/coffre_$ts.rftvault');
-      await outFile.writeAsBytes(out.toBytes());
+      await atomicWriteBytes(outFile.path, out.toBytes());
       onProgress?.call(1.0);
       return outFile;
     } finally {
@@ -659,7 +676,7 @@ class VaultService {
             masterKey,
             destName,
           );
-          await dest.writeAsBytes(encrypted);
+          await atomicWriteBytes(dest.path, encrypted);
           restored++;
         } catch (_) {
           failed++;
@@ -1033,6 +1050,11 @@ class VaultService {
   }
 
   /// Déchiffre auto-détectant le format (magic v2 sinon fallback v1 sans AAD).
+  ///
+  /// Si le coffre est marqué `v2-only` (`_kV2Only=true`, set au setup d'un
+  /// coffre v2.12.0+), on refuse le fallback v1 — protection contre une
+  /// substitution malveillante .enc v2 → blob v1 forgé qui contournerait
+  /// l'AAD-binding au filename.
   Uint8List _decryptAuto(Uint8List blob, Uint8List key, String filename) {
     if (blob.length >= 4 + _nonceLen + 16 &&
         blob[0] == _magicV2[0] &&
@@ -1046,6 +1068,12 @@ class VaultService {
       final cipher = GCMBlockCipher(AESEngine())
         ..init(false, AEADParameters(KeyParameter(key), 128, nonce, aad));
       return cipher.process(ct);
+    }
+    // F1/P1 sécu — coffre v2-only : refus du fallback v1.
+    if (_v2OnlyCache == true) {
+      throw StateError(
+        'Format invalide (coffre v2-only) — possible tampering.',
+      );
     }
     // Format v1 (legacy) : nonce + ciphertext+tag, AAD vide.
     if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
@@ -1094,6 +1122,13 @@ class VaultService {
     Uint8List key,
     String filename,
   ) async {
+    // F1/P1 sécu — coffre v2-only : refus du fallback v1 (statics ne sont
+    // pas partagés cross-isolate, on check ici avant tout dispatch).
+    if (_v2OnlyCache == true && !_isV2Format(blob)) {
+      throw StateError(
+        'Format invalide (coffre v2-only) — possible tampering.',
+      );
+    }
     if (blob.length >= _nativeThreshold) {
       try {
         return await _decryptNative(blob, key, filename);
@@ -1108,6 +1143,13 @@ class VaultService {
     }
     return Isolate.run(() => _decryptAuto(blob, key, filename));
   }
+
+  static bool _isV2Format(Uint8List blob) =>
+      blob.length >= 4 + _nonceLen + 16 &&
+      blob[0] == _magicV2[0] &&
+      blob[1] == _magicV2[1] &&
+      blob[2] == _magicV2[2] &&
+      blob[3] == _magicV2[3];
 
   /// True si le code d'erreur du channel crypto natif est une erreur réelle
   /// d'authentification / validation — qui doit être propagée et non masquée

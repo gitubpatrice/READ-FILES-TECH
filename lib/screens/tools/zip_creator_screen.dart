@@ -4,6 +4,7 @@ import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
+import '../../utils/atomic_write.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class ZipCreatorScreen extends StatefulWidget {
@@ -61,7 +62,7 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
         suggestedName: 'archive',
         extension: 'zip',
       );
-      await out.writeAsBytes(encoded);
+      await atomicWriteBytes(out.path, encoded);
       final outPath = out.path;
 
       if (!mounted) return;

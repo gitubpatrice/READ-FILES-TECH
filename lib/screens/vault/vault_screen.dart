@@ -211,6 +211,9 @@ class _SetupScreenState extends State<_SetupScreen> {
   }
 
   Future<void> _create() async {
+    // F8 : garde re-entrante (tap+Enter parallèle = 2 dérivations Argon2
+    // simultanées = OOM Redmi 9C 3GB).
+    if (_busy) return;
     setState(() {
       _error = null;
     });
@@ -403,6 +406,8 @@ class _UnlockScreenState extends State<_UnlockScreen> {
   }
 
   Future<void> _unlock() async {
+    // F8 : garde re-entrante (onSubmitted + onPressed = 2 Argon2id //).
+    if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
+import '../../utils/atomic_write.dart';
 import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -64,7 +65,7 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final updated = _content.replaceAll(_searchCtrl.text, _replaceCtrl.text);
     setState(() => _content = updated);
-    await File(_path!).writeAsString(updated);
+    await atomicWriteString(_path!, updated);
     if (!mounted) return;
     messenger.showSnackBar(
       const SnackBar(content: Text('Remplacement effectué et sauvegardé')),
@@ -100,7 +101,7 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
         suggestedName: base,
         extension: 'pdf',
       );
-      await out.writeAsBytes(await doc.save());
+      await atomicWriteBytes(out.path, await doc.save());
       final outPath = out.path;
       doc.dispose();
 

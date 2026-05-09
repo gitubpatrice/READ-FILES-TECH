@@ -1,6 +1,6 @@
 # Politique de confidentialité — Read Files Tech
 
-**Version du document** : 28 avril 2026
+**Version du document** : 9 mai 2026 (v2.12.0)
 **App** : Read Files Tech
 **Site officiel** : https://www.files-tech.com
 **Contact** : contact@files-tech.com
@@ -74,7 +74,8 @@ Voir [SECURITY.md](./SECURITY.md) pour la politique de signalement.
 | `INTERNET`                          | Vérification de mises à jour via API GitHub Releases.                                                  |
 | `MANAGE_EXTERNAL_STORAGE`           | Fonction explorateur : parcourir, lire, éditer tout fichier choisi par l'utilisateur.                  |
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Affichage et aperçu des fichiers médias choisis par l'utilisateur (Android 13+).                  |
-| `REQUEST_INSTALL_PACKAGES`          | Déclencher l'installateur de paquets Android quand l'utilisateur tape sur un fichier `.apk`.            |
+| `REQUEST_INSTALL_PACKAGES`          | Déclencher l'installateur de paquets Android quand l'utilisateur tape sur un fichier `.apk` (par exemple pour installer l'application compagnon PDF Tech). |
+| `CAMERA`                            | Scanner de documents et OCR (optionnel, accordée à la demande au runtime).                              |
 
 ## 10. Enfants
 

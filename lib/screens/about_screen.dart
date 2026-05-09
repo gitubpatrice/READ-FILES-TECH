@@ -347,7 +347,7 @@ class _AboutScreenState extends State<AboutScreen> {
           // ── Aide ────────────────────────────────────────────────────────────
           _sectionTitle(context, 'Aide rapide'),
           const SizedBox(height: 8),
-          _HelpCard(
+          const _HelpCard(
             title: 'Ouvrir un fichier',
             steps: [
               'Bouton "Ouvrir un fichier" en bas de l\'accueil',
@@ -355,14 +355,14 @@ class _AboutScreenState extends State<AboutScreen> {
               'Ou appuie sur un raccourci dossier pour accéder directement',
             ],
           ),
-          _HelpCard(
+          const _HelpCard(
             title: 'Permissions stockage (si dossiers vides)',
             steps: [
               'Au premier lancement, accepte "Accès à tous les fichiers"',
               'Sinon : Paramètres → Apps → Read Files Tech → Autorisations → Fichiers et médias → Autoriser tout',
             ],
           ),
-          _HelpCard(
+          const _HelpCard(
             title: 'Mise à jour',
             steps: [
               'L\'app vérifie automatiquement les mises à jour au lancement',

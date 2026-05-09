@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../utils/atomic_write.dart';
 
 /// Insère une image (signature PNG transparente) dans un PDF à une position
 /// donnée, exprimée en coordonnées **normalisées** (0..1) de la page cible.
@@ -53,7 +54,7 @@ class PdfSignatureService {
           .last
           .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
       final out = File('${tmp.path}/${base}_signe.pdf');
-      await out.writeAsBytes(await doc.save());
+      await atomicWriteBytes(out.path, await doc.save());
       return out;
     } finally {
       doc.dispose();

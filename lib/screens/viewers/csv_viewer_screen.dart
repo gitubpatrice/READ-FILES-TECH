@@ -199,7 +199,7 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
   Widget _buildTable() {
     final cols = _headers.length;
     final displayRows = _filtered.length > 1 ? _filtered.sublist(1) : [];
-    final colWidth = 120.0;
+    const colWidth = 120.0;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

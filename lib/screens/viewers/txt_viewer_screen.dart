@@ -5,6 +5,9 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/color_extract.dart';
+import '../../utils/file_caps.dart';
+import '../../utils/snack_utils.dart';
 import '../explorer/file_type_helpers.dart';
 
 class TxtViewerScreen extends StatefulWidget {
@@ -26,7 +29,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
   bool _isLoading = true;
   double _fontSize = 13;
   bool _showColors = false;
-  List<_ColorMatch> _colorMatches = [];
+  List<ColorMatch> _colorMatches = [];
 
   String get _name => widget.path.basename;
   bool get _hasHighlight => widget.highlightLanguage != null;
@@ -39,8 +42,18 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
 
   Future<void> _load() async {
     try {
-      final content = await File(widget.path).readAsString();
-      final colors = _extractColors(content);
+      final f = File(widget.path);
+      // F1 : cap anti-DoS OOM (fichier piégé .txt/.log multi-Go).
+      final capErr = await checkFileCap(f, FileCaps.textViewer);
+      if (capErr != null) {
+        setState(() {
+          _content = capErr;
+          _isLoading = false;
+        });
+        return;
+      }
+      final content = await f.readAsString();
+      final colors = extractColors(content);
       setState(() {
         _content = content;
         _colorMatches = colors;
@@ -53,42 +66,6 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  List<_ColorMatch> _extractColors(String text) {
-    final results = <_ColorMatch>[];
-    final seen = <String>{};
-
-    // Hex colors
-    final hexReg = RegExp(r'#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b');
-    for (final m in hexReg.allMatches(text)) {
-      final code = m.group(0)!;
-      if (seen.contains(code)) continue;
-      seen.add(code);
-      final c = _parseHex(code);
-      if (c != null) results.add(_ColorMatch(code, c));
-    }
-
-    // rgb() / rgba()
-    final rgbReg = RegExp(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)');
-    for (final m in rgbReg.allMatches(text)) {
-      final code = '${m.group(0)!})';
-      if (seen.contains(code)) continue;
-      seen.add(code);
-      final r = int.tryParse(m.group(1)!) ?? 0;
-      final g = int.tryParse(m.group(2)!) ?? 0;
-      final b = int.tryParse(m.group(3)!) ?? 0;
-      results.add(_ColorMatch(code, Color.fromRGBO(r, g, b, 1)));
-    }
-
-    return results;
-  }
-
-  Color? _parseHex(String hex) {
-    var h = hex.replaceFirst('#', '');
-    if (h.length == 3) h = h.split('').map((c) => c + c).join();
-    final v = int.tryParse('FF$h', radix: 16);
-    return v != null ? Color(v) : null;
   }
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
@@ -165,11 +142,10 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           return GestureDetector(
             onTap: () {
               Clipboard.setData(ClipboardData(text: m.code));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Copié : ${m.code}'),
-                  duration: const Duration(seconds: 1),
-                ),
+              showFloatingSnack(
+                context,
+                'Copié : ${m.code}',
+                duration: const Duration(seconds: 1),
               );
             },
             child: Tooltip(
@@ -221,10 +197,4 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
       ),
     );
   }
-}
-
-class _ColorMatch {
-  final String code;
-  final Color color;
-  _ColorMatch(this.code, this.color);
 }

@@ -11,6 +11,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
 import '../../services/text_extraction_service.dart';
+import '../../utils/atomic_write.dart';
+import '../../utils/file_caps.dart';
+import '../../utils/image_bounds.dart';
 import '../../widgets/output_actions_row.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -82,28 +85,45 @@ class _ConvertScreenState extends State<ConvertScreen> {
     );
     if (res == null || res.files.isEmpty) return null;
     final pdf = PdfDocument();
-    for (final f in res.files) {
-      if (f.path == null) continue;
-      final bytes = await File(f.path!).readAsBytes();
-      final page = pdf.pages.add();
-      final image = PdfBitmap(bytes);
-      final pageSize = page.getClientSize();
-      // Ratio fit
-      final w = image.width.toDouble();
-      final h = image.height.toDouble();
-      final scale = (pageSize.width / w < pageSize.height / h)
-          ? pageSize.width / w
-          : pageSize.height / h;
-      final dw = w * scale;
-      final dh = h * scale;
-      final dx = (pageSize.width - dw) / 2;
-      final dy = (pageSize.height - dh) / 2;
-      page.graphics.drawImage(image, Rect.fromLTWH(dx, dy, dw, dh));
+    int totalBytes = 0;
+    try {
+      for (final f in res.files) {
+        if (f.path == null) continue;
+        final src = File(f.path!);
+        // F5 : cap par image + cumul anti-OOM (Redmi 9C 3GB).
+        final size = await src.length();
+        if (size > FileCaps.imageFile) {
+          throw 'Image trop volumineuse (max ${FileCaps.imageFile ~/ (1024 * 1024)} Mo) : ${f.name}';
+        }
+        totalBytes += size;
+        if (totalBytes > FileCaps.imagesToPdfTotal) {
+          throw 'Sélection trop volumineuse (max ${FileCaps.imagesToPdfTotal ~/ (1024 * 1024)} Mo cumulés).';
+        }
+        final bytes = await src.readAsBytes();
+        // F5 : refus dimensions absurdes (PNG IHDR 50000×50000…).
+        final dimErr = ImageBounds.assertSafeBounds(bytes);
+        if (dimErr != null) throw '$dimErr (${f.name})';
+        final page = pdf.pages.add();
+        final image = PdfBitmap(bytes);
+        final pageSize = page.getClientSize();
+        // Ratio fit
+        final w = image.width.toDouble();
+        final h = image.height.toDouble();
+        final scale = (pageSize.width / w < pageSize.height / h)
+            ? pageSize.width / w
+            : pageSize.height / h;
+        final dw = w * scale;
+        final dh = h * scale;
+        final dx = (pageSize.width - dw) / 2;
+        final dy = (pageSize.height - dh) / 2;
+        page.graphics.drawImage(image, Rect.fromLTWH(dx, dy, dw, dh));
+      }
+      final out = await _reserve('images', 'pdf');
+      await atomicWriteBytes(out.path, await pdf.save());
+      return out;
+    } finally {
+      pdf.dispose();
     }
-    final out = await _reserve('images', 'pdf');
-    await out.writeAsBytes(await pdf.save());
-    pdf.dispose();
-    return out;
   }
 
   // ── CSV → XLSX ──────────────────────────────────────────────────────────────
@@ -114,8 +134,12 @@ class _ConvertScreenState extends State<ConvertScreen> {
       extensions: const {'csv'},
     );
     if (path == null) return null;
-    final raw = await File(path).readAsString();
-    final rows = Csv(dynamicTyping: false).decode(raw);
+    final src = File(path);
+    // F17 : cap CSV anti-OOM main thread.
+    final capErr = await checkFileCap(src, FileCaps.csvFile);
+    if (capErr != null) throw capErr;
+    // F17 : parse CSV en isolate (anti-freeze UI).
+    final rows = await compute(_parseCsvIsolate, await src.readAsString());
     final excel = xls.Excel.createExcel();
     final sheet = excel['Sheet1'];
     for (var r = 0; r < rows.length; r++) {
@@ -133,7 +157,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       path,
     ).replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
     final out = await _reserve(base, 'xlsx');
-    await out.writeAsBytes(bytes);
+    await atomicWriteBytes(out.path, bytes);
     return out;
   }
 
@@ -169,7 +193,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     );
     final base = sourceName.replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'pdf');
-    await out.writeAsBytes(await pdf.save());
+    await atomicWriteBytes(out.path, await pdf.save());
     pdf.dispose();
     return out;
   }
@@ -210,7 +234,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
     final base = PathUtils.fileName(path).replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'txt');
-    await out.writeAsString(result.text!);
+    await atomicWriteString(out.path, result.text!);
     return out;
   }
 
@@ -236,7 +260,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
   Future<File?> _docxToText() async {
     final path = await RftPickerScreen.pickOne(
       context,
-      title: "Choisir un fichier Word",
+      title: 'Choisir un fichier Word',
       extensions: const {'docx', 'docm'},
     );
     if (path == null) return null;
@@ -257,7 +281,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
     final base = PathUtils.fileName(path).replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, 'txt');
-    await out.writeAsString(result.text!);
+    await atomicWriteString(out.path, result.text!);
     return out;
   }
 
@@ -265,7 +289,13 @@ class _ConvertScreenState extends State<ConvertScreen> {
   Future<File?> _convertImage(String targetExt) async {
     final res = await FilePicker.pickFiles(type: FileType.image);
     if (res == null || res.files.single.path == null) return null;
-    final bytes = await File(res.files.single.path!).readAsBytes();
+    final src = File(res.files.single.path!);
+    // F5 : cap fichier + dimensions IHDR.
+    final capErr = await checkFileCap(src, FileCaps.imageFile);
+    if (capErr != null) throw capErr;
+    final bytes = await src.readAsBytes();
+    final dimErr = ImageBounds.assertSafeBounds(bytes);
+    if (dimErr != null) throw dimErr;
     final decoded = img.decodeImage(bytes);
     if (decoded == null) throw 'Image illisible';
     Uint8List encoded;
@@ -284,9 +314,13 @@ class _ConvertScreenState extends State<ConvertScreen> {
     }
     final base = res.files.single.name.replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, targetExt);
-    await out.writeAsBytes(encoded);
+    await atomicWriteBytes(out.path, encoded);
     return out;
   }
+
+  /// Helper top-level pour `compute()` : parsing CSV CPU-bound.
+  static List<List<dynamic>> _parseCsvIsolate(String raw) =>
+      Csv(dynamicTyping: false).decode(raw);
 
   @override
   Widget build(BuildContext context) {

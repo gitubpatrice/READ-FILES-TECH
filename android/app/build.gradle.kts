@@ -35,6 +35,21 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // v2.12.0 — réduction APK : seuls FR + EN embarqués (vs ~50 locales
+        // tirées par ML Kit / Syncfusion / Material). Gain ~3-8 Mo.
+        resourceConfigurations.addAll(listOf("en", "fr"))
+    }
+
+    // v2.12.0 — splits ABI : un APK par architecture native plutôt qu'un fat.
+    // Gain ~40-60 Mo par APK final (vs ~100 Mo universal). Cible directe
+    // S9 / S24 FE / POCO C75. Le bundle universal reste produit pour Play.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
     }
 
     signingConfigs {

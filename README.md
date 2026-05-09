@@ -21,7 +21,7 @@ Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fo
 - **Anti-EXIF** : suppression GPS, date, modèle d'appareil avant partage.
 - **Recherche globale** par nom et contenu (Isolate Dart).
 - **Anti-doublons SHA-256** : trois passes pour libérer du stockage.
-- **Cloud direct** kDrive / Google Drive / Proton Drive (optionnel, action utilisateur).
+- **Partage cloud** : envoi explicite vers les apps cloud installées (kDrive, Google Drive, Proton Drive — action utilisateur via le sélecteur de partage Android).
 - **Quick Tiles** Android : scanner, OCR, coffre depuis le volet de notification.
 
 ## Sécurité

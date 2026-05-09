@@ -58,6 +58,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   String _search = '';
   bool _permissionDenied = false;
 
+  /// Debounce de la recherche (P1 perf — évite 5-10 rebuilds/s pendant
+  /// frappe rapide sur dossier de 2k entrées).
+  Timer? _searchDebounce;
+  static const _searchDebounceDelay = Duration(milliseconds: 150);
+
   final SortService _sortSvc = SortService();
   final SelectionController _selection = SelectionController();
   final BatchOpsService _batch = BatchOpsService();
@@ -86,6 +91,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _selection.dispose();
     super.dispose();
@@ -591,10 +597,18 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-                onChanged: (v) => setState(() {
-                  _search = v;
-                  _recomputeFiltered();
-                }),
+                onChanged: (v) {
+                  // P1 perf — debounce 150ms pour éviter rebuild O(n)
+                  // à chaque keystroke sur dossiers de 2k+ entrées.
+                  _searchDebounce?.cancel();
+                  _searchDebounce = Timer(_searchDebounceDelay, () {
+                    if (!mounted) return;
+                    setState(() {
+                      _search = v;
+                      _recomputeFiltered();
+                    });
+                  });
+                },
               ),
             ),
             if (_permissionDenied)

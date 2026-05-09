@@ -177,7 +177,7 @@ class OutputStorageService {
     final doc = await _tryCreateAndReserve(docDir, fileName);
     if (doc != null) return doc;
 
-    throw FileSystemException('Aucun emplacement d\'écriture disponible');
+    throw const FileSystemException('Aucun emplacement d\'écriture disponible');
   }
 
   /// Tente de créer le dossier puis un fichier unique dedans.

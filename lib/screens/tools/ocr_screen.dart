@@ -7,6 +7,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
+import '../../utils/atomic_write.dart';
 import '../../widgets/output_actions_row.dart';
 
 class OcrScreen extends StatefulWidget {
@@ -79,7 +80,7 @@ class _OcrScreenState extends State<OcrScreen> {
       suggestedName: 'ocr',
       extension: 'txt',
     );
-    await out.writeAsString(_text);
+    await atomicWriteString(out.path, _text);
     final autoShare = await storage.getAutoShare();
     if (!mounted) return;
     setState(() => _lastTxtPath = out.path);

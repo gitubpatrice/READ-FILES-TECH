@@ -5,6 +5,7 @@ import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
+import '../../utils/atomic_write.dart';
 import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -119,7 +120,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         suggestedName: base,
         extension: 'pdf',
       );
-      await out.writeAsBytes(await doc.save());
+      await atomicWriteBytes(out.path, await doc.save());
       final outPath = out.path;
       doc.dispose();
 
@@ -172,7 +173,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         suggestedName: 'fusion_csv',
         extension: 'csv',
       );
-      await out.writeAsString(csv);
+      await atomicWriteString(out.path, csv);
       final outPath = out.path;
 
       if (!mounted) return;

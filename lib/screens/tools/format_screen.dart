@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
+import '../../services/output_storage_service.dart';
+import '../../utils/atomic_write.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class FormatScreen extends StatefulWidget {
@@ -95,19 +97,28 @@ class _FormatScreenState extends State<FormatScreen> {
 
   void _copy() {
     Clipboard.setData(ClipboardData(text: _outputCtrl.text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Copié'), duration: Duration(seconds: 1)),
-    );
+    showFloatingSnack(context, 'Copié', duration: const Duration(seconds: 1));
   }
 
+  /// P0 branchements — passe par OutputStorageService (catégorie conversions)
+  /// pour que le résultat apparaisse dans Files Tech/ + Récents, comme les
+  /// autres outils. Auto-share aligné sur le toggle Settings.
   Future<void> _saveAndShare() async {
     if (_outputCtrl.text.isEmpty) return;
-    final dir = await getTemporaryDirectory();
-    final ext = _mode;
+    final storage = OutputStorageService();
     final ts = DateTime.now().millisecondsSinceEpoch;
-    final path = '${dir.path}/result_$ts.$ext';
-    await File(path).writeAsString(_outputCtrl.text);
-    await Share.shareXFiles([XFile(path)]);
+    final out = await storage.reserveFile(
+      category: OutputCategory.conversions,
+      suggestedName: 'result_$ts',
+      extension: _mode,
+    );
+    await atomicWriteString(out.path, _outputCtrl.text);
+    final autoShare = await storage.getAutoShare();
+    if (autoShare) {
+      await Share.shareXFiles([XFile(out.path)]);
+    } else if (mounted) {
+      showFloatingSnack(context, 'Sauvegardé : ${out.path}');
+    }
   }
 
   @override

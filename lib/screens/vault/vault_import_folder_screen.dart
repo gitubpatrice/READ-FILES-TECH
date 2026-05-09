@@ -268,19 +268,19 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
                         color: Colors.orange.withValues(alpha: 0.4),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.warning_amber_rounded,
                           color: Colors.orange,
                           size: 18,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Limite de $_maxEntries fichiers atteinte. '
                             'Choisissez un sous-dossier plus précis pour tout voir.',
-                            style: const TextStyle(fontSize: 11),
+                            style: TextStyle(fontSize: 11),
                           ),
                         ),
                       ],
