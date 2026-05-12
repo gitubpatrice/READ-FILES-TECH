@@ -2,6 +2,15 @@
 
 ## Historique des durcissements
 
+- **v2.12.2** (2026-05-13) — Hotfix Google Play Protect : retrait de
+  `REQUEST_INSTALL_PACKAGES` de l'AndroidManifest. La combinaison de
+  cette permission avec `MANAGE_EXTERNAL_STORAGE` était classée par
+  Play Protect comme signature potentielle de "dropper" (faux positif
+  "application dangereuse" sur installation sideload). Le tap sur un
+  fichier `.apk` dans l'explorateur reste possible via le gestionnaire
+  de Fichiers système Android, qui prend le relais avec sa propre
+  permission. Branche Kotlin spéciale `package-archive` retirée dans
+  `MainActivity.kt`. Aucun changement de format.
 - **v2.12.1** (2026-05-12) — Audit expert zéro-vuln/zéro-faille G1-G16 +
   H1-H8 :
   - **Vault** : wipe per-entry pendant restore `.rftvault` (G2, anti

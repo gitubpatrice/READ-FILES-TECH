@@ -232,32 +232,11 @@ class MainActivity : FlutterFragmentActivity() {
                             Uri.fromFile(file)
                         }
 
-                        // Cas spécial : APK → installateur de paquets Android.
-                        if (mime == "application/vnd.android.package-archive") {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                                && !packageManager.canRequestPackageInstalls()) {
-                                val settings = Intent(
-                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                    Uri.parse("package:$packageName")
-                                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                                startActivity(settings)
-                                result.error(
-                                    "INSTALL_PERMISSION_REQUIRED",
-                                    "Autorisez 'Installer apps inconnues' pour Read Files Tech, puis réessayez.",
-                                    null
-                                )
-                                return@setMethodCallHandler
-                            }
-                            val install = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, mime)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            }
-                            startActivity(install)
-                            result.success(null)
-                            return@setMethodCallHandler
-                        }
+                        // v2.12.2 — branche spéciale APK retirée avec
+                        // REQUEST_INSTALL_PACKAGES (anti faux positif Play
+                        // Protect "dropper"). Un .apk tapé tombe dans
+                        // l'ACTION_VIEW générique ci-dessous : c'est l'OS
+                        // (Files système) qui prend le relais d'installation.
 
                         val view = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(uri, mime)

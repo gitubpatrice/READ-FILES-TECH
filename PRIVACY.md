@@ -74,8 +74,13 @@ See [SECURITY.md](./SECURITY.md) for the vulnerability disclosure policy.
 | `INTERNET`                          | Update check via GitHub Releases API.                                                                   |
 | `MANAGE_EXTERNAL_STORAGE`           | File explorer feature: browse, read, edit any file on shared storage selected by the user.              |
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Display and preview media files chosen by the user (Android 13+).                                  |
-| `REQUEST_INSTALL_PACKAGES`          | Trigger the Android package installer when the user taps an `.apk` file in the explorer (e.g. installing the companion app PDF Tech). |
 | `CAMERA`                            | Document scanner and OCR (optional, runtime-granted on demand).                                          |
+
+> v2.12.2 — `REQUEST_INSTALL_PACKAGES` was removed because the combination
+> with `MANAGE_EXTERNAL_STORAGE` was being heuristically classified as a
+> potential "dropper" pattern by Google Play Protect (false positive on
+> sideloaded installs). Tapping a `.apk` file from the explorer is still
+> possible via the system Files manager, which takes over.
 
 ## 10. Children
 

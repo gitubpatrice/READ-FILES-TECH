@@ -24,15 +24,13 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!--
-        REQUEST_INSTALL_PACKAGES :
-        Permet à l'utilisateur de lancer l'installateur Android (PackageInstaller)
-        en tapant sur un fichier .apk depuis l'explorateur — incluant les APK
-        de Files Tech (ex: PDF Tech, Pass Tech) qu'il peut transférer
-        manuellement entre ses appareils. L'app n'installe RIEN automatiquement :
-        c'est l'OS qui prend le relais avec son écran de confirmation.
-        Documenté dans PRIVACY.md §9.
+        REQUEST_INSTALL_PACKAGES retiré v2.12.2 :
+        cette permission combinée avec MANAGE_EXTERNAL_STORAGE était classée
+        par Google Play Protect comme signature potentielle de "dropper"
+        (faux positif "application dangereuse" sur sideload). Le tap sur un
+        fichier .apk dans l'explorateur reste possible via le Files système
+        de l'OS (qui prend le relais avec sa propre permission).
     -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- OCR : capture caméra -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -136,11 +134,6 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
-        </intent>
-        <!-- Découverte des apps capables d'installer un APK -->
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:mimeType="application/vnd.android.package-archive"/>
         </intent>
         <!-- Découverte des apps capables d'ouvrir des fichiers de tout type -->
         <intent>
