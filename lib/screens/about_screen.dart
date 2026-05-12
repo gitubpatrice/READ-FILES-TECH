@@ -229,14 +229,14 @@ class _AboutScreenState extends State<AboutScreen> {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/icon/app_icon.png',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
                   ),
-                  child: Icon(Icons.folder_open, size: 44, color: cs.primary),
                 ),
                 const SizedBox(height: 14),
                 Text(
