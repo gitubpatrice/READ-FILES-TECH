@@ -1,5 +1,36 @@
 # Politique de sécurité — Read Files Tech
 
+## Historique des durcissements
+
+- **v2.12.1** (2026-05-12) — Audit expert zéro-vuln/zéro-faille G1-G16 +
+  H1-H8 :
+  - **Vault** : wipe per-entry pendant restore `.rftvault` (G2, anti
+    fenêtre RAM plaintext étendue), `sublistView` zéro-copie sur
+    `_decryptAuto` (G6), ordre `_v2OnlyCache` lu AVANT déchiffrement
+    sentinelle (G7, défense en profondeur substitution v1).
+  - **Anti-screenshot** : `SecureWindow` passe d'un bool à un refcount (G4)
+    pour gérer les écrans sensibles imbriqués (vignette Recents fuite
+    évitée).
+  - **HTML viewer** : whitelist d'extensions sur navigation `file://`
+    cantonnée au dossier d'origine (G8).
+  - **CSV** : nouveau helper `CsvSafe` anti CSV-injection (`= + - @ \t \r`
+    préfixés `'`, H1) adopté dans csv_editor + merge ; cap source + cap
+    cumulatif merge (H2, anti OOM).
+  - **Atomic write** : étendu aux éditeurs csv/code (G1, plus de
+    troncature sur kill OS pendant save).
+  - Dead code retiré : `vault.importFile` non-Safe (zéro caller),
+    `lib/utils/run_busy.dart` (H4), règles ProGuard orphelines
+    `flutter_secure_storage` + `local_auth`/`biometric` (H8),
+    `_ColorInfo` dupliqué dans html_viewer (factorisé via `color_extract`).
+  - Déduplication : `AppConstants.autoLockDelay` partagé main.dart /
+    vault_screen.dart.
+  - `dart analyze` 0 issue, 15/15 tests.
+- **v2.12.0** (2026-05-09) — F1-F19 : caps viewers (txt/docx/xlsx/epub/
+  csv), ImageBounds anti-bomb, purge cache au boot + paused, race guards
+  Argon2id, atomic write 13 sites, vault v2-only flag, auto-lock GLOBAL
+  Stopwatch monotonique, PanicService Settings, SecureWindow signatures,
+  splits ABI + resourceConfigs FR/EN.
+
 ## Versions supportées
 
 Seule la dernière version publiée sur GitHub Releases est activement maintenue côté sécurité.

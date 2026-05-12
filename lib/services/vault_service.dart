@@ -238,6 +238,12 @@ class VaultService {
       );
     }
     try {
+      // G7 v2.12.1 — lire `_v2OnlyCache` AVANT déchiffrement sentinelle.
+      // L'ordre fragile précédent (cache lu APRÈS decrypt) permettait
+      // théoriquement à un coffre v2-only neuf, entre setup et 1er unlock,
+      // d'accepter une sentinelle v1 substituée. Charge depuis prefs en
+      // amont pour que _decryptAuto puisse l'utiliser dès l'appel.
+      _v2OnlyCache = prefs.getBool(_kV2Only) ?? false;
       final blob = await check.readAsBytes();
       final plain = _decryptAuto(blob, key, _checkFile);
       if (utf8.decode(plain) == _checkPlain) {
@@ -245,7 +251,6 @@ class VaultService {
         final old = _cachedKey;
         if (old != null) _zeroize(old);
         _cachedKey = key;
-        _v2OnlyCache = prefs.getBool(_kV2Only) ?? false;
         await prefs.remove(_kFails);
         await prefs.remove(_kLockoutUntil);
         return true;
@@ -333,19 +338,6 @@ class VaultService {
         .whereType<File>()
         .where((f) => !f.path.endsWith(_checkFile))
         .toList();
-  }
-
-  /// Importe un fichier en clair → chiffre + stocke. Retourne le path chiffré.
-  Future<String> importFile(File source) async {
-    final key = _requireKey();
-    final dir = await _vaultDir();
-    final name = PathSafe.basename(source.path);
-    final destName = '$name.enc';
-    final dest = File('${dir.path}/$destName');
-    final plain = await source.readAsBytes();
-    final ct = await _encryptMaybeIsolate(plain, key, destName);
-    await atomicWriteBytes(dest.path, ct);
-    return dest.path;
   }
 
   /// Déchiffre un fichier du coffre vers un emplacement temporaire (pour viewer/share).
@@ -680,6 +672,13 @@ class VaultService {
           restored++;
         } catch (_) {
           failed++;
+        } finally {
+          // G2 v2.12.1 — wipe plaintext de l'entrée DÈS qu'elle a été
+          // chiffrée+écrite (ou en échec), pas à la fin de la boucle.
+          // Avant : toutes les entrées plaintext restaient en RAM jusqu'au
+          // finally global (fenêtre RAM plaintext étendue + OOM sur gros
+          // restore d'un .rftvault 100 Mo).
+          _zeroize(e.plain);
         }
         onProgress?.call(0.55 + (i + 1) / entries.length * 0.45);
       }
@@ -1061,9 +1060,12 @@ class VaultService {
         blob[1] == _magicV2[1] &&
         blob[2] == _magicV2[2] &&
         blob[3] == _magicV2[3]) {
-      // Format v2
-      final nonce = blob.sublist(4, 4 + _nonceLen);
-      final ct = blob.sublist(4 + _nonceLen);
+      // Format v2.
+      // G6 v2.12.1 — sublistView (zéro-copie) au lieu de sublist (copie).
+      // Sur blobs 4-5 Mo : ~10-20 ms gagnés + 2× footprint RAM transitoire
+      // évité. Cohérence avec path natif déjà optimisé.
+      final nonce = Uint8List.sublistView(blob, 4, 4 + _nonceLen);
+      final ct = Uint8List.sublistView(blob, 4 + _nonceLen);
       final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
       final cipher = GCMBlockCipher(AESEngine())
         ..init(false, AEADParameters(KeyParameter(key), 128, nonce, aad));
@@ -1077,8 +1079,8 @@ class VaultService {
     }
     // Format v1 (legacy) : nonce + ciphertext+tag, AAD vide.
     if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
-    final nonce = blob.sublist(0, _nonceLen);
-    final ct = blob.sublist(_nonceLen);
+    final nonce = Uint8List.sublistView(blob, 0, _nonceLen);
+    final ct = Uint8List.sublistView(blob, _nonceLen);
     final cipher = GCMBlockCipher(
       AESEngine(),
     )..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));

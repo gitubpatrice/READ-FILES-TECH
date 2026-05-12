@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
+import '../../utils/atomic_write.dart';
+import '../../utils/csv_safe.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class CsvEditorScreen extends StatefulWidget {
@@ -70,8 +72,14 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isSaving = true);
     try {
-      final csv = Csv().encode(_rows);
-      await File(_resolvedPath).writeAsString(csv);
+      // H1 v2.12.1 — anti CSV-injection : sanitize cellules `= + - @ \t \r`.
+      // Plus de risque de formule exécutée par Excel/LibreOffice côté
+      // destinataire si l'utilisateur partage le CSV édité.
+      final csv = CsvSafe.encodeSafe(_rows);
+      // G1 v2.12.1 — atomic write (tmp + rename) : un kill OS pendant le
+      // save laissait le fichier utilisateur tronqué. Cohérence avec les
+      // 13 sites déjà migrés v2.12.0.
+      await atomicWriteString(_resolvedPath, csv);
       setState(() {
         _modified = false;
         _isSaving = false;

@@ -3,6 +3,7 @@ import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/atomic_write.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class CodeEditorScreen extends StatefulWidget {
@@ -212,7 +213,10 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     setState(() => _isSaving = true);
     try {
       await _backup();
-      await File(_resolvedPath).writeAsString(_ctrl.text);
+      // G1 v2.12.1 — atomic write (tmp + rename) : un kill OS pendant le
+      // save laissait le fichier utilisateur tronqué. Cohérence avec les
+      // 13 sites déjà migrés v2.12.0.
+      await atomicWriteString(_resolvedPath, _ctrl.text);
       _original = _ctrl.text;
       setState(() {
         _modified = false;

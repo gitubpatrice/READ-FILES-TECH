@@ -6,7 +6,6 @@
 -dontwarn io.flutter.**
 
 # Plugins natifs utilisés
--keep class com.it_nomads.fluttersecurestorage.** { *; }
 -keep class com.mr.flutter.plugin.filepicker.** { *; }
 -keep class dev.fluttercommunity.plus.share.** { *; }
 
@@ -37,6 +36,3 @@
 -keep class com.readfilestech.read_files_tech.OcrTileService { *; }
 -keep class com.readfilestech.read_files_tech.VaultTileService { *; }
 
-# local_auth (BiometricPrompt via FragmentActivity)
--keep class androidx.biometric.** { *; }
--keep class androidx.fragment.app.** { *; }

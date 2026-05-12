@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/secure_window.dart';
 import '../../services/vault_service.dart';
+import '../../utils/app_constants.dart';
 import '../../widgets/rft_picker_screen.dart';
 import 'vault_import_folder_screen.dart';
 
@@ -35,7 +36,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   /// sheet, FilePicker) qui pause brièvement l'app de se terminer sans
   /// déclencher le lock. Pattern standard des password managers (Bitwarden,
   /// KeePassDX).
-  static const _autoLockDelay = Duration(seconds: 30);
+  static const _autoLockDelay = AppConstants.autoLockDelay;
 
   /// Timer programmant le lock différé. Annulé sur `resumed`.
   Timer? _pendingLockTimer;

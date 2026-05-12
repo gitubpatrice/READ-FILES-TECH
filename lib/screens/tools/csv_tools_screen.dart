@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
 import '../../utils/atomic_write.dart';
+import '../../utils/csv_safe.dart';
+import '../../utils/file_caps.dart';
 import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -33,6 +35,16 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     );
     if (path == null) return;
     if (!mounted) return;
+    // H2 v2.12.1 — cap source : sans cap, un CSV piégé 2 Go consommait
+    // toute la RAM device. Aligné sur csv_viewer.
+    final capErr = await checkFileCap(File(path), FileCaps.csvFile);
+    if (capErr != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(capErr)));
+      return;
+    }
     final content = await File(path).readAsString();
     final rows = Csv().decode(content);
     if (!mounted) return;
@@ -155,8 +167,28 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     try {
       final allRows = <List<dynamic>>[];
       bool firstFile = true;
+      // H2 v2.12.1 — cap cumulatif merge : sans cap, fusionner 30 CSV de
+      // 50 Mo = 1.5 Go RAM. Aligné sur cap merge PDF (F4 v1.12.2).
+      int cumulative = 0;
       for (final p in paths) {
-        final content = await File(p).readAsString();
+        final f = File(p);
+        final capErr = await checkFileCap(f, FileCaps.csvFile);
+        if (capErr != null) {
+          if (!mounted) return;
+          messenger.showSnackBar(
+            SnackBar(content: Text('${PathUtils.fileName(p)} : $capErr')),
+          );
+          continue;
+        }
+        cumulative += await f.length();
+        if (cumulative > FileCaps.csvFile * 3) {
+          if (!mounted) return;
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Total fusion trop volumineux.')),
+          );
+          break;
+        }
+        final content = await f.readAsString();
         final rows = Csv().decode(content);
         if (firstFile) {
           allRows.addAll(rows);
@@ -167,7 +199,9 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         }
       }
 
-      final csv = Csv().encode(allRows);
+      // H1 v2.12.1 — sanitize anti CSV-injection avant écriture du CSV
+      // fusionné (destinataire peut ouvrir dans Excel/LibreOffice).
+      final csv = CsvSafe.encodeSafe(allRows);
       final out = await OutputStorageService().reserveFile(
         category: OutputCategory.conversions,
         suggestedName: 'fusion_csv',

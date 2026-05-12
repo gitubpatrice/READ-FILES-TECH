@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/color_extract.dart';
 import 'reader_viewer_screen.dart';
 import '../explorer/file_type_helpers.dart';
 
@@ -25,7 +26,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   /// explicite pour rendu fidèle d'HTML interactif.
   bool _jsEnabled = false;
   String _htmlContent = '';
-  List<_ColorInfo> _colors = [];
+  List<ColorMatch> _colors = [];
 
   /// Limite la taille du HTML chargé (DoS local, OOM sur fichiers énormes).
   static const _maxHtmlBytes = 20 * 1024 * 1024;
@@ -44,16 +45,47 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   /// d'autres fichiers du téléphone via le viewer.
   late final String _allowedParentDir = File(widget.path).parent.path;
 
+  /// Extensions autorisées pour navigation `file://` depuis un HTML rendu.
+  /// G8 v2.12.1 — sans whitelist, un HTML piégé pouvait `<iframe src=`
+  /// `"file:///.../db.sqlite">` pour faire afficher du contenu sensible.
+  /// Le scope (`_allowedParentDir`) restreint déjà au dossier du HTML
+  /// d'origine, donc on autorise largement les formats document/média
+  /// usuels qu'un HTML peut légitimement référencer ; on n'exclut que
+  /// les blobs binaires opaques (db, bak, log, etc.) où l'affichage n'a
+  /// pas de sens et indiquerait probablement une tentative de fuite.
+  static const _allowedFileExts = {
+    // Web assets
+    '.html', '.htm', '.xhtml',
+    '.css', '.js', '.mjs',
+    // Images
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif',
+    // Fonts
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
+    // Documents (texte / structuré)
+    '.txt', '.md', '.json', '.xml', '.yaml', '.yml', '.csv', '.tsv', '.log',
+    '.pdf', '.epub',
+    // Médias (lecture inline)
+    '.mp3', '.ogg', '.wav', '.m4a', '.flac',
+    '.mp4', '.webm', '.mov',
+  };
+
   /// True si l'URL `file://...` cible un fichier strictement dans le dossier
-  /// parent du HTML d'origine. Utilise `p.isWithin` (package:path) pour
-  /// gérer correctement les séparateurs Windows/POSIX et les `..` éventuels
-  /// — plus robuste qu'un `startsWith` sur String.
+  /// parent du HTML d'origine ET dans la whitelist d'extensions. Utilise
+  /// `p.isWithin` (package:path) pour gérer correctement les séparateurs
+  /// Windows/POSIX et les `..` éventuels.
   bool _isFileUrlAllowed(String url) {
     if (!url.startsWith('file://')) return false;
     try {
       final target = Uri.parse(url).toFilePath();
-      return p.equals(target, _allowedParentDir) ||
+      final inScope =
+          p.equals(target, _allowedParentDir) ||
           p.isWithin(_allowedParentDir, target);
+      if (!inScope) return false;
+      // Cas particulier : navigation vers le répertoire racine lui-même
+      // (listing). Conserve le comportement antérieur.
+      if (p.equals(target, _allowedParentDir)) return true;
+      final ext = p.extension(target).toLowerCase();
+      return _allowedFileExts.contains(ext);
     } catch (_) {
       return false;
     }
@@ -134,7 +166,12 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
         return;
       }
       _htmlContent = await File(widget.path).readAsString();
-      _colors = _extractColors(_htmlContent);
+      // G16 v2.12.1 — utilise le helper partagé `extractColors` (txt_viewer
+      // l'utilisait déjà) : supporte hex + rgb()/rgba(), élimine la
+      // duplication de `_ColorInfo` + regex inline.
+      _colors = _htmlContent.length > 1024 * 1024
+          ? const []
+          : extractColors(_htmlContent);
       _controller.loadFile(widget.path);
     } catch (_) {
       if (mounted) {
@@ -144,26 +181,6 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
         });
       }
     }
-  }
-
-  List<_ColorInfo> _extractColors(String html) {
-    final results = <_ColorInfo>[];
-    // Cap dur 1 Mo : sur très gros HTML, l'allMatches est O(n) et inutile
-    // (on aurait des centaines de couleurs identiques). Bypass = barre
-    // couleurs vide, le rendu HTML reste OK.
-    if (html.length > 1024 * 1024) return results;
-    final seen = <String>{};
-    final hexReg = RegExp(r'#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b');
-    for (final m in hexReg.allMatches(html)) {
-      final code = m.group(0)!;
-      if (seen.contains(code)) continue;
-      seen.add(code);
-      var h = code.replaceFirst('#', '');
-      if (h.length == 3) h = h.split('').map((c) => c + c).join();
-      final v = int.tryParse('FF$h', radix: 16);
-      if (v != null) results.add(_ColorInfo(code, Color(v)));
-    }
-    return results;
   }
 
   @override
@@ -280,10 +297,4 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
       ),
     );
   }
-}
-
-class _ColorInfo {
-  final String code;
-  final Color color;
-  _ColorInfo(this.code, this.color);
 }

@@ -9,6 +9,7 @@ import 'screens/tools/scanner_screen.dart';
 import 'screens/tools/ocr_screen.dart';
 import 'screens/vault/vault_screen.dart';
 import 'services/vault_service.dart';
+import 'utils/app_constants.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -161,8 +162,8 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
   Timer? _autoLockTimer;
 
   /// Délai de verrouillage automatique du coffre après mise en pause.
-  /// Aligné sur Bitwarden : 30 s. Lock immédiat sur `detached`.
-  static const _autoLockDelay = Duration(seconds: 30);
+  /// Source unique : [AppConstants.autoLockDelay].
+  static const _autoLockDelay = AppConstants.autoLockDelay;
 
   @override
   void initState() {
