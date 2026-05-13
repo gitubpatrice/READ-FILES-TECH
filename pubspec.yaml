@@ -88,6 +88,10 @@ flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"
   adaptive_icon_background: "#1565C0"
   adaptive_icon_foreground: "assets/icon/app_icon.png"
+  # 25 % d'inset pour respecter la "safe zone" Android adaptive icons :
+  # le foreground source remplit tout le canvas, sans padding l'icône
+  # apparaît zoomée car les launchers recadrent ~25 % de chaque côté.
+  adaptive_icon_foreground_inset: 25
   min_sdk_android: 21
 
 flutter:
