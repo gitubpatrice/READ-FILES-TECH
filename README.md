@@ -5,7 +5,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/gitubpatrice/READ-FILES-TECH)](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B?logo=flutter)](https://flutter.dev)
 
-**Le couteau suisse Android pour vos fichiers — version 2.11.3.**
+**Le couteau suisse Android pour vos fichiers — version 2.12.3.**
 
 Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fort, conversion, anti-EXIF — 100 % local, sans cloud, sans tracker.
 
@@ -23,6 +23,28 @@ Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fo
 - **Anti-doublons SHA-256** : trois passes pour libérer du stockage.
 - **Partage cloud** : envoi explicite vers les apps cloud installées (kDrive, Google Drive, Proton Drive — action utilisateur via le sélecteur de partage Android).
 - **Quick Tiles** Android : scanner, OCR, coffre depuis le volet de notification.
+- **Installation d'APK** depuis l'explorateur — tap sur un `.apk` → PackageInstaller système (icône Android dédiée + couleur teal dans la liste).
+
+## Nouveautés v2.12.3
+
+- **Installation d'APK restaurée** depuis l'explorateur (tap `.apk` → PackageInstaller système, avec dialog si l'autorisation "Apps installant des applis inconnues" n'est pas encore accordée).
+- **Icône Android** dédiée + couleur teal pour les `.apk` dans la liste.
+- Icône d'app alignée sur la suite Files Tech (`assets/icon/app_icon.png` régénéré).
+
+> ℹ️ **Play Protect** : le binaire est soumis à Google + VirusTotal pour traitement du faux positif "dropper" déclenché par la combinaison `MANAGE_EXTERNAL_STORAGE` + `REQUEST_INSTALL_PACKAGES`. Read Files Tech n'installe jamais en silence : le PackageInstaller système exige toujours un consentement utilisateur explicite.
+
+## Nouveautés v2.12.1
+
+- Anti CSV-injection à l'export (préfixe `'` automatique sur cellules `= + - @ \t \r`).
+- Cap source + cap cumulatif sur `Outils CSV` (anti-OOM).
+- `SecureWindow` à refcount : plus de vignette Recents qui leak un coffre quand un écran sensible se chevauche.
+- Vault : déchiffrement v2 zéro-copie (`sublistView`), check `_v2OnlyCache` lu avant la sentinelle.
+- HTML viewer : navigation `file://` cantonnée au dossier source avec whitelist d'extensions document/média.
+- Atomic write étendu aux éditeurs CSV et code source (plus de fichier tronqué si kill OS pendant le save).
+- Restore `.rftvault` : wipe plaintext per-entry (au lieu d'un wipe global tardif).
+- Restauration de l'installation d'APK + icône Android dédiée dans la liste.
+- Icône d'app alignée sur la suite Files Tech.
+- Nettoyage : `run_busy` mort retiré, règles ProGuard orphelines retirées, dédup `_autoLockDelay` via `AppConstants`.
 
 ## Sécurité
 

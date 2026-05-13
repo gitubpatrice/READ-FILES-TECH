@@ -342,6 +342,78 @@ class MainActivity : FlutterFragmentActivity() {
                         packageManager.getPackageInfo(pkg, 0); true
                     } catch (_: Exception) { false }
                     result.success(installed)
+                } else if (call.method == "canInstallApks") {
+                    // Android 8+ : l'utilisateur doit avoir explicitement
+                    // autorisé l'app dans Réglages → "Apps installant des
+                    // applis inconnues". Sur Android <8 la perm manifest
+                    // suffit.
+                    val ok = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        packageManager.canRequestPackageInstalls()
+                    } else true
+                    result.success(ok)
+                } else if (call.method == "openInstallPermissionSettings") {
+                    // Ouvre l'écran Réglages "Apps installant des applis
+                    // inconnues" filtré sur notre package. Retour utilisateur
+                    // attendu via canInstallApks au prochain check.
+                    try {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:$packageName"))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        } else {
+                            Intent(Settings.ACTION_SECURITY_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("OPEN_ERROR", e.message, null)
+                    }
+                } else if (call.method == "installApk") {
+                    // Lance le PackageInstaller système pour le .apk indiqué.
+                    // Le path est canonicalisé via safeCanonical (anti
+                    // symlink-pivot) puis passé à FileProvider — la perm
+                    // READ_URI est accordée à l'installer Android.
+                    val path = call.argument<String>("path")
+                    if (path == null) {
+                        result.error("NO_PATH", "path manquant", null)
+                        return@setMethodCallHandler
+                    }
+                    val file = safeCanonical(path)
+                    if (file == null) {
+                        result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
+                        return@setMethodCallHandler
+                    }
+                    if (!file.name.lowercase().endsWith(".apk")) {
+                        result.error("NOT_APK", "Fichier non-APK", null)
+                        return@setMethodCallHandler
+                    }
+                    // Cohérence UX : si l'utilisateur n'a pas accordé
+                    // l'autorisation Android, on échoue proprement plutôt
+                    // que de lancer un Intent qui sera silencieusement rejeté.
+                    val allowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        packageManager.canRequestPackageInstalls()
+                    } else true
+                    if (!allowed) {
+                        result.error("PERM_DENIED",
+                            "Autorisation 'Installer des applis inconnues' requise.",
+                            null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val uri: Uri = FileProvider.getUriForFile(
+                            this, "$packageName.fileprovider", file)
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri,
+                                "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("INSTALL_ERROR", e.message, null)
+                    }
                 } else {
                     result.notImplemented()
                 }

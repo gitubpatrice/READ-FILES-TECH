@@ -24,13 +24,19 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!--
-        REQUEST_INSTALL_PACKAGES retiré v2.12.2 :
-        cette permission combinée avec MANAGE_EXTERNAL_STORAGE était classée
-        par Google Play Protect comme signature potentielle de "dropper"
-        (faux positif "application dangereuse" sur sideload). Le tap sur un
-        fichier .apk dans l'explorateur reste possible via le Files système
-        de l'OS (qui prend le relais avec sa propre permission).
+        REQUEST_INSTALL_PACKAGES :
+        permet à l'utilisateur d'installer une APK sideloadée tapée dans
+        l'explorateur (sans repasser par le Files système).
+        Trade-off connu : combinée à MANAGE_EXTERNAL_STORAGE, cette permission
+        peut être classée par Google Play Protect comme signature potentielle
+        de "dropper" sur certains terminaux (faux positif "app dangereuse"
+        au sideload). L'app n'étant pas distribuée via Play Store
+        (Files Tech = sideload + F-Droid), ce risque est accepté pour
+        rendre l'expérience "explorateur de fichiers" complète.
+        Le runtime check `canRequestPackageInstalls()` est requis avant
+        l'appel d'install (Android 8+).
     -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- OCR : capture caméra -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />

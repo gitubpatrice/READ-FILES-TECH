@@ -32,4 +32,28 @@ class NativeOpenService {
       'package': pkg,
     });
   }
+
+  /// `true` si l'utilisateur a accordé l'autorisation Android "Installer
+  /// des applis inconnues" pour Read Files Tech (Android 8+ — sinon `true`
+  /// par défaut sur les versions plus anciennes).
+  Future<bool> canInstallApks() async {
+    final ok = await _ch.invokeMethod<bool>('canInstallApks');
+    return ok ?? false;
+  }
+
+  /// Ouvre l'écran Réglages → "Apps installant des applis inconnues" filtré
+  /// sur notre package, pour que l'utilisateur active l'autorisation.
+  Future<void> openInstallPermissionSettings() {
+    return _ch.invokeMethod('openInstallPermissionSettings');
+  }
+
+  /// Déclenche le PackageInstaller système pour le .apk indiqué.
+  /// Throws `PlatformException` :
+  /// - `PERM_DENIED` si l'utilisateur n'a pas accordé l'autorisation
+  /// - `FORBIDDEN` si le path est hors zone autorisée (anti symlink-pivot)
+  /// - `NOT_APK` si le fichier ne se termine pas par .apk
+  /// - `INSTALL_ERROR` pour toute autre erreur système
+  Future<void> installApk(String path) {
+    return _ch.invokeMethod('installApk', {'path': path});
+  }
 }

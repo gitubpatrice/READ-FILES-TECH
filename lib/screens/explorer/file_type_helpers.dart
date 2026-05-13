@@ -138,6 +138,8 @@ IconData iconFor(FileSystemEntity e) {
       return Icons.data_object;
     case 'md':
       return Icons.text_snippet_outlined;
+    case 'apk':
+      return Icons.android_outlined;
     default:
       return Icons.insert_drive_file_outlined;
   }
@@ -169,6 +171,8 @@ Color colorFor(FileSystemEntity e) {
     case 'xlsx':
     case 'csv':
       return Colors.green;
+    case 'apk':
+      return const Color(0xFF00897B); // teal (cohérence raccourci APKs)
     default:
       return Colors.grey;
   }

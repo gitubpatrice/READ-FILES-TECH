@@ -289,6 +289,56 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     }
   }
 
+  /// Installation d'une APK depuis l'explorateur. Vérifie la permission
+  /// "Apps installant des applis inconnues" (Android 8+) et propose de
+  /// l'accorder via Réglages si manquante. Le PackageInstaller système
+  /// prend le relais : l'utilisateur garde la décision finale d'installation.
+  Future<void> _installApk(String path) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final allowed = await _opener.canInstallApks();
+      if (!allowed) {
+        if (!mounted) return;
+        final go = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Autorisation requise'),
+            content: const Text(
+              'Pour installer une APK depuis Read Files Tech, vous devez '
+              'd\'abord activer "Autoriser depuis cette source" dans les '
+              'Réglages Android.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Annuler'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Ouvrir Réglages'),
+              ),
+            ],
+          ),
+        );
+        if (go == true) {
+          await _opener.openInstallPermissionSettings();
+        }
+        return;
+      }
+      await _opener.installApk(path);
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.message ?? 'Installation impossible.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Installation impossible.')),
+      );
+    }
+  }
+
   void _openFile(String path) {
     final imageSiblings = imageExts.contains(fileExt(path))
         ? _filtered
@@ -777,7 +827,12 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
           return;
         }
         final ext = fileExt(e.path);
-        if (FileViewerRouter.canViewInternally(e.path)) {
+        // APK : route vers PackageInstaller système avec garde de
+        // permission, plutôt qu'un ACTION_VIEW générique qui serait
+        // silencieusement bloqué si la perm n'est pas accordée.
+        if (ext == 'apk') {
+          _installApk(e.path);
+        } else if (FileViewerRouter.canViewInternally(e.path)) {
           _openFile(e.path);
         } else {
           _openWithSystem(e.path, ext);
