@@ -47,6 +47,20 @@ class NativeOpenService {
     return _ch.invokeMethod('openInstallPermissionSettings');
   }
 
+  /// Extrait l'icône d'une APK (sans installation). Retourne les bytes PNG
+  /// rasterisés à `size` px maxi. `null` si l'APK est illisible.
+  Future<Uint8List?> getApkIcon(String path, {int size = 96}) async {
+    try {
+      final bytes = await _ch.invokeMethod<Uint8List>('getApkIcon', {
+        'path': path,
+        'size': size,
+      });
+      return bytes;
+    } on PlatformException {
+      return null;
+    }
+  }
+
   /// Déclenche le PackageInstaller système pour le .apk indiqué.
   /// Throws `PlatformException` :
   /// - `PERM_DENIED` si l'utilisateur n'a pas accordé l'autorisation

@@ -369,6 +369,55 @@ class MainActivity : FlutterFragmentActivity() {
                     } catch (e: Exception) {
                         result.error("OPEN_ERROR", e.message, null)
                     }
+                } else if (call.method == "getApkIcon") {
+                    // Extrait l'icône de l'APK (sans installation) via
+                    // PackageManager.getPackageArchiveInfo + applicationInfo
+                    // .loadIcon(pm). Retourne les bytes PNG (compress 100).
+                    // Le packageManager nécessite que sourceDir/publicSourceDir
+                    // soient set sur l'ApplicationInfo (sinon loadIcon retourne
+                    // l'icône par défaut Android), donc on les positionne
+                    // manuellement à partir du path.
+                    val path = call.argument<String>("path")
+                    val size = call.argument<Int>("size") ?: 96
+                    if (path == null) {
+                        result.error("NO_PATH", "path manquant", null)
+                        return@setMethodCallHandler
+                    }
+                    val file = safeCanonical(path)
+                    if (file == null) {
+                        result.error("FORBIDDEN", "Chemin hors zone autorisée", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val pkgInfo = packageManager.getPackageArchiveInfo(
+                            file.absolutePath, 0)
+                        val appInfo = pkgInfo?.applicationInfo
+                        if (appInfo == null) {
+                            result.error("BAD_APK",
+                                "Impossible de lire les métadonnées APK", null)
+                            return@setMethodCallHandler
+                        }
+                        appInfo.sourceDir = file.absolutePath
+                        appInfo.publicSourceDir = file.absolutePath
+                        val drawable = appInfo.loadIcon(packageManager)
+                        // Rasterise en bitmap à la taille demandée.
+                        val w = if (drawable.intrinsicWidth > 0)
+                            drawable.intrinsicWidth.coerceAtMost(size) else size
+                        val h = if (drawable.intrinsicHeight > 0)
+                            drawable.intrinsicHeight.coerceAtMost(size) else size
+                        val bitmap = android.graphics.Bitmap.createBitmap(
+                            w, h, android.graphics.Bitmap.Config.ARGB_8888)
+                        val canvas = android.graphics.Canvas(bitmap)
+                        drawable.setBounds(0, 0, w, h)
+                        drawable.draw(canvas)
+                        val stream = java.io.ByteArrayOutputStream()
+                        bitmap.compress(
+                            android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                        bitmap.recycle()
+                        result.success(stream.toByteArray())
+                    } catch (e: Exception) {
+                        result.error("ICON_ERROR", e.message, null)
+                    }
                 } else if (call.method == "installApk") {
                     // Lance le PackageInstaller système pour le .apk indiqué.
                     // Le path est canonicalisé via safeCanonical (anti

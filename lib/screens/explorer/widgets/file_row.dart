@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../widgets/file_viewer_router.dart';
 import '../file_type_helpers.dart';
+import 'apk_icon.dart';
 
 /// Actions appelées depuis le menu kebab de la tuile fichier.
 class FileRowActions {
@@ -97,7 +98,17 @@ class FileRow extends StatelessWidget {
                       filterQuality: FilterQuality.low,
                       errorBuilder: (_, _, _) => _iconBox(e),
                     )
-                  : _iconBox(e)),
+                  : (ext == 'apk'
+                        ? SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: ApkIcon(
+                              path: e.path,
+                              size: 36,
+                              placeholder: _iconBox(e),
+                            ),
+                          )
+                        : _iconBox(e))),
       ),
       title: Text(
         name,
