@@ -25,8 +25,37 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   final List<SearchHit> _results = [];
   StreamSubscription? _sub;
 
+  // P1.3 v2.13.0 — Buffer + flush 100 ms : un setState par SearchHit
+  // pouvait déclencher >1000 rebuilds/s sur scan SD (50k fichiers,
+  // pattern fréquent). Le buffer regroupe en batches → ListView fluide
+  // et frame budget tenu sur S9 / Redmi 9C 3GB.
+  final List<SearchHit> _pendingHits = [];
+  int? _pendingScanned;
+  Timer? _flushTimer;
+
+  void _scheduleFlush() {
+    _flushTimer ??= Timer(const Duration(milliseconds: 100), _flush);
+  }
+
+  void _flush() {
+    _flushTimer = null;
+    if (!mounted) return;
+    if (_pendingHits.isEmpty && _pendingScanned == null) return;
+    setState(() {
+      if (_pendingHits.isNotEmpty) {
+        _results.addAll(_pendingHits);
+        _pendingHits.clear();
+      }
+      if (_pendingScanned != null) {
+        _scanned = _pendingScanned!;
+        _pendingScanned = null;
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _flushTimer?.cancel();
     _service.cancel();
     _sub?.cancel();
     _nameCtrl.dispose();
@@ -66,13 +95,16 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     _sub = stream.listen(
       (event) {
         if (event is SearchHit) {
-          setState(() => _results.add(event));
+          _pendingHits.add(event);
+          _scheduleFlush();
         } else if (event is int) {
-          setState(() => _scanned = event);
+          _pendingScanned = event;
+          _scheduleFlush();
         }
       },
       onError: (e) {
         if (!mounted) return;
+        _flush();
         setState(() => _searching = false);
         ScaffoldMessenger.of(
           context,
@@ -80,6 +112,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       },
       onDone: () {
         if (!mounted) return;
+        _flush();
         setState(() => _searching = false);
       },
     );

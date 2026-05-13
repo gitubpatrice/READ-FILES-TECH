@@ -13,11 +13,15 @@ import 'vault_service.dart';
 /// 1. Lock + zeroize de la clé maître en RAM
 /// 2. Suppression du dossier `vault/` (toutes les enveloppes chiffrées)
 /// 3. Reset des SharedPreferences vault (sel, params Argon2, sentinelle, flags)
-/// 4. Purge des dossiers `cache/vault_decrypt/` et `cache/share/`
-/// 5. Purge de la liste des fichiers récents
+/// 4. Purge des dossiers `cache/vault_decrypt/`, `cache/share/`, `cache/exports/`
+/// 5. F6 v2.13.0 — Purge des sous-dossiers cache potentiellement plaintext
+///    (history éditeur code, exports `.rftvault` orphelins, `_no_exif.jpg`,
+///    `_signe.pdf` laissés à la racine de `cache/`).
+/// 6. Purge de la liste des fichiers récents
 ///
-/// La sauvegarde `.rftvault` éventuellement exportée par l'utilisateur reste
-/// intacte (hors scope — c'est volontaire pour permettre la restauration).
+/// La sauvegarde `.rftvault` éventuellement EXPORTÉE par l'utilisateur (et
+/// déplacée hors du cache via la share-sheet) reste intacte — hors scope —
+/// c'est volontaire pour permettre la restauration.
 class PanicService {
   PanicService._();
   static final PanicService instance = PanicService._();
@@ -63,15 +67,55 @@ class PanicService {
     } catch (e) {
       if (kDebugMode) debugPrint('panic prefs: $e');
     }
-    // 4. Purge cache/vault_decrypt + cache/share (déjà fait par lock(), mais
-    // on relance pour s'assurer même si lock a échoué).
+    // 4. Purge cache/vault_decrypt + cache/share + cache/exports (étendu
+    // dans v2.13.0 — cf VaultService.purgeTempDecrypted).
     try {
       await VaultService.instance.purgeTempDecrypted();
       report.cachePurged = true;
     } catch (e) {
       if (kDebugMode) debugPrint('panic cache: $e');
     }
-    // 5. Purge récents (la clé prefs `recent_files` est déjà effacée à l'étape
+    // 5. F6 v2.13.0 — Purge des fichiers temporaires à la racine du cache
+    // (artefacts EXIF/PDF signés/OCR laissés là par les outils en cas
+    // d'annulation share). Ne supprime PAS les sous-dossiers d'autres
+    // plugins (FontCache, etc.) — uniquement les fichiers à la racine et
+    // les sous-dossiers connus.
+    try {
+      final tmpRoot = await getTemporaryDirectory();
+      if (await tmpRoot.exists()) {
+        await for (final entry in tmpRoot.list(followLinks: false)) {
+          if (entry is File) {
+            final name = entry.path.split(RegExp(r'[/\\]')).last;
+            // Patterns connus de l'app : _no_exif, _signe, ocr_, .rftvault,
+            // texte_extrait_, _compresse, scan_.
+            if (name.contains('_no_exif') ||
+                name.contains('_signe') ||
+                name.startsWith('ocr_') ||
+                name.endsWith('.rftvault') ||
+                name.startsWith('texte_extrait_') ||
+                name.contains('_compresse') ||
+                name.startsWith('scan_')) {
+              try {
+                await entry.delete();
+              } catch (_) {
+                /* ignore */
+              }
+            }
+          }
+        }
+      }
+      // History éditeur de code (peut contenir des extraits sensibles
+      // sauvegardés automatiquement).
+      final docs = await getApplicationDocumentsDirectory();
+      final history = Directory('${docs.path}/history');
+      if (await history.exists()) {
+        await history.delete(recursive: true);
+      }
+      report.tempPurged = true;
+    } catch (e) {
+      if (kDebugMode) debugPrint('panic temp: $e');
+    }
+    // 6. Purge récents (la clé prefs `recent_files` est déjà effacée à l'étape
     // 3 puisque non whitelistée — ce flag confirme la couverture du périmètre).
     report.recentsCleared = true;
     return report;
@@ -83,13 +127,20 @@ class PanicReport {
   bool vaultDeleted = false;
   bool prefsCleared = false;
   bool cachePurged = false;
+  bool tempPurged = false;
   bool recentsCleared = false;
 
   bool get isComplete =>
-      locked && vaultDeleted && prefsCleared && cachePurged && recentsCleared;
+      locked &&
+      vaultDeleted &&
+      prefsCleared &&
+      cachePurged &&
+      tempPurged &&
+      recentsCleared;
 
   @override
   String toString() =>
       'PanicReport(locked=$locked vault=$vaultDeleted '
-      'prefs=$prefsCleared cache=$cachePurged recents=$recentsCleared)';
+      'prefs=$prefsCleared cache=$cachePurged temp=$tempPurged '
+      'recents=$recentsCleared)';
 }

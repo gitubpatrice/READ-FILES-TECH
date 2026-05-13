@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/explorer/file_explorer_screen.dart';
 import '../screens/editors/code_editor_screen.dart';
 import '../services/output_storage_service.dart';
+import '../utils/snack_utils.dart';
 import 'file_viewer_router.dart';
 
 /// Picker custom pour Read Files Tech : remplace le Storage Access Framework
@@ -521,9 +522,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           } catch (_) {}
         } else {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Dossier "$label" introuvable')),
-          );
+          showFloatingSnack(context, 'Dossier "$label" introuvable');
           return;
         }
       }
@@ -725,9 +724,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
           await Share.shareXFiles([XFile(resolved)]);
         } catch (_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Fichier introuvable')));
+          showFloatingSnack(context, 'Fichier introuvable');
         }
       case 'remove':
         // Double action : retire des prefs ET ajoute aux paths "dismissed"
@@ -737,12 +734,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
         if (!mounted) return;
         await _load();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Retiré des récents'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        showFloatingSnack(context, 'Retiré des récents');
     }
   }
 

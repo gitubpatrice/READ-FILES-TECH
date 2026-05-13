@@ -2,6 +2,106 @@
 
 ## Historique des durcissements
 
+- **v2.13.0** (2026-05-13) — Audit expert post-v2.12.3 : 24 corrections
+  (F1-F9 sécu + F12 + F15 + U3-U8 + P1.3-P2.4 perf/UX + tests garde).
+
+  **Sécurité** :
+  - **F1** — Les sauvegardes `.rftvault` exportées étaient écrites à la
+    racine de `cache/` ; si l'utilisateur annulait la share-sheet, le
+    fichier (coffre entier re-chiffré sous `exportPassword`) restait
+    indéfiniment. Désormais écrit dans `cache/exports/` dédié, purgé par
+    `VaultService.purgeTempDecrypted()` (boot + paused) et par le mode
+    panique.
+  - **F2** — `restoreFromBackup` n'avait aucun lockout brute-force ; un
+    `.rftvault` volé pouvait être attaqué sans friction côté app (Argon2id
+    ~2.5 s/essai dans l'app, mais offline 100-1000× plus rapide).
+    Désormais : compteur `vault_backup_fails` + backoff exponentiel
+    symétrique au unlock principal (1, 2, 4, 8, 16, 30 min après 5 échecs).
+  - **F3** — Le lockout brute-force utilisait `DateTime.now()` wall-clock,
+    contournable par Réglages → Date/heure (ou `adb shell date -s`).
+    Passage à **dual-clock** : `max(wall, elapsedRealtime)` via channel
+    Kotlin `SystemClock.elapsedRealtime`. La deadline monotone est
+    incassable sans reboot complet ; appliqué à l'unlock principal **et**
+    au restore backup.
+  - **F4** — `importFileSafe` chargeait la source via `readAsBytes()` sans
+    cap → un utilisateur tentant d'importer une vidéo 4 Go crashait l'app
+    (OOM, Redmi 9C 3 Go). Cap `FileCaps.vaultBackup` (100 Mo) ajouté.
+  - **F5** — `MainActivity.safeCanonical` autorisait `cacheDir.canonicalFile`
+    sans distinction. Or `cache/vault_decrypt/` et `cache/share/`
+    contiennent du plaintext déchiffré du coffre. Un code Dart compromis
+    aurait pu demander à Kotlin d'envoyer ces fichiers via FileProvider
+    à n'importe quelle app tierce (`sendToPackage` / `openFile` chooser).
+    **Blocklist explicite** ajoutée côté Kotlin.
+  - **F6** — `PanicService` ne purgeait pas les artefacts dérivés laissés
+    à la racine de `cache/` (signatures `_signe.pdf`, EXIF `_no_exif.jpg`,
+    extractions OCR, `.rftvault` orphelins) ni le dossier
+    `<docs>/history/` (auto-sauvegardes de l'éditeur de code, potentielles
+    PII). Étape 5 ajoutée avec patterns connus de l'app + suppression
+    `history/`. Le `PanicReport.tempPurged` rend la couverture explicite.
+  - **F7** — L'écran de création du coffre affichait *« PBKDF2 600 000
+    itérations »* alors qu'Argon2id auto-calibré est utilisé depuis
+    v2.7.1. Texte corrigé pour cohérence avec SECURITY.md et le code.
+  - **F8** — `ExifService.inspect()` (preview "métadonnées avant") faisait
+    `decodeImage` sans cap, alors que `stripExif` était protégé depuis
+    v2.12.0. Vecteur image-bomb identique sur le chemin preview.
+    `FileCaps.imageFile` + `ImageBounds.assertSafeBounds` ajoutés.
+  - **F9** — `OutputStorageService.setBasePath` acceptait n'importe quel
+    `/Android/data/<autre-pkg>/` via le test `path.contains('/Android/data/')`.
+    Désormais : refus explicite des paths `/Android/data/` ne ciblant pas
+    notre package, et whitelist serrée des dossiers app privés.
+  - **F12** — `PdfSignatureService` ne documentait pas que la signature
+    est purement graphique. Docstring légal eIDAS ajouté + bandeau info
+    visible dans `signature_capture_screen.dart`.
+  - **F15** — Les `TextField` password (setup et dialog passphrase)
+    permettaient la sélection / copie en clair quand l'utilisateur
+    activait l'œil "Afficher". Désormais `enableInteractiveSelection`
+    suit `obscureText` : pas de copie tant que masqué.
+
+  **UX / a11y** :
+  - **U3** — `rft_picker_screen` utilisait `ScaffoldMessenger.showSnackBar`
+    direct (legacy non floating) → migration vers `showFloatingSnack`.
+  - **U4** — `showErrorSnack` accepte un paramètre `action`
+    (`SnackBarAction`) pour standardiser les patterns "Réessayer" /
+    "Annuler" sur erreurs récupérables. Couleur de texte explicite
+    `onErrorContainer` (contraste WCAG AA même en thème clair).
+  - **U7** — `LinearProgressIndicator` (vault export/import folder) sans
+    `Semantics(value: …)` → TalkBack annonçait juste "en cours" sans
+    pourcentage. Wrap ajouté.
+  - **U8** — Le dialog "Mode panique" et la ListTile utilisaient
+    `Colors.red.shade700/900` codés en dur → cassait le thème dark
+    et privait le daltonien d'alternative. Passage en `cs.error` /
+    `cs.errorContainer` / `cs.onErrorContainer` (forme distincte
+    préservée via `Icons.warning_amber` / `Icons.local_fire_department`).
+
+  **Performance** :
+  - **P1.3** — `global_search_screen` faisait un `setState` par
+    `SearchHit` — sur un scan SD (50 k fichiers) cela pouvait dépasser
+    1 000 rebuilds/s, geler le scroll et exploser la frame budget.
+    Buffer + flush 100 ms ajouté → ListView fluide même sur résultats
+    massifs (S9 / Redmi 9C 3 Go).
+  - **P1.4** — Règles ProGuard `com.syncfusion.**` et `com.google.mlkit.**`
+    étaient trop larges (couvraient 300+ classes inutilisées :
+    barcode/face/pose/digital-ink pour ML Kit, tout le SDK Excel/Word
+    pour Syncfusion). Narrow vers les sous-packages réellement utilisés
+    (PDF + vision.text). **Gain APK estimé ~3-5 Mo** après R8.
+  - **P1.5** — `isUniversalApk = true` produisait un APK universel de
+    ~100 Mo gaspillé dans `build/outputs/apk/release/` (pas de Play
+    Store côté Files Tech, distribution directe via splits ABI). Passé
+    à `false` → build ~25 % plus rapide.
+  - **P2.3** — `DateFormat('dd/MM/yyyy')` recréé à chaque appel
+    `_formatDate` dans `home_screen` → hissé en `static final _dfDMY`.
+  - **P2.4** — `MediaQuery.of(context)` restant sur 3 sites
+    (`image_viewer_screen`, `signature_capture_screen`) → migration vers
+    `MediaQuery.sizeOf` / `devicePixelRatioOf` (pas de rebuild sur
+    changement d'inset clavier).
+
+  **Tests garde** : `test/csv_safe_test.dart` (6 tests CSV-injection),
+  `test/image_bounds_test.dart` (7 tests anti image-bomb PNG/GIF/JPEG),
+  `test/file_caps_test.dart` (3 tests caps + helper). +16 tests, total 31.
+
+  `dart analyze` 0 issue, 31/31 tests verts. Aucun changement de format
+  vault `.enc` ni `.rftvault` (v1 et v2 toujours acceptés en lecture).
+
 - **v2.12.2** (2026-05-13) — Hotfix Google Play Protect : retrait de
   `REQUEST_INSTALL_PACKAGES` de l'AndroidManifest. La combinaison de
   cette permission avec `MANAGE_EXTERNAL_STORAGE` était classée par
@@ -46,8 +146,8 @@ Seule la dernière version publiée sur GitHub Releases est activement maintenue
 
 | Version       | Supportée  |
 | ------------- | ---------- |
-| 2.12.x        | ✅          |
-| < 2.12.0      | ❌          |
+| 2.13.x        | ✅          |
+| < 2.13.0      | ❌          |
 
 ## Signaler une vulnérabilité
 

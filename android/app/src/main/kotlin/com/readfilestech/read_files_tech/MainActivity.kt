@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.core.content.FileProvider
@@ -44,6 +45,12 @@ class MainActivity : FlutterFragmentActivity() {
     /// autorisée, ou null sinon. Utiliser ce résultat pour TOUTES les
     /// opérations subséquentes (listFiles, FileProvider.getUriForFile, etc.)
     /// afin d'éviter les TOCTOU symlink-pivot entre check et usage.
+    ///
+    /// F5 v2.13.0 — Blocklist explicite des sous-dossiers cache sensibles
+    /// (vault_decrypt, share) qui contiennent du plaintext déchiffré du
+    /// coffre. Sans ça, un code Dart compromis pouvait demander à Kotlin
+    /// d'envoyer ces fichiers via FileProvider à n'importe quelle app
+    /// tierce (sendToPackage / openFile chooser).
     private fun safeCanonical(path: String): File? {
         return try {
             val canonical = File(path).canonicalFile
@@ -53,6 +60,12 @@ class MainActivity : FlutterFragmentActivity() {
             val pkgObb   = "/Android/obb/$packageName"
             if (abs.contains("/Android/data/") && !abs.contains(pkgFiles)) return null
             if (abs.contains("/Android/obb/")  && !abs.contains(pkgObb))   return null
+            // F5 v2.13.0 — blocklist vault_decrypt + share (plaintext coffre).
+            val cacheAbs = cacheDir.canonicalFile.absolutePath
+            val vaultDecrypt = "$cacheAbs/vault_decrypt"
+            val shareCache = "$cacheAbs/share"
+            if (abs == vaultDecrypt || abs.startsWith("$vaultDecrypt${File.separator}")) return null
+            if (abs == shareCache || abs.startsWith("$shareCache${File.separator}")) return null
             val ok = allowedRoots.any { root ->
                 abs == root.absolutePath || abs.startsWith(root.absolutePath + File.separator)
             }
@@ -119,6 +132,13 @@ class MainActivity : FlutterFragmentActivity() {
                     "recreateActivity" -> {
                         runOnUiThread { recreate() }
                         result.success(null)
+                    }
+                    "elapsedRealtime" -> {
+                        // F3 v2.13.0 — Source de temps monotone (boot-based,
+                        // non-modifiable par l'utilisateur). Utilisée pour le
+                        // lockout brute-force du coffre, qui ne doit pas être
+                        // contournable via Réglages → Date/heure.
+                        result.success(SystemClock.elapsedRealtime())
                     }
                     "setSecure" -> {
                         // FLAG_SECURE bloque captures écran + masque l'aperçu

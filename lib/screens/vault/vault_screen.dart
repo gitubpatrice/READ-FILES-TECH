@@ -291,8 +291,9 @@ class _SetupScreenState extends State<_SetupScreen> {
           const SizedBox(height: 12),
           const Text(
             'Le coffre chiffre vos fichiers avec AES-256-GCM. '
-            'Le mot de passe est dérivé localement (PBKDF2 600 000 itérations) '
-            'et n\'est jamais stocké.',
+            'Le mot de passe est dérivé localement (Argon2id, paramètres '
+            'auto-calibrés pour cet appareil — 1 à 3 secondes) et n\'est '
+            'jamais stocké.',
             style: TextStyle(fontSize: 13),
             textAlign: TextAlign.center,
           ),
@@ -304,6 +305,8 @@ class _SetupScreenState extends State<_SetupScreen> {
             autocorrect: false,
             autofillHints: const <String>[],
             keyboardType: TextInputType.visiblePassword,
+            // F15 v2.13.0 — block selection/copy quand masqué.
+            enableInteractiveSelection: _showPwd,
             decoration: InputDecoration(
               labelText: 'Mot de passe',
               helperText: 'Minimum 8 caractères',
@@ -327,6 +330,7 @@ class _SetupScreenState extends State<_SetupScreen> {
             autocorrect: false,
             autofillHints: const <String>[],
             keyboardType: TextInputType.visiblePassword,
+            enableInteractiveSelection: _showPwd,
             decoration: const InputDecoration(
               labelText: 'Confirmer',
               border: OutlineInputBorder(),
@@ -838,7 +842,13 @@ class _VaultContentState extends State<_VaultContent> {
                   children: [
                     Text(title, style: const TextStyle(fontSize: 13)),
                     const SizedBox(height: 14),
-                    LinearProgressIndicator(value: progressOf()),
+                    // U7 v2.13.0 — Semantics.value parle TalkBack en %
+                    // (sinon "en cours" générique, l'utilisateur aveugle
+                    // ne sait pas si ça avance).
+                    Semantics(
+                      value: '${(progressOf() * 100).round()}%',
+                      child: LinearProgressIndicator(value: progressOf()),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       '${(progressOf() * 100).round()}%',
@@ -1112,6 +1122,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             autocorrect: false,
             autofillHints: const <String>[], // disable Android Autofill
             keyboardType: TextInputType.visiblePassword,
+            // F15 v2.13.0 — Désactive la sélection / copie quand le password
+            // est masqué : empêche un long-press → "Tout sélectionner" →
+            // copier vers le presse-papier (qui sur Android 13- peut être
+            // capté par un clipboard manager tiers).
+            enableInteractiveSelection: _show,
             onSubmitted: widget.confirm ? null : (_) => _submit(),
             decoration: InputDecoration(
               labelText: 'Mot de passe',
@@ -1137,6 +1152,8 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               autocorrect: false,
               autofillHints: const <String>[], // disable Android Autofill
               keyboardType: TextInputType.visiblePassword,
+              // F15 v2.13.0 — cf TextField précédent.
+              enableInteractiveSelection: _show,
               onSubmitted: (_) => _submit(),
               decoration: const InputDecoration(
                 labelText: 'Confirmer',

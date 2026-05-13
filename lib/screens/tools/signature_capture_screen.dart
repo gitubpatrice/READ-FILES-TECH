@@ -80,7 +80,7 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
   }
 
   Future<void> _validate() async {
-    final size = MediaQuery.of(context).size;
+    final size = MediaQuery.sizeOf(context);
     // Hauteur de la zone de dessin (Container ci-dessous)
     final canvasSize = Size(size.width, size.height * 0.65);
     final png = await _exportPng(canvasSize);
@@ -98,8 +98,8 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final canvasHeight = mq.size.height * 0.65;
+    final mqSize = MediaQuery.sizeOf(context);
+    final canvasHeight = mqSize.height * 0.65;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tracez votre signature'),
@@ -190,6 +190,40 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
             ),
           ),
           const Spacer(),
+          // F12 v2.13.0 — Avertissement légal : ce module ne produit pas
+          // une signature électronique au sens eIDAS.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Signature visuelle uniquement — sans valeur juridique '
+                      'probante au sens eIDAS. Pour signer un acte officiel, '
+                      'utilisez un service de signature qualifié.',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),

@@ -11,6 +11,19 @@ import '../utils/atomic_write.dart';
 /// Pourquoi normalisées : la pose se fait sur une rasterisation de la page
 /// (preview Flutter à une résolution arbitraire). En sortant en 0..1 on évite
 /// toute erreur de DPI / scale lors de la conversion en points PDF.
+///
+/// ## Avertissement légal — F12 v2.13.0
+///
+/// **Cette signature est PUREMENT GRAPHIQUE / VISUELLE.** Elle n'a aucune
+/// valeur juridique probante au sens du règlement européen eIDAS (UE)
+/// n° 910/2014 ni du Code civil français (art. 1366 et 1367). Aucune liaison
+/// cryptographique entre la signature et le document n'est créée : le PNG
+/// inséré peut être copié, déplacé ou retiré par un tiers sans laisser de
+/// trace technique vérifiable.
+///
+/// Pour une signature électronique opposable, l'utilisateur doit recourir
+/// à un service de confiance qualifié (DocuSign, Yousign, Universign…)
+/// utilisant un certificat eIDAS.
 class PdfSignatureService {
   /// Ouvre [sourcePath], colle [signaturePng] sur [pageIndex] (0-based) à la
   /// zone normalisée [rectNorm] (Rect sur 0..1), sauve dans un nouveau PDF

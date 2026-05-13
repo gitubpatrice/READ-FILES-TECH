@@ -61,6 +61,14 @@ class OutputStorageService {
   /// ou dans les dossiers app (privés). Refuse explicitement les chemins
   /// pointant vers une autre app (`/data/data/<other-pkg>/`) : Android l'aurait
   /// bloqué de toute façon, mais on évite de stocker une préférence cassée.
+  ///
+  /// F9 v2.13.0 — `isAppDir` était trop permissif (`/Android/data/` sans
+  /// vérifier le package). En théorie Android 11+ bloque ça côté OS, mais
+  /// l'utilisateur pouvait stocker une préférence cassée qui faisait
+  /// retomber tout en fallback silencieusement. Désormais on ne tolère le
+  /// préfixe `/Android/data/` que pour NOTRE propre package.
+  static const _pkgName = 'com.readfilestech.read_files_tech';
+
   Future<void> setBasePath(String path) async {
     final allowed =
         path.startsWith('/storage/emulated/0') ||
@@ -68,13 +76,20 @@ class OutputStorageService {
         path.startsWith('/sdcard/') ||
         path == '/sdcard' ||
         path == _defaultBase;
-    // On laisse aussi passer les paths app (récupérés via path_provider) :
-    // ils contiennent typiquement `/files/` ou `/cache/` à la fin.
-    final isAppDir =
-        path.contains('/Android/data/') ||
-        path.contains('/files/') ||
-        path.contains('/cache/');
-    if (!allowed && !isAppDir) {
+    // On laisse aussi passer les paths app de NOTRE package (récupérés via
+    // path_provider) : ils contiennent typiquement `/files/` ou `/cache/`.
+    const ourPkgPrefix = '/Android/data/$_pkgName';
+    final isOurAppDir =
+        path.startsWith(ourPkgPrefix) ||
+        (!path.contains('/Android/data/') &&
+            (path.contains('/files/') || path.contains('/cache/')));
+    // Refus explicite des paths /Android/data/<autre-pkg>/.
+    if (path.contains('/Android/data/') && !path.startsWith(ourPkgPrefix)) {
+      throw ArgumentError(
+        'Chemin pointant vers une autre application — refusé.',
+      );
+    }
+    if (!allowed && !isOurAppDir) {
       throw ArgumentError(
         'Chemin non autorisé. Choisissez un dossier sur le stockage interne.',
       );

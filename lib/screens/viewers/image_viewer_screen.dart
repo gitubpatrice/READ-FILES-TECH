@@ -162,9 +162,11 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             // Resize-decode au max écran ×2 → décodage rapide + pas d'OOM
             // sur photos 12 MP (4000×3000 = 48 Mo bitmap décompressé sinon).
             // ×2 pour permettre un peu de zoom InteractiveViewer.
-            final mq = MediaQuery.of(context);
-            final maxPx = (mq.size.shortestSide * mq.devicePixelRatio * 2)
-                .toInt();
+            // P2.4 v2.13.0 — `sizeOf` + `devicePixelRatioOf` ne rebuild pas
+            // sur changement d'autres props MediaQuery (keyboard inset).
+            final shortestSide = MediaQuery.sizeOf(context).shortestSide;
+            final dpr = MediaQuery.devicePixelRatioOf(context);
+            final maxPx = (shortestSide * dpr * 2).toInt();
             return InteractiveViewer(
               minScale: 0.5,
               maxScale: 6.0,

@@ -42,13 +42,19 @@ android {
 
     // v2.12.0 — splits ABI : un APK par architecture native plutôt qu'un fat.
     // Gain ~40-60 Mo par APK final (vs ~100 Mo universal). Cible directe
-    // S9 / S24 FE / POCO C75. Le bundle universal reste produit pour Play.
+    // S9 / S24 FE / POCO C75.
+    //
+    // P1.5 v2.13.0 — `isUniversalApk = false` : le universal n'a aucune
+    // valeur ici (pas de Play Store), il gaspillait ~100 Mo dans
+    // `app/build/outputs/apk/release/` et ~25% de build time. Les 3 splits
+    // ABI couvrent tous les devices ciblés. Pour Play, on régénère un
+    // `.aab` séparément si besoin.
     splits {
         abi {
             isEnable = true
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
+            isUniversalApk = false
         }
     }
 

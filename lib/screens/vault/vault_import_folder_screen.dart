@@ -361,7 +361,11 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
                     child: Column(
                       children: [
                         if (_running) ...[
-                          LinearProgressIndicator(value: _progress),
+                          // U7 v2.13.0 — TalkBack annonce le %.
+                          Semantics(
+                            value: '${(_progress * 100).round()}%',
+                            child: LinearProgressIndicator(value: _progress),
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             'Chiffrement en cours… '

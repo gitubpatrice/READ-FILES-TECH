@@ -12,6 +12,8 @@ import 'package:pointycastle/export.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/atomic_write.dart';
+import '../utils/file_caps.dart';
+import '../utils/monotonic_clock.dart';
 
 /// Coffre fort local : fichiers chiffrés AES-256-GCM.
 ///
@@ -41,6 +43,20 @@ class VaultService {
   static const _kSetup = 'vault_setup_v1';
   static const _kFails = 'vault_unlock_fails';
   static const _kLockoutUntil = 'vault_lockout_until_ms';
+
+  /// F3 v2.13.0 — Deadline lockout exprimée en `elapsedRealtime` (monotone,
+  /// boot-based). Combinée avec `_kLockoutUntil` (wall-clock) via `max` :
+  /// un attaquant qui rembobine la wall-clock voit toujours la deadline
+  /// monotone (incassable sans reboot complet).
+  static const _kLockoutUntilElapsed = 'vault_lockout_until_elapsed';
+
+  /// F2 v2.13.0 — Compteur d'échecs séparé pour `restoreFromBackup` afin
+  /// de cloisonner les tentatives sur fichier `.rftvault` du lockout
+  /// principal. Backoff aligné `_kFails`.
+  static const _kBackupFails = 'vault_backup_fails';
+  static const _kBackupLockoutUntil = 'vault_backup_lockout_until_ms';
+  static const _kBackupLockoutUntilElapsed =
+      'vault_backup_lockout_until_elapsed';
 
   /// True quand le coffre n'a JAMAIS contenu de fichiers v1 → on refuse le
   /// fallback v1 (anti-confusion d'oracle de format si un attaquant ayant
@@ -193,10 +209,19 @@ class VaultService {
   /// d'échecs ; le message contient le nombre de secondes restantes.
   Future<bool> unlockWithPassword(String password) async {
     final prefs = await SharedPreferences.getInstance();
-    final lockoutUntil = prefs.getInt(_kLockoutUntil) ?? 0;
+    // F3 v2.13.0 — Lockout = max(wall, monotonic). Empêche bypass via
+    // rembobinage Réglages → Date/heure (DateTime.now seul = contournable).
+    final lockoutWall = prefs.getInt(_kLockoutUntil) ?? 0;
+    final lockoutMono = prefs.getInt(_kLockoutUntilElapsed) ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (now < lockoutUntil) {
-      final remaining = ((lockoutUntil - now) / 1000).ceil();
+    final nowMono = await MonotonicClock.elapsedRealtimeMs();
+    final wallRemainingMs = lockoutWall - now;
+    final monoRemainingMs = lockoutMono - nowMono;
+    final remainingMs = wallRemainingMs > monoRemainingMs
+        ? wallRemainingMs
+        : monoRemainingMs;
+    if (remainingMs > 0) {
+      final remaining = (remainingMs / 1000).ceil();
       throw StateError('Trop d\'essais. Réessayez dans $remaining s.');
     }
     final saltB64 = prefs.getString(_kSalt);
@@ -251,8 +276,7 @@ class VaultService {
         final old = _cachedKey;
         if (old != null) _zeroize(old);
         _cachedKey = key;
-        await prefs.remove(_kFails);
-        await prefs.remove(_kLockoutUntil);
+        await _clearLockout(prefs);
         return true;
       }
       // Sentinelle décodable mais contenu inattendu → coffre corrompu,
@@ -289,11 +313,41 @@ class VaultService {
       // Backoff : 1, 2, 4, 8, 16, 30 min (cappé). Sec : tentative GPU offline
       // reste possible mais ralentie.
       final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
-      await prefs.setInt(_kLockoutUntil, now + minutes * 60 * 1000);
+      final delayMs = minutes * 60 * 1000;
+      // F3 v2.13.0 — Persiste les deux deadlines en parallèle. Un attaquant
+      // qui rembobine la wall-clock voit la deadline monotone (incassable
+      // sans reboot complet), et inversement.
+      await prefs.setInt(_kLockoutUntil, now + delayMs);
+      await prefs.setInt(_kLockoutUntilElapsed, nowMono + delayMs);
     }
     // Zeroize la clé dérivée (mauvaise) avant retour.
     _zeroize(key);
     return false;
+  }
+
+  /// F3 v2.13.0 — Reset des deadlines monotone+wall après succès, factorisé
+  /// pour cohérence entre unlock et restore.
+  Future<void> _clearLockout(SharedPreferences prefs) async {
+    await prefs.remove(_kFails);
+    await prefs.remove(_kLockoutUntil);
+    await prefs.remove(_kLockoutUntilElapsed);
+  }
+
+  /// F2 v2.13.0 — Incrémente le compteur de tentatives `restoreFromBackup`
+  /// et applique le backoff exponentiel (mêmes seuils que l'unlock principal).
+  Future<void> _bumpBackupFails(
+    SharedPreferences prefs,
+    int wallNow,
+    int monoNow,
+  ) async {
+    final fails = (prefs.getInt(_kBackupFails) ?? 0) + 1;
+    await prefs.setInt(_kBackupFails, fails);
+    if (fails >= 5) {
+      final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
+      final delayMs = minutes * 60 * 1000;
+      await prefs.setInt(_kBackupLockoutUntil, wallNow + delayMs);
+      await prefs.setInt(_kBackupLockoutUntilElapsed, monoNow + delayMs);
+    }
   }
 
   /// Indique si le coffre est actuellement déverrouillé (clé en cache).
@@ -312,9 +366,18 @@ class VaultService {
   /// Importe un fichier en clair → chiffre + stocke. Retourne le path chiffré.
   /// Si un fichier homonyme existe déjà, lance une `FileSystemException` —
   /// l'appelant peut alors confirmer l'écrasement et passer `overwrite: true`.
+  ///
+  /// F4 v2.13.0 — Cap [FileCaps.vaultBackup] (100 Mo) sur la taille source
+  /// avant `readAsBytes`. Sans ça, un utilisateur tentant d'importer une
+  /// vidéo 4 Go crashait l'app par OOM sur low-end (Redmi 9C 3 Go).
   Future<String> importFileSafe(File source, {bool overwrite = false}) async {
     final key = _requireKey();
     final dir = await _vaultDir();
+    // Cap source : on borne à 100 Mo pour rester compatible Redmi 9C 3GB.
+    final capErr = await checkFileCap(source, FileCaps.vaultBackup);
+    if (capErr != null) {
+      throw FormatException(capErr);
+    }
     final name = PathSafe.basename(source.path);
     final destName = '$name.enc';
     final dest = File('${dir.path}/$destName');
@@ -359,23 +422,19 @@ class VaultService {
   /// - `cache/vault_decrypt/` : staging déchiffrement viewer/share
   /// - `cache/share/` : staging utilisé par share_plus / FileProvider qui
   ///   peut conserver des copies en clair après un Share depuis le coffre.
+  /// - `cache/exports/` (F1 v2.13.0) : staging des `.rftvault` exportés.
+  ///   Si l'utilisateur annule la share-sheet après Export, le fichier
+  ///   reste sinon indéfiniment — c'est le coffre entier re-chiffré sous
+  ///   un exportPassword potentiellement faible.
   Future<void> purgeTempDecrypted() async {
-    try {
-      final tmpRoot = await getTemporaryDirectory();
-      final tmp = Directory('${tmpRoot.path}/vault_decrypt');
-      if (await tmp.exists()) await tmp.delete(recursive: true);
-    } catch (e, st) {
-      if (kDebugMode) debugPrint('purgeTempDecrypted vault_decrypt: $e\n$st');
-    }
-    // Purge defensive du dossier share/ (créé par share_plus). On ne supprime
-    // que ce sous-dossier, pas tout cache/, pour ne pas casser d'autres
-    // caches d'app (thumbnails, plugins).
-    try {
-      final tmpRoot = await getTemporaryDirectory();
-      final share = Directory('${tmpRoot.path}/share');
-      if (await share.exists()) await share.delete(recursive: true);
-    } catch (e, st) {
-      if (kDebugMode) debugPrint('purgeTempDecrypted share/: $e\n$st');
+    final tmpRoot = await getTemporaryDirectory();
+    for (final sub in const ['vault_decrypt', 'share', 'exports']) {
+      try {
+        final d = Directory('${tmpRoot.path}/$sub');
+        if (await d.exists()) await d.delete(recursive: true);
+      } catch (e, st) {
+        if (kDebugMode) debugPrint('purgeTempDecrypted $sub/: $e\n$st');
+      }
     }
   }
 
@@ -516,12 +575,19 @@ class VaultService {
         ..add(headerForAad)
         ..add(ct);
 
+      // F1 v2.13.0 — Écriture dans `cache/exports/` dédié (purgé par
+      // `purgeTempDecrypted` et `PanicService`). Auparavant `cache/` racine,
+      // donc orphelins persistants après annulation de la share-sheet.
       final tmpDir = await getTemporaryDirectory();
+      final exportsDir = Directory('${tmpDir.path}/exports');
+      if (!await exportsDir.exists()) {
+        await exportsDir.create(recursive: true);
+      }
       final ts = DateTime.now()
           .toIso8601String()
           .substring(0, 19)
           .replaceAll(':', '-');
-      final outFile = File('${tmpDir.path}/coffre_$ts.rftvault');
+      final outFile = File('${exportsDir.path}/coffre_$ts.rftvault');
       await atomicWriteBytes(outFile.path, out.toBytes());
       onProgress?.call(1.0);
       return outFile;
@@ -552,6 +618,26 @@ class VaultService {
     void Function(double)? onProgress,
   }) async {
     final masterKey = _requireKey();
+
+    // F2 v2.13.0 — Lockout brute-force séparé du master password. Sans ça,
+    // un attaquant ayant volé le `.rftvault` pouvait tester des passwords
+    // localement sans aucune friction côté app (Argon2id ~2.5s/essai dans
+    // l'app, mais offline c'est 100-1000× plus rapide). Friction symétrique
+    // au unlock principal.
+    final prefs = await SharedPreferences.getInstance();
+    final blockoutWall = prefs.getInt(_kBackupLockoutUntil) ?? 0;
+    final blockoutMono = prefs.getInt(_kBackupLockoutUntilElapsed) ?? 0;
+    final bnow = DateTime.now().millisecondsSinceEpoch;
+    final bnowMono = await MonotonicClock.elapsedRealtimeMs();
+    final brem = (blockoutWall - bnow) > (blockoutMono - bnowMono)
+        ? blockoutWall - bnow
+        : blockoutMono - bnowMono;
+    if (brem > 0) {
+      final remaining = (brem / 1000).ceil();
+      throw StateError(
+        'Trop d\'essais de restauration. Réessayez dans $remaining s.',
+      );
+    }
 
     // Cap taille AVANT readAsBytes — un .rftvault malformé/forgé de plusieurs
     // Go ferait OOM crash sur low-end (Redmi 9C 3GB). 1.2× pour overhead
@@ -637,9 +723,25 @@ class VaultService {
         Uint8List.fromList(nonce),
         aad,
       );
+    } on PlatformException catch (e) {
+      // F2 v2.13.0 — Tag GCM invalide = mauvais password OU tampering.
+      // Compteur + backoff symétrique à l'unlock principal.
+      if (e.code == 'DECRYPT_ERROR') {
+        await _bumpBackupFails(prefs, bnow, bnowMono);
+      }
+      _zeroize(exportKey);
+      rethrow;
+    } on InvalidCipherTextException {
+      await _bumpBackupFails(prefs, bnow, bnowMono);
+      _zeroize(exportKey);
+      rethrow;
     } finally {
       _zeroize(exportKey);
     }
+    // Succès : reset compteur backup.
+    await prefs.remove(_kBackupFails);
+    await prefs.remove(_kBackupLockoutUntil);
+    await prefs.remove(_kBackupLockoutUntilElapsed);
     onProgress?.call(0.55);
 
     // Parse + ré-importation dans le coffre actuel (re-chiffré sous master key).

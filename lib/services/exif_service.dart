@@ -84,9 +84,17 @@ class ExifService {
 
   /// Inspecte sommairement les métadonnées présentes dans un fichier image.
   /// Utilisé pour l'affichage "avant" (informatif).
+  ///
+  /// F8 v2.13.0 — Mêmes gardes anti-image-bomb que `stripExif` : cap fichier
+  /// + probe IHDR/SOF avant `decodeImage`. Auparavant `inspect` (souvent
+  /// appelé en preview) chargeait sans cap → vecteur OOM identique à F5
+  /// v2.12.0 sur le chemin écriture.
   Future<Map<String, String>> inspect(File source) async {
     try {
+      final size = await source.length();
+      if (size > FileCaps.imageFile) return {};
       final bytes = await source.readAsBytes();
+      if (ImageBounds.assertSafeBounds(bytes) != null) return {};
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return {};
       final exif = decoded.exif;

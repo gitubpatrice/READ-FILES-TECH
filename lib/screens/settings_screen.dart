@@ -74,16 +74,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmPanic() async {
+    // U8 v2.13.0 — passe via colorScheme (cs.error/onErrorContainer) pour
+    // un rendu correct en dark mode + lecture daltonien (l'icône reste un
+    // warning_amber, donc forme distincte du fond).
+    final cs = Theme.of(context).colorScheme;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.warning_amber, color: Colors.red, size: 36),
+        icon: Icon(Icons.warning_amber, color: cs.error, size: 36),
         title: const Text('Mode panique'),
         content: const Text(
           'Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n'
           '• Le coffre-fort entier (tous les fichiers chiffrés)\n'
           '• Tous les paramètres (sel, sentinelle, params Argon2)\n'
-          '• Les caches plaintext (vault_decrypt, share)\n'
+          '• Les caches plaintext (vault_decrypt, share, exports)\n'
+          '• Les fichiers temporaires (signatures, EXIF, OCR)\n'
+          '• L\'historique de l\'éditeur de code\n'
           '• La liste des fichiers récents\n\n'
           'Aucune récupération possible sans sauvegarde .rftvault.\n\n'
           'Continuer ?',
@@ -95,8 +101,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           FilledButton.tonal(
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red.withValues(alpha: 0.15),
-              foregroundColor: Colors.red.shade900,
+              backgroundColor: cs.errorContainer,
+              foregroundColor: cs.onErrorContainer,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Effacer tout'),
@@ -260,21 +266,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 16),
           _section('Sécurité'),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                Icons.local_fire_department_outlined,
-                color: Colors.red.shade700,
-              ),
-              title: const Text('Mode panique — Effacer tout'),
-              subtitle: const Text(
-                'Wipe immédiat du coffre, paramètres, caches plaintext et '
-                'récents. Irréversible sans sauvegarde .rftvault.',
-                style: TextStyle(fontSize: 11),
-              ),
-              trailing: Icon(Icons.chevron_right, color: Colors.red.shade700),
-              onTap: _confirmPanic,
-            ),
+          Builder(
+            builder: (ctx) {
+              final cs = Theme.of(ctx).colorScheme;
+              return Card(
+                child: ListTile(
+                  leading: Icon(
+                    Icons.local_fire_department_outlined,
+                    color: cs.error,
+                  ),
+                  title: const Text('Mode panique — Effacer tout'),
+                  subtitle: const Text(
+                    'Wipe immédiat du coffre, paramètres, caches plaintext et '
+                    'récents. Irréversible sans sauvegarde .rftvault.',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  trailing: Icon(Icons.chevron_right, color: cs.error),
+                  onTap: _confirmPanic,
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 16),

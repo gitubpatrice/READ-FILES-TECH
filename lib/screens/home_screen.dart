@@ -220,13 +220,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // P2.3 v2.13.0 — DateFormat hissé en static (avant : recréé à chaque appel
+  // de `_formatDate`, soit une fois par carte récent visible).
+  static final _dfDMY = DateFormat('dd/MM/yyyy');
+
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
     if (diff.inDays == 0) return "Aujourd'hui";
     if (diff.inDays == 1) return 'Hier';
     if (diff.inDays < 7) return 'Il y a ${diff.inDays} jours';
-    return DateFormat('dd/MM/yyyy').format(date);
+    return _dfDMY.format(date);
   }
 
   IconData _themeModeIcon(ThemeMode mode) {
