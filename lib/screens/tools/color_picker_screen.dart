@@ -22,6 +22,7 @@ class _ColorPickerScreenState extends State<ColorPickerScreen> {
   }
 
   void _copy(String value) {
+    HapticFeedback.selectionClick(); // v2.13.2 (U4)
     Clipboard.setData(ClipboardData(text: value));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

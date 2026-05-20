@@ -194,6 +194,7 @@ class _JsonNodeState extends State<_JsonNode> {
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: GestureDetector(
           onLongPress: () {
+            HapticFeedback.selectionClick(); // v2.13.2 (U4)
             Clipboard.setData(ClipboardData(text: _valueText()));
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

@@ -195,7 +195,8 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
               padding: const EdgeInsets.all(12),
               child: Text(
                 'Erreur : $_error',
-                style: const TextStyle(color: Colors.red),
+                // v2.13.2 (#2) — cs.error.
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           Expanded(

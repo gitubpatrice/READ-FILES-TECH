@@ -96,6 +96,8 @@ class _OcrScreenState extends State<OcrScreen> {
   }
 
   void _copy() {
+    // v2.13.2 (U4) — HapticFeedback sur copy presse-papier (selectionClick).
+    HapticFeedback.selectionClick();
     Clipboard.setData(ClipboardData(text: _text));
     ScaffoldMessenger.of(
       context,
@@ -124,7 +126,16 @@ class _OcrScreenState extends State<OcrScreen> {
       ),
       body: Column(
         children: [
-          if (_busy) const LinearProgressIndicator(),
+          // v2.13.2 (U2) — Semantics liveRegion pour TalkBack : annonce
+          // automatique du démarrage et de la fin de l'OCR (sinon barre
+          // muette, l'utilisateur déficient visuel ne sait pas si l'app
+          // travaille). Aligné Pass Tech, Notes Tech, PDF Tech (U7 v1.12.4).
+          if (_busy)
+            Semantics(
+              liveRegion: true,
+              label: 'Reconnaissance de texte en cours',
+              child: const LinearProgressIndicator(),
+            ),
           if (_imagePath != null)
             Container(
               height: 140,
@@ -136,7 +147,11 @@ class _OcrScreenState extends State<OcrScreen> {
               padding: const EdgeInsets.all(12),
               child: Text(
                 _error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
+                // v2.13.2 (#2) — cs.error.
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
               ),
             ),
           Expanded(

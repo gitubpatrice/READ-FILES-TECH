@@ -141,6 +141,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           final m = _colorMatches[i];
           return GestureDetector(
             onTap: () {
+              HapticFeedback.selectionClick(); // v2.13.2 (U4)
               Clipboard.setData(ClipboardData(text: m.code));
               showFloatingSnack(
                 context,

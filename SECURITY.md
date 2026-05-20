@@ -2,8 +2,49 @@
 
 ## Historique des durcissements
 
+- **v2.13.2** (2026-05-20) — Audit expert post-v2.13.1 (3 axes en parallèle
+  + audit cohérence transversal) : 17 corrections (4 Haute + 9 Moyenne +
+  2 Basse + 2 Info).
+  - **Build** : retrait du flag `splits.abi {}` redondant (déjà fait en
+    v2.13.1 hotfix CI). Documentation : retour intentionnel de
+    `REQUEST_INSTALL_PACKAGES` en v2.13.0 (tap APK direct depuis
+    l'explorateur, trade-off Play Protect explicite — cf. commentaire
+    AndroidManifest.xml).
+  - **Sécurité** : (S1) garde explicite `uri.scheme != 'https'` côté UI
+    avant `launchUrl` de l'apkUrl (defense in depth doublant la validation
+    de `UpdateService`). (S3) `confirmDelete()` aligné sur le pattern
+    destructif Files Tech : autofocus Cancel + `FilledButton` avec
+    `cs.errorContainer`. (S4/S5) Anti-ReDoS : cap 200 chars sur les regex
+    utilisateur avant compilation (content search + bulk rename mode
+    regex), refus silencieux des patterns trop longs.
+  - **UI / a11y** : (U1/P1) `snackBarTheme: SnackBarBehavior.floating`
+    déclaré dans les 2 ThemeData globaux. (U2) `Semantics(liveRegion)` +
+    label dynamique sur `LinearProgressIndicator` OCR (TalkBack annonce
+    le démarrage/fin). (U3) tokens M3 sur `Colors.orange/blue` editors +
+    settings. (U4) `HapticFeedback.selectionClick` sur les 8 sites
+    `Clipboard.setData` (copy OCR/hash/color/encode/format/path).
+    (Q2) `Colors.red` → `cs.error` dans `reader_viewer_screen`.
+  - **Cohérence** : 30+ snackbars inline migrés vers
+    `showFloatingSnack`/`showErrorSnack` helpers canoniques (12 fichiers).
+    20+ `Colors.red` hardcodés sémantiques → `cs.error`/`cs.errorContainer`.
+    Caps `_maxZipBytes`/`_maxHtmlBytes` migrés dans `FileCaps`.
+  - **Tests** : nouveau `test/audit_v2_13_2_test.dart` (garde-régression
+    sur cap regex utilisateur, dual-clock lockout, FileCaps zipViewer/
+    htmlViewer).
+
+- **v2.13.1** (2026-05-19) — Hotfix CI : retrait du bloc `splits.abi {}`
+  redondant dans `android/app/build.gradle.kts` (conflit avec
+  `ndk.abiFilters` posé par Flutter 3.41+ : `Conflicting configuration
+  ... in ndk abiFilters cannot be present when splits abi filters are
+  set`). Aucun impact sécurité — purement build CI.
+
 - **v2.13.0** (2026-05-13) — Audit expert post-v2.12.3 : 24 corrections
   (F1-F9 sécu + F12 + F15 + U3-U8 + P1.3-P2.4 perf/UX + tests garde).
+  **Note REQUEST_INSTALL_PACKAGES** : permission ré-introduite après
+  retrait v2.12.2 pour restaurer la fonctionnalité "tap APK direct
+  depuis l'explorateur Read Files Tech" (UX file manager complet).
+  Trade-off Play Protect documenté dans `AndroidManifest.xml` ligne
+  27-38. Public cible Files Tech = sideload + F-Droid, risque accepté.
 
   **Sécurité** :
   - **F1** — Les sauvegardes `.rftvault` exportées étaient écrites à la

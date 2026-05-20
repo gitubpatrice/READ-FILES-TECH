@@ -58,9 +58,25 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
     if (result != null) setState(() => _folderPath = result);
   }
 
+  /// v2.13.2 (S4) — cap anti-ReDoS sur le pattern regex utilisateur.
+  /// Au-delà de 200 chars, un pattern catastrophique (`(a+)+$`) peut
+  /// freezer le thread Dart plusieurs secondes sur un fichier texte
+  /// multi-Mo (pas d'Isolate ici). 200 chars = très largement au-delà
+  /// d'un cas d'usage réel (recherche dans documents perso).
+  static const int _maxRegexPatternLength = 200;
+
   Future<void> _search() async {
     final query = _queryCtrl.text.trim();
     if (query.isEmpty || _folderPath == null) return;
+
+    if (_useRegex && query.length > _maxRegexPatternLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Motif regex trop long (max 200 caractères)'),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isSearching = true;

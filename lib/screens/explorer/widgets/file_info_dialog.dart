@@ -83,6 +83,7 @@ Future<void> showFileInfoDialog(
       actions: [
         TextButton(
           onPressed: () {
+            HapticFeedback.selectionClick(); // v2.13.2 (U4)
             Clipboard.setData(ClipboardData(text: e.path));
             Navigator.pop(ctx);
           },

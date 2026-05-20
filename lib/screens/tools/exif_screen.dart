@@ -252,7 +252,11 @@ class _ExifScreenState extends State<ExifScreen> {
             const SizedBox(height: 16),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+              // v2.13.2 (#2) — cs.error.
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
             ),
           ],
         ],

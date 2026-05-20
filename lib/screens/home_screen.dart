@@ -113,14 +113,18 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Plus tard'),
           ),
           // P0 branchements — ouvre la release GitHub si apkUrl présent.
+          // v2.13.2 (S1) — defense in depth : re-valide le scheme HTTPS côté
+          // UI avant launchUrl. UpdateService whitelist déjà github.com +
+          // objects.githubusercontent.com + scheme=https ; cette garde
+          // doublée protège contre une régression future qui assouplirait
+          // la validation amont (ex. URL intent://, android-app://, etc.).
           if (apkUrl != null)
             FilledButton.icon(
               onPressed: () {
                 Navigator.pop(ctx);
-                launchUrl(
-                  Uri.parse(apkUrl),
-                  mode: LaunchMode.externalApplication,
-                );
+                final uri = Uri.parse(apkUrl);
+                if (uri.scheme != 'https') return;
+                launchUrl(uri, mode: LaunchMode.externalApplication);
               },
               icon: const Icon(Icons.download),
               label: const Text('Télécharger'),

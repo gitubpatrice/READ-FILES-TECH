@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../utils/color_extract.dart';
+import '../../utils/file_caps.dart';
 import 'reader_viewer_screen.dart';
 import '../explorer/file_type_helpers.dart';
 
@@ -28,8 +29,8 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   String _htmlContent = '';
   List<ColorMatch> _colors = [];
 
-  /// Limite la taille du HTML chargé (DoS local, OOM sur fichiers énormes).
-  static const _maxHtmlBytes = 20 * 1024 * 1024;
+  /// v2.13.2 (#5) — délégué à FileCaps.htmlViewer (était inline).
+  static const _maxHtmlBytes = FileCaps.htmlViewer;
 
   String get _name => widget.path.basename;
 
@@ -267,6 +268,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
           final c = _colors[i];
           return GestureDetector(
             onTap: () {
+              HapticFeedback.selectionClick(); // v2.13.2 (U4)
               Clipboard.setData(ClipboardData(text: c.code));
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

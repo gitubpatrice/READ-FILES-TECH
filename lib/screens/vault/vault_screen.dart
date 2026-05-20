@@ -158,6 +158,8 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   }
 
   Future<bool> _confirmReset(BuildContext context) async {
+    // v2.13.2 (#2) — pattern destructif M3 : autofocus Cancel + cs.errorContainer.
+    final cs = Theme.of(context).colorScheme;
     final res = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -168,11 +170,15 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         ),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Annuler'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.errorContainer,
+              foregroundColor: cs.onErrorContainer,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Réinitialiser'),
           ),
@@ -341,7 +347,11 @@ class _SetupScreenState extends State<_SetupScreen> {
             const SizedBox(height: 12),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+              // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
             ),
           ],
           const SizedBox(height: 20),
@@ -480,7 +490,11 @@ class _UnlockScreenState extends State<_UnlockScreen> {
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+              // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
             ),
           ],
           const SizedBox(height: 16),
@@ -628,23 +642,31 @@ class _VaultContentState extends State<_VaultContent> {
   Future<void> _delete(File enc) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer du coffre'),
-        content: Text(
-          'Supprimer "${_displayName(enc)}" ? Action irréversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+      builder: (_) {
+        // v2.13.2 (#2/S3) — pattern destructif M3.
+        final cs = Theme.of(context).colorScheme;
+        return AlertDialog(
+          title: const Text('Supprimer du coffre'),
+          content: Text(
+            'Supprimer "${_displayName(enc)}" ? Action irréversible.',
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: cs.errorContainer,
+                foregroundColor: cs.onErrorContainer,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
     );
     if (confirm != true) return;
     await widget.service.deleteFile(enc);
@@ -1166,7 +1188,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             const SizedBox(height: 10),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+              // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
             ),
           ],
         ],

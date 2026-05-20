@@ -227,16 +227,24 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
                     horizontal: 6,
                     vertical: 2,
                   ),
+                  // v2.13.2 (U3) — cs.tertiary au lieu de Colors.orange.
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.2),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.tertiary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: Colors.orange.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.tertiary.withValues(alpha: 0.5),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'modifié',
-                    style: TextStyle(fontSize: 11, color: Colors.orange),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
                   ),
                 ),
             ],

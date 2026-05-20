@@ -39,11 +39,17 @@ Future<String?> promptName(
 }
 
 /// Confirmation rouge typée "Supprimer". Renvoie true si confirmé.
+///
+/// v2.13.2 (S3) — pattern destructif Files Tech : `autofocus: true` sur
+/// Cancel (anti-clic réflexe) + `cs.errorContainer` au lieu de
+/// `Colors.red` hardcodé (non adaptive dark mode, ratio WCAG variable).
+/// Aligné Pass Tech v2.4.4 U2, PDF Tech v1.12.5 U3.
 Future<bool> confirmDelete(
   BuildContext context, {
   required String title,
   required String message,
 }) async {
+  final cs = Theme.of(context).colorScheme;
   final res = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
@@ -51,11 +57,15 @@ Future<bool> confirmDelete(
       content: Text(message),
       actions: [
         TextButton(
+          autofocus: true,
           onPressed: () => Navigator.pop(context, false),
           child: const Text('Annuler'),
         ),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+          style: FilledButton.styleFrom(
+            backgroundColor: cs.errorContainer,
+            foregroundColor: cs.onErrorContainer,
+          ),
           onPressed: () => Navigator.pop(context, true),
           child: const Text('Supprimer'),
         ),

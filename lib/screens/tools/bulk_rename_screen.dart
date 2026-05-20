@@ -68,6 +68,13 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
               next = old;
               break;
             }
+            // v2.13.2 (S5) — cap anti-ReDoS sur le pattern utilisateur.
+            // Pattern catastrophique (a+)+$ appliqué à chaque nom de
+            // fichier dans une liste de 1000+ → freeze multi-secondes.
+            if (_patternCtrl.text.length > 200) {
+              next = null;
+              break;
+            }
             final reg = RegExp(_patternCtrl.text);
             final base = stem.replaceAllMapped(reg, (m) => _replaceCtrl.text);
             next = '$base${_keepExtension ? ext : ''}';
@@ -207,7 +214,11 @@ class _BulkRenameScreenState extends State<BulkRenameScreen> {
               color: Colors.red.withValues(alpha: 0.10),
               child: Text(
                 err,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
+                // v2.13.2 (#2) — cs.error.
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
               ),
             ),
 

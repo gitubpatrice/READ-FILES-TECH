@@ -77,7 +77,8 @@ class _ReaderViewerScreenState extends State<ReaderViewerScreen> {
             padding: const EdgeInsets.all(24),
             child: Text(
               'Erreur : $_error',
-              style: const TextStyle(color: Colors.red),
+              // v2.13.2 (Q2) — token M3 au lieu de Colors.red.
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
         ),

@@ -71,6 +71,7 @@ class _EncodeScreenState extends State<EncodeScreen> {
   }
 
   void _copy() {
+    HapticFeedback.selectionClick(); // v2.13.2 (U4)
     Clipboard.setData(ClipboardData(text: _outputCtrl.text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

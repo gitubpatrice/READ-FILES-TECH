@@ -130,6 +130,12 @@ ThemeData _githubDarkTheme() {
       indicatorColor: blueCont,
     ),
     dividerTheme: const DividerThemeData(color: border, space: 1),
+    // v2.13.2 (U1/P1) — `floating` global pour que tous les SnackBar bruts
+    // (pas seulement ceux passant par showFloatingSnack/showErrorSnack)
+    // respectent le pattern Files Tech. Avant : comportement `fixed` par
+    // défaut → SnackBar collait au bas et poussait le FAB. Couvre les 30+
+    // sites inline sans avoir à les migrer individuellement.
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
     inputDecorationTheme: const InputDecorationTheme(
       filled: true,
       fillColor: surface2,
@@ -298,6 +304,10 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1565C0)),
         useMaterial3: true,
+        // v2.13.2 (U1/P1) — pattern Files Tech : floating sur tous les SnackBar.
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+        ),
       ),
       darkTheme: _githubDarkTheme(),
       themeMode: _themeMode,

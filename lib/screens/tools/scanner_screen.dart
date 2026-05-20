@@ -167,7 +167,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ),
               child: Text(
                 _error!,
-                style: const TextStyle(fontSize: 12, color: Colors.red),
+                // v2.13.2 (#2) — cs.error.
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
             ),
           ],

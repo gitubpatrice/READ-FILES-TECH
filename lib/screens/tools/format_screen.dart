@@ -96,6 +96,7 @@ class _FormatScreenState extends State<FormatScreen> {
   }
 
   void _copy() {
+    HapticFeedback.selectionClick(); // v2.13.2 (U4)
     Clipboard.setData(ClipboardData(text: _outputCtrl.text));
     showFloatingSnack(context, 'Copié', duration: const Duration(seconds: 1));
   }
