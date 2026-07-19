@@ -110,6 +110,9 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('PDF créé : ${PathUtils.fileName(outPath)}'),
+          // `persist` vaut par défaut `action != null` : sans ce flag, le
+          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
+          persist: false,
           action: SnackBarAction(
             label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)]),

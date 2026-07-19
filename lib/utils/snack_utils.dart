@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// Bleu du logo Read Files Tech — même valeur que le `seedColor` du
+/// `ColorScheme` (`main.dart`). Utilisé pour les SnackBar d'information à
+/// action, afin de rester dans la palette de l'app plutôt que le gris-noir
+/// par défaut de Material.
+const kBrandBlue = Color(0xFF1565C0);
+
 /// Durées standardisées pour SnackBar (homogénéise les valeurs disparates).
 const kSnackShort = Duration(seconds: 2);
 const kSnackMedium = Duration(seconds: 4);
@@ -19,6 +25,10 @@ void showFloatingSnack(
       content: Text(message),
       behavior: SnackBarBehavior.floating,
       duration: duration,
+      // `SnackBar.persist` vaut par défaut `action != null` : sans ce flag,
+      // passer une [action] rendrait le bandeau permanent et [duration]
+      // inopérante (cf. snack_bar.dart / scaffold.dart).
+      persist: false,
       action: action,
     ),
   );
@@ -47,6 +57,10 @@ void showErrorSnack(
       behavior: SnackBarBehavior.floating,
       backgroundColor: cs.errorContainer,
       duration: duration,
+      // `SnackBar.persist` vaut par défaut `action != null` : sans ce flag,
+      // passer une [action] rendrait le bandeau permanent et [duration]
+      // inopérante (cf. snack_bar.dart / scaffold.dart).
+      persist: false,
       action: action,
     ),
   );

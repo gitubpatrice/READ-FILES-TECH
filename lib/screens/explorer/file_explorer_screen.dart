@@ -9,6 +9,9 @@ import 'package:share_plus/share_plus.dart';
 import '../editors/code_editor_screen.dart';
 import '../tools/exif_screen.dart';
 import '../tools/bulk_rename_screen.dart';
+import '../tools/trash_screen.dart';
+import '../../services/trash_service.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/file_viewer_router.dart';
 import 'file_type_helpers.dart';
 import 'services/batch_ops_service.dart';
@@ -67,6 +70,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   final SelectionController _selection = SelectionController();
   final BatchOpsService _batch = BatchOpsService();
   final NativeOpenService _opener = NativeOpenService();
+  final TrashService _trash = TrashService();
 
   /// Cache des métadonnées (taille, mtime) renseigné par [_listDirNative].
   /// Évite des syscalls statSync()/lengthSync() dans le tri et l'itemBuilder.
@@ -437,13 +441,99 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     }
   }
 
+  /// Suppression douce : déplace dans la corbeille, avec annulation immédiate
+  /// via la SnackBar. Pas de dialogue — l'action est réversible.
+  Future<void> _moveToTrash(FileSystemEntity e) async {
+    final name = e.path.basename;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final entry = await _trash.moveToTrash(e);
+      await HapticFeedback.lightImpact();
+      if (!mounted) return;
+      _refresh();
+      _showTrashedSnack('"$name" mis à la corbeille', [entry]);
+    } catch (ex) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Mise à la corbeille impossible : $ex'),
+          duration: kSnackMedium,
+        ),
+      );
+    }
+  }
+
+  /// SnackBar d'annulation, unique action possible sur un SnackBar Material :
+  /// « Annuler » est périssable (quelques secondes), alors que la corbeille
+  /// reste accessible en permanence via l'icône dédiée de la barre d'outils.
+  ///
+  /// `persist: false` est OBLIGATOIRE ici : `SnackBar.persist` vaut par défaut
+  /// `action != null` (snack_bar.dart), donc tout SnackBar porteur d'une action
+  /// reste affiché indéfiniment — le timer de `duration` se déclenche puis sort
+  /// sans rien faire (scaffold.dart). Sans ce flag, le bandeau ne disparaît
+  /// jamais tout seul.
+  void _showTrashedSnack(String message, List<TrashEntry> entries) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: kBrandBlue,
+        duration: kSnackLong,
+        persist: false,
+        showCloseIcon: true,
+        closeIconColor: Colors.white,
+        action: SnackBarAction(
+          label: 'Annuler',
+          backgroundColor: Colors.white,
+          textColor: Colors.black,
+          onPressed: () => _undoTrash(entries),
+        ),
+      ),
+    );
+  }
+
+  /// Restaure les entrées d'une mise à la corbeille annulée.
+  Future<void> _undoTrash(List<TrashEntry> entries) async {
+    final messenger = ScaffoldMessenger.of(context);
+    int fail = 0;
+    for (final entry in entries) {
+      try {
+        await _trash.restore(entry);
+      } catch (_) {
+        fail++;
+      }
+    }
+    if (!mounted) return;
+    _refresh();
+    if (fail == 0) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('$fail élément(s) n\'ont pas pu être restaurés'),
+        duration: kSnackMedium,
+      ),
+    );
+  }
+
+  Future<void> _openTrash() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TrashScreen()),
+    );
+    if (!mounted) return;
+    // Une restauration depuis la corbeille peut avoir recréé un élément ici.
+    _refresh();
+  }
+
   Future<void> _delete(FileSystemEntity e) async {
     final name = e.path.basename;
     final confirm = await confirmDelete(
       context,
-      title: 'Supprimer',
+      title: 'Supprimer définitivement',
       message:
-          'Supprimer "$name" ?${e is Directory ? '\nLe dossier et tout son contenu seront supprimés.' : ''}',
+          'Supprimer définitivement "$name" ?'
+          '${e is Directory ? '\nLe dossier et tout son contenu seront supprimés.' : ''}'
+          '\nCette action est irréversible : le fichier ne passera pas par la corbeille.',
     );
     if (!confirm) return;
     try {
@@ -523,13 +613,47 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   // ---------- Batch actions ----------
 
+  Future<void> _trashSelected() async {
+    final paths = _selection.snapshot();
+    if (paths.isEmpty) return;
+    final entries = <TrashEntry>[];
+    int fail = 0;
+    for (final p in paths) {
+      final type = FileSystemEntity.typeSync(p, followLinks: false);
+      if (type == FileSystemEntityType.notFound) {
+        fail++;
+        continue;
+      }
+      try {
+        entries.add(
+          await _trash.moveToTrash(
+            type == FileSystemEntityType.directory ? Directory(p) : File(p),
+          ),
+        );
+      } catch (_) {
+        fail++;
+      }
+    }
+    _selection.clear();
+    _refresh();
+    if (!mounted) return;
+    _showTrashedSnack(
+      '${entries.length} mis à la corbeille'
+      '${fail > 0 ? ' · $fail erreur(s)' : ''}',
+      entries,
+    );
+  }
+
   Future<void> _deleteSelected() async {
     final count = _selection.count;
+    if (count == 0) return;
     final confirm = await confirmDelete(
       context,
-      title: 'Supprimer',
+      title: 'Supprimer définitivement',
       message:
-          'Supprimer $count élément${count > 1 ? 's' : ''} ?\nLes dossiers et leur contenu seront supprimés.',
+          'Supprimer définitivement $count élément${count > 1 ? 's' : ''} ?\n'
+          'Les dossiers et leur contenu seront supprimés.\n'
+          'Cette action est irréversible : rien ne passera par la corbeille.',
     );
     if (!confirm) return;
     final r = await _batch.deleteAll(_selection.snapshot());
@@ -705,6 +829,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
           onCopy: () => _copySelected(move: false),
           onMove: () => _copySelected(move: true),
           onBulkRename: _bulkRenameSelected,
+          onTrash: _trashSelected,
           onDelete: _deleteSelected,
         ),
       ],
@@ -740,6 +865,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
             _showHidden = !_showHidden;
             _recomputeFiltered();
           }),
+          onOpenTrash: _openTrash,
           onSortSelected: (v) => setState(() {
             _sortSvc.mode = SortService.fromString(v);
             if (_current != null) _navigate(_current!);
@@ -811,6 +937,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         onCopy: _copyFile,
         onMove: _moveFile,
         onInfo: (e2) => showFileInfoDialog(context, e2),
+        onTrash: _moveToTrash,
         onDelete: _delete,
       ),
       onTap: () {

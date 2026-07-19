@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../widgets/danger_style.dart';
 import '../../../widgets/file_viewer_router.dart';
 import '../file_type_helpers.dart';
 import 'apk_icon.dart';
@@ -20,6 +21,11 @@ class FileRowActions {
   final void Function(String path) onCopy;
   final void Function(String path) onMove;
   final void Function(FileSystemEntity e) onInfo;
+
+  /// Suppression douce : déplace dans la corbeille (réversible).
+  final void Function(FileSystemEntity e) onTrash;
+
+  /// Suppression définitive, confirmation rouge.
   final void Function(FileSystemEntity e) onDelete;
 
   const FileRowActions({
@@ -37,9 +43,32 @@ class FileRowActions {
     required this.onCopy,
     required this.onMove,
     required this.onInfo,
+    required this.onTrash,
     required this.onDelete,
   });
 }
+
+/// Suppression douce — action par défaut, réversible via l'écran Corbeille.
+const _trashItem = PopupMenuItem<String>(
+  value: 'trash',
+  child: ListTile(
+    leading: Icon(Icons.delete_outline),
+    title: Text('Mettre à la corbeille'),
+  ),
+);
+
+/// Suppression définitive — libellé explicite + rouge, pour ne jamais être
+/// confondue avec la mise à la corbeille juste au-dessus.
+const _deleteForeverItem = PopupMenuItem<String>(
+  value: 'delete',
+  child: ListTile(
+    leading: Icon(Icons.delete_forever, color: kDangerRed),
+    title: Text(
+      'Supprimer définitivement',
+      style: TextStyle(color: kDangerRed),
+    ),
+  ),
+);
 
 class FileRow extends StatelessWidget {
   final FileSystemEntity entity;
@@ -157,6 +186,7 @@ class FileRow extends StatelessWidget {
       onSelected: (v) {
         if (v == 'rename') actions.onRename(e);
         if (v == 'info') actions.onInfo(e);
+        if (v == 'trash') actions.onTrash(e);
         if (v == 'delete') actions.onDelete(e);
       },
       itemBuilder: (_) => const [
@@ -174,13 +204,9 @@ class FileRow extends StatelessWidget {
             title: Text('Informations'),
           ),
         ),
-        PopupMenuItem(
-          value: 'delete',
-          child: ListTile(
-            leading: Icon(Icons.delete_outline, color: Colors.red),
-            title: Text('Supprimer'),
-          ),
-        ),
+        PopupMenuDivider(),
+        _trashItem,
+        _deleteForeverItem,
       ],
     );
   }
@@ -222,6 +248,8 @@ class FileRow extends StatelessWidget {
             actions.onMove(e.path);
           case 'info':
             actions.onInfo(e);
+          case 'trash':
+            actions.onTrash(e);
           case 'delete':
             actions.onDelete(e);
         }
@@ -334,13 +362,9 @@ class FileRow extends StatelessWidget {
             title: Text('Informations'),
           ),
         ),
-        const PopupMenuItem(
-          value: 'delete',
-          child: ListTile(
-            leading: Icon(Icons.delete_outline, color: Colors.red),
-            title: Text('Supprimer'),
-          ),
-        ),
+        const PopupMenuDivider(),
+        _trashItem,
+        _deleteForeverItem,
       ],
     );
   }

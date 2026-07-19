@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../widgets/danger_style.dart';
+
 /// Actions de l'AppBar en mode sélection multiple.
 class SelectionToolbarActions extends StatelessWidget {
   final VoidCallback onSelectAll;
@@ -7,6 +9,11 @@ class SelectionToolbarActions extends StatelessWidget {
   final VoidCallback onCopy;
   final VoidCallback onMove;
   final VoidCallback onBulkRename;
+
+  /// Suppression douce (corbeille) — réversible.
+  final VoidCallback onTrash;
+
+  /// Suppression définitive — confirmation rouge côté écran.
   final VoidCallback onDelete;
 
   const SelectionToolbarActions({
@@ -16,6 +23,7 @@ class SelectionToolbarActions extends StatelessWidget {
     required this.onCopy,
     required this.onMove,
     required this.onBulkRename,
+    required this.onTrash,
     required this.onDelete,
   });
 
@@ -49,10 +57,34 @@ class SelectionToolbarActions extends StatelessWidget {
           tooltip: 'Renommer en masse',
           onPressed: onBulkRename,
         ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
+        // Menu plutôt qu'un bouton direct : la suppression définitive ne doit
+        // pas être atteignable en un seul appui depuis la barre d'outils.
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.delete_outline, color: kDangerRed),
           tooltip: 'Supprimer',
-          onPressed: onDelete,
+          onSelected: (v) {
+            if (v == 'trash') onTrash();
+            if (v == 'delete') onDelete();
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'trash',
+              child: ListTile(
+                leading: Icon(Icons.delete_outline),
+                title: Text('Mettre à la corbeille'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete_forever, color: kDangerRed),
+                title: Text(
+                  'Supprimer définitivement',
+                  style: TextStyle(color: kDangerRed),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -65,6 +97,7 @@ class BrowseToolbarActions extends StatelessWidget {
   final String sortKey;
   final VoidCallback onRefresh;
   final VoidCallback onToggleHidden;
+  final VoidCallback onOpenTrash;
   final ValueChanged<String> onSortSelected;
 
   const BrowseToolbarActions({
@@ -73,6 +106,7 @@ class BrowseToolbarActions extends StatelessWidget {
     required this.sortKey,
     required this.onRefresh,
     required this.onToggleHidden,
+    required this.onOpenTrash,
     required this.onSortSelected,
   });
 
@@ -92,6 +126,11 @@ class BrowseToolbarActions extends StatelessWidget {
               ? 'Masquer fichiers cachés'
               : 'Afficher fichiers cachés',
           onPressed: onToggleHidden,
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline),
+          tooltip: 'Corbeille',
+          onPressed: onOpenTrash,
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort),

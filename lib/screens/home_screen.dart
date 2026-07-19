@@ -33,6 +33,7 @@ import 'tools/scanner_screen.dart';
 import 'tools/exif_screen.dart';
 import 'tools/global_search_screen.dart';
 import 'tools/duplicates_screen.dart';
+import 'tools/trash_screen.dart';
 import 'vault/vault_screen.dart';
 import 'viewers/reader_viewer_screen.dart';
 import 'settings_screen.dart';
@@ -1082,6 +1083,13 @@ class _ToolsTab extends StatelessWidget {
         subtitle: 'Libérer du stockage',
         color: Colors.deepOrange,
         screen: const DuplicatesScreen(),
+      ),
+      (
+        icon: Icons.delete_outline,
+        label: 'Corbeille',
+        subtitle: 'Restaurer les éléments supprimés',
+        color: Colors.blueGrey,
+        screen: const TrashScreen(),
       ),
     ];
 

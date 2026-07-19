@@ -72,6 +72,9 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
           content: Text(
             'ZIP créé : ${_files.length} fichier${_files.length > 1 ? 's' : ''}',
           ),
+          // `persist` vaut par défaut `action != null` : sans ce flag, le
+          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
+          persist: false,
           action: SnackBarAction(
             label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)]),

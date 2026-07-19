@@ -141,6 +141,9 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('PDF créé : ${PathUtils.fileName(outPath)}'),
+          // `persist` vaut par défaut `action != null` : sans ce flag, le
+          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
+          persist: false,
           action: SnackBarAction(
             label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)]),
@@ -215,6 +218,9 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('${allRows.length - 1} lignes fusionnées'),
+          // `persist` vaut par défaut `action != null` : sans ce flag, le
+          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
+          persist: false,
           action: SnackBarAction(
             label: 'Partager',
             onPressed: () => Share.shareXFiles([XFile(outPath)]),

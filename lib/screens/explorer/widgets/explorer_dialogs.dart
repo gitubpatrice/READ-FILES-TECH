@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../widgets/danger_style.dart';
+
 /// Demande à l'utilisateur un nom (création / renommage). Renvoie le texte
 /// trimé ou `null` si annulé / vide.
 Future<String?> promptName(
@@ -38,36 +40,34 @@ Future<String?> promptName(
   return res;
 }
 
-/// Confirmation rouge typée "Supprimer". Renvoie true si confirmé.
+/// Confirmation rouge d'une suppression DÉFINITIVE. Renvoie true si confirmé.
 ///
 /// v2.13.2 (S3) — pattern destructif Files Tech : `autofocus: true` sur
-/// Cancel (anti-clic réflexe) + `cs.errorContainer` au lieu de
-/// `Colors.red` hardcodé (non adaptive dark mode, ratio WCAG variable).
-/// Aligné Pass Tech v2.4.4 U2, PDF Tech v1.12.5 U3.
+/// Cancel (anti-clic réflexe).
+/// v2.14.0 — fond rouge plein + texte blanc ([dangerFilledButtonStyle]) :
+/// `cs.errorContainer` rendait le bouton pâle, donc peu distinguable du
+/// bouton d'annulation sur une action irréversible.
 Future<bool> confirmDelete(
   BuildContext context, {
   required String title,
   required String message,
+  String confirmLabel = 'Supprimer définitivement',
 }) async {
-  final cs = Theme.of(context).colorScheme;
   final res = await showDialog<bool>(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (ctx) => AlertDialog(
       title: Text(title),
       content: Text(message),
       actions: [
         TextButton(
           autofocus: true,
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => Navigator.pop(ctx, false),
           child: const Text('Annuler'),
         ),
         FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: cs.errorContainer,
-            foregroundColor: cs.onErrorContainer,
-          ),
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Supprimer'),
+          style: dangerFilledButtonStyle(),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(confirmLabel),
         ),
       ],
     ),
