@@ -17,7 +17,18 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.readfilestech.read_files_tech"
-    compileSdk = flutter.compileSdkVersion
+    // Posé explicitement au lieu de `flutter.compileSdkVersion` (36) :
+    // `permission_handler_android` 13 est compilé contre l'API 37, et Gradle
+    // l'annonçait à chaque build. Compiler contre une API inférieure à celle
+    // d'un plugin ne casse pas la compilation — le build passait — mais peut
+    // produire un `NoSuchMethodError` À L'EXÉCUTION, sur l'appareil, quand le
+    // plugin appelle une méthode absente du SDK de compilation. C'est-à-dire
+    // exactement le genre de panne qu'aucun test ne voit.
+    //
+    // `compileSdk` ne change ni `minSdk` (24) ni `targetSdk` : compiler contre
+    // une API récente est rétrocompatible, et n'engage pas le comportement
+    // d'exécution, qui suit `targetSdk`.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
