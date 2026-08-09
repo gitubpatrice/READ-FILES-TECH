@@ -108,8 +108,15 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          // Sans préfixe « Erreur : ». Les messages du service sont des
+          // phrases complètes, et l'un d'eux — « Le document semble vide » —
+          // décrit un fichier parfaitement valide. L'annoncer comme une erreur
+          // laissait croire à une panne de l'application.
           : _error != null
-          ? Center(child: Text('Erreur : $_error'))
+          ? Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(child: Text(_error!, textAlign: TextAlign.center)),
+            )
           : _text.isEmpty
           ? const Center(child: Text('Document vide ou format non supporté'))
           : SingleChildScrollView(

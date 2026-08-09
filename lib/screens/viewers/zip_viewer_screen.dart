@@ -309,6 +309,17 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
           continue;
         }
 
+        // Résoudre le parent ne suffit pas : si la CIBLE elle-même existe déjà
+        // sous forme de lien symbolique pointant ailleurs, son parent reste
+        // dans `outDir` et `writeAsBytes` suivrait le lien. Le cas est très
+        // improbable ici — la destination est le dossier privé de
+        // l'application — mais la garde ne coûte rien et l'improbable n'est pas
+        // l'impossible. Signalé par la relecture Gemini du 2026-08-09.
+        if (await FileSystemEntity.isLink(target)) {
+          skipped++;
+          continue;
+        }
+
         await outFile.writeAsBytes(bytes);
         // Compté sur ce qui a réellement été produit.
         totalExtracted += bytes.length;

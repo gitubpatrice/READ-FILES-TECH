@@ -175,6 +175,13 @@ Uint8List safeEntryBytes(ArchiveFile entry, String label, int maxBytes) {
     // qui la rendait inopérante sur ce chemin. Signalé par la relecture GPT
     // du 2026-08-09. Le chemin DEFLATE n'avait pas ce défaut : `Inflate`
     // écrit par blocs, donc le contrôle s'intercale naturellement.
+    //
+    // `raw.length` vaut bien le NOMBRE D'OCTETS RESTANTS, pas la taille totale
+    // du flux — vérifié dans la version résolue (`pubspec.lock` : archive
+    // 3.6.1, `input_stream.dart:73` → `_length - (offset - start)`), et la 4.x
+    // le documente explicitement (« How many bytes are left in the stream »).
+    // Une relecture externe a soutenu le contraire le 2026-08-09 ; c'est la
+    // source qui tranche, et elle dit remaining.
     const chunk = 64 * 1024;
     while (!raw.isEOS) {
       final remaining = raw.length;
