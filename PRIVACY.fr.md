@@ -1,6 +1,6 @@
 # Politique de confidentialité — Read Files Tech
 
-**Version du document** : 9 mai 2026 (v2.12.0)
+**Version du document** : 9 août 2026 (v2.15)
 **App** : Read Files Tech
 **Site officiel** : https://www.files-tech.com
 **Contact** : contact@files-tech.com
@@ -69,19 +69,52 @@ Voir [SECURITY.md](./SECURITY.md) pour la politique de signalement.
 
 ## 9. Permissions Android
 
+Liste établie par `aapt dump permissions` sur l'APK **release publié**, et non
+d'après le manifeste source : deux permissions sont ajoutées au moment de la
+fusion des manifestes par une dépendance, et n'apparaissent nulle part dans le
+code de l'application.
+
 | Permission / accès                  | Raison                                                                                                  |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `INTERNET`                          | Vérification de mises à jour via API GitHub Releases.                                                  |
 | `MANAGE_EXTERNAL_STORAGE`           | Fonction explorateur : parcourir, lire, éditer tout fichier choisi par l'utilisateur.                  |
+| `READ_EXTERNAL_STORAGE` (≤ Android 12) / `WRITE_EXTERNAL_STORAGE` (≤ Android 10) | Même fonction, sur les versions d'Android antérieures à `MANAGE_EXTERNAL_STORAGE`. |
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Affichage et aperçu des fichiers médias choisis par l'utilisateur (Android 13+).                  |
 | `CAMERA`                            | Scanner de documents et OCR (optionnel, accordée à la demande au runtime).                              |
+| `REQUEST_INSTALL_PACKAGES`          | Installer une APK tapée dans l'explorateur. L'installation elle-même est faite par l'installeur du système, qui demande sa propre confirmation. |
+| `INTERNET`, `ACCESS_NETWORK_STATE`  | **Non demandées par l'application.** Ajoutées à l'APK par `com.google.android.datatransport:transport-backend-cct`, le transport de télémétrie de Google embarqué avec Google ML Kit (OCR et scanner). Voir §9 bis. |
 
-> v2.12.2 — `REQUEST_INSTALL_PACKAGES` a été retirée : sa combinaison avec
-> `MANAGE_EXTERNAL_STORAGE` était classée par Google Play Protect comme
-> signature potentielle de « dropper » (faux positif « application
-> dangereuse » sur installation sideload). Taper sur un fichier `.apk`
-> dans l'explorateur reste possible via le gestionnaire de Fichiers
-> système Android, qui prend le relais.
+### 9 bis. Ce que « 100 % local » recouvre exactement
+
+Les fichiers de l'utilisateur ne quittent jamais l'appareil : aucune fonction de
+l'application ne les transmet, ni ne les téléverse, ni ne les sauvegarde à
+distance. La reconnaissance de texte (OCR) s'exécute entièrement hors ligne — le
+modèle est embarqué dans l'APK (`assets/mlkit-google-ocr-models`,
+`libmlkit_google_ocr_pipeline.so`).
+
+Deux réserves, énoncées ici parce qu'elles sont vérifiables sur l'APK :
+
+1. **Google ML Kit embarque un transport de télémétrie.** Les composants
+   `TransportBackendDiscovery`, `JobInfoSchedulerService` et
+   `AlarmManagerSchedulerBroadcastReceiver` sont présents dans l'APK, et ce sont
+   eux qui apportent `INTERNET` et `ACCESS_NETWORK_STATE`. Ils peuvent
+   transmettre à Google des métriques d'usage de la bibliothèque. Ils ne
+   transmettent pas le contenu des documents.
+2. **Le scanner de documents s'appuie sur les services Google Play.**
+   `play-services-mlkit-document-scanner` est un client léger : l'interface de
+   numérisation et son modèle vivent dans les services Play et sont téléchargés
+   à la demande. Sur un appareil sans services Google Play, le scanner ne
+   fonctionne pas ; le reste de l'application, OCR compris, fonctionne
+   normalement.
+
+> **Correction, v2.15.** Ce document affirmait jusqu'ici que
+> `REQUEST_INSTALL_PACKAGES` avait été retirée en v2.12.2. C'était exact à cette
+> date, mais la permission a été **rétablie en v2.13.0** pour restaurer
+> l'installation directe d'une APK depuis l'explorateur — ce que `SECURITY.md`
+> consignait correctement. Le tableau ci-dessus est établi sur l'APK publié.
+>
+> La ligne `INTERNET` attribuait par ailleurs cette permission à la vérification
+> de mise à jour via GitHub. Ce n'est pas son origine : l'application ne déclare
+> pas `INTERNET` dans son manifeste, elle lui est ajoutée par une dépendance.
 
 ## 10. Enfants
 

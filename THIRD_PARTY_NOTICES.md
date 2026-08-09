@@ -1,10 +1,45 @@
 # Third-Party Notices — Read Files Tech
 
-This product includes the following open-source dependencies. Each component remains subject to its own license.
+Read Files Tech's **own source code** is published under the
+[Apache License 2.0](./LICENSE).
 
-The main source code of the project is placed under [Apache License 2.0](./LICENSE).
+The application also depends on third-party components. Each one remains subject to its own
+license, and **not all of them are open source** — see the Syncfusion notice below. License
+notices must be retained in accordance with the obligations of their respective authors.
+
+## ⚠️ Non-free component — Syncfusion
+
+| Package | Version | License |
+| --- | --- | --- |
+| `syncfusion_flutter_pdf` | 33.2.13 | Syncfusion Essential Studio® EULA |
+| `syncfusion_flutter_pdfviewer` | 33.2.13 | Syncfusion Essential Studio® EULA |
+
+Syncfusion components are **proprietary**. They are available either under the Syncfusion
+Community License Program or under a commercial license, and may not be used under any other
+terms. The full terms are at <https://www.syncfusion.com/content/downloads/syncfusion_license.pdf>.
+
+No Syncfusion source code is contained in this repository: the packages are fetched from
+pub.dev at build time. Compiled Syncfusion code **is** embedded in the distributed APK, which is
+therefore not, as a whole, an Apache 2.0 artifact.
+
+> Still to be settled, and outside the scope of a documentation fix: Read Files Tech must hold a
+> registered Syncfusion Community License. It is not automatic, and using it in an open source
+> project requires a prior application to Syncfusion. This notice reports the situation; it does
+> not resolve it.
+
+## Native libraries actually present in the APK
+
+Verified by unpacking the published release APK, not inferred from `pubspec.yaml`:
+
+| Library | Origin | Note |
+| --- | --- | --- |
+| `libmlkit_google_ocr_pipeline.so` + `assets/mlkit-google-ocr-models` | Google ML Kit | OCR model bundled — runs fully offline. |
+| `play-services-mlkit-document-scanner` | Google Play services | Thin client: the scanner UI and model are downloaded on demand and require Play services. |
+| `transport-backend-cct`, `transport-runtime`, `transport-api` | Google | Telemetry transport pulled in by ML Kit. Source of the `INTERNET` and `ACCESS_NETWORK_STATE` permissions found in the APK — see `PRIVACY.md` §9. |
 
 ## Direct Flutter / Dart dependencies
+
+(Syncfusion excepted — see the dedicated notice above.)
 
 Versions are those declared in `pubspec.yaml` at the time of writing.
 
@@ -24,8 +59,8 @@ Versions are those declared in `pubspec.yaml` at the time of writing.
 | 12 | `flutter_colorpicker`            | ^1.1.0     | MIT                      | https://github.com/mchome/flutter_colorpicker                       |
 | 13 | `flutter_markdown`               | ^0.7.4     | BSD-3-Clause             | https://github.com/flutter/packages                                 |
 | 14 | `crypto`                         | ^3.0.3     | BSD-3-Clause             | https://github.com/dart-lang/crypto                                 |
-| 15 | `syncfusion_flutter_pdf`         | ^33.2.4    | Syncfusion EULA          | https://pub.dev/packages/syncfusion_flutter_pdf                     |
-| 16 | `syncfusion_flutter_pdfviewer`   | ^33.2.4    | Syncfusion EULA          | https://pub.dev/packages/syncfusion_flutter_pdfviewer               |
+| 15 | `syncfusion_flutter_pdf`         | 33.2.13    | **Propriétaire — voir la section dédiée ci-dessus** | https://pub.dev/packages/syncfusion_flutter_pdf   |
+| 16 | `syncfusion_flutter_pdfviewer`   | 33.2.13    | **Propriétaire — voir la section dédiée ci-dessus** | https://pub.dev/packages/syncfusion_flutter_pdfviewer |
 | 17 | `http`                           | ^1.2.0     | BSD-3-Clause             | https://github.com/dart-lang/http                                   |
 | 18 | `intl`                           | ^0.20.0    | BSD-3-Clause             | https://github.com/dart-lang/i18n                                   |
 | 19 | `url_launcher`                   | ^6.3.1     | BSD-3-Clause             | https://github.com/flutter/packages                                 |

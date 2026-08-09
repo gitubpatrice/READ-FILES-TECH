@@ -5,9 +5,15 @@
 [![Latest Release](https://img.shields.io/github/v/release/gitubpatrice/READ-FILES-TECH)](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B?logo=flutter)](https://flutter.dev)
 
-**Le couteau suisse Android pour vos fichiers — version 2.12.3.**
+**Le couteau suisse Android pour vos fichiers — version 2.14.0.**
 
-Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fort, conversion, anti-EXIF — 100 % local, sans cloud, sans tracker.
+Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fort, corbeille,
+conversion, anti-EXIF — vos fichiers ne quittent jamais l'appareil, sans cloud, sans compte.
+
+> Deux réserves, détaillées dans [PRIVACY.fr.md](./PRIVACY.fr.md) §9 bis : Google ML Kit
+> embarque un transport de télémétrie (d'où les permissions `INTERNET` et
+> `ACCESS_NETWORK_STATE` visibles dans l'APK, que l'application ne demande pas elle-même),
+> et le scanner de documents dépend des services Google Play.
 
 ## Fonctionnalités
 
