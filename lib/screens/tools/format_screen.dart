@@ -115,9 +115,14 @@ class _FormatScreenState extends State<FormatScreen> {
     );
     await atomicWriteString(out.path, _outputCtrl.text);
     final autoShare = await storage.getAutoShare();
+    // `mounted` gardait la branche du bandeau mais pas celle du partage : une
+    // feuille de partage système pouvait donc surgir par-dessus l'écran où
+    // l'utilisateur avait navigué. Quatrième site de la même famille, après
+    // `ocr_screen`, `zip_viewer_screen` et `_share` du coffre.
+    if (!mounted) return;
     if (autoShare) {
       await Share.shareXFiles([XFile(out.path)]);
-    } else if (mounted) {
+    } else {
       showFloatingSnack(context, 'Sauvegardé : ${out.path}');
     }
   }

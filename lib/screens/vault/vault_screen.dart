@@ -659,6 +659,16 @@ class _VaultContentState extends State<_VaultContent> {
     final snack = SnackTarget.of(context, stillWanted: () => mounted);
     try {
       final tmp = await widget.service.decryptToTemp(enc);
+      // Le déchiffrement peut durer sur un gros fichier. Si l'utilisateur a
+      // quitté le coffre entre-temps, `dispose()` l'a VERROUILLÉ (V-H1) : faire
+      // surgir la feuille de partage système par-dessus l'écran où il se
+      // trouve, avec un fichier du coffre en clair dedans, va exactement à
+      // l'encontre de ce verrouillage. Le clair reste dans `cache/vault_decrypt`
+      // et sera effacé par `purgeTempDecrypted()` au prochain boot ou passage
+      // en arrière-plan. Jumeau du même défaut corrigé dans `ocr_screen` et
+      // `zip_viewer_screen` ; celui-ci avait été manqué, et c'était le pire
+      // des trois.
+      if (!mounted) return;
       await Share.shareXFiles([XFile(tmp.path)]);
     } catch (e) {
       snack.error('Erreur : $e');

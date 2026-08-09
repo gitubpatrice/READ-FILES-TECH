@@ -83,6 +83,10 @@ class _HashScreenState extends State<HashScreen> {
   }
 
   Future<void> _compute(String path) async {
+    // Calculer les empreintes d'un gros fichier prend le temps qu'il faut, et
+    // l'utilisateur n'attend pas devant l'écran. Le bandeau doit donc survivre
+    // à son départ — c'est tout l'objet de `SnackTarget`.
+    final snack = SnackTarget.of(context);
     try {
       final size = await File(path).length();
       final hashes = await _hashFileAllAlgos(path);
@@ -93,12 +97,16 @@ class _HashScreenState extends State<HashScreen> {
         _isComputing = false;
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isComputing = false);
-      // `catch (_)` jetait la cause : « Erreur lors du calcul du hash » ne
-      // distingue pas un fichier illisible d'un manque de mémoire, et laisse
-      // l'utilisateur sans rien à rapporter.
-      showErrorSnack(context, 'Erreur lors du calcul du hash : $e');
+      // Le `if (!mounted) return;` qui ouvrait ce bloc avalait l'échec dès que
+      // l'utilisateur avait quitté l'écran — c'est-à-dire d'autant plus
+      // souvent que le calcul avait été long. C'était exactement le défaut que
+      // ce chantier visait, survivant ici parce que la migration s'était
+      // arrêtée à `showErrorSnack`. Signalé par la relecture Gemini du
+      // 2026-08-09.
+      if (mounted) setState(() => _isComputing = false);
+      // `catch (_)` jetait par ailleurs la cause : « Erreur lors du calcul du
+      // hash » ne distingue pas un fichier illisible d'un manque de mémoire.
+      snack.error('Erreur lors du calcul du hash : $e');
     }
   }
 

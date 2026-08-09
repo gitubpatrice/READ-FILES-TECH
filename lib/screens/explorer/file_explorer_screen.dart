@@ -714,11 +714,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         .map((p) => XFile(p, mimeType: mimeOf(fileExt(p))))
         .toList();
     if (files.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aucun fichier à partager (dossiers ignorés)'),
-        ),
-      );
+      showFloatingSnack(context, 'Aucun fichier à partager (dossiers ignorés)');
       return;
     }
     await Share.shareXFiles(files);
