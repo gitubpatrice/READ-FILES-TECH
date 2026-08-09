@@ -1,11 +1,11 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:isolate';
 import 'package:archive/archive.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../utils/archive_safe.dart';
+import '../../services/archive_extract_service.dart';
 import '../../utils/file_caps.dart';
 import '../../utils/snack_utils.dart';
 import '../explorer/file_type_helpers.dart';
@@ -174,64 +174,33 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
   static const _maxEntryBytes = FileCaps.zipEntryDecompressed;
   static const _maxTotalExtractBytes = FileCaps.zipExtractTotal;
 
-  /// Vérifie **textuellement** qu'un nom d'entrée d'archive ne sort pas de
-  /// [baseDir] : pas de chemin absolu, pas de `..`, pas de lettre de lecteur,
-  /// pas d'octet NUL. Retourne le chemin reconstruit, ou `null` si rejeté.
+  /// Extraction d'une entrée unique, puis partage.
   ///
-  /// **Ce contrôle ne résout PAS les liens symboliques**, contrairement à ce
-  /// que promettait le commentaire de fin de méthode — signalé par la
-  /// relecture GPT du 2026-08-09. Il ne peut pas : les dossiers n'existent
-  /// pas encore à cet instant. Un lien symbolique **déjà présent** dans le
-  /// dossier de destination laisserait donc passer un chemin textuellement
-  /// correct mais résolvant hors de [baseDir].
-  ///
-  /// La résolution réelle a lieu dans `_extractAll`, après création du dossier
-  /// parent et juste avant l'écriture. Les deux contrôles sont nécessaires :
-  /// celui-ci écarte l'entrée avant toute décompression, l'autre couvre ce que
-  /// le système de fichiers peut avoir sous les pieds.
-  String? _safeJoin(String baseDir, String entryName) {
-    // Normalize séparateurs (zip Windows : \, Unix : /)
-    final normalized = entryName.replaceAll('\\', '/');
-    // Reject paths absolus + entrées vides + traversal
-    if (normalized.isEmpty || normalized.startsWith('/')) return null;
-    final segments = normalized.split('/');
-    if (segments.any((s) => s == '..' || s == '.')) return null;
-    // Reject Windows-style drive letters / device paths
-    if (RegExp(r'^[a-zA-Z]:').hasMatch(normalized)) return null;
-    // L'octet NUL est ecrit sous forme echappee : ecrit brut, il faisait
-    // traiter TOUT ce fichier comme binaire par git, et ses diffs
-    // devenaient invisibles en revue.
-    if (normalized.contains('\x00')) return null;
-    // Reconstruction : baseDir/segments, puis comparaison de préfixe.
-    final candidate = '$baseDir/$normalized';
-    final resolvedBase = File(baseDir).absolute.path;
-    final resolvedFile = File(candidate).absolute.path;
-    if (!resolvedFile.startsWith(resolvedBase + Platform.pathSeparator) &&
-        resolvedFile != resolvedBase) {
-      return null;
-    }
-    return candidate;
-  }
-
+  /// Le travail part dans un isolate : décompresser jusqu'au plafond de
+  /// 200 Mo sur le thread de l'interface figeait l'application — ANR constaté
+  /// sur Galaxy S9 le 2026-08-09 avec une bombe de 306 Ko produisant 300 Mo.
   Future<void> _extractAndShare(ArchiveFile file) async {
     final snack = SnackTarget.of(context);
     try {
-      // `file.size` vient de l'en-tête du ZIP : c'est l'attaquant qui l'écrit.
-      // Le test seul laissait passer une entrée annonçant 1 Ko et produisant
-      // 80 Mo, et `file.content` décompressait ensuite sans aucune borne.
-      // `safeEntryBytes` compte les octets réellement produits et interrompt
-      // l'inflation au plafond. Même correctif que les quatre autres sites
-      // (v2.15) — ces deux-ci avaient été oubliés parce qu'ils sont sur le
-      // chemin d'extraction et non sur celui de l'aperçu.
-      final bytes = safeEntryBytes(file, file.name, _maxEntryBytes);
       final dir = await getTemporaryDirectory();
-      // On ne réutilise PAS file.name (peut contenir des sous-dossiers
-      // malicieux) — on prend juste le basename, sanitisé.
+      // On ne réutilise PAS `file.name` (peut contenir des sous-dossiers
+      // malicieux) — juste le basename, sanitisé.
       final raw = PathUtils.fileName(file.name).split('\\').last;
       final fileName = raw.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
       final safe = fileName.isEmpty ? 'file' : fileName;
       final outPath = '${dir.path}/$safe';
-      await File(outPath).writeAsBytes(bytes);
+
+      final zipPath = widget.path;
+      final entryName = file.name;
+      await Isolate.run(
+        () => extractSingleEntry(
+          zipPath: zipPath,
+          entryName: entryName,
+          outPath: outPath,
+          maxEntryBytes: _maxEntryBytes,
+        ),
+      );
+
       // Même raison que pour l'OCR : un bandeau qui arrive après coup informe,
       // une feuille de partage qui surgit alors que l'utilisateur a navigué
       // ailleurs interrompt et ressemble à une action fantôme.
@@ -242,96 +211,38 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
     }
   }
 
+  /// Extraction complète, dans un isolate.
+  ///
+  /// Toute la logique — anti zip-slip, plafonds, liens symboliques — vit dans
+  /// `archive_extract_service.dart`, qui est testable. Cet écran ne fait plus
+  /// que présenter le résultat.
   Future<void> _extractAll() async {
-    final archive = _archive;
-    if (archive == null) return;
+    if (_archive == null) return;
     final snack = SnackTarget.of(context);
     setState(() => _isLoading = true);
     try {
       final dir = await getApplicationDocumentsDirectory();
       final base = _name.replaceAll(RegExp(r'\.\w+$'), '');
-      final outDir = Directory('${dir.path}/${base}_extracted');
-      await outDir.create(recursive: true);
-      // Résolu une fois : c'est la racine réelle à laquelle chaque parent créé
-      // sera comparé, liens symboliques suivis.
-      final resolvedBase = await outDir.resolveSymbolicLinks();
+      final outDirPath = '${dir.path}/${base}_extracted';
+      final zipPath = widget.path;
 
-      int totalExtracted = 0;
-      int skipped = 0;
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        // Anti zip-slip : valider le path AVANT de dépenser le moindre octet
-        // à décompresser une entrée qu'on refusera de toute façon d'écrire.
-        final target = _safeJoin(outDir.path, file.name);
-        if (target == null) {
-          skipped++;
-          continue;
-        }
+      final r = await Isolate.run(
+        () => extractArchive(
+          zipPath: zipPath,
+          outDirPath: outDirPath,
+          maxEntryBytes: _maxEntryBytes,
+          maxTotalBytes: _maxTotalExtractBytes,
+        ),
+      );
 
-        // Le budget restant borne l'entrée courante. Sans cela, la dernière
-        // entrée pouvait à elle seule ajouter 200 Mo au-delà du plafond
-        // cumulé, celui-ci n'étant vérifié qu'AVANT de l'écrire.
-        final remaining = _maxTotalExtractBytes - totalExtracted;
-        if (remaining <= 0) {
-          throw Exception(
-            'Archive trop volumineuse '
-            '(>${_maxTotalExtractBytes ~/ (1024 * 1024 * 1024)} Go décompressé)',
-          );
-        }
-        final cap = remaining < _maxEntryBytes ? remaining : _maxEntryBytes;
-
-        // `file.size` et `file.content` étaient tous deux à la merci de
-        // l'en-tête : le premier annonçait ce qu'il voulait, le second
-        // décompressait sans borne. Le cumul, lui, s'incrémentait de la
-        // taille DÉCLARÉE — donc une archive annonçant 1 Ko par entrée
-        // pouvait écrire des gigaoctets sans jamais approcher le plafond.
-        final Uint8List bytes;
-        try {
-          bytes = safeEntryBytes(file, file.name, cap);
-        } on ArchiveTooLargeException {
-          skipped++;
-          continue;
-        }
-
-        final outFile = File(target);
-        await outFile.parent.create(recursive: true);
-
-        // `_safeJoin` ne juge que le texte du nom d'entrée. Si le dossier de
-        // destination contient déjà un lien symbolique pointant ailleurs —
-        // posé par une extraction antérieure ou par une autre application —
-        // un chemin textuellement correct peut résoudre hors de `outDir`.
-        // La vérification a lieu ici, après création du parent et avant
-        // l'écriture, seul moment où le système de fichiers peut répondre.
-        final resolvedParent = await outFile.parent.resolveSymbolicLinks();
-        if (resolvedParent != resolvedBase &&
-            !resolvedParent.startsWith(resolvedBase + Platform.pathSeparator)) {
-          skipped++;
-          continue;
-        }
-
-        // Résoudre le parent ne suffit pas : si la CIBLE elle-même existe déjà
-        // sous forme de lien symbolique pointant ailleurs, son parent reste
-        // dans `outDir` et `writeAsBytes` suivrait le lien. Le cas est très
-        // improbable ici — la destination est le dossier privé de
-        // l'application — mais la garde ne coûte rien et l'improbable n'est pas
-        // l'impossible. Signalé par la relecture Gemini du 2026-08-09.
-        if (await FileSystemEntity.isLink(target)) {
-          skipped++;
-          continue;
-        }
-
-        await outFile.writeAsBytes(bytes);
-        // Compté sur ce qui a réellement été produit.
-        totalExtracted += bytes.length;
-      }
       if (mounted) setState(() => _isLoading = false);
-      final msg = skipped > 0
-          ? 'Extrait dans : ${PathUtils.fileName(outDir.path)} ($skipped entrée(s) ignorée(s))'
-          : 'Extrait dans : ${PathUtils.fileName(outDir.path)}';
-      if (skipped > 0) {
-        snack.error(msg);
+      final where = PathUtils.fileName(r.outDirPath);
+      if (r.skipped > 0) {
+        snack.error(
+          'Extrait dans : $where — ${r.skipped} entrée(s) refusée(s)',
+        );
       } else {
-        snack.info(msg);
+        snack.info('Extrait dans : $where (${r.written} fichier(s))');
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
