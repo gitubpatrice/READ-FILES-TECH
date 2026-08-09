@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/tools/scanner_screen.dart';
 import 'screens/tools/ocr_screen.dart';
 import 'screens/vault/vault_screen.dart';
+import 'services/storage_access.dart';
 import 'services/vault_service.dart';
 import 'utils/app_constants.dart';
 
@@ -44,8 +44,9 @@ Future<void> _requestStoragePermissions(BuildContext? context) async {
   if (prefs.getBool('permissions_asked') == true) return;
   await prefs.setBool('permissions_asked', true);
 
-  // Court-circuit si déjà accordée
-  if (await Permission.manageExternalStorage.isGranted) return;
+  // Court-circuit si déjà accordée. `StorageAccess` choisit la permission
+  // qui existe réellement sur cette version d'Android.
+  if (await StorageAccess.isGranted()) return;
 
   // Dialog welcome explicatif (si context dispo)
   if (context == null || !context.mounted) return;
@@ -79,9 +80,10 @@ Future<void> _requestStoragePermissions(BuildContext? context) async {
   );
   if (wantContinue != true) return;
 
-  // Demande directe : permission_handler ouvre la page "Tous les fichiers"
-  // dédiée pour cette app sur Android 11+. Pas de READ_MEDIA_* en amont.
-  await Permission.manageExternalStorage.request();
+  // Android 11+ : page « Tous les fichiers » dédiée. Android ≤ 10 : boîte de
+  // dialogue runtime classique sur READ/WRITE_EXTERNAL_STORAGE, seule chose
+  // qui existe là-bas.
+  await StorageAccess.request();
 }
 
 ThemeData _githubDarkTheme() {
@@ -228,7 +230,7 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
 
   Future<void> _captureInitialPerm() async {
     if (!Platform.isAndroid) return;
-    _lastKnownPermGranted = await Permission.manageExternalStorage.isGranted;
+    _lastKnownPermGranted = await StorageAccess.isGranted();
   }
 
   @override
@@ -276,7 +278,7 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
       }
     }
     if (state != AppLifecycleState.resumed || !Platform.isAndroid) return;
-    final granted = await Permission.manageExternalStorage.isGranted;
+    final granted = await StorageAccess.isGranted();
     // Transition denied → granted : Samsung n'applique pas la nouvelle perm
     // au process en cours. recreate() force Android à reloader.
     if (granted && !_lastKnownPermGranted) {

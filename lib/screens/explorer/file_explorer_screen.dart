@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import '../editors/code_editor_screen.dart';
 import '../tools/exif_screen.dart';
 import '../tools/bulk_rename_screen.dart';
 import '../tools/trash_screen.dart';
+import '../../services/storage_access.dart';
 import '../../services/trash_service.dart';
 import '../../utils/snack_utils.dart';
 import '../../widgets/file_viewer_router.dart';
@@ -80,6 +80,12 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   static const _lifecycleChannel = MethodChannel('com.readfilestech/lifecycle');
 
   static const _pdfTechPackage = 'com.pdftech.pdf_tech';
+
+  /// Texte du bandeau de permission, résolu une fois selon la version
+  /// d'Android (cf. `StorageAccess.bannerMessage`).
+  String _permBannerMessage =
+      'Accès aux fichiers limité — autorisez le stockage.';
+
   bool _kDriveInstalled = false;
   bool _protonInstalled = false;
 
@@ -95,6 +101,13 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     });
     _initRoot();
     _probeCloudApps();
+    _resolveBannerMessage();
+  }
+
+  Future<void> _resolveBannerMessage() async {
+    final msg = await StorageAccess.bannerMessage();
+    if (!mounted || msg == _permBannerMessage) return;
+    setState(() => _permBannerMessage = msg);
   }
 
   /// Sonde une seule fois la présence des applications cloud. Le menu
@@ -138,10 +151,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     }());
   }
 
-  Future<bool> _hasManageStorage() async {
-    if (!Platform.isAndroid) return true;
-    return Permission.manageExternalStorage.isGranted;
-  }
+  /// Accès effectif au stockage partagé, quelle que soit la version
+  /// d'Android. Testait `manageExternalStorage`, qui n'existe qu'à partir
+  /// d'Android 11 : sur Android ≤ 10, la réponse était `false` pour toujours.
+  Future<bool> _hasManageStorage() => StorageAccess.isGranted();
 
   bool _requiresManageStorage(String path) {
     if (!Platform.isAndroid) return false;
@@ -162,7 +175,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         ),
       );
     } catch (_) {
-      await Permission.manageExternalStorage.request();
+      await StorageAccess.request();
       if (mounted) _refresh();
     }
   }
@@ -827,7 +840,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
               ),
             ),
             if (_permissionDenied)
-              PermissionBanner(onOpenSettings: _requestAllFilesAccess),
+              PermissionBanner(
+                onOpenSettings: _requestAllFilesAccess,
+                message: _permBannerMessage,
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
               child: Align(

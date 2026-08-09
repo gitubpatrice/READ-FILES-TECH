@@ -41,10 +41,25 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!--
+        requestLegacyExternalStorage : n'a d'effet QUE sur Android 10 (API 29),
+        où il désactive le scoped storage et rend l'explorateur réellement
+        utilisable avec READ_EXTERNAL_STORAGE. Sans lui, l'app était une
+        impasse sur toute la plage Android 7→10 que `minSdk 24` annonce
+        pourtant supporter : `MANAGE_EXTERNAL_STORAGE` n'existe qu'à partir
+        d'Android 11, donc le bandeau « autorisez tous les fichiers » ne
+        disparaissait jamais et son bouton ouvrait un écran de réglages sans
+        aucune option à activer. Constaté sur Galaxy S9 (Android 10) le
+        2026-08-09 — ni l'audit ni deux relectures externes ne l'avaient vu,
+        il fallait l'appareil.
+
+        Ignoré par Android 11+, qui utilise MANAGE_EXTERNAL_STORAGE.
+    -->
     <application
         android:label="Read Files Tech"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
+        android:requestLegacyExternalStorage="true"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

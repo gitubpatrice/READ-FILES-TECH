@@ -2,7 +2,17 @@ import 'package:flutter/material.dart';
 
 class PermissionBanner extends StatelessWidget {
   final VoidCallback onOpenSettings;
-  const PermissionBanner({super.key, required this.onOpenSettings});
+
+  /// Texte adapté à la version d'Android : annoncer « tous les fichiers » à
+  /// quelqu'un qui n'a pas cette option — Android 10 et antérieurs — c'est
+  /// l'envoyer chercher ce qui n'existe pas. Voir `StorageAccess`.
+  final String message;
+
+  const PermissionBanner({
+    super.key,
+    required this.onOpenSettings,
+    this.message = 'Accès aux fichiers limité — autorisez le stockage.',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +29,7 @@ class PermissionBanner extends StatelessWidget {
         children: [
           Icon(Icons.warning_amber_rounded, size: 18, color: cs.error),
           const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Accès aux fichiers limité — autorisez tous les fichiers.',
-              style: TextStyle(fontSize: 12),
-            ),
-          ),
+          Expanded(child: Text(message, style: const TextStyle(fontSize: 12))),
           TextButton(
             onPressed: onOpenSettings,
             style: TextButton.styleFrom(

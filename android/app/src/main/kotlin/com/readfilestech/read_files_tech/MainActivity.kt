@@ -152,6 +152,16 @@ class MainActivity : FlutterFragmentActivity() {
                         runOnUiThread { recreate() }
                         result.success(null)
                     }
+                    "sdkInt" -> {
+                        // Le niveau d'API pilote toute la stratégie de
+                        // stockage : `MANAGE_EXTERNAL_STORAGE` n'existe qu'à
+                        // partir d'Android 11 (API 30). En dessous, la
+                        // demander revient à demander une permission qui
+                        // n'existe pas — `isGranted` répond false pour
+                        // toujours, et l'écran de réglages correspondant n'a
+                        // aucune option à afficher.
+                        result.success(Build.VERSION.SDK_INT)
+                    }
                     "elapsedRealtime" -> {
                         // F3 v2.13.0 — Source de temps monotone (boot-based,
                         // non-modifiable par l'utilisateur). Utilisée pour le
