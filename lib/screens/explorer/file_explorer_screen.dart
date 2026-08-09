@@ -579,15 +579,26 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     }
   }
 
+  // V-M1 — copie/déplacement unitaires : mêmes gardes que le lot
+  // (`BatchOpsService.copyAll`). Ces deux méthodes étaient le jumeau oublié :
+  // l'audit signalait `batch_ops_service.dart:47-48`, et le même
+  // `copy('$destDir/$name')` sans vérification vivait ici, à deux endroits.
   Future<void> _copyFile(String sourcePath) async {
     final messenger = ScaffoldMessenger.of(context);
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
-      final name = sourcePath.basename;
-      await File(sourcePath).copy('$destDir/$name');
+      final dest = uniqueDestination(destDir, sourcePath.basename);
+      final src = File(sourcePath);
+      final srcLen = await src.length();
+      await src.copy(dest);
+      if (await File(dest).length() != srcLen) {
+        throw FileSystemException('Copie incomplète', dest);
+      }
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Fichier copié')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Copié : ${dest.basename}')),
+      );
     } catch (ex) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
@@ -599,12 +610,22 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
-      final name = sourcePath.basename;
-      await File(sourcePath).copy('$destDir/$name');
-      await File(sourcePath).delete();
+      final dest = uniqueDestination(destDir, sourcePath.basename);
+      final src = File(sourcePath);
+      final srcLen = await src.length();
+      await src.copy(dest);
+      // La suppression de l'original n'a lieu qu'après vérification de la
+      // taille : une copie tronquée suivie d'un delete() détruisait le seul
+      // exemplaire intact du fichier.
+      if (await File(dest).length() != srcLen) {
+        throw FileSystemException('Copie incomplète — original conservé', dest);
+      }
+      await src.delete();
       if (!mounted) return;
       _refresh();
-      messenger.showSnackBar(const SnackBar(content: Text('Fichier déplacé')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Déplacé : ${dest.basename}')),
+      );
     } catch (ex) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
