@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../services/output_storage_service.dart';
 import '../../utils/atomic_write.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -62,19 +63,16 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
 
   Future<void> _replace() async {
     if (_path == null || _searchCtrl.text.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final updated = _content.replaceAll(_searchCtrl.text, _replaceCtrl.text);
     setState(() => _content = updated);
     await atomicWriteString(_path!, updated);
-    if (!mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Remplacement effectué et sauvegardé')),
-    );
+    snack.info('Remplacement effectué et sauvegardé');
   }
 
   Future<void> _convertToPdf() async {
     if (_path == null) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     setState(() => _isProcessing = true);
     try {
       final doc = PdfDocument();
@@ -105,24 +103,17 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
       final outPath = out.path;
       doc.dispose();
 
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('PDF créé : ${PathUtils.fileName(outPath)}'),
-          // `persist` vaut par défaut `action != null` : sans ce flag, le
-          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
-          persist: false,
-          action: SnackBarAction(
-            label: 'Partager',
-            onPressed: () => Share.shareXFiles([XFile(outPath)]),
-          ),
+      if (mounted) setState(() => _isProcessing = false);
+      snack.info(
+        'PDF créé : ${PathUtils.fileName(outPath)}',
+        action: SnackBarAction(
+          label: 'Partager',
+          onPressed: () => Share.shareXFiles([XFile(outPath)]),
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (mounted) setState(() => _isProcessing = false);
+      snack.error('Erreur : $e');
     }
   }
 

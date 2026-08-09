@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
 import '../../utils/atomic_write.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/output_actions_row.dart';
 
 class OcrScreen extends StatefulWidget {
@@ -73,7 +74,7 @@ class _OcrScreenState extends State<OcrScreen> {
 
   Future<void> _saveAsTxt() async {
     if (_text.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final storage = OutputStorageService();
     final out = await storage.reserveFile(
       category: OutputCategory.ocr,
@@ -82,13 +83,10 @@ class _OcrScreenState extends State<OcrScreen> {
     );
     await atomicWriteString(out.path, _text);
     final autoShare = await storage.getAutoShare();
-    if (!mounted) return;
-    setState(() => _lastTxtPath = out.path);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Sauvegardé : ${PathUtils.fileName(out.path)}'),
-        duration: const Duration(seconds: 4),
-      ),
+    if (mounted) setState(() => _lastTxtPath = out.path);
+    snack.info(
+      'Sauvegardé : ${PathUtils.fileName(out.path)}',
+      duration: kSnackMedium,
     );
     if (autoShare) {
       await Share.shareXFiles([XFile(out.path)]);

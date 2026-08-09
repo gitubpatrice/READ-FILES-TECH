@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../utils/atomic_write.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class CodeEditorScreen extends StatefulWidget {
@@ -88,11 +89,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Erreur de lecture : $e')));
-      }
+      showErrorSnack(context, 'Erreur de lecture : $e');
     }
   }
 
@@ -223,7 +220,10 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     // kill de l'OS, pas de deux écrivains concurrents : le fichier de
     // l'utilisateur pouvait se retrouver avec un contenu entrelacé.
     if (_isSaving) return;
-    final messenger = ScaffoldMessenger.of(context);
+    // Capturé avant le premier `await` : le bandeau doit s'afficher même si
+    // l'écran a été quitté entre-temps — c'est justement le cas où le résultat
+    // d'une sauvegarde compte le plus.
+    final snack = SnackTarget.of(context);
     setState(() => _isSaving = true);
     try {
       await _backup();
@@ -232,23 +232,24 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       // 13 sites déjà migrés v2.12.0.
       await atomicWriteString(_resolvedPath, _ctrl.text);
       _original = _ctrl.text;
-      setState(() {
-        _modified = false;
+      // `setState` après `dispose()` lève. Le garde était placé APRÈS, donc
+      // il ne protégeait que le bandeau, pas l'appel qui pouvait échouer.
+      if (mounted) {
+        setState(() {
+          _modified = false;
+          _isSaving = false;
+        });
+      } else {
         _isSaving = false;
-      });
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Fichier sauvegardé'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      }
+      snack.info('Fichier sauvegardé', duration: const Duration(seconds: 1));
     } catch (e) {
-      setState(() => _isSaving = false);
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Erreur de sauvegarde : $e')),
-      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+      } else {
+        _isSaving = false;
+      }
+      snack.error('Erreur de sauvegarde : $e');
     }
   }
 

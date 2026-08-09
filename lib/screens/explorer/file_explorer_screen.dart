@@ -350,7 +350,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   /// l'accorder via Réglages si manquante. Le PackageInstaller système
   /// prend le relais : l'utilisateur garde la décision finale d'installation.
   Future<void> _installApk(String path) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       final allowed = await _opener.canInstallApks();
       if (!allowed) {
@@ -383,15 +383,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       }
       await _opener.installApk(path);
     } on PlatformException catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Installation impossible.')),
-      );
+      snack.error(e.message ?? 'Installation impossible.');
     } catch (_) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Installation impossible.')),
-      );
+      snack.error('Installation impossible.');
     }
   }
 
@@ -414,37 +408,27 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   Future<void> _editInPdfTech(String path) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       await _opener.openWithPackage(path, _pdfTechPackage, 'application/pdf');
     } on PlatformException catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e.code == 'NOT_INSTALLED'
-                ? 'PDF Tech n\'est pas installé sur cet appareil.'
-                : 'Impossible d\'ouvrir avec PDF Tech.',
-          ),
-        ),
+      snack.error(
+        e.code == 'NOT_INSTALLED'
+            ? 'PDF Tech n\'est pas installé sur cet appareil.'
+            : 'Impossible d\'ouvrir avec PDF Tech.',
       );
     }
   }
 
   Future<void> _sendToCloud(String path, String pkg, String label) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       await _opener.sendToPackage(path, pkg);
     } on PlatformException catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e.code == 'NOT_INSTALLED'
-                ? '$label n\'est pas installé sur cet appareil.'
-                : 'Erreur : impossible d\'envoyer vers $label.',
-          ),
-        ),
+      snack.error(
+        e.code == 'NOT_INSTALLED'
+            ? '$label n\'est pas installé sur cet appareil.'
+            : 'Erreur : impossible d\'envoyer vers $label.',
       );
     }
   }
@@ -467,29 +451,24 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     if (newName == null || newName == name) return;
     if (!isValidFileName(newName)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nom invalide (caractères / \\ .. interdits)'),
-        ),
-      );
+      showErrorSnack(context, 'Nom invalide (caractères / \\ .. interdits)');
       return;
     }
     final newPath = '${e.parent.path}/$newName';
     if (await FileSystemEntity.type(newPath) != FileSystemEntityType.notFound) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"$newName" existe déjà dans ce dossier')),
-      );
+      showErrorSnack(context, '"$newName" existe déjà dans ce dossier');
       return;
     }
     try {
       await e.rename(newPath);
       _refresh();
-    } catch (_) {
+    } catch (ex) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de renommer ce fichier')),
-      );
+      // `catch (_)` masquait la cause : un renommage refusé par le système de
+      // fichiers (volume en lecture seule, nom trop long, verrou) ressemblait
+      // à un bug de l'application.
+      showErrorSnack(context, 'Impossible de renommer ce fichier : $ex');
     }
   }
 
@@ -497,7 +476,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   /// via la SnackBar. Pas de dialogue — l'action est réversible.
   Future<void> _moveToTrash(FileSystemEntity e) async {
     final name = e.path.basename;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       final entry = await _trash.moveToTrash(e);
       await HapticFeedback.lightImpact();
@@ -505,13 +484,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       _refresh();
       _showTrashedSnack('"$name" mis à la corbeille', [entry]);
     } catch (ex) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Mise à la corbeille impossible : $ex'),
-          duration: kSnackMedium,
-        ),
-      );
+      snack.error('Mise à la corbeille impossible : $ex');
     }
   }
 
@@ -547,7 +520,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   /// Restaure les entrées d'une mise à la corbeille annulée.
   Future<void> _undoTrash(List<TrashEntry> entries) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     int fail = 0;
     for (final entry in entries) {
       try {
@@ -556,15 +529,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         fail++;
       }
     }
-    if (!mounted) return;
-    _refresh();
+    if (mounted) _refresh();
     if (fail == 0) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('$fail élément(s) n\'ont pas pu être restaurés'),
-        duration: kSnackMedium,
-      ),
-    );
+    snack.error('$fail élément(s) n\'ont pas pu être restaurés');
   }
 
   Future<void> _openTrash() async {
@@ -597,9 +564,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       _refresh();
     } catch (ex) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+      showErrorSnack(context, 'Erreur : $ex');
     }
   }
 
@@ -636,7 +601,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   // l'audit signalait `batch_ops_service.dart:47-48`, et le même
   // `copy('$destDir/$name')` sans vérification vivait ici, à deux endroits.
   Future<void> _copyFile(String sourcePath) async {
-    final messenger = ScaffoldMessenger.of(context);
+    // Copier un gros fichier prend du temps, et l'utilisateur n'attend pas
+    // devant l'écran. Le bandeau passe par le messager capturé, qui appartient
+    // au Scaffold englobant : `if (!mounted) return` avant l'affichage faisait
+    // taire l'échec précisément quand la copie avait été longue.
+    final snack = SnackTarget.of(context);
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
@@ -647,18 +616,16 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       if (await File(dest).length() != srcLen) {
         throw FileSystemException('Copie incomplète', dest);
       }
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Copié : ${dest.basename}')),
-      );
+      snack.info('Copié : ${dest.basename}');
     } catch (ex) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+      snack.error('Erreur : $ex');
     }
   }
 
   Future<void> _moveFile(String sourcePath) async {
-    final messenger = ScaffoldMessenger.of(context);
+    // Même raison que `_copyFile` : le résultat doit survivre au départ de
+    // l'écran, et un déplacement raté encore plus qu'une copie ratée.
+    final snack = SnackTarget.of(context);
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
@@ -673,14 +640,10 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         throw FileSystemException('Copie incomplète — original conservé', dest);
       }
       await src.delete();
-      if (!mounted) return;
-      _refresh();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Déplacé : ${dest.basename}')),
-      );
+      if (mounted) _refresh();
+      snack.info('Déplacé : ${dest.basename}');
     } catch (ex) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+      snack.error('Erreur : $ex');
     }
   }
 
@@ -775,21 +738,21 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   }
 
   Future<void> _copySelected({required bool move}) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     final r = await _batch.copyAll(_selection.snapshot(), destDir, move: move);
     _selection.clear();
-    if (move) _refresh();
-    if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${r.ok} ${move ? 'déplacé' : 'copié'}${r.ok > 1 ? 's' : ''}'
-          '${r.fail > 0 ? ' · ${r.fail} erreur(s)' : ''}',
-        ),
-      ),
-    );
+    if (move && mounted) _refresh();
+    final message =
+        '${r.ok} ${move ? 'déplacé' : 'copié'}${r.ok > 1 ? 's' : ''}'
+        '${r.fail > 0 ? ' · ${r.fail} erreur(s)' : ''}';
+    // Un lot partiellement échoué s'annonçait du même ton qu'un lot réussi.
+    if (r.fail > 0) {
+      snack.error(message);
+    } else {
+      snack.info(message);
+    }
   }
 
   // ---------- Filtering ----------

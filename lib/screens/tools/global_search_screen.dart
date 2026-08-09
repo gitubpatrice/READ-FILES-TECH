@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/global_search_service.dart';
+import '../../utils/snack_utils.dart';
 import '../explorer/file_explorer_screen.dart';
 
 /// Recherche globale sur l'ensemble du stockage (ou un dossier choisi),
@@ -106,9 +107,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
         if (!mounted) return;
         _flush();
         setState(() => _searching = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        showErrorSnack(context, 'Erreur : $e');
       },
       onDone: () {
         if (!mounted) return;

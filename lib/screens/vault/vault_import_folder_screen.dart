@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/vault_service.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/danger_style.dart';
 
 /// Écran de sélection batch pour importer le contenu d'un dossier dans
@@ -128,7 +129,7 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
   }
 
   Future<void> _runInner() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final selected = _entries.where((e) => e.selected).toList();
     if (selected.isEmpty) return;
 
@@ -208,7 +209,13 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
       if (skip > 0) '$skip ignoré${skip > 1 ? "s" : ""} (homonyme)',
       if (fail > 0) '$fail erreur${fail > 1 ? "s" : ""}',
     ];
-    messenger.showSnackBar(SnackBar(content: Text(parts.join(' · '))));
+    // Un import dont une partie a échoué n'est pas un succès, et le bandeau
+    // neutre le disait du même ton que « tout est chiffré ».
+    if (fail > 0) {
+      snack.error(parts.join(' · '));
+    } else {
+      snack.info(parts.join(' · '));
+    }
     Navigator.of(context).pop(ok); // remonte le compteur
   }
 

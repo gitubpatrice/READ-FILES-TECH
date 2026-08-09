@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 /// Capture le seul digest émis par une `Hash.startChunkedConversion`.
@@ -91,12 +92,13 @@ class _HashScreenState extends State<HashScreen> {
         _hashes = hashes;
         _isComputing = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isComputing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erreur lors du calcul du hash')),
-      );
+      // `catch (_)` jetait la cause : « Erreur lors du calcul du hash » ne
+      // distingue pas un fichier illisible d'un manque de mémoire, et laisse
+      // l'utilisateur sans rien à rapporter.
+      showErrorSnack(context, 'Erreur lors du calcul du hash : $e');
     }
   }
 

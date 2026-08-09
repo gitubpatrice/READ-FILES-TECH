@@ -8,6 +8,7 @@ import '../../services/output_storage_service.dart';
 import '../../utils/atomic_write.dart';
 import '../../utils/csv_safe.dart';
 import '../../utils/file_caps.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/file_viewer_router.dart';
 import '../../widgets/rft_picker_screen.dart';
 
@@ -57,7 +58,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
 
   Future<void> _exportPdf() async {
     if (_path == null || _rows.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     setState(() => _isProcessing = true);
     try {
       final doc = PdfDocument();
@@ -136,24 +137,17 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       final outPath = out.path;
       doc.dispose();
 
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('PDF créé : ${PathUtils.fileName(outPath)}'),
-          // `persist` vaut par défaut `action != null` : sans ce flag, le
-          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
-          persist: false,
-          action: SnackBarAction(
-            label: 'Partager',
-            onPressed: () => Share.shareXFiles([XFile(outPath)]),
-          ),
+      if (mounted) setState(() => _isProcessing = false);
+      snack.info(
+        'PDF créé : ${PathUtils.fileName(outPath)}',
+        action: SnackBarAction(
+          label: 'Partager',
+          onPressed: () => Share.shareXFiles([XFile(outPath)]),
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (mounted) setState(() => _isProcessing = false);
+      snack.error('Erreur : $e');
     }
   }
 
@@ -165,7 +159,7 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
     );
     if (paths == null || paths.isEmpty) return;
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     setState(() => _isProcessing = true);
     try {
       final allRows = <List<dynamic>>[];
@@ -177,18 +171,12 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         final f = File(p);
         final capErr = await checkFileCap(f, FileCaps.csvFile);
         if (capErr != null) {
-          if (!mounted) return;
-          messenger.showSnackBar(
-            SnackBar(content: Text('${PathUtils.fileName(p)} : $capErr')),
-          );
+          snack.info('${PathUtils.fileName(p)} : $capErr');
           continue;
         }
         cumulative += await f.length();
         if (cumulative > FileCaps.csvFile * 3) {
-          if (!mounted) return;
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Total fusion trop volumineux.')),
-          );
+          snack.info('Total fusion trop volumineux.');
           break;
         }
         final content = await f.readAsString();
@@ -213,24 +201,21 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
       await atomicWriteString(out.path, csv);
       final outPath = out.path;
 
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('${allRows.length - 1} lignes fusionnées'),
-          // `persist` vaut par défaut `action != null` : sans ce flag, le
-          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
-          persist: false,
-          action: SnackBarAction(
-            label: 'Partager',
-            onPressed: () => Share.shareXFiles([XFile(outPath)]),
-          ),
+      if (mounted) setState(() => _isProcessing = false);
+      // `allRows.length - 1` retire la ligne d'en-tête. Quand tous les fichiers
+      // ont été écartés par le cap, `allRows` est vide et le compte annonçait
+      // « -1 lignes fusionnées ».
+      final merged = allRows.isEmpty ? 0 : allRows.length - 1;
+      snack.info(
+        '$merged ligne${merged > 1 ? 's' : ''} fusionnée${merged > 1 ? 's' : ''}',
+        action: SnackBarAction(
+          label: 'Partager',
+          onPressed: () => Share.shareXFiles([XFile(outPath)]),
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (mounted) setState(() => _isProcessing = false);
+      snack.error('Erreur : $e');
     }
   }
 

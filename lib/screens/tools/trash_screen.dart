@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/trash_service.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/danger_style.dart';
 import '../explorer/file_type_helpers.dart';
 import '../explorer/widgets/explorer_dialogs.dart';
@@ -41,18 +42,15 @@ class _TrashScreenState extends State<TrashScreen> {
   }
 
   Future<void> _restore(TrashEntry e) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       final dest = await _trash.restore(e);
       await _load();
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Restauré : ${dest.basename}')),
-      );
+      snack.info('Restauré : ${dest.basename}');
     } catch (ex) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Restauration impossible : $ex')),
-      );
+      // Un échec de restauration est une erreur, et se présentait comme un
+      // bandeau neutre — indiscernable du succès juste au-dessus.
+      snack.error('Restauration impossible : $ex');
     }
   }
 
@@ -64,16 +62,13 @@ class _TrashScreenState extends State<TrashScreen> {
           'Supprimer définitivement "${e.name}" ?\nCette action est irréversible.',
     );
     if (!ok || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       await _trash.deleteForever(e);
       await _load();
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Supprimé définitivement')),
-      );
+      snack.info('Supprimé définitivement');
     } catch (ex) {
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $ex')));
+      snack.error('Erreur : $ex');
     }
   }
 
@@ -88,18 +83,19 @@ class _TrashScreenState extends State<TrashScreen> {
           'Cette action est irréversible.',
     );
     if (!ok || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final r = await _trash.emptyAll(_entries);
     await _load();
-    if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${r.ok} supprimé${r.ok > 1 ? 's' : ''}'
-          '${r.fail > 0 ? ' · ${r.fail} erreur(s)' : ''}',
-        ),
-      ),
-    );
+    final message =
+        '${r.ok} supprimé${r.ok > 1 ? 's' : ''}'
+        '${r.fail > 0 ? ' · ${r.fail} erreur(s)' : ''}';
+    // Un vidage partiel n'est pas un succès : des éléments sont restés, et le
+    // bandeau neutre le disait du même ton que « tout est parti ».
+    if (r.fail > 0) {
+      snack.error(message);
+    } else {
+      snack.info(message);
+    }
   }
 
   int get _totalSize =>

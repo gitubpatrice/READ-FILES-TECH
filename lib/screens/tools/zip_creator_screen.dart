@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
 import '../../utils/atomic_write.dart';
 import '../../utils/file_caps.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class ZipCreatorScreen extends StatefulWidget {
@@ -45,7 +46,7 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
 
   Future<void> _create() async {
     if (_files.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     setState(() => _isProcessing = true);
     try {
       // V-H4 (audit 2026-08-02) — cet écran était le seul outil sans aucun
@@ -92,27 +93,29 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
       await atomicWriteBytes(out.path, encoded);
       final outPath = out.path;
 
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'ZIP créé : ${_files.length} fichier${_files.length > 1 ? 's' : ''}',
-          ),
-          // `persist` vaut par défaut `action != null` : sans ce flag, le
-          // bandeau reste affiché indéfiniment (cf. snack_bar.dart).
-          persist: false,
-          action: SnackBarAction(
-            label: 'Partager',
-            onPressed: () => Share.shareXFiles([XFile(outPath)]),
-          ),
+      // Le libellé se calcule AVANT le vidage de `_files`, sans quoi il
+      // annoncerait « 0 fichier » — l'ordre était déjà correct, il le reste
+      // explicitement.
+      final count = _files.length;
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _files.clear();
+        });
+      } else {
+        _isProcessing = false;
+        _files.clear();
+      }
+      snack.info(
+        'ZIP créé : $count fichier${count > 1 ? 's' : ''}',
+        action: SnackBarAction(
+          label: 'Partager',
+          onPressed: () => Share.shareXFiles([XFile(outPath)]),
         ),
       );
-      setState(() => _files.clear());
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (mounted) setState(() => _isProcessing = false);
+      snack.error('Erreur : $e');
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/secure_window.dart';
 import '../../services/vault_service.dart';
 import '../../utils/app_constants.dart';
+import '../../utils/snack_utils.dart';
 import '../../widgets/danger_style.dart';
 import '../../widgets/rft_picker_screen.dart';
 import 'vault_import_folder_screen.dart';
@@ -273,7 +274,7 @@ class _SetupScreenState extends State<_SetupScreen> {
     // Overlay modal pendant la dérivation PBKDF2 + setup (1-3s sur S9).
     // Même si la dérivation est désormais en Isolate, on affiche un retour
     // visuel explicite — plus intuitif que juste un spinner sur le bouton.
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -303,12 +304,7 @@ class _SetupScreenState extends State<_SetupScreen> {
       // Ferme l'overlay
       Navigator.of(context, rootNavigator: true).pop();
       // Snackbar de confirmation (auto-dismiss)
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('✓ Coffre fort créé'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      snack.info('✓ Coffre fort créé', duration: const Duration(seconds: 2));
       widget.onCreated();
     } catch (e) {
       if (!mounted) return;
@@ -598,7 +594,7 @@ class _VaultContentState extends State<_VaultContent> {
   }
 
   Future<void> _import() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final paths = await RftPickerScreen.pickMany(
       context,
       title: 'Importer dans le coffre',
@@ -645,27 +641,32 @@ class _VaultContentState extends State<_VaultContent> {
       }
     }
     await _refresh();
-    if (!mounted) return;
     final parts = <String>[
       if (ok > 0) '$ok chiffré${ok > 1 ? 's' : ''}',
       if (skip > 0) '$skip ignoré${skip > 1 ? 's' : ''}',
       if (fail > 0) '$fail erreur${fail > 1 ? 's' : ''}',
     ];
-    messenger.showSnackBar(SnackBar(content: Text(parts.join(' · '))));
+    // Un import dont une partie a échoué n'était signalé que par un fragment
+    // « n erreur(s) » noyé dans un bandeau neutre.
+    if (fail > 0) {
+      snack.error(parts.join(' · '));
+    } else {
+      snack.info(parts.join(' · '));
+    }
   }
 
   Future<void> _share(File enc) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     try {
       final tmp = await widget.service.decryptToTemp(enc);
       await Share.shareXFiles([XFile(tmp.path)]);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      snack.error('Erreur : $e');
     }
   }
 
   Future<void> _export(File enc) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
@@ -698,10 +699,7 @@ class _VaultContentState extends State<_VaultContent> {
         ),
       );
       if (overwrite != true) {
-        if (!mounted) return;
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Export annulé — fichier conservé.')),
-        );
+        snack.info('Export annulé — fichier conservé.');
         return;
       }
       try {
@@ -710,24 +708,16 @@ class _VaultContentState extends State<_VaultContent> {
           destDir,
           overwrite: true,
         );
-        if (!mounted) return;
-        messenger.showSnackBar(
-          SnackBar(content: Text('Exporté : ${PathSafe.basename(out.path)}')),
-        );
+        snack.info('Exporté : ${PathSafe.basename(out.path)}');
       } catch (e) {
-        if (!mounted) return;
-        messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        snack.error('Erreur : $e');
       }
       return;
     } catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      snack.error('Erreur : $e');
       return;
     }
-    if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(content: Text('Exporté : ${_displayName(enc)}')),
-    );
+    snack.info('Exporté : ${_displayName(enc)}');
   }
 
   Future<void> _delete(File enc) async {
@@ -763,7 +753,7 @@ class _VaultContentState extends State<_VaultContent> {
   // ── Importer dossier ──────────────────────────────────────────────────────
 
   Future<void> _importFolder() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     // Picker custom RFT — UX cohérente avec le reste de l'app (raccourcis
     // colorés Téléchargements/Photos/Vidéos/Documents/WhatsApp + tous les
     // dossiers du stockage + bouton "Parcourir un autre dossier" SAF).
@@ -787,7 +777,7 @@ class _VaultContentState extends State<_VaultContent> {
       await _refresh();
       // Snackbar déjà affiché par l'écran enfant — pas de double notification.
     } else {
-      messenger.hideCurrentSnackBar();
+      snack.clear();
     }
   }
 
@@ -795,9 +785,7 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _exportBackup() async {
     if (_files.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coffre vide — rien à exporter.')),
-      );
+      showFloatingSnack(context, 'Coffre vide — rien à exporter.');
       return;
     }
     final pwd = await _askPassword(
@@ -812,7 +800,7 @@ class _VaultContentState extends State<_VaultContent> {
     );
     if (pwd == null || !mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     double progress = 0;
     final progressDialog = _showProgressDialog(
       title: 'Export en cours…',
@@ -834,16 +822,15 @@ class _VaultContentState extends State<_VaultContent> {
         XFile(out.path, mimeType: 'application/octet-stream'),
       ], subject: 'Sauvegarde Read Files Tech');
     } catch (e) {
-      if (!mounted) return;
-      progressDialog.close();
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (mounted) progressDialog.close();
+      snack.error('Erreur : $e');
     }
   }
 
   // ── Restaurer un coffre depuis un .rftvault ───────────────────────────────
 
   Future<void> _restoreBackup() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final snack = SnackTarget.of(context);
     // Picker custom RFT cohérent avec le reste de l'app — raccourcis colorés
     // (Téléchargements, Documents, Files Tech) où l'utilisateur stocke
     // typiquement ses sauvegardes .rftvault.
@@ -901,28 +888,21 @@ class _VaultContentState extends State<_VaultContent> {
           progressDialog.refresh();
         },
       );
-      if (!mounted) return;
-      progressDialog.close();
+      if (mounted) progressDialog.close();
       await _refresh();
-      if (!mounted) return;
       final parts = <String>[
         '${result.restored} restauré${result.restored > 1 ? "s" : ""}',
         if (result.skipped > 0)
           '${result.skipped} ignoré${result.skipped > 1 ? "s" : ""} (homonyme)',
       ];
-      messenger.showSnackBar(SnackBar(content: Text(parts.join(' · '))));
+      snack.info(parts.join(' · '));
     } catch (e) {
-      if (!mounted) return;
-      progressDialog.close();
+      if (mounted) progressDialog.close();
       // Tampering ou mauvais password → message neutre (pas d'oracle).
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e is StateError
-                ? e.message
-                : 'Mot de passe incorrect ou fichier invalide',
-          ),
-        ),
+      snack.error(
+        e is StateError
+            ? e.message
+            : 'Mot de passe incorrect ou fichier invalide',
       );
     }
   }
