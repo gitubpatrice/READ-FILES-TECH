@@ -329,24 +329,20 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     String ext, {
     bool chooser = false,
   }) async {
+    final snack = SnackTarget.of(context);
     try {
       await _opener.openFile(path, ext, chooser: chooser);
     } on PlatformException catch (e) {
-      if (!mounted) return;
       final msg = e.code == 'INSTALL_PERMISSION_REQUIRED'
           ? (e.message ?? 'Autorisation requise — page Réglages ouverte.')
           : 'Aucune application trouvée pour ouvrir ce fichier';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
-      );
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aucune application trouvée pour ouvrir ce fichier'),
-          ),
-        );
-      }
+      snack.error(msg, duration: kSnackLong);
+    } catch (e) {
+      // Le repli annonçait « Aucune application trouvée » quelle que soit la
+      // panne. Or ce `catch` ne rattrape PAS les `PlatformException` — elles
+      // sont traitées juste au-dessus : il ne voit donc que des erreurs d'une
+      // tout autre nature, et affirmait à leur sujet quelque chose de faux.
+      snack.error('Impossible d\'ouvrir ce fichier : $e');
     }
   }
 
@@ -593,11 +589,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     try {
       await Directory('${_current!.path}/$name').create();
       _refresh();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de créer ce dossier')),
-      );
+      // Volume en lecture seule, permission refusée, nom trop long : trois
+      // causes, un seul message qui ne permettait de trancher aucune.
+      showErrorSnack(context, 'Impossible de créer ce dossier : $e');
     }
   }
 
