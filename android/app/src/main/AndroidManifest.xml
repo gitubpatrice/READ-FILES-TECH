@@ -31,14 +31,44 @@
         peut être classée par Google Play Protect comme signature potentielle
         de "dropper" sur certains terminaux (faux positif "app dangereuse"
         au sideload). L'app n'étant pas distribuée via Play Store
-        (Files Tech = sideload + F-Droid), ce risque est accepté pour
-        rendre l'expérience "explorateur de fichiers" complète.
+        (Files Tech = sideload par GitHub Releases), ce risque est accepté
+        pour rendre l'expérience "explorateur de fichiers" complète.
         Le runtime check `canRequestPackageInstalls()` est requis avant
         l'appel d'install (Android 8+).
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- OCR : capture caméra -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!--
+        INTERNET / ACCESS_NETWORK_STATE.
+
+        Déclarées ici depuis la v2.15 parce qu'elles étaient DÉJÀ dans l'APK
+        sans y figurer : le fusionneur de manifeste les ajoutait via
+        `com.google.android.datatransport:transport-backend-cct`, embarqué par
+        Google ML Kit. Vérifiable à l'`aapt dump permissions` sur l'APK publié
+        de la v2.14.0. Un relecteur qui ne lisait que ce fichier en concluait
+        que l'application n'avait aucun accès réseau — conclusion fausse.
+
+        Elles ne sont pas seulement subies. L'application émet elle-même une
+        requête sortante, et il faut le dire :
+
+          `AppUpdate.checkForUpdate()` (lib/services/app_update.dart) interroge
+          https://api.github.com/repos/gitubpatrice/read-files-tech/releases/latest
+          au lancement (home_screen.dart, postFrameCallback ; cache 12 h) et à
+          la demande depuis « À propos ».
+
+        Rien d'autre ne sort : aucun fichier de l'utilisateur, aucun contenu de
+        document, aucune donnée du coffre. Cf. PRIVACY.fr.md §9 et §9 bis.
+
+        NE PAS retirer par `tools:node="remove"` sans retirer d'abord l'appel :
+        `UpdateService` avale la SocketException et retourne null. La
+        vérification de mise à jour disparaîtrait sans le moindre message —
+        et c'est, en distribution par sideload, le seul canal par lequel un
+        utilisateur apprend qu'un correctif de sécurité est sorti.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!--

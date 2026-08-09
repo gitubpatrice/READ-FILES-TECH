@@ -433,10 +433,14 @@ class _PrivacyCard extends StatelessWidget {
 
   static const _items = [
     (icon: Icons.block, color: Color(0xFFE53935), label: 'Aucune publicité'),
+    // « publicitaire » n'est pas un ornement : Google ML Kit, qui fournit l'OCR
+    // hors ligne, embarque son propre transport de télémétrie (métriques d'usage
+    // de la bibliothèque, jamais le contenu des documents — PRIVACY.fr.md §9 bis).
+    // Afficher « Aucun tracker » tout court serait plus vendeur et moins vrai.
     (
       icon: Icons.analytics_outlined,
       color: Color(0xFFFF7043),
-      label: 'Aucun tracker',
+      label: 'Aucun tracker publicitaire',
     ),
     (
       icon: Icons.wifi_off,

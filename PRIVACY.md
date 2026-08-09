@@ -36,7 +36,7 @@ This Privacy Policy explains how the **Read Files Tech** application handles use
 | Data type                       | Use                                                                                              | Processing location                |
 | ------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------- |
 | Files chosen by the user        | Reading, display, edition, conversion, sharing on user request.                                   | Mainly local on the device.        |
-| Network technical data           | Functions triggered by the user (sharing, email, update check via GitHub Releases).              | Relevant third-party service.     |
+| Network technical data           | Sharing and email: only on user action. **Update check: automatic at launch** (see §6 bis).       | Relevant third-party service.     |
 | Local preferences               | Recent files, display settings, sort order.                                                       | Local storage on the device.       |
 
 ## 5. No advertising, no trackers, no analytics
@@ -51,6 +51,36 @@ Files or contents are transmitted to a third party only on explicit user action 
 
 - HTML/WebView rendering displays user-chosen content; the user must remain cautious with files from untrusted sources. JavaScript is **disabled by default** for HTML files (opt-in via toolbar).
 - The update check queries the public GitHub Releases API (HTTPS, no authentication, no cookie). No user identifier is transmitted.
+
+## 6 bis. The one connection the app opens on its own
+
+This paragraph exists because the previous version of this document implied that
+all network activity was user-triggered. That was inaccurate, and being precise
+matters more than being reassuring.
+
+**When the app starts**, without the user asking for anything, a `GET` request is
+sent to:
+
+```
+https://api.github.com/repos/gitubpatrice/read-files-tech/releases/latest
+```
+
+- **What leaves the device**: nothing beyond what any anonymous HTTPS request
+  carries — an `Accept` header, and the device's public IP address, visible to
+  GitHub as it would be to any server one contacts. No device identifier, no
+  account, no cookie, no usage data, no file name.
+- **What comes back**: the latest published version number and its release notes.
+- **How often**: at most once every 12 hours; the result is cached locally. Plus
+  on demand from the "About" screen.
+- **Why it is automatic**: the app is distributed by sideload, outside any app
+  store. No system mechanism tells the user that a security fix is available.
+  This request is the only channel that does.
+- **How to opt out**: deny network access to the app in Android settings, or keep
+  it offline. Failure is silent and harmless — no reading, editing, OCR or vault
+  feature depends on the network.
+
+No file, no document content and no vault data is involved in this request, or in
+any other request the app makes.
 
 ## 7. Retention and deletion
 
@@ -80,7 +110,7 @@ time by a dependency and appear nowhere in the application's own code.
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Display and preview media files chosen by the user (Android 13+).                                  |
 | `CAMERA`                            | Document scanner and OCR (optional, runtime-granted on demand).                                          |
 | `REQUEST_INSTALL_PACKAGES`          | Install an APK tapped in the explorer. The installation itself is performed by the system package installer, which asks for its own confirmation. |
-| `INTERNET`, `ACCESS_NETWORK_STATE`  | **Not requested by the application.** Added to the APK by `com.google.android.datatransport:transport-backend-cct`, the Google telemetry transport bundled with Google ML Kit (OCR and scanner). See §9 bis. |
+| `INTERNET`, `ACCESS_NETWORK_STATE`  | Update check via the public GitHub Releases API (§6 bis). They **also** serve Google's telemetry transport (`com.google.android.datatransport:transport-backend-cct`), bundled with Google ML Kit — see §9 bis. |
 
 ### 9 bis. What "100% local" covers exactly
 
@@ -93,9 +123,10 @@ Two caveats, stated here because they are verifiable on the APK:
 
 1. **Google ML Kit bundles a telemetry transport.** The
    `TransportBackendDiscovery`, `JobInfoSchedulerService` and
-   `AlarmManagerSchedulerBroadcastReceiver` components are present in the APK,
-   and they are what bring in `INTERNET` and `ACCESS_NETWORK_STATE`. They may
-   report library usage metrics to Google. They do not transmit document
+   `AlarmManagerSchedulerBroadcastReceiver` components are present in the APK.
+   They use `INTERNET` and `ACCESS_NETWORK_STATE` — which they did in fact
+   contribute to the merged manifest until v2.15 declared them there explicitly.
+   They may report library usage metrics to Google. They do not transmit document
    contents.
 2. **The document scanner relies on Google Play services.**
    `play-services-mlkit-document-scanner` is a thin client: the scanning UI and
@@ -109,9 +140,18 @@ Two caveats, stated here because they are verifiable on the APK:
 > APK installation from the explorer — as `SECURITY.md` correctly recorded. The
 > table above is derived from the published APK.
 >
-> The `INTERNET` row also attributed that permission to the GitHub update check.
-> That is not its origin: the application does not declare `INTERNET` in its
-> manifest; it is added by a dependency.
+> **Correction to the correction, same version.** An earlier draft of this
+> paragraph removed the update check from the `INTERNET` row, on the grounds that
+> "the application does not declare `INTERNET` in its manifest". The fact was
+> right, the conclusion wrong: Android grants the permissions of the **merged**
+> manifest, not of the source manifest. The request to `api.github.com` was
+> therefore very much going out, silently relying on a permission contributed by
+> a telemetry dependency. "Not requested by the application" was the opposite of
+> the truth.
+>
+> Since v2.15, `INTERNET` and `ACCESS_NETWORK_STATE` are **declared explicitly**
+> in the source manifest, with their rationale. A permission the app uses must be
+> visible in the file people read.
 
 ## 10. Children
 

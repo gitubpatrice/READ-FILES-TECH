@@ -43,10 +43,12 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
   /// aucune action de l'utilisateur et sans rien afficher de suspect.
   ///
   /// Ce n'était pas théorique : l'APK release **porte** la permission
-  /// `INTERNET`, injectée par `transport-backend-cct` (télémétrie ML Kit) et
-  /// absente du manifeste source. Vérifié à l'`aapt dump permissions` sur
-  /// l'APK v2.14.0 publié. La lecture du seul manifeste source aurait conclu,
-  /// à tort, que la requête ne pouvait pas aboutir.
+  /// `INTERNET`. Vérifié à l'`aapt dump permissions` sur l'APK v2.14.0 publié —
+  /// où elle était absente du manifeste source, injectée par
+  /// `transport-backend-cct` (télémétrie ML Kit). La lecture du seul manifeste
+  /// source aurait conclu, à tort, que la requête ne pouvait pas aboutir.
+  /// Depuis la v2.15 elle y est déclarée explicitement, l'application s'en
+  /// servant elle-même pour la vérification de mise à jour.
   ///
   /// Les images **locales** restent rendues : c'est le cas légitime (un `.md`
   /// à côté de ses captures d'écran). Le chemin est résolu relativement au

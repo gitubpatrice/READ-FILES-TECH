@@ -94,7 +94,22 @@ Nécessite Flutter stable + Android SDK + JDK 17.
 
 ## Confidentialité
 
-100 % local. Aucune télémétrie, aucune collecte de données, aucun partage. Voir [PRIVACY.fr.md](PRIVACY.fr.md) et [TERMS.fr.md](TERMS.fr.md).
+**Vos fichiers ne quittent jamais l'appareil.** Lecture, édition, conversion,
+OCR, coffre : tout s'exécute localement. Aucune collecte, aucun profilage, aucun
+compte.
+
+Deux nuances, parce qu'elles sont vérifiables sur l'APK et qu'il serait malhonnête
+de les taire :
+
+- L'application interroge l'API publique GitHub Releases au lancement, pour
+  signaler les mises à jour — c'est le seul canal qui prévienne d'un correctif de
+  sécurité en distribution par sideload. Aucun identifiant n'est transmis.
+- Google ML Kit, qui fournit l'OCR hors ligne, embarque son propre transport de
+  télémétrie. Il peut remonter à Google des métriques d'usage de la bibliothèque,
+  jamais le contenu des documents.
+
+Détail complet dans [PRIVACY.fr.md](PRIVACY.fr.md) §6 bis et §9 bis, et
+[TERMS.fr.md](TERMS.fr.md).
 
 ## Licence
 

@@ -36,7 +36,7 @@ La présente Politique de confidentialité explique comment l'application **Read
 | Type de donnée                  | Utilisation                                                                                          | Lieu de traitement                  |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | Fichiers choisis par l'utilisateur | Lecture, affichage, édition, conversion, partage à la demande de l'utilisateur.                   | Principalement local sur l'appareil. |
-| Données techniques réseau       | Fonctions déclenchées par l'utilisateur : partage, email, mise à jour via GitHub Releases.           | Service tiers concerné.             |
+| Données techniques réseau       | Partage et email : uniquement sur action de l'utilisateur. **Vérification de mise à jour : automatique au lancement** (voir §6 bis).                 | Service tiers concerné.             |
 | Préférences locales             | Fichiers récents, réglages d'affichage, ordre de tri.                                                | Stockage local sur l'appareil.      |
 
 ## 5. Absence de publicité, traceurs et analyse
@@ -51,6 +51,38 @@ Les fichiers ou contenus ne sont transmis à un tiers que sur action explicite d
 
 - Les rendus HTML/WebView affichent des contenus choisis par l'utilisateur ; rester prudent avec les fichiers de sources non fiables. JavaScript est **désactivé par défaut** pour les fichiers HTML (opt-in via la barre d'outils).
 - La vérification de mises à jour interroge l'API GitHub Releases publique (HTTPS, sans authentification, sans cookie). Aucun identifiant utilisateur n'est transmis.
+
+## 6 bis. La seule connexion que l'application ouvre d'elle-même
+
+Ce paragraphe existe parce que la version précédente de ce document laissait
+croire que toute activité réseau était déclenchée par l'utilisateur. C'était
+inexact, et la précision compte davantage que la rassurance.
+
+**Au lancement de l'application**, sans que l'utilisateur ait rien demandé, une
+requête `GET` est émise vers :
+
+```
+https://api.github.com/repos/gitubpatrice/read-files-tech/releases/latest
+```
+
+- **Ce qui part** : rien d'autre que ce qu'une requête HTTPS anonyme comporte —
+  en-tête `Accept`, et l'adresse IP publique de l'appareil, vue par GitHub comme
+  par n'importe quel serveur que l'on contacte. Aucun identifiant d'appareil,
+  aucun compte, aucun cookie, aucune donnée d'usage, aucun nom de fichier.
+- **Ce qui revient** : le numéro de la dernière version publiée et ses notes.
+- **À quelle fréquence** : au plus une fois toutes les 12 heures ; le résultat
+  est mis en cache localement. Et à la demande depuis l'écran « À propos ».
+- **Pourquoi c'est automatique** : l'application est distribuée par sideload,
+  hors de tout magasin d'applications. Aucun mécanisme du système ne signale à
+  l'utilisateur qu'un correctif de sécurité est disponible. Cette requête est le
+  seul canal qui le fasse.
+- **Comment s'y soustraire** : refuser l'accès réseau à l'application dans les
+  réglages d'Android, ou la laisser hors connexion. L'échec est silencieux et
+  sans conséquence — aucune fonctionnalité de lecture, d'édition, d'OCR ou de
+  coffre ne dépend du réseau.
+
+Aucun fichier, aucun contenu de document, aucune donnée du coffre n'est
+concerné par cette requête, ni par aucune autre émise par l'application.
 
 ## 7. Conservation et suppression
 
@@ -81,7 +113,7 @@ code de l'application.
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Affichage et aperçu des fichiers médias choisis par l'utilisateur (Android 13+).                  |
 | `CAMERA`                            | Scanner de documents et OCR (optionnel, accordée à la demande au runtime).                              |
 | `REQUEST_INSTALL_PACKAGES`          | Installer une APK tapée dans l'explorateur. L'installation elle-même est faite par l'installeur du système, qui demande sa propre confirmation. |
-| `INTERNET`, `ACCESS_NETWORK_STATE`  | **Non demandées par l'application.** Ajoutées à l'APK par `com.google.android.datatransport:transport-backend-cct`, le transport de télémétrie de Google embarqué avec Google ML Kit (OCR et scanner). Voir §9 bis. |
+| `INTERNET`, `ACCESS_NETWORK_STATE`  | Vérification de mise à jour via l'API publique GitHub Releases (§6 bis). Elles servent **aussi** au transport de télémétrie de Google (`com.google.android.datatransport:transport-backend-cct`), embarqué avec Google ML Kit — voir §9 bis. |
 
 ### 9 bis. Ce que « 100 % local » recouvre exactement
 
@@ -95,9 +127,10 @@ Deux réserves, énoncées ici parce qu'elles sont vérifiables sur l'APK :
 
 1. **Google ML Kit embarque un transport de télémétrie.** Les composants
    `TransportBackendDiscovery`, `JobInfoSchedulerService` et
-   `AlarmManagerSchedulerBroadcastReceiver` sont présents dans l'APK, et ce sont
-   eux qui apportent `INTERNET` et `ACCESS_NETWORK_STATE`. Ils peuvent
-   transmettre à Google des métriques d'usage de la bibliothèque. Ils ne
+   `AlarmManagerSchedulerBroadcastReceiver` sont présents dans l'APK. Ils
+   utilisent `INTERNET` et `ACCESS_NETWORK_STATE` — qu'ils apportaient d'ailleurs
+   au manifeste fusionné jusqu'à ce que la v2.15 les y déclare explicitement. Ils
+   peuvent transmettre à Google des métriques d'usage de la bibliothèque. Ils ne
    transmettent pas le contenu des documents.
 2. **Le scanner de documents s'appuie sur les services Google Play.**
    `play-services-mlkit-document-scanner` est un client léger : l'interface de
@@ -112,9 +145,18 @@ Deux réserves, énoncées ici parce qu'elles sont vérifiables sur l'APK :
 > l'installation directe d'une APK depuis l'explorateur — ce que `SECURITY.md`
 > consignait correctement. Le tableau ci-dessus est établi sur l'APK publié.
 >
-> La ligne `INTERNET` attribuait par ailleurs cette permission à la vérification
-> de mise à jour via GitHub. Ce n'est pas son origine : l'application ne déclare
-> pas `INTERNET` dans son manifeste, elle lui est ajoutée par une dépendance.
+> **Correction de la correction, même version.** Une première rédaction de ce
+> paragraphe retirait la vérification de mise à jour de la ligne `INTERNET`, au
+> motif que « l'application ne déclare pas `INTERNET` dans son manifeste ».
+> Le fait était exact, la conclusion fausse : Android accorde les permissions du
+> manifeste **fusionné**, pas du manifeste source. La requête vers
+> `api.github.com` partait donc bel et bien, en s'appuyant sans le dire sur une
+> permission apportée par une dépendance de télémétrie. L'affirmation « non
+> demandées par l'application » était le contraire de la vérité.
+>
+> Depuis la v2.15, `INTERNET` et `ACCESS_NETWORK_STATE` sont **déclarées
+> explicitement** dans le manifeste source, avec leur motif. Une permission que
+> l'application utilise doit être visible dans le fichier que l'on relit.
 
 ## 10. Enfants
 
