@@ -209,6 +209,14 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
   }
 
   Future<void> _save() async {
+    // V-M7 (audit 2026-08-02) — `_isSaving` servait à griser le bouton, pas à
+    // interdire un second appel. Or `_save` est aussi déclenché par
+    // `PopScope` / `_confirmLeave` : quitter l'écran pendant une sauvegarde
+    // en relançait une deuxième, et les deux écrivaient dans le MÊME
+    // `${path}.tmp` avant de le renommer. L'écriture atomique protège d'un
+    // kill de l'OS, pas de deux écrivains concurrents : le fichier de
+    // l'utilisateur pouvait se retrouver avec un contenu entrelacé.
+    if (_isSaving) return;
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isSaving = true);
     try {

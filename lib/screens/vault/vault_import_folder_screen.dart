@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/vault_service.dart';
+import '../../widgets/danger_style.dart';
 
 /// Écran de sélection batch pour importer le contenu d'un dossier dans
 /// le coffre. Toggle "Inclure sous-dossiers" (coché par défaut), case à cocher
@@ -111,6 +112,22 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
   }
 
   Future<void> _run() async {
+    // V-M8 (audit 2026-08-02) — `_running` était posé APRÈS le dialogue de
+    // confirmation, qui est `await`é. Un double-tap sur « Chiffrer » ouvrait
+    // donc deux dialogues, et deux flux concurrents chiffraient les mêmes
+    // fichiers — puis supprimaient les originaux deux fois si l'option était
+    // cochée. La garde doit être posée AVANT le premier `await`, sinon elle
+    // ne garde rien : c'est précisément la fenêtre qu'elle est censée fermer.
+    if (_running) return;
+    setState(() => _running = true);
+    try {
+      await _runInner();
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
+  }
+
+  Future<void> _runInner() async {
     final messenger = ScaffoldMessenger.of(context);
     final selected = _entries.where((e) => e.selected).toList();
     if (selected.isEmpty) return;
@@ -127,10 +144,13 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
           ),
           title: const Text('Supprimer les originaux ?'),
           content: Text(
+            // Q-M8 — les astérisques Markdown s'affichaient tels quels dans
+            // un `Text` : « sera **supprimé** ». Un widget Text ne rend pas
+            // le Markdown.
             'Après chiffrement, ${selected.length} fichier'
             '${selected.length > 1 ? "s" : ""} sera'
-            '${selected.length > 1 ? "ont" : ""} **supprimé'
-            '${selected.length > 1 ? "s" : ""}** du dossier source. '
+            '${selected.length > 1 ? "ont" : ""} supprimé'
+            '${selected.length > 1 ? "s" : ""} du dossier source. '
             'Action irréversible.',
             style: const TextStyle(fontSize: 13),
           ),
@@ -140,7 +160,9 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
               child: const Text('Annuler'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              // C-C8 — style destructif canonique. `Colors.red` brut dans un
+              // écran de crypto était la déviation la plus visible du lot.
+              style: dangerFilledButtonStyle(),
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Supprimer après chiffrement'),
             ),
@@ -150,10 +172,7 @@ class _VaultImportFolderScreenState extends State<VaultImportFolderScreen> {
       if (ok != true || !mounted) return;
     }
 
-    setState(() {
-      _running = true;
-      _progress = 0;
-    });
+    setState(() => _progress = 0);
 
     int ok = 0, skip = 0, fail = 0, deleted = 0;
     for (var i = 0; i < selected.length; i++) {

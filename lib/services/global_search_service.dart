@@ -72,16 +72,36 @@ class GlobalSearchService {
     _receive = ReceivePort();
     final cancelPort = ReceivePort();
     _cancelPort = cancelPort.sendPort;
+    // V-M9 (audit 2026-08-02) — course entre `spawn` et `cancel`.
+    //
+    // `Isolate.spawn` est asynchrone : si l'utilisateur annule (ou quitte
+    // l'écran) avant que le `.then` ne s'exécute, `_cleanup()` tourne alors
+    // que `_isolate` est encore null, puis le `.then` affecte l'isolate
+    // FRAÎCHEMENT SPAWNÉ à un champ que plus personne ne tuera. Résultat : un
+    // scan fantôme qui continue de parcourir le stockage, intuable, jusqu'à
+    // la mort du process.
+    //
+    // Le jeton capture l'identité de CETTE recherche. Si `_cleanup` est passé
+    // entre-temps, il ne correspond plus et l'isolate est tué sur place.
+    final token = Object();
+    _runToken = token;
     Isolate.spawn<_StartArgs>(
           _entry,
           _StartArgs(_receive!.sendPort, cancelPort.sendPort, q),
         )
         .then((iso) {
+          if (_runToken != token) {
+            // Annulé pendant le spawn : cet isolate n'a plus de propriétaire.
+            iso.kill(priority: Isolate.immediate);
+            return;
+          }
           _isolate = iso;
         })
         .catchError((e) {
-          controller.addError(e);
-          controller.close();
+          if (!controller.isClosed) {
+            controller.addError(e);
+            controller.close();
+          }
         });
     _receive!.listen((msg) {
       if (msg is! _Msg) return;
@@ -109,6 +129,9 @@ class GlobalSearchService {
     return controller.stream;
   }
 
+  /// Identité de la recherche en cours. Voir la course décrite dans [search].
+  Object? _runToken;
+
   void cancel() {
     try {
       _cancelPort?.send('cancel');
@@ -117,6 +140,9 @@ class GlobalSearchService {
   }
 
   void _cleanup() {
+    // Invalide le jeton AVANT tout : un `spawn` encore en vol verra qu'il n'a
+    // plus de propriétaire et se tuera lui-même.
+    _runToken = null;
     _isolate?.kill(priority: Isolate.immediate);
     _isolate = null;
     _receive?.close();

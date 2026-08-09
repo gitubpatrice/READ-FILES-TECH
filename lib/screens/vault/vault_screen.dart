@@ -1133,11 +1133,12 @@ class _VaultContentState extends State<_VaultContent> {
     );
   }
 
-  String _fmt(int b) {
-    if (b < 1024) return '$b B';
-    if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
-    return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
+  /// C-C9 (audit 2026-08-02) — trois implémentations concurrentes du
+  /// formatage de tailles cohabitaient, dont deux copies inline
+  /// octet-pour-octet identiques de celle-ci. Résultat visible : dans la même
+  /// fonctionnalité « coffre », un écran affichait « 1.5 Ko » (FormatUtils,
+  /// unités FR) et l'autre « 1.5 MB ». Une seule source désormais.
+  String _fmt(int b) => FormatUtils.bytesStorage(b);
 }
 
 /// Controller de progress dialog : permet à l'appelant d'appeler `refresh()`

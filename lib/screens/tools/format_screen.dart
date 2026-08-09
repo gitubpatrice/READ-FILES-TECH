@@ -225,7 +225,12 @@ class _FormatScreenState extends State<FormatScreen> {
             FilledButton.icon(
               onPressed: _isProcessing ? null : _process,
               icon: const Icon(Icons.auto_fix_high, size: 18),
-              label: Text(_mode.contains('minify') ? 'Minifier' : 'Formater'),
+              // Q-M6 (audit 2026-08-02) — le test portait sur `_mode`, qui
+              // vaut 'json', 'css' ou 'js' et ne contient donc JAMAIS
+              // 'minify' : le bouton affichait « Formater » même en mode
+              // minification, qui est pourtant l'action par défaut pour CSS
+              // et JS (voir :157). C'est `_action` qu'il faut lire.
+              label: Text(_action == 'minify' ? 'Minifier' : 'Formater'),
             ),
             const SizedBox(height: 16),
 
