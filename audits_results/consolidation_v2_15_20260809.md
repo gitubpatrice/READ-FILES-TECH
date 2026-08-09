@@ -11,7 +11,7 @@ corrections, et ce que j'ai délibérément laissé de côté.
 
 | | Avant | Après |
 |---|---|---|
-| Tests | 7 fichiers, 592 lignes, **0 sur le coffre** | 10 fichiers, **89 tests**, dont **25 sur le coffre** |
+| Tests | 7 fichiers, 592 lignes, **0 sur le coffre** | 13 fichiers, **101 tests**, dont **25 sur le coffre** |
 | `flutter analyze` | 0 issue | 0 issue |
 | Tests exécutés en CI | jamais bloquants (`\|\| echo`) | bloquants |
 | APK publié | 1 universel étiqueté « arm64-v8a » | 3 par ABI + 1 universel, chacun avec son SHA-256 |
@@ -278,7 +278,48 @@ Lancée sur **mes correctifs**, conformément au §5 du prompt. GPT-5.2 a rendu 
 | `Uint8List` sans `dart:typed_data` → compilation KO | **RÉFUTÉ** | `flutter/services.dart` le réexporte ; l'ajouter fait échouer l'analyse |
 | 2 autres | Observations justes, sans action | — |
 
-**Gemini n'a pas abouti.** Plus de 90 tentatives réparties sur trois séries (2 isolées, puis 40,
+### Deuxième passe : dialogues, branchements, interactions
+
+Ces trois axes n'avaient été couverts ni par l'audit du 2026-08-02 ni par ma
+première passe. Deux relectures ciblées ont été lancées dessus, et elles ont rapporté les
+**défauts les plus visibles pour l'utilisateur** de toute la session.
+
+| Constat | Verdict | Suite |
+|---|---|---|
+| La garde anti-zip-bomb teste une valeur falsifiable (`entry.size` vient de l'en-tête ZIP) | **CONFIRMÉ, ÉLEVÉ** | `archive_safe.dart` + 6 tests, 4 sites recâblés |
+| « Ignorer » ne fermait pas l'éditeur — même effet qu'« Annuler » | **CONFIRMÉ, MOYEN** | Corrigé + 4 tests widget |
+| Une erreur de partage éjectait l'utilisateur du coffre (`close()` non idempotent) | **CONFIRMÉ, ÉLEVÉ** | Corrigé |
+| CSP encore contournable via un `>` dans un identifiant PUBLIC du DOCTYPE | **CONFIRMÉ, ÉLEVÉ** | Corrigé + test |
+| `frame-src file:` autorisait tout le stockage local | **CONFIRMÉ, MOYEN** | Passé à `'none'` |
+| Tous les liens d'ancrage des HTML locaux étaient bloqués | **CONFIRMÉ, MOYEN** | Corrigé |
+| 4 `setState` après `dispose` (2 éditeurs, coffre, bascule JS) | **CONFIRMÉ, ÉLEVÉ** | Corrigés |
+| Réentrance du scanner (double-tap → 2 `DocumentScanner`) | **CONFIRMÉ, MOYEN** | Corrigé |
+| 3 fuites de `TextEditingController` de dialogue (V-L6) | **CONFIRMÉ, FAIBLE** | Corrigées |
+| 2 entrées de menu cloud affichées même app absente | **CONFIRMÉ, FAIBLE** | Câblé sur `isPackageInstalled` |
+| Mode lecture EPUB : 2 balises filtrées au lieu de 9 | **CONFIRMÉ, FAIBLE** | Liste unifiée |
+| Viewers partagent sans `withShare` → plaintext du coffre exposé | **RÉFUTÉ** | Aucun viewer n'ouvre de plaintext du coffre |
+| Pas d'autofocus « Annuler » sur la confirmation du mode panique | **HYPOTHÈSE** | Laissé ouvert (§6) |
+
+**Le plus important : la garde anti-zip-bomb ne gardait rien.** Depuis F2/F4 v2.12.0, quatre sites
+testaient `entry.size` avant de décompresser. Cette valeur vaut `zf.uncompressedSize`, lue telle
+quelle dans l'en-tête du ZIP (`zip_file_header.dart:34`) : elle est **choisie par celui qui
+fabrique le fichier**. Déclarer `0` et livrer 2 Go de zéros compressés passait la garde. Elle
+protégeait du gros fichier honnête, pas du fichier piégé — l'inverse de ce qu'elle annonçait.
+
+**Et j'ai failli livrer une fausse garde à la place.** Ma première version appelait
+`ArchiveFile.decompress(output)` : pour une entrée issue d'un `ZipDecoder`, `_content` n'est pas
+nul, donc la fonction sort sans rien écrire et rendait un **buffer vide**. Sans les tests, elle
+aurait été livrée en annonçant une protection qu'elle n'exerçait pas — soit exactement le défaut
+que ce rapport reproche au code d'origine, reproduit par son correctif.
+
+**Une leçon sur les relectures externes.** Deux constats étaient **justes sur le fond mais faux
+dans leur scénario**. Gemini illustrait le contournement du DOCTYPE par `<!DOCTYPE html foo=">">`
+— or sur une syntaxe invalide le tokenizer bascule en « bogus doctype », où le premier `>` termine
+bien la déclaration ; cet exemple-là ne marche pas. Le cas réellement exploitable est un
+identifiant PUBLIC valide contenant un `>`. **Le constat méritait correction, sa démonstration
+non.** Vérifier l'un ne dispense pas de vérifier l'autre.
+
+**Gemini n'a pas abouti** sur la première série. Plus de 90 tentatives réparties sur trois séries (2 isolées, puis 40,
 puis une douzaine), toutes en `HTTP 503` — « Deadline expired » puis « This model is currently
 experiencing high demand ». Le prompt annonce ce comportement et conseille de relancer en boucle ;
 une boucle détachée tourne encore et déposera le rapport dans ce dossier s'il finit par passer. **La relecture croisée annoncée n'a donc été faite
