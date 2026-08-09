@@ -47,18 +47,29 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
         );
       }
       final bytes = await File(widget.path).readAsBytes();
+      // `decodeBytes` ne décompresse RIEN ici : il lit le catalogue et garde
+      // les entrées sous leur forme compressée (`ArchiveFile.rawContent`).
+      // C'est l'accès à `.content` qui inflate, et sans borne — d'où
+      // `safeEntryBytes` sur chaque chemin d'extraction. Les gardes
+      // n'arrivent donc pas après coup : à cet instant, rien n'a encore été
+      // développé.
       _archive = ZipDecoder().decodeBytes(bytes);
       // On garde TOUS les fichiers (y compris ceux à 0 octet — .gitkeep,
       // __init__.py vide, etc.) et tous les dossiers.
       final files = _archive.files.toList();
       files.sort((a, b) => a.name.compareTo(b.name));
+      if (!mounted) return;
       setState(() {
         _files = files;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Impossible de lire l\'archive';
+        // La cause était jetée : « Impossible de lire l'archive » ne distingue
+        // pas un fichier tronqué d'une archive chiffrée ou d'un dépassement de
+        // cap, et ne laisse rien à rapporter.
+        _error = 'Impossible de lire l\'archive : $e';
         _isLoading = false;
       });
     }
