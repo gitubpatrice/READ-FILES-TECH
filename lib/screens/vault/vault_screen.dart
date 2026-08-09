@@ -274,7 +274,7 @@ class _SetupScreenState extends State<_SetupScreen> {
     // Overlay modal pendant la dérivation PBKDF2 + setup (1-3s sur S9).
     // Même si la dérivation est désormais en Isolate, on affiche un retour
     // visuel explicite — plus intuitif que juste un spinner sur le bouton.
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -594,7 +594,7 @@ class _VaultContentState extends State<_VaultContent> {
   }
 
   Future<void> _import() async {
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     final paths = await RftPickerScreen.pickMany(
       context,
       title: 'Importer dans le coffre',
@@ -656,7 +656,7 @@ class _VaultContentState extends State<_VaultContent> {
   }
 
   Future<void> _share(File enc) async {
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     try {
       final tmp = await widget.service.decryptToTemp(enc);
       await Share.shareXFiles([XFile(tmp.path)]);
@@ -666,7 +666,7 @@ class _VaultContentState extends State<_VaultContent> {
   }
 
   Future<void> _export(File enc) async {
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
@@ -753,7 +753,7 @@ class _VaultContentState extends State<_VaultContent> {
   // ── Importer dossier ──────────────────────────────────────────────────────
 
   Future<void> _importFolder() async {
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     // Picker custom RFT — UX cohérente avec le reste de l'app (raccourcis
     // colorés Téléchargements/Photos/Vidéos/Documents/WhatsApp + tous les
     // dossiers du stockage + bouton "Parcourir un autre dossier" SAF).
@@ -800,7 +800,7 @@ class _VaultContentState extends State<_VaultContent> {
     );
     if (pwd == null || !mounted) return;
 
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     double progress = 0;
     final progressDialog = _showProgressDialog(
       title: 'Export en cours…',
@@ -830,7 +830,7 @@ class _VaultContentState extends State<_VaultContent> {
   // ── Restaurer un coffre depuis un .rftvault ───────────────────────────────
 
   Future<void> _restoreBackup() async {
-    final snack = SnackTarget.of(context);
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
     // Picker custom RFT cohérent avec le reste de l'app — raccourcis colorés
     // (Téléchargements, Documents, Files Tech) où l'utilisateur stocke
     // typiquement ses sauvegardes .rftvault.

@@ -218,4 +218,70 @@ void main() {
       expect(out, contains('你好'));
     });
   });
+
+  // Ces tests portent sur le TEMPS, pas sur le resultat. C'est inhabituel, et
+  // c'est le seul angle qui attrape le defaut : l'ancienne implementation
+  // rendait exactement le meme texte (rien), simplement elle mettait vingt
+  // secondes a le faire, sur le thread principal, pour un fichier de quelques
+  // kilo-octets. Aucune assertion sur la sortie ne pouvait le voir.
+  //
+  // Le seuil est volontairement large. Le but n'est pas de mesurer une
+  // performance mais de distinguer un algorithme lineaire d'un algorithme
+  // quadratique : l'ancien mettait ~5 s sur l'entree ODT ci-dessous et
+  // ~19 s sur l'entree DOCX, le nouveau quelques millisecondes. Un facteur
+  // mille laisse toute la marge voulue a une machine lente.
+  group('complexite sur entree hostile', () {
+    const budget = Duration(seconds: 2);
+
+    test('ODT : des milliers de balises jamais fermees', () {
+      final piege = '<text:p>' * 20000; // 160 Ko
+      final sw = Stopwatch()..start();
+      final out = odtXmlToPlainText(piege);
+      sw.stop();
+      expect(out, isEmpty);
+      expect(
+        sw.elapsed,
+        lessThan(budget),
+        reason:
+            'balayage quadratique : ${sw.elapsedMilliseconds} ms pour '
+            '${piege.length} caracteres',
+      );
+    });
+
+    test('DOCX : des milliers de balises jamais fermees', () {
+      final piege = '<w:t>' * 20000; // 100 Ko
+      final sw = Stopwatch()..start();
+      final out = docxXmlToPlainText(piege);
+      sw.stop();
+      expect(out, isEmpty);
+      expect(
+        sw.elapsed,
+        lessThan(budget),
+        reason:
+            'balayage quadratique : ${sw.elapsedMilliseconds} ms pour '
+            '${piege.length} caracteres',
+      );
+    });
+
+    test('une fermeture orpheline ne fait pas boucler', () {
+      // L'autre bout du meme probleme : des fermetures sans ouverture.
+      final piege = '</text:p>' * 20000;
+      final sw = Stopwatch()..start();
+      expect(odtXmlToPlainText(piege), isEmpty);
+      sw.stop();
+      expect(sw.elapsed, lessThan(budget));
+    });
+
+    test('un document legitime volumineux reste rapide', () {
+      // Le controle qui donne son sens aux trois precedents : si le nouveau
+      // balayage etait lent en general, ces tests passeraient au vert pour la
+      // mauvaise raison.
+      final vrai = '<text:p>une ligne de texte</text:p>' * 20000; // 660 Ko
+      final sw = Stopwatch()..start();
+      final out = odtXmlToPlainText(vrai);
+      sw.stop();
+      expect(out.split('\n').length, 20000);
+      expect(sw.elapsed, lessThan(budget));
+    });
+  });
 }

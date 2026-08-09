@@ -208,4 +208,52 @@ void main() {
     expect(find.text('message perdu'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('stillWanted permet a un ecran de renoncer a son bandeau', (
+    tester,
+  ) async {
+    // Le coffre a besoin du comportement INVERSE des autres ecrans. Son
+    // `dispose()` verrouille (V-H1) : quitter l'ecran, c'est en avoir fini. Un
+    // bandeau « Exporte : releve_bancaire.pdf » qui arrive apres coup
+    // afficherait un nom de fichier du coffre sur un ecran quelconque, alors
+    // que le coffre est deja referme.
+    var present = true;
+    late SnackTarget captured;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              captured = SnackTarget.of(context, stillWanted: () => present);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    captured.info('tant que l ecran est la');
+    await tester.pump();
+    expect(find.text('tant que l ecran est la'), findsOneWidget);
+    captured.clear();
+    await tester.pumpAndSettle();
+
+    // L'ecran s'en va.
+    present = false;
+    captured.info('nom du fichier du coffre');
+    captured.error('echec de restauration');
+    await tester.pump();
+    expect(find.text('nom du fichier du coffre'), findsNothing);
+    expect(find.text('echec de restauration'), findsNothing);
+  });
+
+  testWidgets('sans stillWanted, le bandeau part quand meme', (tester) async {
+    // Le temoin : sans l'option, le comportement par defaut est inchange.
+    // Sans lui, le test precedent pourrait passer au vert parce que plus
+    // rien ne s'affiche du tout.
+    final snack = await pumpAndCapture(tester);
+    snack.info('toujours affiche');
+    await tester.pump();
+    expect(find.text('toujours affiche'), findsOneWidget);
+  });
 }

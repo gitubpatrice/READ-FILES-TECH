@@ -42,13 +42,34 @@ const kSnackLong = Duration(seconds: 6);
 final class SnackTarget {
   final ScaffoldMessengerState _messenger;
   final ColorScheme _colors;
+  final bool Function()? _stillWanted;
 
-  const SnackTarget._(this._messenger, this._colors);
+  const SnackTarget._(this._messenger, this._colors, this._stillWanted);
 
   /// À appeler **avant** le premier `await`, tant que [context] est valide.
-  factory SnackTarget.of(BuildContext context) => SnackTarget._(
+  ///
+  /// [stillWanted] permet à un écran de **renoncer** à son bandeau s'il a
+  /// disparu entre-temps. C'est l'exception, pas la règle : par défaut le
+  /// message s'affiche quoi qu'il arrive, puisque c'est tout l'intérêt de
+  /// cette classe.
+  ///
+  /// L'exception existe pour le coffre. `VaultScreen.dispose()` **verrouille**
+  /// (V-H1) : quitter l'écran, c'est en avoir fini. Un bandeau annonçant
+  /// « Exporté : releve_bancaire.pdf » qui arrive après coup afficherait donc
+  /// un nom de fichier du coffre sur un écran quelconque, alors que le coffre
+  /// est déjà refermé — exactement ce que le verrouillage automatique sert à
+  /// empêcher. Là, se taire est le bon comportement.
+  ///
+  /// ```dart
+  /// final snack = SnackTarget.of(context, stillWanted: () => mounted);
+  /// ```
+  factory SnackTarget.of(
+    BuildContext context, {
+    bool Function()? stillWanted,
+  }) => SnackTarget._(
     ScaffoldMessenger.of(context),
     Theme.of(context).colorScheme,
+    stillWanted,
   );
 
   /// Bandeau neutre.
@@ -96,6 +117,7 @@ final class SnackTarget {
   /// (vérifié le 2026-08-09) ; ce garde existe pour que le jour où l'un
   /// apparaîtra ne se solde pas par un plantage à distance de sa cause.
   void _show(SnackBar bar) {
+    if (_stillWanted != null && !_stillWanted()) return;
     if (!_messenger.mounted) return;
     _messenger.showSnackBar(bar);
   }

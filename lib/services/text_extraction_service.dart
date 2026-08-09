@@ -20,10 +20,63 @@ import '../utils/archive_safe.dart';
 import '../utils/file_caps.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
+/// Parcourt [source] et rend le contenu de chaque bloc `<tag …>…</tag>`.
+///
+/// **Pourquoi ceci existe plutôt qu'une regex.** Les deux extracteurs de ce
+/// fichier utilisaient un motif de la forme `<tag…>(.*?)</tag>` en `dotAll`.
+/// Sur un document bien formé, c'est linéaire et instantané. Sur un document
+/// dont les balises ne sont **jamais fermées**, `.*?` repart à chaque position
+/// candidate et balaie jusqu'à la fin : le coût devient quadratique.
+///
+/// Mesuré le 2026-08-09 :
+///
+/// | entrée | longueur | temps |
+/// |---|---|---|
+/// | `.odt` légitime | 440 Ko | 4 ms |
+/// | `<text:p>` jamais fermé | 160 Ko | 5 365 ms |
+/// | `<w:t>` jamais fermé | 100 Ko | 19 553 ms |
+///
+/// Le temps quadruple à chaque doublement de longueur. Et comme le choix de
+/// passer en isolate se fait sur la taille du fichier **compressé**
+/// (`docx_viewer_screen.dart`), un document piégé de quelques kilo-octets — une
+/// chaîne répétitive se compresse à presque rien — s'exécutait sur le **thread
+/// principal**. Android tue une activité bloquée au-delà de cinq secondes :
+/// ouvrir le fichier suffisait à faire disparaître l'application.
+///
+/// Le balayage ci-dessous est linéaire, et le reste sur entrée hostile. La clé
+/// est la sortie anticipée : si aucune balise fermante n'existe à partir d'une
+/// position, il n'en existe pour aucune ouverture ultérieure — on s'arrête au
+/// lieu de re-balayer la fin du document à chaque tour.
+Iterable<String> tagContents(String source, List<String> tags) sync* {
+  // `[^>]*` ne peut pas franchir un `>` : ce motif n'a pas de retour arrière.
+  final open = RegExp('<(${tags.join('|')})(?:\\s[^>]*)?>');
+  var cursor = 0;
+  while (cursor < source.length) {
+    final m =
+        open.matchAsPrefix(source, cursor) ?? _firstFrom(open, source, cursor);
+    if (m == null) return;
+    final tag = m.group(1)!;
+    final close = '</$tag>';
+    final closeAt = source.indexOf(close, m.end);
+    if (closeAt < 0) return;
+    yield source.substring(m.end, closeAt);
+    cursor = closeAt + close.length;
+  }
+}
+
+/// `RegExp.firstMatch` ne sait pas démarrer à un décalage sans recopier la
+/// chaîne — et recopier à chaque tour rendrait la boucle quadratique par
+/// l'allocation, ce qu'on cherche justement à éviter.
+Match? _firstFrom(RegExp re, String source, int from) {
+  for (final m in re.allMatches(source, from)) {
+    return m;
+  }
+  return null;
+}
+
 /// Décompose le XML d'un `word/document.xml` (.docx) en texte brut.
 ///
-/// Rapide même sur les très gros documents : la regex est en `dotAll` linéaire.
-/// Sentinel `` (SOH) pour marquer les fins de paragraphe avant le split,
+/// Sentinelle `\x01` (SOH) pour marquer les fins de paragraphe avant le split,
 /// car `split('')` (chaîne vide) découperait par caractère individuel.
 String docxXmlToPlainText(String xml) {
   var s = xml;
@@ -35,17 +88,15 @@ String docxXmlToPlainText(String xml) {
   s = s.replaceAll(RegExp(r'<w:tab\b[^/>]*/?>'), '<w:t>\t</w:t>');
 
   // Sentinel ASCII unique pour matérialiser la fin de paragraphe avant split.
-  const sentinel = '';
+  // Écrite sous forme échappée : posée en clair, c'est un octet de
+  // contrôle invisible dans l'éditeur comme dans les diffs.
+  const sentinel = '\x01';
   s = s.replaceAll(RegExp(r'</w:p>'), sentinel);
 
-  final runRe = RegExp(r'<w:t(?:\s[^>]*)?>(.*?)</w:t>', dotAll: true);
   final paragraphs = s.split(sentinel);
   final out = StringBuffer();
   for (final p in paragraphs) {
-    final pieces = runRe
-        .allMatches(p)
-        .map((m) => decodeXmlEntities(m.group(1) ?? ''))
-        .join();
+    final pieces = tagContents(p, const ['w:t']).map(decodeXmlEntities).join();
     out
       ..write(pieces)
       ..writeln();
@@ -156,9 +207,7 @@ String odtXmlToPlainText(String xml) {
   s = s.replaceAll(RegExp(r'<text:tab\b[^>]*/?>'), '\t');
 
   final buffer = StringBuffer();
-  final reg = RegExp(r'<text:(p|h)(?:\s[^>]*)?>(.*?)</text:\1>', dotAll: true);
-  for (final m in reg.allMatches(s)) {
-    final inner = m.group(2) ?? '';
+  for (final inner in tagContents(s, const ['text:p', 'text:h'])) {
     // Les balises internes restantes (mise en forme, annotations, signets)
     // sont retirées ; seul leur contenu textuel compte.
     final clean = inner.replaceAll(RegExp(r'<[^>]+>'), '');
