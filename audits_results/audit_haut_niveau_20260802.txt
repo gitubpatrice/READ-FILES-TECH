@@ -1,0 +1,579 @@
+================================================================================
+RAPPORT D'AUDIT HAUT NIVEAU — READ FILES TECH v2.14.0
+Date : 2026-08-02
+Périmètre : J:/applications/read_files_tech (lib/ ~21 300 lignes Dart, 87 fichiers ;
+            android/ natif Kotlin ; files_tech_core ; CI/CD ; docs)
+Méthode : 6 audits parallèles en lecture seule (sécurité, vulnérabilités,
+          architecture, qualité/patterns, branchements, cohérence).
+          AUCUNE CORRECTION APPLIQUÉE.
+================================================================================
+
+--------------------------------------------------------------------------------
+1. SYNTHÈSE GÉNÉRALE
+--------------------------------------------------------------------------------
+
+Verdict : codebase NETTEMENT au-dessus de la moyenne. Aucun Critical. La crypto
+du coffre est sérieuse (Argon2id auto-calibré, AES-256-GCM avec AAD, zeroize,
+lockout dual wall-clock + monotone), le natif est durci (allowBackup=false,
+cleartext off, FileProvider non exporté, anti-zip-slip, R8+shrink), aucun secret
+versionné (keystore présent sur disque mais gitignoré et non tracké), zéro
+TODO/FIXME, zéro fichier mort, commentaires « pourquoi » exemplaires.
+
+Le code porte les traces de plusieurs itérations d'audit antérieures (F1-F6,
+G2-G16, U4) — mais l'audit révèle que les mêmes pièges sont résolus ici et
+retombés là : patterns résolus dans un écran, réintroduits dans un autre.
+
+Notes indicatives par axe :
+  - Sécurité (MASVS)        : 8,5/10  (L1 atteint, L2 partiel)
+  - Qualité de code         : 7/10
+  - Architecture            : 6,5/10
+  - Cohérence               : 78/100
+
+TOP 5 des problèmes à traiter en priorité :
+  1. H1 — Le coffre reste déverrouillé indéfiniment au premier plan
+          (pas de lock à la sortie de VaultScreen).
+  2. H1(w) — La release GitHub publie un APK universel étiqueté « arm64-v8a »
+          (pas de --split-per-abi dans release.yml) ; release sans tests ni
+          analyze ni vérification tag↔pubspec.
+  3. M3/CI — flutter test || echo "No tests yet" masque les échecs de tests
+          en CI ; zéro test sur le vault (feature la plus critique).
+  4. H2-H4 — OOM accessibles utilisateur : lectures intégrales non capées
+          (recherche de contenu, aperçu explorateur, zip creator).
+  5. M1/M2 — Écrasements silencieux de fichiers (copy/move batch, export
+          coffre) = perte de données réelle.
+
+================================================================================
+2. SÉCURITÉ (agent android-security)
+================================================================================
+
+Aucun Critical, aucun High.
+
+MEDIUM
+------
+S-M1  Permission INTERNET absente du manifest release.
+      android/app/src/main/AndroidManifest.xml (INTERNET seulement en
+      debug/profile). Double conséquence : (a) UpdateService
+      (files_tech_core/lib/src/update/update_service.dart:88) échoue
+      silencieusement en release (catch global ligne 141) — le check de MAJ
+      est cassé ; (b) À VÉRIFIER : une lib tierce (ML Kit, webview_flutter)
+      peut réintroduire INTERNET par manifest merger (aapt dump permissions
+      sur l'APK release). À trancher explicitement : ajouter INTERNET ou
+      assumer l'app 100 % offline.
+
+S-M2  WebView HTML : sous-ressources distantes non bloquées.
+      lib/screens/viewers/html_viewer_screen.dart:104-116 — le
+      NavigationDelegate bloque la navigation hors file:// mais pas les
+      sous-ressources (<img src=https://…>) chargées même JS désactivé →
+      fuite passive d'IP/métadonnées à l'ouverture d'un HTML piégé. Avec JS
+      activé (opt-in, avertissement correct), fetch() réseau = exfiltration.
+      Atténué par : JS off par défaut + absence d'INTERNET en release (si
+      S-M1 confirmé). Correctif envisageable : blocage des schémas http/https
+      au niveau ressource ou CSP injectée.
+
+LOW
+---
+S-L3  Combo MANAGE_EXTERNAL_STORAGE + REQUEST_INSTALL_PACKAGES
+      (AndroidManifest.xml:20-21, 39). Justifié métier, documenté (manifest +
+      PRIVACY.md §9), acceptable hors Play Store — mais signature « dropper »
+      classique si le code Dart était compromis. Risque explicitement accepté.
+
+S-L4  FileProvider expose external-path "." (res/xml/file_paths.xml:19).
+      Atténuations solides : exported=false (AndroidManifest.xml:110),
+      canonicalisation + racines autorisées + blocklist vault_decrypt/share
+      (MainActivity.kt:54-76), grant READ-only. Résiduel : tout le stockage
+      partagé est partageable via l'app — comportement voulu.
+
+S-L5  Signature v1 activée (android/app/build.gradle.kts:58) — nécessaire
+      pour minSdk 21 mais sensible à Janus (CVE-2017-13156) sur Android 5-7.
+      Envisager minSdk 24 pour dropper v1.
+
+S-L6  debugPrint non conditionnés (output_storage_service.dart:120,137) —
+      impact quasi nul (no-op en release) mais pattern divergent du reste.
+
+INFO (vérifié sain)
+-------------------
+- Aucun secret hardcodé (grep api_key|password|secret|token|PRIVATE KEY : rien).
+- Keystore et key.properties exclus de git (git check-ignore + ls-files : OK).
+- Dépendances globalement récentes ; points d'attention : gpt_markdown (jeune),
+  syncfusion_* (binaire propriétaire, surface large). À faire : dart pub
+  outdated + OSV-Scanner sur pubspec.lock.
+- Pas de détection root/intégrité (MASVS-R) — défense en profondeur possible.
+- Pas de certificate pinning — acceptable ici (whitelist de hosts, SHA-256
+  affiché, ouverture navigateur externe).
+
+POINTS FORTS SÉCURITÉ
+---------------------
+- Crypto coffre exemplaire : Argon2id auto-calibré, AES-256-GCM avec AAD lié
+  au filename, anti-rename, lockout dual, zéroisation des buffers, sentinelles
+  anti-format-confusion v1/v2, garde-fous anti-OOM sur params Argon2 forgés.
+- Durcissement natif : allowBackup=false, usesCleartextTraffic=false,
+  networkSecurityConfig restrictif, dataExtractionRules tout-exclu, intents
+  shortcut whitelistés, anti-zip-slip, anti-CSV-injection, R8 + shrinkResources.
+- Privacy : FLAG_SECURE à refcount, panic wipe, purge des caches plaintext,
+  100 % local.
+
+================================================================================
+3. VULNÉRABILITÉS ET BUGS (agent android-vulnerability)
+================================================================================
+
+HIGH
+----
+V-H1  Coffre : pas de verrouillage à la sortie de l'écran, clé en RAM
+      indéfiniment. CONFIRMÉ.
+      lib/screens/vault/vault_screen.dart:60-69 (dispose() ne fait que
+      SecureWindow.disable(), pas de lock()), :109, lib/main.dart:236-263
+      (auto-lock uniquement en arrière-plan). Scénario : déverrouiller le
+      coffre → retour accueil → explorateur des heures au premier plan →
+      quiconque reprend le téléphone rouvre « Coffre » sans mot de passe.
+      Effet de bord : refcount SecureWindow jamais compensé → FLAG_SECURE
+      peut rester posé sur toute l'app.
+      → lock() au dispose() de VaultScreen, ou timer d'inactivité.
+
+V-H2  Recherche de contenu : OOM + setState après dispose garantis. CONFIRMÉ.
+      lib/screens/tools/content_search_screen.dart:103,125,128 — readAsLines()
+      intégral sans cap (log 500 Mo en RAM, contrairement à
+      global_search_service qui cape à 2 Mo), aucune garde mounted dans la
+      boucle, aucune garde anti-réentrance.
+
+V-H3  Aperçu explorateur : lecture intégrale d'un fichier pour 40 lignes.
+      CONFIRMÉ. lib/screens/explorer/widgets/file_preview_sheet.dart:17 —
+      readAsLines() charge tout puis take(40). Long-press → Aperçu sur un log
+      de 2 Go = OOM kill. → openRead() en streaming.
+
+V-H4  ZIP creator : readAsBytes illimité + encodage synchrone UI thread.
+      CONFIRMÉ. lib/screens/tools/zip_creator_screen.dart:50-55 — aucun
+      FileCaps (contrairement aux autres outils), ZipEncoder().encode sur le
+      main isolate. Vidéo 1,5 Go → OOM ; 200 Mo → freeze + RAM ×3.
+
+MEDIUM
+------
+V-M1  Écrasement silencieux + perte de données au copy/move batch. CONFIRMÉ.
+      lib/screens/explorer/services/batch_ops_service.dart:47-48 —
+      File(p).copy() écrase un homonyme sans vérification ; en mode move, la
+      source est supprimée ensuite → destruction des deux versions. Idem
+      file_explorer_screen.dart:588,603.
+
+V-M2  Écrasement silencieux à l'export du coffre. CONFIRMÉ.
+      lib/services/vault_service.dart:446-449 — exportFile écrit sans test
+      d'existence ; un fichier utilisateur homonyme est remplacé sans
+      confirmation.
+
+V-M3  Panic wipe oublie la corbeille externe. PROBABLE.
+      lib/services/panic_service.dart:38-122 vs trash_service.dart:14 — les
+      fichiers « supprimés » restent en clair dans <volume>/.RFT_Corbeille,
+      lisible par toute app avec accès stockage, alors que le panic promet un
+      wipe complet. (Confirmé aussi par l'audit qualité : PanicReport.
+      isComplete reste vert.)
+
+V-M4  Viewer Markdown : fetch réseau silencieux (pixel de tracking). CONFIRMÉ.
+      lib/screens/viewers/md_viewer_screen.dart:118-123 — GptMarkdown sans
+      imageBuilder : ![x](https://…) rendu via NetworkImage → requêtes HTTPS
+      vers domaines arbitraires à l'ouverture d'un .md piégé (fuite IP,
+      contournement du modèle « 100 % local »).
+
+V-M5  EPUB : zip bomb via container.xml / OPF non capés. CONFIRMÉ.
+      lib/services/reader_service.dart:67-70,82-85 — accès à .content
+      (décompression lazy) sans vérifier .size. → check entry.size.
+
+V-M6  MAJ : SHA-256 issu du même canal que l'APK. CONFIRMÉ (design assumé).
+      files_tech_core/lib/src/update/update_service.dart:139 — hash extrait du
+      body de la release GitHub, même source que apkUrl ; compromission du
+      compte GitHub = APK + hash concordants. Le dialog d'accueil ne l'affiche
+      même pas (home_screen.dart:102-141).
+
+V-M7  Double-save concurrent sur le même .tmp atomique. PROBABLE.
+      code_editor_screen.dart:211-219, csv_editor_screen.dart:71-82 — _save()
+      sans garde _isSaving ; PopScope/_confirmLeave peut relancer un save →
+      deux écrivains sur ${path}.tmp, corruption possible.
+
+V-M8  _running posé après un await → double chiffrement + suppression des
+      originaux. PROBABLE. vault_import_folder_screen.dart:113-156 — dialog
+      awaité AVANT _running = true ; double-tap « Chiffrer » avec « Supprimer
+      les originaux » → 2 flows concurrents.
+
+V-M9  Isolate orphelin dans la recherche globale (race spawn/cancel).
+      CONFIRMÉ. global_search_service.dart:75-85,112-125 — cancel avant
+      complétion du Isolate.spawn → le .then assigne l'isolate APRÈS cleanup ;
+      scan fantôme intuable.
+
+V-M10 setState sans mounted / lectures sans cap (pattern répété). CONFIRMÉ.
+      code_editor_screen.dart:75,82 ; csv_editor_screen.dart:55,57,83 ;
+      ocr_screen.dart:45,50 ; diff_screen.dart:56-77 (pas de try/catch →
+      spinner infini) ; zip_viewer_screen.dart:46-57 (decodeBytes 500 Mo
+      synchrone) ; convert_screen.dart:172 ; pdf_signature_service.dart:48.
+
+V-M11 CPU lourd UI thread, incohérent avec la doctrine isolates du projet.
+      CONFIRMÉ. compress_screen.dart:58-66, convert_screen.dart:145-154,
+      299-307, csv_tools_screen.dart:49,103-135, exif_service.dart:98,
+      reader_service.dart:60,129.
+
+V-M12 Chemin temp déterministe pour les décryptages coffre. PROBABLE.
+      vault_service.dart:407-419 + vault_screen.dart:617-621 — decryptToTemp
+      écrit toujours cache/vault_decrypt/<nom> ; 2 partages rapides du même
+      fichier → écritures concurrentes, plaintext tronqué envoyé à la
+      share-sheet.
+
+LOW
+---
+V-L1  Photos OCR jamais purgées du cache (ocr_screen.dart:65-67).
+V-L2  Scanner : PDF source ML Kit laissé dans le cache (scanner_screen.dart:63).
+V-L3  Permission CAMERA déclarée mais jamais gérée (AndroidManifest.xml:41) —
+      déléguée à image_picker/ML Kit, refus tombant dans un catch générique.
+V-L4  Purge au paused pendant une share-sheet ouverte (main.dart:250) — le
+      fichier déchiffré partagé peut être supprimé sous le nez du FileProvider.
+V-L5  reset() du coffre oublie _kLockoutUntilElapsed (vault_service.dart:
+      961-978) — lockout fantôme jusqu'à 30 min sur un coffre neuf.
+V-L6  TextEditingController de dialogs jamais disposés (csv_editor_screen.
+      dart:102, explorer_dialogs.dart:14, pdf_viewer_screen.dart:156).
+V-L7  TOCTOU check-then-rename + tmp prévisible (bulk_rename_screen.dart:
+      125-135, atomic_write.dart:11-15) — exploitable uniquement par une app
+      locale en course sur stockage partagé.
+V-L8  Restauration corbeille à travers un parent symlinké (trash_service.
+      dart:336-338).
+V-L9  setState après picker système sans mounted (duplicates_screen.dart:39,
+      global_search_screen.dart:68, compress_screen.dart:36,
+      zip_creator_screen.dart:37, diff_screen.dart:44).
+V-L10 Incohérences validation : bulk_rename_screen.dart:92-101 vs
+      file_type_helpers.dart:184-191 ; output_storage_service.dart:72-96
+      accepte « .. » dans setBasePath ; html_viewer_screen.dart:66 whitelist
+      .log malgré le commentaire contraire (:50).
+
+================================================================================
+4. ARCHITECTURE ET STRUCTURE (agent android-architecture) — score 6,5/10
+================================================================================
+
+FORCES
+------
+- Découpage par features clair sous lib/screens/ : explorer/, editors/,
+  viewers/ (12), tools/ (22), vault/ ; services/, utils/, widgets/.
+- L'explorateur est la feature la mieux structurée (services + widgets fins) —
+  modèle à généraliser.
+- Package partagé files_tech_core (48 imports) : réutilisation cross-app
+  réelle, zéro duplication core↔app.
+- Discipline performance : compute()/Isolate avec seuils explicites documentés.
+- Hygiène remarquable : aucun TODO, aucun fichier mort, lints durcis et
+  justifiés, commentaires qui expliquent les pourquoi.
+- State management 100 % setState (239 occurrences / 43 fichiers) : cohérent,
+  pas de mélange de paradigmes — mais plafond de testabilité assumé.
+
+FAIBLESSES PRIORISÉES
+---------------------
+P0 A-P0a  God objects sur la feature la plus sensible :
+          lib/services/vault_service.dart = 1352 lignes, ≥4 responsabilités
+          (dérivation de clé, I/O chiffré, lockout + SharedPreferences,
+          format de backup custom, bridge natif AES) → candidats :
+          VaultCrypto, VaultStorage, VaultBackupCodec, VaultLockout.
+          lib/screens/vault/vault_screen.dart = 1209 lignes, 8 classes, 21
+          setState → éclater par sous-écran.
+P1 A-P1a  Absence de DI : singletons (VaultService.instance,
+          PanicService.instance), classes statiques (SecureWindow, AppUpdate,
+          FileViewerRouter) → impossible à mocker, explique la faiblesse des
+          tests. Minimum : injection par constructeur sur les nouveaux écrans.
+P1 A-P1b  Duplication réelle de logique métier : docx_viewer_screen.dart:
+          82-143 réimplémente l'extraction DOCX alors que extractDocxText()
+          existe dans text_extraction_service.dart:82 — risque de divergence
+          de parsing.
+P1 A-P1c  Tests quasi inexistants : 7 fichiers pour ~21k LOC, zéro widget
+          test, vault non testé. Sécuriser le vault par des tests AVANT la
+          refonte P0.
+P2 A-P2a  Écrans géants : home_screen.dart 1184 l. (6 classes), rft_picker_
+          screen.dart 1051 l. (un écran complet placé dans widgets/),
+          explorer 974 l. Appliquer partout le découpage de l'explorer.
+P2 A-P2b  Dépendances mortes/trompeuses : cupertino_icons (0 import), http
+          (utilisé uniquement via files_tech_core qui le déclare déjà),
+          flutter_launcher_icons ios: true alors que l'app est Android-only.
+P3 A-P3a  Dette de scaffolding : 5 dossiers plateforme inutilisés (ios/,
+          linux/, macos/, web/, windows/) ; navigation impérative sans routes
+          nommées ; 6 MethodChannels déclarés inline sans registre central ;
+          MainActivity.kt (585 l.) concentre tout le natif.
+P3 A-P3b  Deux niveaux de « services » sans convention : lib/services/
+          (global) vs lib/screens/explorer/services/ (feature-local) — les
+          autres features n'ont pas ce découpage.
+
+DIVERS
+------
+- zip_viewer_screen.dart:168 contient des octets NUL bruts dans un littéral —
+  le fichier est détecté comme binaire (casse grep/diff). Réécrire en '\x00'.
+- avoid_dynamic_calls / unawaited_futures désactivés globalement
+  (analysis_options.yaml:16-18) — assumé et commenté.
+- Divergence cross-app : files_tech_core dépend de flutter_markdown (archivé)
+  alors que RFT a migré vers gpt_markdown — deux moteurs Markdown dans le
+  graphe.
+
+================================================================================
+5. QUALITÉ DE CODE ET PATTERNS (agent android-code-review) — note 7/10
+================================================================================
+
+HIGH
+----
+Q-H1  Zéro test sur le vault (1352 lignes de crypto sans test). Les helpers
+      sont statiques/purs, donc testables sans plugin. Une régression
+      silencieuse du format de chiffrement passe en CI aujourd'hui.
+Q-H2  CI : flutter test || echo "No tests yet" (.github/workflows/ci.yml) —
+      un échec de test ne fait jamais échouer la CI. Supprimer le « || echo ».
+Q-H3  panic_service ne purge pas la corbeille (cf. V-M3).
+Q-H4  VaultService.reset() laisse un lockout résiduel (cf. V-L5).
+Q-H5  OOM accessibles utilisateur : zip_creator (V-H4), file_preview_sheet
+      (V-H3), csv_viewer_screen.dart:227 (DataTable matérialise toutes les
+      lignes — le viewer XLSX fait correctement avec PaginatedDataTable),
+      json_viewer_screen.dart:125,236-255 (arbre JSON entièrement matérialisé
+      en widgets : l'isolate de parsing ne sert à rien).
+Q-H6  CPU lourd main thread : compress_screen.dart:58-65, convert_screen.
+      dart:299-307 (decodeImage/copyResize/encodeJpg sur photos 12 MP sans
+      compute(), alors que le même fichier utilise compute() ailleurs).
+Q-H7  setState après await sans mounted — foyers résiduels :
+      txt_viewer_screen.dart:49,57,64 (aucun mounted dans tout le fichier),
+      zip_viewer, ocr_screen, diff_screen, content_search_screen,
+      csv_editor_screen, code_editor_screen.
+Q-H8  Rebuild storm : content_search_screen.dart:125 — setState par fichier
+      scanné (50k fichiers = 50k rebuilds) + RegExp reconstruit par ligne
+      (:112). Le correctif existe : buffer + flush 100 ms dans
+      global_search_screen.dart:28-54 — à répliquer.
+
+MEDIUM
+------
+Q-M1  Duplication du routing extension→écran : FileViewerRouter.screenFor
+      (documenté « source unique ») réimplémenté par home_screen.dart:170-211
+      (_screenForExt), avec divergence : _supported inclut heic, absent de
+      FileViewerRouter.imageExts.
+Q-M2  Duplication icônes/couleurs par extension (3 implémentations) et
+      formatage de taille (3 variantes) — détaillé en §7 (C3, C9).
+Q-M3  Services isolate non réentrants : GlobalSearchService.search() et
+      DuplicateFinderService.find() écrasent _receive/_iso à chaque appel ;
+      ReceivePort jamais fermé.
+Q-M4  SnackBar d'erreur inline ×~18 au lieu de showErrorSnack (cf. §7 C5).
+Q-M5  Messages hardcodés désynchronisables des caps : json_viewer_screen.
+      dart:49 '(>50 Mo)', convert_screen.dart:223 100*1024*1024 en dur alors
+      que FileCaps/PerfThresholds existent.
+Q-M6  Bug de label visible : format_screen.dart:228 — _mode.contains
+      ('minify') toujours faux (c'est _action) → le bouton affiche toujours
+      « Formater » même en minify.
+Q-M7  Tests placeholders : audit_v2_13_2_test.dart:47-48 (tautologie
+      expect(200, 200)), :38-41 teste le SDK RegExp pas l'app — fausse
+      impression de couverture anti-ReDoS.
+Q-M8  Feedback trompeur : csv_viewer_screen.dart:57-75 (parse en échec →
+      « Fichier CSV vide ») ; vault_import_folder_screen.dart:130-134
+      (markdown littéral '**supprimé(s)**' affiché tel quel).
+Q-M9  Catch silencieux ×8 côté écrans (content_search_screen.dart:96 : avale
+      l'échec du listing récursif — l'utilisateur croit chercher partout) ;
+      logging = if (kDebugMode) debugPrint uniquement ; en release, une purge
+      panic partielle est invisible. Pas de logger structuré.
+Q-M10 TOCTOU cap→lecture : length() puis readAsBytes() sans revalidation
+      (vault_service.dart:377→390, reader_service.dart:53→59, exif_service.
+      dart:23→29).
+
+LOW
+---
+- IO synchrone : xlsx_viewer_screen.dart:32 readAsBytesSync ; lengthSync/
+  typeSync dans build/boucles.
+- Détection d'erreur par startsWith('Erreur') sur du texte (encode_screen.
+  dart:219, format_screen.dart:238) — un booléen _isError serait sain.
+- Nommage : champ line_ (content_search_screen.dart:455) ; titre AppBar
+  anglais « Color Picker » dans une UI 100 % FR.
+- Move = copy+delete sans vérif d'intégrité (file_explorer_screen.dart:
+  597-612) : copie tronquée → original supprimé.
+- Commentaire faux : output_storage_service.dart:204 (« timestamp inclut les
+  ms » — non).
+- color_extract.dart:39-42 : rgb(999,0,0) non clampé → assert en debug.
+- ExifService ré-encode silencieusement webp/gif en JPEG avec perte d'alpha.
+
+BONNES PRATIQUES À SALUER
+-------------------------
+- analysis_options.yaml durci et commenté.
+- hash_screen.dart:25-53 : hash 4 algos en une passe streamée dans
+  Isolate.run — modèle du genre.
+- convert_screen.dart:41-78 : wrapper _run() centralisant réentrance/mounted/
+  erreurs pour 7 jobs — zéro duplication.
+- trash_service_test.dart : falsification réelle sur FS, anti-traversée
+  testée — meilleur fichier de test.
+- Commentaires « pourquoi » exemplaires (csv_safe.dart OWASP/CVE,
+  pdf_signature_service.dart eIDAS).
+
+================================================================================
+6. BRANCHEMENTS / WIRING (agent android-wiring)
+================================================================================
+
+Fichiers sensibles versionnés : AUCUN. Keystore et key.properties sur disque
+mais non trackés et gitignorés. local.properties ignoré. ✅
+
+HIGH
+----
+W-H1  Release GitHub : APK universel étiqueté « arm64-v8a ».
+      .github/workflows/release.yml:70 builde sans --split-per-abi, mais le
+      body de la release affiche « APK arm64-v8a » (release.yml:91). Or
+      build.gradle.kts:43-48 affirme que le split ABI est obtenu via
+      --split-per-abi CLI. Le commentaire gradle et le workflow se
+      contredisent — l'artefact publié est l'universel ~100 Mo, mal étiqueté.
+      → ajouter --split-per-abi + upload des 3 APK, ou corriger le label.
+
+W-H2  F-Droid bloqué : distribution F-Droid annoncée (AndroidManifest.xml:34)
+      mais aucun fastlane/, et google_mlkit_text_recognition +
+      google_mlkit_document_scanner + syncfusion_flutter_pdf(viewer) tirent
+      des binaires non-FOSS → rejet F-Droid sauf flavor foss dédié. Aucun
+      flavor défini.
+
+MEDIUM
+------
+W-M3  CI masque les échecs de tests (ci.yml:52, cf. Q-H2).
+W-M4  Release sans garde-fous : release.yml enchaîne keystore → build →
+      release sans flutter analyze, sans flutter test, sans vérifier que le
+      tag v* correspond à pubspec.yaml (2.14.0+21400).
+W-M5  Heredoc non quoté pour les secrets du keystore (release.yml:57-62 :
+      << EOF non quoté) → tout $ ou backtick dans KEYSTORE_PASSWORD serait
+      interprété par le shell, cassant la signature silencieusement.
+      → << 'EOF'.
+W-M6  Dérive de version documentaire : pubspec = 2.14.0, README.md:8 =
+      « 2.12.3 », SECURITY.md s'arrête à v2.13.2. Trois sources, trois
+      valeurs.
+W-M7  Gradle 9.5.0 vs AGP 8.11.1 : hors matrice officielle (AGP 8.11 valide
+      Gradle 8.13 ; support Gradle 9 à partir d'AGP 8.13+). Le build passe
+      mais le couplage n'est pas garanti — risque de casse au prochain bump.
+W-M8  Commentaire Kotlin désynchronisé : MainActivity.kt:255-259 dit
+      « branche spéciale APK retirée avec REQUEST_INSTALL_PACKAGES » — or la
+      permission est revenue en v2.13.0 et installApk existe (MainActivity.
+      kt:441). Commentaire stale documentant l'inverse du comportement.
+
+LOW
+---
+W-L9  cupertino_icons orphelin (pubspec.yaml:12, 0 import).
+W-L10 Légaux FR uniquement dans l'APK : assets/legal/ ne contient que
+      PRIVACY.fr.md/TERMS.fr.md alors que resourceConfigurations embarque
+      en+fr → utilisateur EN = textes légaux FR.
+W-L11 assets/legal/ référencé uniquement via files_tech_core — un renommage
+      côté core casse au runtime sans qu'analyze locale bronche.
+W-L12 Incohérence versions d'actions entre workflows : ci.yml sur
+      checkout@v6/setup-java@v5, release.yml sur @v4.
+
+INFO (wiring sain, vérifié)
+---------------------------
+- Platform channels 6/6 appariés Kotlin↔Dart (shortcut, storage, lifecycle,
+  list_dir, open_file, vault_crypto). Quick Tiles → extras whitelistés →
+  manifest + ProGuard -keep : chaîne complète.
+- Permissions manifest ↔ code : toutes justifiées et documentées.
+- FileProvider cohérent avec la blocklist safeCanonical.
+- ML Kit : modèle bundlé (pas de download runtime), ProGuard narrow.
+- Signing : fallback debug propre si key.properties absent → CI debug
+  fonctionne sans secrets ; cleanup keystore if: always() en release.
+- pubspec.lock tracké → carets de facto pinnés en CI. Deps toutes utilisées
+  sauf cupertino_icons.
+- minify+shrink actifs, network_security_config + data_extraction_rules +
+  allowBackup=false cohérents.
+
+================================================================================
+7. COHÉRENCE / HOMOGÉNÉITÉ (agent coherence-checker) — score 78/100
+================================================================================
+
+Codebase globalement disciplinée (nommage, structure, commentaires FR, zéro
+print, caps documentés), mais 4 poches d'incohérence multi-sites.
+
+HIGH
+----
+C-C8  Action destructive : 3 conventions concurrentes, dont 3 dans le même
+      fichier. Canonique : dangerFilledButtonStyle()/kDangerRed (danger_style.
+      dart, adopté ×6). Déviation A : cs.errorContainer (vault_screen.dart:
+      177-181, :661) — pattern explicitement abandonné dans le changelog
+      d'explorer_dialogs.dart (« rendait le bouton pâle »). Déviation B :
+      Colors.red brut (duplicates_screen.dart:89, vault_import_folder_screen.
+      dart:143 — destructive + crypto !, global_search_screen.dart:215).
+      Intra-fichier : vault_screen.dart contient les commentaires « cs.error
+      au lieu de Colors.red hardcodé » ET des Colors.red résiduels.
+
+C-C9  Formatage des tailles : 3 implémentations, décimales inversées,
+      duplication littérale. Canonique : FormatUtils.bytesStorage (8
+      callsites). Copies inline octet-pour-octet identiques avec décimales
+      inversées : vault_screen.dart:1055-1059, global_search_screen.dart:
+      321-325. 3e variante : zip_viewer_screen.dart:65-67. Et vault_import_
+      folder_screen.dart:340,389 utilise FormatUtils.bytes (FR Ko/Mo) → dans
+      le même feature coffre, un écran affiche « 1.5 Ko » et l'autre
+      « 1.5 MB ».
+
+C-C12 Caps de taille : 3 sources de vérité. FileCaps (14 sites) vs
+      PerfThresholds.viewerMaxBytes (même 50 MiB, files_tech_core) avec
+      messages hardcodés « (>50 Mo) » qui dériveront, vs inline résiduels :
+      convert_screen.dart:223 (100 MiB), :270, text_extraction_service.dart:
+      113, zip_viewer_screen.dart:153 (200 MiB = duplique zipEntryDecompressed,
+      contredisant le commentaire anti-divergence v2.13.2 du même fichier).
+      Divergence de valeur : vault_service.dart:477 _backupMaxBytes = 200 Mo
+      (export) vs FileCaps.vaultBackup = 100 Mo (restore) — probable
+      intentionnel, à documenter.
+
+MEDIUM
+------
+C-C5  showErrorSnack canonique quasi non adopté : introduit U4 v2.13.0, 2
+      callsites réels vs ~18 sites « SnackBar(content: Text('Erreur : $e')) »
+      inline. Les erreurs ne sont pas visuellement distinguées des infos dans
+      90 % de l'app.
+C-C6  throw 'string' brut dans les tools (convert_screen.dart ×10,
+      compress_screen.dart:59) vs exceptions typées partout dans les services
+      (StateError ×25, FileSystemException, ArgumentError…).
+C-C3  Helper iconFor contourné par une copie privée divergente :
+      vault_import_folder_screen.dart:414-455 (_iconFor avec mappings
+      différents : mp4, docx, mp3 rendus différemment selon l'écran).
+C-C10 Palette hex dupliquée dans 4 fichiers (home_screen, about_screen,
+      rft_picker_screen ×2) — pas d'AppPalette.
+C-C13 Constantes SnackBar mortes/contournées : AppConstants.snackShort/
+      snackMedium jamais utilisés ; kSnackShort/Medium/Long utilisés dans 1
+      fichier ; 13 durées inline dans 11 fichiers.
+
+LOW
+---
+C-C1  Résidus anglais visibles : StateError('Native encrypt returned null')
+      remontés à l'utilisateur (vault_service.dart:1284,1323) ;
+      Text('Export') (txt_tools_screen.dart:273) vs « Exporter… » ailleurs.
+C-C7  debugPrint non gardé par kDebugMode : output_storage_service.dart:120,
+      137, vault_service.dart:851.
+C-C14 Clés SharedPreferences en littéraux dans main.dart:44-45,281,295 vs
+      static const _kX partout ailleurs.
+
+INFO
+----
+C-C11 Aucun mécanisme i18n : app 100 % FR (cohérent en interne), docs
+      bilingues. Extraction de ~700 chaînes dispersées si i18n un jour.
+
+Points cohérents ✓ : fichiers 100 % snake_case, suffixes XxxScreen/XxxService,
+commentaires uniformément FR, zéro print(, routage viewers centralisé,
+singletons .instance uniquement pour état partagé, thème sombre centralisé,
+withValues partout (zéro withOpacity), autoLockDelay source unique.
+
+================================================================================
+8. PLAN DE TRAITEMENT SUGGÉRÉ (aucune correction appliquée à ce stade)
+================================================================================
+
+PRIORITÉ RELEASE (sécurité / données)
+  1. V-H1   : lock() au dispose() de VaultScreen (coffre ouvert indéfiniment).
+  2. V-M1/M2: anti-écrasement copy/move/export coffre (suffixe ou confirmation).
+  3. V-M3   : purge de la corbeille dans panic wipe (ou documenter l'exclusion).
+  4. V-M4   : imageBuilder bloquant http(s) dans le viewer Markdown.
+  5. S-M1   : trancher INTERNET en release (check MAJ cassé ou offline assumé).
+  6. W-H1   : --split-per-abi + 3 APK dans release.yml, ou corriger le label.
+  7. W-M3/M4: supprimer « || echo » en CI ; analyze+test+check tag↔pubspec en
+              release ; W-M5 : quoter le heredoc (<< 'EOF').
+
+QUICK WINS (polish, effort S)
+  8. V-L5   : reset() complet du lockout coffre.
+  9. Q-M6   : bug label minify (format_screen.dart:228).
+ 10. C-C8   : unifier le style destructif sur kDangerRed (vault_screen ×5,
+              duplicates, vault_import, global_search).
+ 11. C-C9   : supprimer les 3 _fmt inline → FormatUtils.bytesStorage.
+ 12. C-C1/C7: StateError EN traduits, debugPrint gardés, NUL brut → '\x00'
+              (zip_viewer_screen.dart:168).
+ 13. W-M6   : resynchroniser README/SECURITY.md sur 2.14.0.
+
+REFACTOS MOYENS (un par release)
+ 14. V-H2-H4/M10 : caps + streaming + gardes mounted systématiques.
+ 15. C-C12 : unifier les caps sur FileCaps (une seule source).
+ 16. C-C5  : migrer les ~18 SnackBar inline vers showErrorSnack.
+ 17. A-P1b : docx_viewer consomme text_extraction_service.
+ 18. Q-H8  : buffer+flush dans content_search (répliquer global_search).
+
+LOURD (à planifier)
+ 19. Q-H1  : tests du vault AVANT refonte.
+ 20. A-P0a : éclater vault_service.dart (1352 l.) et vault_screen.dart
+             (1209 l.).
+ 21. A-P1a : injection par constructeur sur nouveaux écrans.
+ 22. W-H2  : flavor foss si F-Droid reste un objectif réel.
+ 23. C-C11 : i18n FR/EN si parité linguistique devient un objectif produit.
+
+================================================================================
+Fin du rapport. Généré le 2026-08-02. Lecture seule — aucun fichier modifié.
+================================================================================
