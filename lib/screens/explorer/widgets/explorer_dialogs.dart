@@ -11,31 +11,41 @@ Future<String?> promptName(
   String initial = '',
   String? hint,
 }) async {
+  // V-L6 (audit 2026-08-02) — le contrôleur n'était jamais libéré. `promptName`
+  // sert à « Nouveau dossier » ET à « Renommer » : chaque renommage laissait
+  // derrière lui un TextEditingController vivant, avec ses listeners. Le
+  // `finally` couvre aussi le chemin d'exception, pas seulement le retour
+  // normal.
   final ctrl = TextEditingController(text: initial);
-  final res = await showDialog<String>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: ctrl,
-        autofocus: true,
-        decoration: InputDecoration(
-          hintText: hint,
-          border: const OutlineInputBorder(),
+  final String? res;
+  try {
+    res = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: hint,
+            border: const OutlineInputBorder(),
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: Text(confirmLabel),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-          child: Text(confirmLabel),
-        ),
-      ],
-    ),
-  );
+    );
+  } finally {
+    ctrl.dispose();
+  }
   if (res == null || res.isEmpty) return null;
   return res;
 }

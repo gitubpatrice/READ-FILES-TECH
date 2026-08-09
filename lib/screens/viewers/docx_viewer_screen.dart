@@ -5,6 +5,7 @@ import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/archive_safe.dart';
 import '../../utils/file_caps.dart';
 import '../explorer/file_type_helpers.dart';
 
@@ -82,11 +83,20 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     final archive = ZipDecoder().decodeBytes(bytes);
     final docFile = archive.findFile('word/document.xml');
     if (docFile == null) return 'Impossible de lire le document.';
-    // F2 : cap entry décompressée anti zip-bomb XML.
-    if (docFile.size > FileCaps.zipEntryDecompressed) {
+    // F2 : cap entry décompressée anti zip-bomb XML. `entry.size` seul ne
+    // suffit pas — il vient de l'en-tête du ZIP et se falsifie. Voir
+    // `archive_safe.dart`.
+    final List<int> raw;
+    try {
+      raw = safeEntryBytes(
+        docFile,
+        'word/document.xml',
+        FileCaps.zipEntryDecompressed,
+      );
+    } on ArchiveTooLargeException {
       return 'Contenu suspect (zip-bomb potentielle).';
     }
-    final xml = utf8.decode(docFile.content as List<int>, allowMalformed: true);
+    final xml = utf8.decode(raw, allowMalformed: true);
     // Split paragraphs first, then concat all <w:t> inside each.
     final paragraphs = RegExp(r'<w:p[^>]*>(.*?)</w:p>', dotAll: true);
     final tRun = RegExp(r'<w:t[^>]*>(.*?)</w:t>', dotAll: true);
@@ -115,13 +125,17 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
     final archive = ZipDecoder().decodeBytes(bytes);
     final contentFile = archive.findFile('content.xml');
     if (contentFile == null) return 'Impossible de lire le document.';
-    if (contentFile.size > FileCaps.zipEntryDecompressed) {
+    final List<int> raw;
+    try {
+      raw = safeEntryBytes(
+        contentFile,
+        'content.xml',
+        FileCaps.zipEntryDecompressed,
+      );
+    } on ArchiveTooLargeException {
       return 'Contenu suspect (zip-bomb potentielle).';
     }
-    final xml = utf8.decode(
-      contentFile.content as List<int>,
-      allowMalformed: true,
-    );
+    final xml = utf8.decode(raw, allowMalformed: true);
     return _xmlToText(xml, tagName: 'text:p');
   }
 

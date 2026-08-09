@@ -22,7 +22,12 @@ const String kHtmlViewerCsp =
     "style-src file: data: 'unsafe-inline'; "
     'font-src file: data:; '
     "script-src file: data: 'unsafe-inline' 'unsafe-eval'; "
-    'frame-src file:; '
+    // `frame-src file:` autorisait n'importe quel fichier local, sans
+    // granularité de chemin : un `<iframe src="file:///data/data/…">` affichait
+    // du contenu du sandbox à l'écran. Le NavigationDelegate ne filtre pas les
+    // sous-frames, donc rien d'autre ne s'y opposait. Un document local n'a pas
+    // besoin d'iframes — on les refuse.
+    "frame-src 'none'; "
     "form-action 'none'; "
     "connect-src 'none'; "
     "base-uri 'none'";
@@ -51,13 +56,43 @@ const String kHtmlViewerCsp =
 ///
 /// Fonction pure et publique pour être testable sans WebView (voir
 /// `test/html_csp_injection_test.dart`).
+/// Position du `>` qui ferme réellement la déclaration DOCTYPE commençant à
+/// [start], ou -1.
+///
+/// Un `indexOf('>')` ne suffit pas : le tokenizer HTML ne termine pas le
+/// doctype sur un `>` situé à l'intérieur d'un identifiant PUBLIC ou SYSTEM
+/// entre guillemets. Sur `<!DOCTYPE html PUBLIC "a>b">`, la recherche naïve
+/// s'arrêtait au `>` interne et insérait la balise CSP **dans l'identifiant** :
+/// le `<meta>` était alors avalé par le doctype et la politique n'existait pas.
+///
+/// Signalé par une relecture externe (Gemini 3 Pro, 2026-08-09). Son exemple —
+/// `<!DOCTYPE html foo=">">` — ne démontrait pas le défaut : sur une syntaxe
+/// invalide, le tokenizer bascule en « bogus doctype » où le premier `>`
+/// termine bien la déclaration. Le cas réellement exploitable est celui d'un
+/// identifiant PUBLIC/SYSTEM valide contenant un `>`. Le constat était juste,
+/// son scénario ne l'était pas : les deux se vérifient séparément.
+int _doctypeEnd(String html, int start) {
+  String? quote;
+  for (var i = start; i < html.length; i++) {
+    final c = html[i];
+    if (quote != null) {
+      if (c == quote) quote = null;
+    } else if (c == '"' || c == "'") {
+      quote = c;
+    } else if (c == '>') {
+      return i;
+    }
+  }
+  return -1;
+}
+
 String injectCsp(String html) {
   const tag =
       '<meta http-equiv="Content-Security-Policy" content="$kHtmlViewerCsp">';
   final lead = html.trimLeft();
   final skipped = html.length - lead.length;
   if (lead.toLowerCase().startsWith('<!doctype')) {
-    final close = html.indexOf('>', skipped);
+    final close = _doctypeEnd(html, skipped);
     if (close >= 0) return html.replaceRange(close + 1, close + 1, tag);
   }
   return '$tag$html';
@@ -131,7 +166,18 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   bool _isFileUrlAllowed(String url) {
     if (!url.startsWith('file://')) return false;
     try {
-      final target = Uri.parse(url).toFilePath();
+      // `toFilePath()` LÈVE si l'URI porte un fragment ou une query —
+      // vérifié : `UnsupportedError: Cannot extract a file path from a URI
+      // with a fragment component`. Or un simple sommaire (`<a href="#ch2">`)
+      // produit `file:///doc.html#ch2`. L'exception tombait dans le `catch`,
+      // la fonction rendait `false`, et le NavigationDelegate bloquait :
+      // **tous les liens d'ancrage des HTML locaux étaient inopérants**.
+      // Défaut antérieur à cette session, non signalé par l'audit.
+      final parsed = Uri.parse(url);
+      final target = parsed
+          .replace(fragment: '', query: '')
+          .removeFragment()
+          .toFilePath();
       final inScope =
           p.equals(target, _allowedParentDir) ||
           p.isWithin(_allowedParentDir, target);
@@ -244,6 +290,11 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
         ),
       );
       if (ok != true) return;
+      // L'écran peut avoir été dépilé pendant que le dialogue était ouvert
+      // (retour arrière Android) : le dialogue vit sur le navigateur racine et
+      // survit à `dispose`. Sans cette garde, valider « Activer » ensuite
+      // provoquait un `setState() called after dispose()`.
+      if (!mounted) return;
     }
     setState(() {
       _jsEnabled = !_jsEnabled;

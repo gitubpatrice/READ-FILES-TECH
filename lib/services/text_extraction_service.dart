@@ -15,6 +15,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+
+import '../utils/archive_safe.dart';
+import '../utils/file_caps.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// Décompose le XML d'un `word/document.xml` (.docx) en texte brut.
@@ -110,15 +113,22 @@ DocxExtractResult extractDocxText(Uint8List bytes) {
           'ou chiffré.',
     );
   }
-  if (entry.size > 200 * 1024 * 1024) {
-    return DocxExtractResult(
-      error:
-          'Le contenu décompressé est trop volumineux '
-          '(${entry.size ~/ 1024 ~/ 1024} Mo). Fichier suspect.',
+  // La borne portait sur `entry.size`, une valeur lue dans l'en-tête du ZIP
+  // et donc choisie par l'attaquant. `safeEntryBytes` compte les octets
+  // réellement produits. La valeur en dur (200 Mo) rejoint au passage
+  // `FileCaps.zipEntryDecompressed`, dont elle était une copie (C-C12).
+  final List<int> raw;
+  try {
+    raw = safeEntryBytes(
+      entry,
+      'word/document.xml',
+      FileCaps.zipEntryDecompressed,
     );
+  } on ArchiveTooLargeException catch (e) {
+    return DocxExtractResult(error: e.toString());
   }
 
-  final xml = utf8.decode(entry.content as List<int>, allowMalformed: true);
+  final xml = utf8.decode(raw, allowMalformed: true);
   final extracted = docxXmlToPlainText(xml);
   if (extracted.trim().isEmpty) {
     return const DocxExtractResult(

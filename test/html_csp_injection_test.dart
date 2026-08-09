@@ -102,6 +102,30 @@ void main() {
     expect(doc.contains('http:'), isFalse);
   });
 
+  test('un > dans un identifiant PUBLIC du DOCTYPE ne piège pas la CSP', () {
+    // Le tokenizer HTML ne termine PAS le doctype sur un `>` situé dans un
+    // identifiant PUBLIC/SYSTEM entre guillemets. Un `indexOf('>')` naïf
+    // insérait la balise CSP à l'intérieur de l'identifiant, où le doctype
+    // l'avalait : politique inexistante, image distante chargée.
+    const doctype = '<!DOCTYPE html PUBLIC "a>b" "c>d">';
+    const piege =
+        '$doctype<html><head><img src="https://a.example/p.png"></head></html>';
+    final doc = injectCsp(piege);
+
+    // La CSP commence exactement là où le doctype se termine : ni dedans, ni
+    // après le <html>.
+    expect(doc.startsWith(doctype), isTrue, reason: 'DOCTYPE intact');
+    expect(cspAt(doc), greaterThan(doctype.length - 1));
+    expect(doc.indexOf('<html'), greaterThan(cspAt(doc)));
+    expect(cspAt(doc), lessThan(doc.indexOf('a.example')));
+  });
+
+  test('les iframes sont refusées, pas seulement restreintes', () {
+    // `frame-src file:` autorisait n'importe quel fichier local, et le
+    // NavigationDelegate ne filtre pas les sous-frames.
+    expect(injectCsp('<html></html>'), contains("frame-src 'none'"));
+  });
+
   test('un document vide reçoit quand même la CSP', () {
     expect(cspAt(injectCsp('')), greaterThanOrEqualTo(0));
   });

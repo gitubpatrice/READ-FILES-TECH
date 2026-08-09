@@ -33,6 +33,30 @@ class NativeOpenService {
     });
   }
 
+  /// `true` si [pkg] est installé sur l'appareil.
+  ///
+  /// Le handler natif `isPackageInstalled` existait depuis l'origine mais
+  /// n'était appelé de nulle part : les entrées « Envoyer vers kDrive » et
+  /// « Envoyer vers Proton Drive » s'affichaient dans le menu contextuel de
+  /// CHAQUE fichier, que les applications soient installées ou non, et
+  /// échouaient ensuite sur un `NOT_INSTALLED`. Fonctionnalité prévue côté
+  /// natif, jamais câblée côté Dart.
+  ///
+  /// Retourne `false` si le canal échoue : mieux vaut masquer une entrée
+  /// utilisable que d'en proposer une qui ne marchera pas.
+  Future<bool> isPackageInstalled(String pkg) async {
+    try {
+      final ok = await _ch.invokeMethod<bool>('isPackageInstalled', {
+        'package': pkg,
+      });
+      return ok ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   /// `true` si l'utilisateur a accordé l'autorisation Android "Installer
   /// des applis inconnues" pour Read Files Tech (Android 8+ — sinon `true`
   /// par défaut sur les versions plus anciennes).

@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart' as dom;
 import 'package:path/path.dart' as p;
+import '../utils/archive_safe.dart';
 import '../utils/file_caps.dart';
 
 /// Extraction de texte "Reader Mode" depuis HTML brut ou EPUB.
@@ -18,6 +19,20 @@ class ReaderBlock {
 }
 
 class ReaderService {
+  /// Balises dont le texte ne fait pas partie du contenu lu. Source unique,
+  /// partagée par `htmlToBlocks` et `readEpub`.
+  static const _stripTags = [
+    'script',
+    'style',
+    'iframe',
+    'form',
+    'noscript',
+    'nav',
+    'aside',
+    'footer',
+    'header',
+  ];
+
   /// Convertit du HTML en blocs lecture.
   List<ReaderBlock> htmlToBlocks(String htmlSource) {
     final doc = html_parser.parse(htmlSource);
@@ -26,17 +41,7 @@ class ReaderService {
         doc.querySelector('article') ?? doc.querySelector('main') ?? doc.body;
     if (root == null) return [];
     // Retire éléments parasites
-    for (final tag in const [
-      'script',
-      'style',
-      'iframe',
-      'form',
-      'noscript',
-      'nav',
-      'aside',
-      'footer',
-      'header',
-    ]) {
+    for (final tag in _stripTags) {
       for (final e in root.querySelectorAll(tag)) {
         e.remove();
       }
@@ -65,7 +70,11 @@ class ReaderService {
       throw const FormatException('EPUB invalide : container.xml manquant');
     }
     final containerXml = utf8.decode(
-      _entryBytes(container, 'META-INF/container.xml'),
+      safeEntryBytes(
+        container,
+        'META-INF/container.xml',
+        FileCaps.zipEntryDecompressed,
+      ),
       allowMalformed: true,
     );
     final opfMatch = RegExp(r'full-path="([^"]+)"').firstMatch(containerXml);
@@ -80,7 +89,7 @@ class ReaderService {
       throw const FormatException('EPUB invalide : OPF introuvable');
     }
     final opfXml = utf8.decode(
-      _entryBytes(opfFile, opfPath),
+      safeEntryBytes(opfFile, opfPath, FileCaps.zipEntryDecompressed),
       allowMalformed: true,
     );
     final basePath = p.dirname(opfPath);
@@ -125,15 +134,19 @@ class ReaderService {
       // couvrir un seul site sur trois.
       final List<int> xhtmlBytes;
       try {
-        xhtmlBytes = _entryBytes(entry, fullPath, max: FileCaps.epubChapter);
-      } on FormatException {
+        xhtmlBytes = safeEntryBytes(entry, fullPath, FileCaps.epubChapter);
+      } on ArchiveTooLargeException {
         continue; // chapitre suspect : on saute, on n'annule pas le livre
       }
       final xhtml = utf8.decode(xhtmlBytes, allowMalformed: true);
       final doc = html_parser.parse(xhtml);
       final root = doc.body;
       if (root == null) continue;
-      for (final tag in const ['script', 'style']) {
+      // Jumeau de `htmlToBlocks`, qui retire neuf balises parasites : celle-ci
+      // n'en retirait que deux, donc un EPUB dont les chapitres portent un
+      // `<nav>` ou un `<footer>` voyait ce texte polluer le mode lecture.
+      // Même liste des deux côtés désormais.
+      for (final tag in _stripTags) {
         for (final e in root.querySelectorAll(tag)) {
           e.remove();
         }
@@ -147,34 +160,6 @@ class ReaderService {
       out.add(EpubChapter(title: firstHeading.text, blocks: blocks));
     }
     return out;
-  }
-
-  /// Lit le contenu décompressé d'une entrée d'archive **après** avoir vérifié
-  /// sa taille annoncée.
-  ///
-  /// V-M5 (audit 2026-08-02) — `readEpub` accédait à `.content` sur trois
-  /// entrées et n'en vérifiait la taille que sur une seule : les chapitres.
-  /// `META-INF/container.xml` et le fichier OPF étaient lus sans aucune borne.
-  /// Or `.content` déclenche la décompression : un EPUB de quelques centaines
-  /// de kilo-octets dont le `container.xml` se décompresse en plusieurs Go
-  /// (du zéro compressé atteint un ratio de ~1000:1) faisait tomber l'app par
-  /// OOM à la simple ouverture, sous le cap de 100 Mo du fichier.
-  ///
-  /// La garde est passée dans un helper unique précisément pour qu'un
-  /// quatrième site d'accès ne puisse plus l'oublier — c'est le motif
-  /// « résolu ici, retombé là » qui a produit ce défaut.
-  static List<int> _entryBytes(
-    ArchiveFile entry,
-    String label, {
-    int max = FileCaps.zipEntryDecompressed,
-  }) {
-    if (entry.size > max) {
-      throw FormatException(
-        'Entrée « $label » suspecte : ${entry.size ~/ (1024 * 1024)} Mo '
-        'décompressés (max ${max ~/ (1024 * 1024)} Mo).',
-      );
-    }
-    return entry.content as List<int>;
   }
 
   List<ReaderBlock> _walk(dom.Element root) {

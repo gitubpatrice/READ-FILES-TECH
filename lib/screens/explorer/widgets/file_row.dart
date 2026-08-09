@@ -17,6 +17,12 @@ class FileRowActions {
   final void Function(String path, String ext) onShare;
   final void Function(String path) onSendKDrive;
   final void Function(String path) onSendProton;
+
+  /// Applications cloud réellement installées sur l'appareil. Une entrée de
+  /// menu qui échoue systématiquement n'a pas à être proposée : le handler
+  /// natif `isPackageInstalled` existait pour ça et n'était pas branché.
+  final bool kDriveInstalled;
+  final bool protonInstalled;
   final void Function(FileSystemEntity e) onRename;
   final void Function(String path) onCopy;
   final void Function(String path) onMove;
@@ -39,6 +45,8 @@ class FileRowActions {
     required this.onShare,
     required this.onSendKDrive,
     required this.onSendProton,
+    this.kDriveInstalled = false,
+    this.protonInstalled = false,
     required this.onRename,
     required this.onCopy,
     required this.onMove,
@@ -313,26 +321,28 @@ class FileRow extends StatelessWidget {
           value: 'share',
           child: ListTile(leading: Icon(Icons.share), title: Text('Partager')),
         ),
-        const PopupMenuItem(
-          value: 'kdrive',
-          child: ListTile(
-            leading: Icon(
-              Icons.cloud_upload_outlined,
-              color: Color(0xFF0098FF),
+        if (actions.kDriveInstalled)
+          const PopupMenuItem(
+            value: 'kdrive',
+            child: ListTile(
+              leading: Icon(
+                Icons.cloud_upload_outlined,
+                color: Color(0xFF0098FF),
+              ),
+              title: Text('Envoyer vers kDrive'),
             ),
-            title: Text('Envoyer vers kDrive'),
           ),
-        ),
-        const PopupMenuItem(
-          value: 'proton',
-          child: ListTile(
-            leading: Icon(
-              Icons.cloud_upload_outlined,
-              color: Color(0xFF6D4AFF),
+        if (actions.protonInstalled)
+          const PopupMenuItem(
+            value: 'proton',
+            child: ListTile(
+              leading: Icon(
+                Icons.cloud_upload_outlined,
+                color: Color(0xFF6D4AFF),
+              ),
+              title: Text('Envoyer vers Proton Drive'),
             ),
-            title: Text('Envoyer vers Proton Drive'),
           ),
-        ),
         const PopupMenuDivider(),
         const PopupMenuItem(
           value: 'rename',

@@ -153,6 +153,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 
   void _showJumpDialog() {
+    // V-L6 — contrôleur libéré à la fermeture du dialogue. `showDialog`
+    // n'est pas `await`é ici : on passe donc par `.whenComplete`, qui
+    // couvre aussi bien la validation que l'annulation.
     final ctrl = TextEditingController();
     showDialog(
       context: context,
@@ -184,6 +187,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           ),
         ],
       ),
-    );
+    ).whenComplete(ctrl.dispose);
   }
 }

@@ -80,6 +80,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
   static const _lifecycleChannel = MethodChannel('com.readfilestech/lifecycle');
 
   static const _pdfTechPackage = 'com.pdftech.pdf_tech';
+  bool _kDriveInstalled = false;
+  bool _protonInstalled = false;
+
   static const _kDrivePackage = 'com.infomaniak.drive';
   static const _protonDrivePackage = 'me.proton.android.drive';
 
@@ -91,6 +94,23 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       if (mounted) setState(() {});
     });
     _initRoot();
+    _probeCloudApps();
+  }
+
+  /// Sonde une seule fois la présence des applications cloud. Le menu
+  /// contextuel de chaque fichier proposait « Envoyer vers kDrive » et
+  /// « Envoyer vers Proton Drive » sans jamais vérifier qu'elles existaient :
+  /// sur un appareil sans elles, deux entrées permanentes qui échouaient
+  /// toujours. Sondé ici plutôt qu'à chaque ouverture de menu — le résultat
+  /// ne change pas pendant la vie de l'écran.
+  Future<void> _probeCloudApps() async {
+    final kdrive = await _opener.isPackageInstalled(_kDrivePackage);
+    final proton = await _opener.isPackageInstalled(_protonDrivePackage);
+    if (!mounted) return;
+    setState(() {
+      _kDriveInstalled = kdrive;
+      _protonInstalled = proton;
+    });
   }
 
   @override
@@ -951,6 +971,8 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         onStripExif: _stripExif,
         onShare: (p, ext) =>
             Share.shareXFiles([XFile(p, mimeType: mimeOf(ext))]),
+        kDriveInstalled: _kDriveInstalled,
+        protonInstalled: _protonInstalled,
         onSendKDrive: (p) => _sendToCloud(p, _kDrivePackage, 'kDrive'),
         onSendProton: (p) =>
             _sendToCloud(p, _protonDrivePackage, 'Proton Drive'),

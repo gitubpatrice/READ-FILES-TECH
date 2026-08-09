@@ -107,6 +107,9 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
   }
 
   void _editCell(int row, int col) {
+    // V-L6 — contrôleur libéré à la fermeture du dialogue. `showDialog`
+    // n'est pas `await`é ici : on passe donc par `.whenComplete`, qui
+    // couvre aussi bien la validation que l'annulation.
     final ctrl = TextEditingController(text: _rows[row][col]);
     showDialog(
       context: context,
@@ -138,7 +141,7 @@ class _CsvEditorScreenState extends State<CsvEditorScreen> {
           ),
         ],
       ),
-    );
+    ).whenComplete(ctrl.dispose);
   }
 
   void _addRow() {
