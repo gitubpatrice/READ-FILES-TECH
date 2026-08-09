@@ -35,9 +35,23 @@ dependencies:
   file_picker: ^11.0.0
   path_provider: ^2.1.4
   permission_handler: ^13.0.0
-  # share_plus 13 + package_info_plus 10 exigent win32 ^6, mais file_picker 11
-  # déclare encore win32 ^5.9. Override impossible (file_picker Windows utilise
-  # API win32 5.x). On reste sur share_plus 10 / package_info_plus 9.
+  # Les deux paquets suivants sont bloqués, mais PAS pour la même raison — le
+  # commentaire précédent les attribuait tous deux à win32, ce qui n'était vrai
+  # que pour l'un. Vérifié au solveur le 2026-08-09, pas déduit :
+  #
+  #   share_plus 13        bloqué par `files_tech_core`, qui épingle ^10.0.3.
+  #                        Le déblocage se fait DANS files_tech_core, puis ici.
+  #                        Il est partagé par tout le portefeuille : le bump y
+  #                        engage les autres applications.
+  #
+  #   package_info_plus 10 exige win32 ^6.0.0 ; file_picker 11 déclare encore
+  #                        win32 ^5.9.0. Blocage réellement en amont, levé par
+  #                        file_picker 12 — en bêta à ce jour, donc écarté.
+  #
+  # `win32` ne concerne que la cible Windows, jamais construite ici. Un
+  # `dependency_overrides` lèverait donc le second blocage sans risque réel,
+  # au prix d'une résolution qui ne reflète plus ce que pub garantit. Pas fait :
+  # le gain ne vaut pas l'entorse tant que rien n'en dépend.
   share_plus: ^10.0.3
   shared_preferences: ^2.3.2
 
