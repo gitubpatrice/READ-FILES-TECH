@@ -209,10 +209,14 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                         label: const Text('Lancer'),
                       )
                     else
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
+                      // C-C8 — « Arrêter » était rouge. Interrompre une
+                      // recherche ne détruit rien : aucun fichier n'est
+                      // touché, les résultats déjà trouvés restent affichés.
+                      // Employer le rouge des actions irréversibles ici, c'est
+                      // affaiblir le signal là où il compte — l'écran voisin
+                      // s'en sert pour supprimer définitivement des fichiers.
+                      // Bouton tonal : secondaire, pas dangereux.
+                      FilledButton.tonalIcon(
                         onPressed: _stop,
                         icon: const Icon(Icons.stop),
                         label: const Text('Arrêter'),

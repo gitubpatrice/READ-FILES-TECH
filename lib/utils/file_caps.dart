@@ -57,6 +57,15 @@ abstract final class FileCaps {
   /// HTML viewer : 20 Mo (page web standalone ; au-delà = quasi-systématiquement
   /// dump piégé). WebView Android cale au-delà sur low-end.
   static const int htmlViewer = 20 * 1024 * 1024;
+
+  /// v2.15 — total décompressé autorisé pour « Tout extraire » sur une
+  /// archive. Reprend la valeur qui était codée en dur dans
+  /// `zip_viewer_screen.dart` (`_maxTotalExtractBytes`).
+  ///
+  /// Le cumul doit être compté sur les octets **réellement écrits**, pas sur
+  /// `ArchiveFile.size` : cette valeur vient de l'en-tête du ZIP et se
+  /// falsifie, ce qui rendait la borne décorative.
+  static const int zipExtractTotal = 1024 * 1024 * 1024;
 }
 
 /// Vérifie qu'un fichier ne dépasse pas un cap. Retourne `null` si OK,

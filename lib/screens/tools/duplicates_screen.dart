@@ -3,6 +3,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import '../../services/duplicate_finder_service.dart';
+import '../../utils/snack_utils.dart';
+import '../../widgets/danger_style.dart';
+import '../explorer/widgets/explorer_dialogs.dart';
 
 class DuplicatesScreen extends StatefulWidget {
   const DuplicatesScreen({super.key});
@@ -72,28 +75,24 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
       } catch (_) {}
     }
     if (!mounted) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer définitivement ?'),
-        content: Text(
+    // C-C8 — cette boîte était écrite à la main alors que `confirmDelete`
+    // existe et porte le motif canonique de l'app : « Annuler » en
+    // `autofocus` (une validation au clavier ou à la télécommande annule au
+    // lieu de détruire) et bouton rouge plein `dangerFilledButtonStyle` à
+    // 5.6:1 de contraste. Le `Colors.red` posé ici était plus clair et ne
+    // prenait pas le focus par défaut : sur l'écran qui supprime des fichiers
+    // par lots, c'est-à-dire le plus destructeur de l'application.
+    final confirm = await confirmDelete(
+      context,
+      title: 'Supprimer définitivement ?',
+      message:
           'Vous allez supprimer ${paths.length} fichier${paths.length > 1 ? 's' : ''} '
           '(${_fmt(totalBytes)}). Cette action est irréversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Supprimer',
     );
-    if (confirm != true) return;
+    if (!confirm) return;
+    if (!mounted) return;
+    final snack = SnackTarget.of(context);
     int ok = 0, fail = 0;
     for (final p in paths) {
       try {
@@ -103,15 +102,15 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
         fail++;
       }
     }
+    final message =
+        '$ok supprimé${ok > 1 ? 's' : ''}'
+        '${fail > 0 ? ' · $fail échec(s)' : ''}';
+    if (fail > 0) {
+      snack.error(message);
+    } else {
+      snack.info(message);
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$ok supprimé${ok > 1 ? 's' : ''}'
-          '${fail > 0 ? ' · $fail échec(s)' : ''}',
-        ),
-      ),
-    );
     setState(() => _selected.clear());
     _scan();
   }
@@ -210,7 +209,10 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
       floatingActionButton: _selected.isEmpty
           ? null
           : FloatingActionButton.extended(
-              backgroundColor: Colors.red,
+              // C-C8 — `kDangerRed`, comme partout ailleurs dans l'app. Le
+              // `Colors.red` de Material est plus clair (#F44336) et tombe
+              // sous le seuil AA avec du texte blanc.
+              backgroundColor: kDangerRed,
               onPressed: _deleteSelected,
               icon: const Icon(Icons.delete_outline, color: Colors.white),
               label: Text(
