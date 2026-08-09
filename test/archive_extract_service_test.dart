@@ -228,6 +228,99 @@ void main() {
       expect(safeJoin('/base', 'a\x00b.txt'), isNull);
     });
   });
+
+  // CE GROUPE EXISTE A CAUSE D'UNE REGRESSION QUE 136 TESTS N'ONT PAS VUE.
+  //
+  // L'ecran appelait `Isolate.run` depuis une methode d'instance, avec une
+  // fermeture qui referencait une `static const` de sa classe `State`. Cela
+  // suffisait a y embarquer `this`, donc le binding Flutter et un
+  // `_AsyncCompleter` non transmissible. A l'execution, sur appareil :
+  //
+  //   Invalid argument(s): Illegal argument in isolate message:
+  //   object is unsendable - Library:'dart:async' Class: _AsyncCompleter
+  //    <- Instance of 'WidgetsFlutterBinding'
+  //    <- Instance of 'StatefulElement'
+  //
+  // `flutter analyze` ne voyait rien. Les tests non plus : ils appelaient
+  // `extractArchive` DIRECTEMENT, jamais le cablage vers l'isolate. La
+  // fonctionnalite etait entierement cassee et seul le Galaxy S9 l'a dit.
+  //
+  // Ces tests franchissent la frontiere d'isolate. Ils echouent si la
+  // fermeture redevient non transmissible, quelle qu'en soit la raison.
+  group('franchissement de la frontiere d\'isolate', () {
+    test('extractArchiveIsolate traverse et rend son resultat', () async {
+      final zip = writeZip('iso.zip', (a) {
+        a.addFile(ArchiveFile('a.txt', 5, utf8Bytes('aaaaa')));
+        a.addFile(ArchiveFile('b.txt', 3, utf8Bytes('bbb')));
+      });
+      final out = '${tmp.path}/out_iso';
+
+      final r = await extractArchiveIsolate(
+        zipPath: zip,
+        outDirPath: out,
+        maxEntryBytes: 1024 * 1024,
+        maxTotalBytes: 10 * 1024 * 1024,
+      );
+
+      expect(r.written, 2);
+      expect(r.skipped, 0);
+      expect(r.bytesWritten, 8);
+      expect(File('$out/a.txt').readAsStringSync(), 'aaaaa');
+    });
+
+    test('extractSingleEntryIsolate traverse et ecrit le fichier', () async {
+      final zip = writeZip('iso1.zip', (a) {
+        a.addFile(ArchiveFile('seul.txt', 6, utf8Bytes('coucou')));
+      });
+      final out = '${tmp.path}/seul_extrait.txt';
+
+      final p = await extractSingleEntryIsolate(
+        zipPath: zip,
+        entryName: 'seul.txt',
+        outPath: out,
+        maxEntryBytes: 1024 * 1024,
+      );
+
+      expect(p, out);
+      expect(File(out).readAsStringSync(), 'coucou');
+    });
+
+    test('une entree refusee traverse aussi la frontiere', () async {
+      // Le refus doit revenir de l'isolate sous forme de compteur, pas d'une
+      // exception perdue en route.
+      final zip = writeLyingZip('isobombe.zip', real: 64 * 1024, lied: 10);
+      final out = '${tmp.path}/out_bombe';
+
+      final r = await extractArchiveIsolate(
+        zipPath: zip,
+        outDirPath: out,
+        maxEntryBytes: 1024,
+        maxTotalBytes: 10 * 1024 * 1024,
+      );
+
+      expect(r.written, 0);
+      expect(r.skipped, 1);
+    });
+
+    test('une exception levee dans l\'isolate revient a l\'appelant', () async {
+      final archive = Archive();
+      for (var i = 0; i < 4; i++) {
+        archive.addFile(ArchiveFile('e$i.bin', 2048, Uint8List(2048)));
+      }
+      final zip = '${tmp.path}/isoplein.zip';
+      File(zip).writeAsBytesSync(ZipEncoder().encode(archive)!);
+
+      await expectLater(
+        extractArchiveIsolate(
+          zipPath: zip,
+          outDirPath: '${tmp.path}/out_plein',
+          maxEntryBytes: 2048,
+          maxTotalBytes: 4096,
+        ),
+        throwsA(isA<ArchiveTotalTooLargeException>()),
+      );
+    });
+  });
 }
 
 Uint8List utf8Bytes(String s) => Uint8List.fromList(s.codeUnits);

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:isolate';
 import 'package:archive/archive.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
@@ -168,11 +167,11 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
     }
   }
 
-  /// Limites anti-DoS, centralisées dans `FileCaps` (C-C9) : elles étaient
-  /// codées en dur ici alors que la même valeur de 200 Mo existait déjà sous
-  /// `FileCaps.zipEntryDecompressed`.
-  static const _maxEntryBytes = FileCaps.zipEntryDecompressed;
-  static const _maxTotalExtractBytes = FileCaps.zipExtractTotal;
+  // Les plafonds ne sont plus recopiés dans une constante de cette classe :
+  // les appels ci-dessous passent directement par `FileCaps`. Ce n'est pas
+  // qu'une question de style — référencer une `static const` de ce `State`
+  // depuis la fermeture d'un `Isolate.run` suffisait à y embarquer `this`, et
+  // donc le binding Flutter, non transmissible. Voir `archive_extract_service`.
 
   /// Extraction d'une entrée unique, puis partage.
   ///
@@ -190,15 +189,11 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       final safe = fileName.isEmpty ? 'file' : fileName;
       final outPath = '${dir.path}/$safe';
 
-      final zipPath = widget.path;
-      final entryName = file.name;
-      await Isolate.run(
-        () => extractSingleEntry(
-          zipPath: zipPath,
-          entryName: entryName,
-          outPath: outPath,
-          maxEntryBytes: _maxEntryBytes,
-        ),
+      await extractSingleEntryIsolate(
+        zipPath: widget.path,
+        entryName: file.name,
+        outPath: outPath,
+        maxEntryBytes: FileCaps.zipEntryDecompressed,
       );
 
       // Même raison que pour l'OCR : un bandeau qui arrive après coup informe,
@@ -226,13 +221,11 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       final outDirPath = '${dir.path}/${base}_extracted';
       final zipPath = widget.path;
 
-      final r = await Isolate.run(
-        () => extractArchive(
-          zipPath: zipPath,
-          outDirPath: outDirPath,
-          maxEntryBytes: _maxEntryBytes,
-          maxTotalBytes: _maxTotalExtractBytes,
-        ),
+      final r = await extractArchiveIsolate(
+        zipPath: zipPath,
+        outDirPath: outDirPath,
+        maxEntryBytes: FileCaps.zipEntryDecompressed,
+        maxTotalBytes: FileCaps.zipExtractTotal,
       );
 
       if (mounted) setState(() => _isLoading = false);

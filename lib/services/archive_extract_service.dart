@@ -25,6 +25,7 @@
 library;
 
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -110,15 +111,81 @@ bool _within(String parent, String child) {
   return c == p || c.startsWith('$p/');
 }
 
+/// Lance [extractArchive] dans un isolate.
+///
+/// **Cette fonction est top-level, et ce n'est pas un détail.** L'écran
+/// appelait d'abord `Isolate.run` depuis une méthode d'instance :
+///
+/// ```dart
+/// await Isolate.run(() => extractArchive(..., maxEntryBytes: _maxEntryBytes));
+/// ```
+///
+/// `_maxEntryBytes` était une `static const` de la classe `State`. Suffisant,
+/// pourtant, pour que la fermeture capture `this` — et avec lui l'élément, le
+/// binding Flutter, et un `_AsyncCompleter` qui n'est pas transmissible. À
+/// l'exécution, sur appareil :
+///
+/// ```
+/// Invalid argument(s): Illegal argument in isolate message:
+/// object is unsendable - Library:'dart:async' Class: _AsyncCompleter
+///  <- Instance of 'WidgetsFlutterBinding'
+///  <- Instance of 'StatefulElement'
+/// ```
+///
+/// `flutter analyze` ne voyait rien, et les tests non plus : ils appelaient
+/// [extractArchive] directement, jamais le câblage. L'extraction était
+/// **entièrement cassée** et seul le Galaxy S9 l'a dit, le 2026-08-09.
+///
+/// Ici, il n'y a pas de `this` à capturer. Les paramètres sont recopiés dans
+/// des locales avant la fermeture, qui ne voit donc que des primitives. Le
+/// mode de panne devient structurellement impossible, au lieu d'être évité
+/// par discipline.
+Future<ArchiveExtractResult> extractArchiveIsolate({
+  required String zipPath,
+  required String outDirPath,
+  required int maxEntryBytes,
+  required int maxTotalBytes,
+}) {
+  final z = zipPath;
+  final o = outDirPath;
+  final me = maxEntryBytes;
+  final mt = maxTotalBytes;
+  return Isolate.run(
+    () => extractArchive(
+      zipPath: z,
+      outDirPath: o,
+      maxEntryBytes: me,
+      maxTotalBytes: mt,
+    ),
+  );
+}
+
+/// Lance [extractSingleEntry] dans un isolate. Même raison d'être top-level
+/// que [extractArchiveIsolate].
+Future<String> extractSingleEntryIsolate({
+  required String zipPath,
+  required String entryName,
+  required String outPath,
+  required int maxEntryBytes,
+}) {
+  final z = zipPath;
+  final e = entryName;
+  final o = outPath;
+  final m = maxEntryBytes;
+  return Isolate.run(
+    () => extractSingleEntry(
+      zipPath: z,
+      entryName: e,
+      outPath: o,
+      maxEntryBytes: m,
+    ),
+  );
+}
+
 /// Extrait toutes les entrées de [zipPath] dans [outDirPath].
 ///
-/// Conçue pour être appelée dans un isolate :
-/// ```dart
-/// final r = await Isolate.run(() => extractArchive(
-///   zipPath: path, outDirPath: dir,
-///   maxEntryBytes: ..., maxTotalBytes: ...,
-/// ));
-/// ```
+/// Synchrone et pure. Passer par [extractArchiveIsolate] pour ne pas bloquer
+/// le thread de l'interface.
 ///
 /// Lève [ArchiveTotalTooLargeException] si le cumul dépasse [maxTotalBytes].
 /// Les entrées individuelles refusées ne lèvent pas : elles sont comptées dans
