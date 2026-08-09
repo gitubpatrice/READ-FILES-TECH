@@ -140,23 +140,31 @@ DocxExtractResult extractDocxText(Uint8List bytes) {
 
 /// Décompose le `content.xml` d'un OpenDocument (.odt / .odp) en texte brut.
 ///
-/// [tagName] est le nom de la balise de paragraphe : `text:p` pour un texte,
-/// et le même pour les zones de texte d'une présentation.
+/// Traite `<text:p>` (paragraphes) **et** `<text:h>` (titres), dans l'ordre du
+/// document. La version qui vivait dans `docx_viewer_screen.dart` ne prenait
+/// que `text:p` : un document structuré en titres perdait tous ses titres, et
+/// un document qui n'en contenait que — un plan, un sommaire — ressortait
+/// entièrement vide.
 ///
-/// Vivait auparavant dans `docx_viewer_screen.dart`, où sa liste d'entités
-/// codée en dur ignorait les entités numériques — un `.odt` produit par
-/// LibreOffice affichait alors `&#233;` là où il fallait lire « é ».
-String odtXmlToPlainText(String xml, {String tagName = 'text:p'}) {
+/// Elle ignorait aussi les entités numériques, si bien qu'un `.odt` produit par
+/// LibreOffice affichait `&#233;` là où il fallait lire « é ».
+String odtXmlToPlainText(String xml) {
+  // `<text:line-break/>` et `<text:tab/>` sont des balises, pas du texte : le
+  // nettoyage ci-dessous les effacerait purement et simplement. Converties en
+  // amont, comme le fait déjà `docxXmlToPlainText` pour `<w:br>` / `<w:tab>`.
+  var s = xml.replaceAll(RegExp(r'<text:line-break\b[^>]*/?>'), '\n');
+  s = s.replaceAll(RegExp(r'<text:tab\b[^>]*/?>'), '\t');
+
   final buffer = StringBuffer();
-  final reg = RegExp('<$tagName[^>]*>(.*?)</$tagName>', dotAll: true);
-  for (final m in reg.allMatches(xml)) {
-    final inner = m.group(1) ?? '';
-    // Les balises internes (mise en forme, annotations) sont retirées ; seul
-    // leur contenu textuel compte.
+  final reg = RegExp(r'<text:(p|h)(?:\s[^>]*)?>(.*?)</text:\1>', dotAll: true);
+  for (final m in reg.allMatches(s)) {
+    final inner = m.group(2) ?? '';
+    // Les balises internes restantes (mise en forme, annotations, signets)
+    // sont retirées ; seul leur contenu textuel compte.
     final clean = inner.replaceAll(RegExp(r'<[^>]+>'), '');
-    // ODF encode ses sauts de ligne en `&#xD;` (retour chariot). Le décodage
-    // générique rend un `\r`, qu'on normalise ici plutôt que de renoncer aux
-    // entités numériques pour le cas particulier.
+    // ODF encode aussi ses sauts de ligne en `&#xD;` (retour chariot). Le
+    // décodage générique rend un `\r`, qu'on normalise ici plutôt que de
+    // renoncer aux entités numériques pour ce cas particulier.
     final decoded = decodeXmlEntities(
       clean,
     ).replaceAll('\r\n', '\n').replaceAll('\r', '\n');

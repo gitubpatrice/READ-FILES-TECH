@@ -23,7 +23,13 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
   bool _isLoading = true;
   String? _error;
   String _search = '';
-  late Archive _archive;
+
+  /// Nullable, et non `late`. Quand `_load` échoue, il ne l'affecte pas :
+  /// avec `late`, le premier accès levait un `LateInitializationError`, et le
+  /// bouton « Extraire tout » restait cliquable puisqu'il ne dépendait que de
+  /// `_isLoading`. Ouvrir une archive corrompue puis toucher ce bouton faisait
+  /// donc planter l'application. Trouvé par la relecture GPT du 2026-08-09.
+  Archive? _archive;
 
   String get _name => widget.path.basename;
 
@@ -53,10 +59,11 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       // `safeEntryBytes` sur chaque chemin d'extraction. Les gardes
       // n'arrivent donc pas après coup : à cet instant, rien n'a encore été
       // développé.
-      _archive = ZipDecoder().decodeBytes(bytes);
+      final archive = ZipDecoder().decodeBytes(bytes);
+      _archive = archive;
       // On garde TOUS les fichiers (y compris ceux à 0 octet — .gitkeep,
       // __init__.py vide, etc.) et tous les dossiers.
-      final files = _archive.files.toList();
+      final files = archive.files.toList();
       files.sort((a, b) => a.name.compareTo(b.name));
       if (!mounted) return;
       setState(() {
@@ -167,9 +174,21 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
   static const _maxEntryBytes = FileCaps.zipEntryDecompressed;
   static const _maxTotalExtractBytes = FileCaps.zipExtractTotal;
 
-  /// Vérifie qu'une entrée d'archive est sûre (pas de zip-slip, pas de
-  /// chemin absolu, pas de symlink déguisé). Retourne le path absolu
-  /// final vérifié comme étant dans [baseDir], ou null si rejeté.
+  /// Vérifie **textuellement** qu'un nom d'entrée d'archive ne sort pas de
+  /// [baseDir] : pas de chemin absolu, pas de `..`, pas de lettre de lecteur,
+  /// pas d'octet NUL. Retourne le chemin reconstruit, ou `null` si rejeté.
+  ///
+  /// **Ce contrôle ne résout PAS les liens symboliques**, contrairement à ce
+  /// que promettait le commentaire de fin de méthode — signalé par la
+  /// relecture GPT du 2026-08-09. Il ne peut pas : les dossiers n'existent
+  /// pas encore à cet instant. Un lien symbolique **déjà présent** dans le
+  /// dossier de destination laisserait donc passer un chemin textuellement
+  /// correct mais résolvant hors de [baseDir].
+  ///
+  /// La résolution réelle a lieu dans `_extractAll`, après création du dossier
+  /// parent et juste avant l'écriture. Les deux contrôles sont nécessaires :
+  /// celui-ci écarte l'entrée avant toute décompression, l'autre couvre ce que
+  /// le système de fichiers peut avoir sous les pieds.
   String? _safeJoin(String baseDir, String entryName) {
     // Normalize séparateurs (zip Windows : \, Unix : /)
     final normalized = entryName.replaceAll('\\', '/');
@@ -183,7 +202,7 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
     // traiter TOUT ce fichier comme binaire par git, et ses diffs
     // devenaient invisibles en revue.
     if (normalized.contains('\x00')) return null;
-    // Reconstruction : baseDir/segments. Vérification finale avec resolveSymbolicLinks
+    // Reconstruction : baseDir/segments, puis comparaison de préfixe.
     final candidate = '$baseDir/$normalized';
     final resolvedBase = File(baseDir).absolute.path;
     final resolvedFile = File(candidate).absolute.path;
@@ -213,6 +232,10 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       final safe = fileName.isEmpty ? 'file' : fileName;
       final outPath = '${dir.path}/$safe';
       await File(outPath).writeAsBytes(bytes);
+      // Même raison que pour l'OCR : un bandeau qui arrive après coup informe,
+      // une feuille de partage qui surgit alors que l'utilisateur a navigué
+      // ailleurs interrompt et ressemble à une action fantôme.
+      if (!mounted) return;
       await Share.shareXFiles([XFile(outPath)]);
     } catch (e) {
       snack.error('Erreur : $e');
@@ -220,6 +243,8 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
   }
 
   Future<void> _extractAll() async {
+    final archive = _archive;
+    if (archive == null) return;
     final snack = SnackTarget.of(context);
     setState(() => _isLoading = true);
     try {
@@ -227,10 +252,13 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       final base = _name.replaceAll(RegExp(r'\.\w+$'), '');
       final outDir = Directory('${dir.path}/${base}_extracted');
       await outDir.create(recursive: true);
+      // Résolu une fois : c'est la racine réelle à laquelle chaque parent créé
+      // sera comparé, liens symboliques suivis.
+      final resolvedBase = await outDir.resolveSymbolicLinks();
 
       int totalExtracted = 0;
       int skipped = 0;
-      for (final file in _archive.files) {
+      for (final file in archive.files) {
         if (!file.isFile) continue;
         // Anti zip-slip : valider le path AVANT de dépenser le moindre octet
         // à décompresser une entrée qu'on refusera de toute façon d'écrire.
@@ -267,6 +295,20 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
 
         final outFile = File(target);
         await outFile.parent.create(recursive: true);
+
+        // `_safeJoin` ne juge que le texte du nom d'entrée. Si le dossier de
+        // destination contient déjà un lien symbolique pointant ailleurs —
+        // posé par une extraction antérieure ou par une autre application —
+        // un chemin textuellement correct peut résoudre hors de `outDir`.
+        // La vérification a lieu ici, après création du parent et avant
+        // l'écriture, seul moment où le système de fichiers peut répondre.
+        final resolvedParent = await outFile.parent.resolveSymbolicLinks();
+        if (resolvedParent != resolvedBase &&
+            !resolvedParent.startsWith(resolvedBase + Platform.pathSeparator)) {
+          skipped++;
+          continue;
+        }
+
         await outFile.writeAsBytes(bytes);
         // Compté sur ce qui a réellement été produit.
         totalExtracted += bytes.length;
@@ -303,7 +345,9 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
           IconButton(
             tooltip: 'Extraire tout',
             icon: const Icon(Icons.unarchive_outlined),
-            onPressed: _isLoading ? null : _extractAll,
+            // Désactivé tant qu'aucune archive n'a été lue — pas seulement
+            // pendant le chargement.
+            onPressed: (_isLoading || _archive == null) ? null : _extractAll,
           ),
         ],
       ),

@@ -128,4 +128,42 @@ void main() {
 
     expect(safeEntryBytes(entry, 'vide.txt', 1000), isEmpty);
   });
+
+  // Entrees STORE (non compressees). Elles empruntent l'autre branche de
+  // `safeEntryBytes`, celle qui ne passe pas par `Inflate`. La relecture GPT
+  // du 2026-08-09 a montre que cette branche copiait TOUT avant que le
+  // plafond ne s'exprime : `_CappedOutput` ne verifie qu'apres chaque
+  // ecriture, et il n'y en avait qu'une. Elle copie desormais par tranches.
+  group('entrees STORE', () {
+    Uint8List storeZip({required String name, required int size}) {
+      final archive = Archive()
+        ..addFile(ArchiveFile.noCompress(name, size, Uint8List(size)));
+      return Uint8List.fromList(ZipEncoder().encode(archive)!);
+    }
+
+    test('une entree STORE honnete est lue integralement', () {
+      final zip = storeZip(name: 'brut.bin', size: 200 * 1024);
+      final entry = ZipDecoder().decodeBytes(zip).findFile('brut.bin')!;
+      expect(entry.compressionType, isNot(ArchiveFile.DEFLATE));
+
+      final out = safeEntryBytes(entry, 'brut.bin', 1024 * 1024);
+      expect(out.length, 200 * 1024);
+    });
+
+    test('une entree STORE au-dela du plafond est refusee', () {
+      final zip = storeZip(name: 'gros.bin', size: 300 * 1024);
+      final entry = ZipDecoder().decodeBytes(zip).findFile('gros.bin')!;
+      expect(
+        () => safeEntryBytes(entry, 'gros.bin', 100 * 1024),
+        throwsA(isA<ArchiveTooLargeException>()),
+      );
+    });
+
+    test('une entree STORE pile a la limite passe', () {
+      final zip = storeZip(name: 'pile.bin', size: 128 * 1024);
+      final entry = ZipDecoder().decodeBytes(zip).findFile('pile.bin')!;
+      final out = safeEntryBytes(entry, 'pile.bin', 128 * 1024);
+      expect(out.length, 128 * 1024);
+    });
+  });
 }

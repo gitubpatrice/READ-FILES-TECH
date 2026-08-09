@@ -168,7 +168,20 @@ Uint8List safeEntryBytes(ArchiveFile entry, String label, int maxBytes) {
     Inflate.stream(raw, out);
   } else {
     // STORE : rien à décompresser, mais la taille reste à contrôler.
-    out.writeInputStream(raw);
+    //
+    // La copie se fait par tranches et non d'un seul `writeInputStream`.
+    // `_CappedOutput` ne vérifie le plafond qu'APRÈS chaque écriture : un
+    // unique appel aurait donc tout copié avant que la borne ne s'exprime, ce
+    // qui la rendait inopérante sur ce chemin. Signalé par la relecture GPT
+    // du 2026-08-09. Le chemin DEFLATE n'avait pas ce défaut : `Inflate`
+    // écrit par blocs, donc le contrôle s'intercale naturellement.
+    const chunk = 64 * 1024;
+    while (!raw.isEOS) {
+      final remaining = raw.length;
+      out.writeInputStream(
+        raw.readBytes(remaining < chunk ? remaining : chunk),
+      );
+    }
   }
   return Uint8List.fromList(out.getBytes());
 }

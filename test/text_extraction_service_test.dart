@@ -176,6 +176,40 @@ void main() {
       expect(odtXmlToPlainText(xml), 'A\nB');
     });
 
+    // Constats de la relecture GPT du 2026-08-09 sur la deduplication.
+    test('extrait aussi les titres text:h, dans l\'ordre du document', () {
+      // Un document structure en titres perdait TOUS ses titres, et un plan
+      // qui n'en contient que ressortait vide — puis, depuis que le service
+      // transforme le vide en erreur, affichait « Le document semble vide ».
+      const xml =
+          '<office:text>'
+          '<text:h text:outline-level="1">Titre premier</text:h>'
+          '<text:p>Un paragraphe.</text:p>'
+          '<text:h text:outline-level="2">Sous-titre</text:h>'
+          '</office:text>';
+      expect(
+        odtXmlToPlainText(xml),
+        'Titre premier\nUn paragraphe.\nSous-titre',
+      );
+    });
+
+    test('un document fait uniquement de titres n\'est pas vide', () {
+      const xml = '<text:h>Plan</text:h><text:h>Chapitre 1</text:h>';
+      expect(odtXmlToPlainText(xml), 'Plan\nChapitre 1');
+    });
+
+    test(
+      'text:line-break devient un saut de ligne, text:tab une tabulation',
+      () {
+        // Ce sont des balises : le nettoyage generique les effacait sans rien
+        // laisser, et deux lignes se retrouvaient collees.
+        const xml =
+            '<text:p>ligne un<text:line-break/>ligne deux</text:p>'
+            '<text:p>col1<text:tab/>col2</text:p>';
+        expect(odtXmlToPlainText(xml), 'ligne un\nligne deux\ncol1\tcol2');
+      },
+    );
+
     test('préserve accents et emoji', () {
       const xml = '<text:p>Été 🌍 你好</text:p>';
       final out = odtXmlToPlainText(xml);
