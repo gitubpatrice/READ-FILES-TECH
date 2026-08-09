@@ -144,6 +144,42 @@ un dossier vide depuis toujours. **Même défaut, second site** : la blocklist K
 `safeCanonical` (`MainActivity.kt:63-68`) bloquait `vault_decrypt` et `share` — donc pas davantage
 le vrai dossier.
 
+### 3.1 bis L'explorateur était une impasse sur Android 7 → 10 — CONFIRMÉ, CRITIQUE
+
+**Trouvé en exécutant l'application sur le Galaxy S9 de test (Android 10, API 29).** Ni l'audit du
+2026-08-02, ni les trois relectures externes, ni mes propres passes ne l'avaient vu.
+
+`minSdk = 24` annonce le support d'Android 7. `targetSdk = 36` active le scoped storage. Et toute
+la logique d'accès reposait sur une seule permission, `MANAGE_EXTERNAL_STORAGE` — **qui n'existe
+qu'à partir d'Android 11** (API 30).
+
+En dessous, la permission n'existe pas, donc :
+
+- `Permission.manageExternalStorage.isGranted` répondait `false` **pour toujours** : le bandeau
+  « Accès aux fichiers limité — autorisez tous les fichiers » restait affiché en permanence, sans
+  aucun moyen de le faire disparaître ;
+- son bouton « Réglages » tombait dans la branche `SDK_INT < R` d'`openAllFilesAccess` et ouvrait
+  la fiche d'information de l'application, **où aucune option de ce nom n'existe** ;
+- `request()` n'affichait aucune boîte de dialogue, puisqu'il n'y a rien à demander ;
+- et faute de `requestLegacyExternalStorage`, le scoped storage empêchait de lister les dossiers.
+
+**Scénario** : sur toute la plage Android 7→10 que l'application déclare supporter, sa fonction
+cœur — parcourir des fichiers — ne fonctionnait pas, et l'interface envoyait l'utilisateur chercher
+une option inexistante.
+
+Corrigé par `requestLegacyExternalStorage="true"` (vérifié présent dans l'APK release à
+l'`aapt dump xmltree`) et par `lib/services/storage_access.dart`, source unique pour « peut-on
+lire ? », « comment demander ? » et « quel écran ouvrir ? » — trois réponses qui dépendent de la
+version et qui étaient codées en dur pour Android 11+. **Vérifié sur l'appareil** :
+`appops … LEGACY_STORAGE: allow`, et le dossier de test enfin visible dans l'explorateur.
+
+> **Et mon propre correctif a laissé deux jumeaux** : `_requestAllFilesAccess` (le bouton du
+> bandeau menait toujours à l'impasse — ma modification n'avait pas pris, le motif de remplacement
+> ne correspondait pas et je ne l'ai pas vérifié) et `output_storage_service.dart:229`. Trouvés en
+> cherchant les frères du site corrigé, après coup. Le premier commit affirmait donc corriger un
+> chemin qu'il n'avait pas touché. **Vérifier qu'une modification a réellement été appliquée fait
+> partie de l'appliquer.**
+
 ### 3.2 Le partage depuis le coffre était cassé — CONFIRMÉ, MOYEN
 
 `main.dart:250` purgeait `vault_decrypt/` **à chaque passage en arrière-plan**. Ouvrir une
@@ -363,6 +399,13 @@ reconstruit), rapport de fusion des manifestes, contenu de l'APK dépaqueté (mo
 `.properties` Play Services), APK release installé et lancé sur le **Galaxy S9 (SM-G960F,
 Android 10, API 29)** — démarrage propre, aucune exception Dart en logcat.
 
+**Et c'est l'appareil qui a rendu le verdict le plus lourd.** Les trois relectures externes ont
+trouvé des défauts réels et sérieux — garde anti-zip-bomb falsifiable, CSP contournable,
+« Ignorer » inopérant. Aucune n'a trouvé le défaut Android 7→10 (§3.1 bis), qui est pourtant le
+plus grave du point de vue de l'utilisateur, puisque l'application ne fonctionne tout simplement
+pas. **Relire du code montre ce que le code fait ; seul l'appareil montre ce que l'utilisateur
+obtient.** Une session d'audit sans exécution sur matériel réel a un angle mort de cette taille.
+
 **Vérifié dans le code des dépendances**, jamais supposé : `share_plus` 10.1.4 (`Share.kt`),
 `webview_flutter_android` 4.13.0 (`WebViewClientProxyApi.java`, `android_webview_controller.dart`),
 `gpt_markdown` (`markdown_component.dart`).
@@ -450,6 +493,10 @@ Une liste honnête de ce qui reste, plutôt qu'un rapport qui se déclare comple
 | `fd4ffc4` | Corrections issues de la relecture externe GPT-5.2 |
 | `8f229ce` | Concurrence : gardes de réentrance, bug du label minify |
 | `fc45bbb` | CI : les tests bloquent, la release publie 4 APK étiquetés juste |
+| `551c4b9` | Archives : la garde anti-zip-bomb testait une valeur falsifiable |
+| `91ded6b` | Dialogues : « Ignorer » ne permettait pas d'ignorer |
+| `bb7c523` | **Stockage : l'explorateur était une impasse sur Android 7 → 10** |
+| `75033ae` | Stockage : les deux jumeaux oubliés de ce correctif |
 
 ---
 
