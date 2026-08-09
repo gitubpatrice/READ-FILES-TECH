@@ -164,4 +164,48 @@ void main() {
 
     expect(errorBar.backgroundColor, isNot(infoBg));
   });
+
+  testWidgets('un messager imbrique et demonte ne fait pas planter', (
+    tester,
+  ) async {
+    // Trouve par la relecture GPT du 2026-08-09, et le point etait juste :
+    // les autres tests capturent le `ScaffoldMessenger` du `MaterialApp`, qui
+    // survit a tout. Ils prouvent donc « pas besoin d'un BuildContext monte »,
+    // pas « resiste a un messager mort ». Un `ScaffoldMessenger` imbriquee,
+    // lui, disparait avec son sous-arbre.
+    //
+    // L'application n'en contient aucun a ce jour. Ce test existe pour que le
+    // jour ou l'un apparaitra ne se solde pas par un plantage loin de sa cause.
+    late SnackTarget captured;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ScaffoldMessenger(
+          child: Scaffold(
+            body: Builder(
+              builder: (context) {
+                captured = SnackTarget.of(context);
+                return const Text('sous-arbre');
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('sous-arbre'), findsOneWidget);
+
+    // Le sous-arbre entier disparait : le messager capture est libere.
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: Text('autre chose'))),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('sous-arbre'), findsNothing);
+
+    // Ne doit rien afficher, et surtout rien lever.
+    captured.error('message perdu');
+    captured.info('autre message perdu');
+    captured.clear();
+    await tester.pump();
+    expect(find.text('message perdu'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

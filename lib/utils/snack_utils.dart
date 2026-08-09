@@ -57,9 +57,7 @@ final class SnackTarget {
     Duration duration = kSnackShort,
     SnackBarAction? action,
   }) {
-    _messenger.showSnackBar(
-      _build(content: Text(message), duration: duration, action: action),
-    );
+    _show(_build(content: Text(message), duration: duration, action: action));
   }
 
   /// Bandeau d'erreur : fond `errorContainer`, texte `onErrorContainer`.
@@ -68,7 +66,7 @@ final class SnackTarget {
     Duration duration = kSnackMedium,
     SnackBarAction? action,
   }) {
-    _messenger.showSnackBar(
+    _show(
       _build(
         content: Text(
           error.toString(),
@@ -82,7 +80,25 @@ final class SnackTarget {
   }
 
   /// Retire le bandeau courant sans attendre sa durée.
-  void clear() => _messenger.hideCurrentSnackBar();
+  void clear() {
+    if (!_messenger.mounted) return;
+    _messenger.hideCurrentSnackBar();
+  }
+
+  /// Le messager appartient normalement au `MaterialApp` racine et survit à
+  /// tout ce que l'application pousse par-dessus. « Normalement » : rien
+  /// n'empêche un `ScaffoldMessenger` imbriqué dans un sous-arbre qui, lui,
+  /// peut disparaître. Appeler `showSnackBar` sur un `State` déjà libéré
+  /// déclencherait un `setState` après `dispose` — en release, un
+  /// déréférencement nul plutôt qu'une assertion lisible.
+  ///
+  /// Aucun `ScaffoldMessenger` imbriqué n'existe dans l'application à ce jour
+  /// (vérifié le 2026-08-09) ; ce garde existe pour que le jour où l'un
+  /// apparaîtra ne se solde pas par un plantage à distance de sa cause.
+  void _show(SnackBar bar) {
+    if (!_messenger.mounted) return;
+    _messenger.showSnackBar(bar);
+  }
 
   SnackBar _build({
     required Widget content,

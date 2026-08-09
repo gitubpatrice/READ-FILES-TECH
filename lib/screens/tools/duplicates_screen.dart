@@ -43,6 +43,9 @@ class _DuplicatesScreenState extends State<DuplicatesScreen>
   }
 
   Future<void> _scan() async {
+    // Relancé après une suppression par lots, que l'utilisateur peut avoir
+    // quittée. Le garde manquait avant ce premier `setState`.
+    if (!mounted) return;
     setState(() {
       _scanning = true;
       _error = null;

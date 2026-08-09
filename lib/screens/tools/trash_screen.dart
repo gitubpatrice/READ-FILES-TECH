@@ -27,6 +27,10 @@ class _TrashScreenState extends State<TrashScreen> {
   }
 
   Future<void> _load() async {
+    // Appelé après restauration / suppression définitive, opérations que
+    // l'utilisateur peut avoir quittées. Sans ce garde, ce `setState` partait
+    // sur un State déjà libéré.
+    if (!mounted) return;
     setState(() => _loading = true);
     List<TrashEntry> entries;
     try {

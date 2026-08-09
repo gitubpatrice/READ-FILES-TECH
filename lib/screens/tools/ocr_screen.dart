@@ -88,7 +88,13 @@ class _OcrScreenState extends State<OcrScreen> {
       'Sauvegardé : ${PathUtils.fileName(out.path)}',
       duration: kSnackMedium,
     );
-    if (autoShare) {
+    // Le partage automatique, lui, reste conditionné à la présence de l'écran.
+    // Un bandeau qui apparaît après coup informe ; une feuille de partage qui
+    // surgit alors que l'utilisateur a navigué ailleurs interrompt, et donne
+    // l'impression d'une action fantôme. Relecture GPT du 2026-08-09 : c'est
+    // ce que le retrait du `if (!mounted) return;` avait cassé ici — le garde
+    // ne protégeait pas que le bandeau.
+    if (autoShare && mounted) {
       await Share.shareXFiles([XFile(out.path)]);
     }
   }

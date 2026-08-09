@@ -289,6 +289,11 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
 
   Future<void> _refresh() async {
     if (_current == null) return;
+    // Le garde est ici plutôt que chez chaque appelant : `_refresh` est
+    // appelé après des opérations longues (copie, déplacement, annulation
+    // d'une mise à la corbeille) que l'utilisateur peut avoir quittées. Le
+    // `mounted` du milieu ne protégeait que le SECOND `setState`.
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       _statCache.clear();
@@ -303,7 +308,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showErrorSnack(context, '$e');
     }
   }
 
