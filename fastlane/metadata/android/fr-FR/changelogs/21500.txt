@@ -1,0 +1,11 @@
+Explorateur utilisable sur Android 7 à 10 : l'app n'y demandait qu'une permission propre à Android 11.
+
+Archives : la garde anti-bombe se fiait à la taille annoncée par l'archive. Elle mesure désormais.
+
+Visionneuse HTML : deux contournements de la politique de sécurité corrigés.
+
+Éditeurs : « Ignorer » quitte vraiment sans enregistrer.
+
+Coffre : compteurs de blocage remis à zéro à la réinitialisation.
+
+Déplacement par lot : plus de suppression de la source sans vérification.

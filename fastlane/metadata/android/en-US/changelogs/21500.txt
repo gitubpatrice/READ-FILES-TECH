@@ -1,0 +1,11 @@
+File explorer finally usable on Android 7 to 10: the app only asked for a permission that exists from Android 11 onwards.
+
+Archives: the decompression-bomb guard trusted the size the archive declared. It now measures.
+
+HTML viewer: two bypasses of the security policy fixed.
+
+Editors: "Discard" really does leave without saving.
+
+Vault: lockout counters cleared on reset.
+
+Batch move: the source is no longer deleted without verification.
