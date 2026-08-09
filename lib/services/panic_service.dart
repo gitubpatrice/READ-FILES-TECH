@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'trash_service.dart';
 import 'vault_service.dart';
 
 /// Mode panique : wipe complet en cas de menace immédiate (saisie device,
@@ -67,10 +68,12 @@ class PanicService {
     } catch (e) {
       if (kDebugMode) debugPrint('panic prefs: $e');
     }
-    // 4. Purge cache/vault_decrypt + cache/share + cache/exports (étendu
-    // dans v2.13.0 — cf VaultService.purgeTempDecrypted).
+    // 4. Purge des dossiers cache portant du plaintext (cf
+    // VaultService.purgeTempDecrypted). `force` : un partage en cours ne doit
+    // pas faire échouer un wipe de panique — c'est même le cas où l'utilisateur
+    // a le plus besoin que le fichier disparaisse.
     try {
-      await VaultService.instance.purgeTempDecrypted();
+      await VaultService.instance.purgeTempDecrypted(force: true);
       report.cachePurged = true;
     } catch (e) {
       if (kDebugMode) debugPrint('panic cache: $e');
@@ -115,7 +118,29 @@ class PanicService {
     } catch (e) {
       if (kDebugMode) debugPrint('panic temp: $e');
     }
-    // 6. Purge récents (la clé prefs `recent_files` est déjà effacée à l'étape
+    // 6. V-M3 v2.15 — Vidage de la corbeille.
+    //
+    // La corbeille est arrivée en v2.14.0 ; le panic wipe, lui, datait de
+    // v2.12. Rien ne les a reliés. Or « supprimer » dans l'explorateur
+    // **déplace** désormais le fichier dans `<volume>/.RFT_Corbeille`, en
+    // clair, sur le stockage partagé — lisible par toute app ayant l'accès
+    // stockage. Un utilisateur qui supprimait un document sensible puis
+    // déclenchait le mode panique voyait `PanicReport.isComplete` au vert
+    // alors que le document était toujours là, à un tap de la restauration.
+    //
+    // C'est le motif dominant de ce dépôt : une fonctionnalité neuve
+    // réintroduit une surface qu'un mécanisme plus ancien croyait couvrir.
+    try {
+      final trash = TrashService();
+      final entries = await trash.list();
+      final res = await trash.emptyAll(entries);
+      // Un seul échec suffit à invalider la promesse « wipe complet » : le
+      // rapport doit dire la vérité, pas rassurer.
+      report.trashEmptied = res.fail == 0;
+    } catch (e) {
+      if (kDebugMode) debugPrint('panic trash: $e');
+    }
+    // 7. Purge récents (la clé prefs `recent_files` est déjà effacée à l'étape
     // 3 puisque non whitelistée — ce flag confirme la couverture du périmètre).
     report.recentsCleared = true;
     return report;
@@ -128,6 +153,9 @@ class PanicReport {
   bool prefsCleared = false;
   bool cachePurged = false;
   bool tempPurged = false;
+
+  /// v2.15 — corbeille vidée sans échec. Faux tant que l'étape n'a pas tourné.
+  bool trashEmptied = false;
   bool recentsCleared = false;
 
   bool get isComplete =>
@@ -136,11 +164,12 @@ class PanicReport {
       prefsCleared &&
       cachePurged &&
       tempPurged &&
+      trashEmptied &&
       recentsCleared;
 
   @override
   String toString() =>
       'PanicReport(locked=$locked vault=$vaultDeleted '
       'prefs=$prefsCleared cache=$cachePurged temp=$tempPurged '
-      'recents=$recentsCleared)';
+      'trash=$trashEmptied recents=$recentsCleared)';
 }

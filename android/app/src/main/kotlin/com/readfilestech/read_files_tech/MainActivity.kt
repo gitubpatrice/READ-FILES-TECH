@@ -25,6 +25,13 @@ class MainActivity : FlutterFragmentActivity() {
         /// valeur hors de cette liste est ignorée silencieusement, empêchant
         /// une app tierce de déclencher une action arbitraire via Intent.
         private val ALLOWED_SHORTCUTS = setOf("scanner", "ocr", "vault")
+
+        /// Sous-dossiers de `cacheDir` susceptibles de contenir du plaintext
+        /// issu du coffre. Aucun fichier de ces dossiers ne doit sortir par
+        /// FileProvider sur demande de Dart. Miroir de la liste de purge dans
+        /// `VaultService.purgeTempDecrypted` (Dart).
+        private val PLAINTEXT_CACHE_DIRS =
+            listOf("vault_decrypt", "share_plus", "share", "exports")
     }
 
     /// Racines autorisées pour list_dir / open_file. Le path passé par Dart
@@ -51,6 +58,15 @@ class MainActivity : FlutterFragmentActivity() {
     /// coffre. Sans ça, un code Dart compromis pouvait demander à Kotlin
     /// d'envoyer ces fichiers via FileProvider à n'importe quelle app
     /// tierce (sendToPackage / openFile chooser).
+    ///
+    /// v2.15 — `share_plus` et `exports` ajoutés. `share` visait le staging
+    /// de share_plus, mais le plugin nomme ce dossier `share_plus`
+    /// (Share.kt:29) : le vrai dossier n'était pas couvert, et `share`
+    /// n'existe pas. `exports` contient les `.rftvault` — le coffre entier
+    /// sous un mot de passe d'export potentiellement plus faible que le
+    /// master. Même défaut que la liste de purge côté Dart
+    /// (`VaultService.purgeTempDecrypted`) : les deux listes décrivent la
+    /// même réalité et doivent bouger ensemble.
     private fun safeCanonical(path: String): File? {
         return try {
             val canonical = File(path).canonicalFile
@@ -60,12 +76,15 @@ class MainActivity : FlutterFragmentActivity() {
             val pkgObb   = "/Android/obb/$packageName"
             if (abs.contains("/Android/data/") && !abs.contains(pkgFiles)) return null
             if (abs.contains("/Android/obb/")  && !abs.contains(pkgObb))   return null
-            // F5 v2.13.0 — blocklist vault_decrypt + share (plaintext coffre).
+            // F5 v2.13.0 — blocklist des dossiers cache portant du plaintext
+            // issu du coffre. Une seule liste, parcourue : ajouter un dossier
+            // ici est la seule chose à faire, et le pendant Dart est
+            // `VaultService.purgeTempDecrypted`.
             val cacheAbs = cacheDir.canonicalFile.absolutePath
-            val vaultDecrypt = "$cacheAbs/vault_decrypt"
-            val shareCache = "$cacheAbs/share"
-            if (abs == vaultDecrypt || abs.startsWith("$vaultDecrypt${File.separator}")) return null
-            if (abs == shareCache || abs.startsWith("$shareCache${File.separator}")) return null
+            for (sub in PLAINTEXT_CACHE_DIRS) {
+                val blocked = "$cacheAbs${File.separator}$sub"
+                if (abs == blocked || abs.startsWith("$blocked${File.separator}")) return null
+            }
             val ok = allowedRoots.any { root ->
                 abs == root.absolutePath || abs.startsWith(root.absolutePath + File.separator)
             }

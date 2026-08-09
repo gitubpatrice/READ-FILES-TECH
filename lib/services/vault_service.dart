@@ -202,6 +202,7 @@ class VaultService {
     await prefs.setBool(_kV2Only, true);
     _v2OnlyCache = true;
     _cachedKey = key;
+    _publishUnlocked();
   }
 
   /// Tente le déverrouillage. Retourne true si réussi.
@@ -276,6 +277,7 @@ class VaultService {
         final old = _cachedKey;
         if (old != null) _zeroize(old);
         _cachedKey = key;
+        _publishUnlocked();
         await _clearLockout(prefs);
         return true;
       }
@@ -353,14 +355,57 @@ class VaultService {
   /// Indique si le coffre est actuellement déverrouillé (clé en cache).
   bool get isUnlocked => _cachedKey != null;
 
+  /// Notifie les transitions verrouillé ⇄ déverrouillé.
+  ///
+  /// Ajouté pour le lock d'inactivité au premier plan (`main.dart`) : le
+  /// minuteur doit s'armer au moment du déverrouillage, pas au prochain
+  /// contact tactile. Sans ce signal, un utilisateur qui déverrouille et ne
+  /// touche plus l'écran n'arme jamais rien — soit exactement le scénario que
+  /// le minuteur est censé couvrir.
+  static final ValueNotifier<bool> unlockedNotifier = ValueNotifier<bool>(
+    false,
+  );
+
+  static void _publishUnlocked() {
+    final v = _cachedKey != null;
+    if (unlockedNotifier.value != v) unlockedNotifier.value = v;
+  }
+
   void lock() {
     final k = _cachedKey;
     if (k != null) _zeroize(k);
     _cachedKey = null;
+    _publishUnlocked();
     // Best-effort : nettoyer les fichiers déchiffrés laissés en tmp
-    // (vault_decrypt/ + cache/share/ utilisé par share_plus pour les
-    // fichiers issus du coffre).
-    purgeTempDecrypted();
+    // (vault_decrypt/ + la copie faite par share_plus).
+    // `force` : le verrouillage prime sur un partage en cours. Si l'auto-lock
+    // se déclenche pendant qu'une share-sheet est encore ouverte, le partage
+    // échouera — c'est le comportement voulu, pas un effet de bord.
+    purgeTempDecrypted(force: true);
+  }
+
+  /// Nombre de partages en cours. Compteur plutôt que booléen : deux partages
+  /// peuvent se chevaucher (l'utilisateur revient et repart aussitôt), et un
+  /// booléen remis à false par le premier rouvrirait la fenêtre pour le second.
+  static int _sharesInFlight = 0;
+
+  /// Encadre un partage de contenu issu du coffre : suspend la purge
+  /// défensive, puis purge dès le retour de la share-sheet — y compris si
+  /// l'utilisateur l'annule, et y compris en cas d'exception.
+  ///
+  /// À utiliser pour **tout** `Share.shareXFiles` portant du plaintext venant
+  /// du coffre (fichier déchiffré ou `.rftvault` exporté).
+  Future<T> withShare<T>(Future<T> Function() body) async {
+    _sharesInFlight++;
+    try {
+      return await body();
+    } finally {
+      _sharesInFlight--;
+      if (_sharesInFlight <= 0) {
+        _sharesInFlight = 0;
+        await purgeTempDecrypted(force: true);
+      }
+    }
   }
 
   /// Importe un fichier en clair → chiffre + stocke. Retourne le path chiffré.
@@ -404,10 +449,21 @@ class VaultService {
   }
 
   /// Déchiffre un fichier du coffre vers un emplacement temporaire (pour viewer/share).
+  ///
+  /// V-M12 (audit 2026-08-02) — le chemin de sortie était `vault_decrypt/<nom>`,
+  /// donc identique d'un appel à l'autre. Deux partages rapprochés du même
+  /// fichier faisaient écrire deux `atomicWriteBytes` concurrents sur la même
+  /// cible : l'app destinataire pouvait recevoir un plaintext tronqué. Chaque
+  /// déchiffrement obtient désormais son propre sous-dossier ; le nom du
+  /// fichier, lui, ne change pas — c'est celui que verra l'utilisateur dans
+  /// l'app cible.
   Future<File> decryptToTemp(File encrypted) async {
     final key = _requireKey();
     final tmpRoot = await getTemporaryDirectory();
-    final tmp = Directory('${tmpRoot.path}/vault_decrypt');
+    final slot = base64Url
+        .encode(SecretBytes.randomBytes(9))
+        .replaceAll('=', '');
+    final tmp = Directory('${tmpRoot.path}/vault_decrypt/$slot');
     if (!await tmp.exists()) await tmp.create(recursive: true);
     final encName = PathSafe.basename(encrypted.path);
     final originalName = _stripEnc(encName);
@@ -420,15 +476,45 @@ class VaultService {
 
   /// Supprime tous les fichiers déchiffrés laissés dans le cache :
   /// - `cache/vault_decrypt/` : staging déchiffrement viewer/share
-  /// - `cache/share/` : staging utilisé par share_plus / FileProvider qui
-  ///   peut conserver des copies en clair après un Share depuis le coffre.
+  /// - `cache/share_plus/` : **copie faite par share_plus lui-même**. Le
+  ///   plugin ne partage jamais le fichier qu'on lui passe : il le recopie
+  ///   dans ce dossier puis publie l'URI de la copie
+  ///   (`Share.kt:29` et `:250`, share_plus 10.1.4). Cette copie n'est
+  ///   effacée qu'au **début du partage suivant** (`clearShareCacheFolder`,
+  ///   appelée en tête de `shareFiles`) — donc jamais, si l'utilisateur ne
+  ///   repartage rien. Un document sorti du coffre restait en clair dans le
+  ///   cache de l'app après le lock, après le retour en arrière-plan, et
+  ///   après un panic wipe.
+  /// - `cache/share/` : ancien nom visé par cette purge. Ce dossier n'a
+  ///   **jamais existé** — c'était le nom supposé du staging share_plus.
+  ///   Conservé dans la liste : il ne coûte rien et couvre les caches
+  ///   laissés par une version antérieure du plugin.
   /// - `cache/exports/` (F1 v2.13.0) : staging des `.rftvault` exportés.
   ///   Si l'utilisateur annule la share-sheet après Export, le fichier
   ///   reste sinon indéfiniment — c'est le coffre entier re-chiffré sous
   ///   un exportPassword potentiellement faible.
-  Future<void> purgeTempDecrypted() async {
+  ///
+  /// Toute mise à jour majeure de `share_plus` doit revérifier le nom de ce
+  /// dossier : il est fixé par le plugin, pas par nous.
+  ///
+  /// [force] outrepasse la garde de partage en cours ([beginShare]) : le lock
+  /// et le panic wipe l'utilisent, eux ne négocient pas.
+  Future<void> purgeTempDecrypted({bool force = false}) async {
+    // V-L4 — ne pas retirer le fichier sous les pieds d'un partage en cours.
+    // La share-sheet met l'app en `inactive` puis `paused`, ce qui déclenchait
+    // la purge défensive de `main.dart` : l'app cible recevait une URI dont le
+    // fichier venait d'être supprimé. `beginShare`/`endShare` encadrent la
+    // fenêtre ; `endShare` purge dès le retour, donc rien ne survit plus
+    // longtemps qu'avant — c'est même l'inverse, puisque la copie faite par
+    // share_plus n'était jusqu'ici jamais nettoyée.
+    if (!force && _sharesInFlight > 0) return;
     final tmpRoot = await getTemporaryDirectory();
-    for (final sub in const ['vault_decrypt', 'share', 'exports']) {
+    for (final sub in const [
+      'vault_decrypt',
+      'share_plus',
+      'share',
+      'exports',
+    ]) {
       try {
         final d = Directory('${tmpRoot.path}/$sub');
         if (await d.exists()) await d.delete(recursive: true);
@@ -439,11 +525,30 @@ class VaultService {
   }
 
   /// Exporte (déchiffre) un fichier du coffre vers un dossier de destination.
-  Future<File> exportFile(File encrypted, String destDir) async {
+  ///
+  /// V-M2 (audit 2026-08-02) — si un fichier homonyme existe déjà dans
+  /// [destDir], lève une [FileSystemException] au lieu de l'écraser. Le seul
+  /// avertissement dont disposait l'utilisateur était le nom affiché dans le
+  /// SnackBar de succès, une fois son document déjà détruit. Symétrique de
+  /// [importFileSafe], qui garde déjà le sens inverse (clair → coffre).
+  /// L'appelant confirme puis repasse avec `overwrite: true`.
+  Future<File> exportFile(
+    File encrypted,
+    String destDir, {
+    bool overwrite = false,
+  }) async {
     final key = _requireKey();
     final encName = PathSafe.basename(encrypted.path);
     final originalName = _stripEnc(encName);
     final out = File('$destDir/$originalName');
+    if (!overwrite &&
+        FileSystemEntity.typeSync(out.path, followLinks: false) !=
+            FileSystemEntityType.notFound) {
+      throw FileSystemException(
+        'Un fichier de ce nom existe déjà dans le dossier de destination',
+        out.path,
+      );
+    }
     final blob = await encrypted.readAsBytes();
     final plain = await _decryptMaybeIsolate(blob, key, encName);
     await atomicWriteBytes(out.path, plain);
@@ -958,6 +1063,20 @@ class VaultService {
   static int _readInt16be(Uint8List b, int o) => (b[o] << 8) | b[o + 1];
 
   /// Réinitialise complètement le coffre.
+  ///
+  /// V-L5 (audit 2026-08-02) — la liste effaçait `_kFails` et `_kLockoutUntil`
+  /// mais oubliait `_kLockoutUntilElapsed`, la deadline monotone introduite en
+  /// F3 v2.13.0. Un utilisateur qui oubliait son mot de passe, épuisait ses
+  /// essais puis réinitialisait se retrouvait avec un coffre **neuf** verrouillé
+  /// jusqu'à 30 minutes, sans aucun moyen de comprendre pourquoi : la deadline
+  /// monotone ne se contourne pas en changeant l'heure — c'est précisément son
+  /// rôle. Le même oubli couvrait les trois clés du lockout de restauration
+  /// (`_kBackupFails` et ses deux deadlines), ajoutées par F2 v2.13.0.
+  ///
+  /// Les deux fois, la cause est la même : une clé a été ajoutée au mécanisme
+  /// sans être ajoutée à sa remise à zéro. `_clearLockout` est désormais la
+  /// source unique pour le lockout principal, afin que le prochain ajout se
+  /// propage ici sans qu'on ait à y penser.
   Future<void> reset() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kSalt);
@@ -965,8 +1084,15 @@ class VaultService {
     await prefs.remove(_kKdfVersion);
     await prefs.remove(_kArgon2MemoryKB);
     await prefs.remove(_kArgon2Iterations);
-    await prefs.remove(_kFails);
-    await prefs.remove(_kLockoutUntil);
+    await _clearLockout(prefs);
+    await prefs.remove(_kBackupFails);
+    await prefs.remove(_kBackupLockoutUntil);
+    await prefs.remove(_kBackupLockoutUntilElapsed);
+    // Le flag v2-only appartient au coffre détruit. Le laisser en place ferait
+    // hériter au coffre suivant une propriété qu'il n'a pas encore déclarée ;
+    // `setupWithPassword` le repositionne de toute façon.
+    await prefs.remove(_kV2Only);
+    _v2OnlyCache = null;
     final dir = await _vaultDir();
     if (await dir.exists()) {
       await dir.delete(recursive: true);
@@ -975,6 +1101,7 @@ class VaultService {
     final k = _cachedKey;
     if (k != null) _zeroize(k);
     _cachedKey = null;
+    _publishUnlocked();
   }
 
   // ── Crypto helpers ──────────────────────────────────────────────────────────

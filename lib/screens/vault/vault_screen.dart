@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/secure_window.dart';
 import '../../services/vault_service.dart';
 import '../../utils/app_constants.dart';
+import '../../widgets/danger_style.dart';
 import '../../widgets/rft_picker_screen.dart';
 import 'vault_import_folder_screen.dart';
 
@@ -60,9 +61,26 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   void dispose() {
     _pendingLockTimer?.cancel();
     _pendingLockTimer = null;
-    // Quand on quitte VaultScreen, on ne masque plus l'app (l'utilisateur peut
-    // vouloir capturer l'écran ailleurs). Si le coffre est déverrouillé, le
-    // lock+disable se fera via _lockNow / lifecycle.
+    // V-H1 (audit 2026-08-02) — verrouiller en quittant l'écran.
+    //
+    // Le commentaire précédent affirmait que « le lock se fera via _lockNow /
+    // lifecycle ». C'était faux dans le seul cas qui compte : quitter le
+    // coffre par le bouton retour ne passe ni par `_lockNow` (déclenché
+    // uniquement en arrière-plan) ni par `onLock` (le bouton explicite). Le
+    // coffre restait donc déverrouillé **indéfiniment au premier plan** :
+    // déverrouiller, revenir à l'accueil, poser le téléphone — quiconque le
+    // reprenait rouvrait « Coffre » sans mot de passe.
+    //
+    // Le lock d'inactivité au premier plan (`main.dart`) couvre l'oubli ;
+    // celui-ci couvre l'intention : quitter l'écran, c'est en avoir fini.
+    if (_service.isUnlocked) _service.lock();
+    // Un seul `enable()` (initState) ⇄ un seul `disable()` (ici). Les
+    // `enable()` supplémentaires posés à la création et au déverrouillage
+    // laissaient le compteur de `SecureWindow` à 1 en quittant l'écran :
+    // FLAG_SECURE restait posé sur **toute l'app** jusqu'à la mort du
+    // process, et l'utilisateur ne pouvait plus faire la moindre capture
+    // d'écran ailleurs. Le refcount n'était pas en cause — son appariement
+    // l'était.
     SecureWindow.disable();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -96,7 +114,9 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
   void _lockNow() {
     if (!_service.isUnlocked) return;
     _service.lock();
-    SecureWindow.disable();
+    // Pas de `SecureWindow.disable()` ici : on reste sur VaultScreen, donc
+    // sur l'écran de saisie du mot de passe, qui est précisément l'écran à
+    // masquer. Le ref posé en initState est rendu au dispose, une fois.
     if (mounted) setState(() => _unlocked = false);
   }
 
@@ -115,10 +135,13 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
     if (_checking) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+    // Aucun appel à SecureWindow ci-dessous : le flag appartient à l'écran
+    // (initState → dispose), pas à l'état de déverrouillage. Les `enable()` /
+    // `disable()` qui étaient posés ici déséquilibraient le compteur selon le
+    // chemin emprunté par l'utilisateur.
     if (!_setup) {
       return _SetupScreen(
         onCreated: () async {
-          SecureWindow.enable();
           setState(() {
             _setup = true;
             _unlocked = true;
@@ -129,14 +152,12 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
     if (!_unlocked) {
       return _UnlockScreen(
         onUnlocked: () {
-          SecureWindow.enable();
           setState(() => _unlocked = true);
         },
         onReset: () async {
           final ok = await _confirmReset(context);
           if (ok) {
             await _service.reset();
-            SecureWindow.disable();
             if (mounted) {
               setState(() {
                 _setup = false;
@@ -151,15 +172,13 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
       service: _service,
       onLock: () {
         _service.lock();
-        SecureWindow.disable();
         setState(() => _unlocked = false);
       },
     );
   }
 
   Future<bool> _confirmReset(BuildContext context) async {
-    // v2.13.2 (#2) — pattern destructif M3 : autofocus Cancel + cs.errorContainer.
-    final cs = Theme.of(context).colorScheme;
+    // v2.13.2 (#2) — pattern destructif M3 : autofocus Annuler + rouge plein.
     final res = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -175,10 +194,11 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
             child: const Text('Annuler'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: cs.errorContainer,
-              foregroundColor: cs.onErrorContainer,
-            ),
+            // C-C8 — style destructif canonique (kDangerRed). `cs.errorContainer`
+            // rendait le bouton pâle : le changelog d'explorer_dialogs.dart
+            // documente l'abandon de ce pattern, mais l'écran le plus
+            // destructif de l'app l'avait conservé.
+            style: dangerFilledButtonStyle(),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Réinitialiser'),
           ),
@@ -617,8 +637,14 @@ class _VaultContentState extends State<_VaultContent> {
   Future<void> _share(File enc) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final tmp = await widget.service.decryptToTemp(enc);
-      await Share.shareXFiles([XFile(tmp.path)]);
+      // `withShare` suspend la purge défensive déclenchée par le passage en
+      // arrière-plan (la share-sheet en est un), puis purge au retour. Sans
+      // elle, le fichier déchiffré était supprimé avant que l'app cible ne
+      // l'ait lu, et la copie interne de share_plus survivait indéfiniment.
+      await widget.service.withShare(() async {
+        final tmp = await widget.service.decryptToTemp(enc);
+        await Share.shareXFiles([XFile(tmp.path)]);
+      });
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
@@ -629,14 +655,65 @@ class _VaultContentState extends State<_VaultContent> {
     final destDir = await FilePicker.getDirectoryPath();
     if (destDir == null) return;
     try {
-      final out = await widget.service.exportFile(enc, destDir);
+      await widget.service.exportFile(enc, destDir);
+    } on FileSystemException {
+      // V-M2 — un fichier de l'utilisateur porte déjà ce nom dans le dossier
+      // choisi. Avant, il était remplacé sans un mot, et le SnackBar de
+      // succès annonçait le nom du document qu'on venait de détruire.
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Exporté : ${PathSafe.basename(out.path)}')),
+      final overwrite = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Fichier déjà présent'),
+          content: Text(
+            '"${_displayName(enc)}" existe déjà dans le dossier de '
+            'destination. L\'écraser ?',
+          ),
+          actions: [
+            TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Garder'),
+            ),
+            FilledButton(
+              style: dangerFilledButtonStyle(),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Écraser'),
+            ),
+          ],
+        ),
       );
+      if (overwrite != true) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Export annulé — fichier conservé.')),
+        );
+        return;
+      }
+      try {
+        final out = await widget.service.exportFile(
+          enc,
+          destDir,
+          overwrite: true,
+        );
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text('Exporté : ${PathSafe.basename(out.path)}')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      }
+      return;
     } catch (e) {
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      return;
     }
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Exporté : ${_displayName(enc)}')),
+    );
   }
 
   Future<void> _delete(File enc) async {
@@ -644,7 +721,6 @@ class _VaultContentState extends State<_VaultContent> {
       context: context,
       builder: (_) {
         // v2.13.2 (#2/S3) — pattern destructif M3.
-        final cs = Theme.of(context).colorScheme;
         return AlertDialog(
           title: const Text('Supprimer du coffre'),
           content: Text(
@@ -657,10 +733,7 @@ class _VaultContentState extends State<_VaultContent> {
               child: const Text('Annuler'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: cs.errorContainer,
-                foregroundColor: cs.onErrorContainer,
-              ),
+              style: dangerFilledButtonStyle(),
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Supprimer'),
             ),
@@ -743,9 +816,13 @@ class _VaultContentState extends State<_VaultContent> {
       if (!mounted) return;
       progressDialog.close();
       // Partage du fichier produit (l'utilisateur choisit où le sauver).
-      await Share.shareXFiles([
-        XFile(out.path, mimeType: 'application/octet-stream'),
-      ], subject: 'Sauvegarde Read Files Tech');
+      // Même garde que `_share` : le `.rftvault` vit dans `cache/exports/`,
+      // que la purge défensive efface au passage en arrière-plan.
+      await widget.service.withShare(
+        () => Share.shareXFiles([
+          XFile(out.path, mimeType: 'application/octet-stream'),
+        ], subject: 'Sauvegarde Read Files Tech'),
+      );
     } catch (e) {
       if (!mounted) return;
       progressDialog.close();

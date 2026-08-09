@@ -175,6 +175,7 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    VaultService.unlockedNotifier.addListener(_onVaultLockStateChanged);
     _loadTheme();
     _captureInitialPerm();
     _initShortcuts();
@@ -219,6 +220,8 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
   @override
   void dispose() {
     _autoLockTimer?.cancel();
+    _idleLockTimer?.cancel();
+    VaultService.unlockedNotifier.removeListener(_onVaultLockStateChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -295,8 +298,48 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
     await prefs.setString('theme_mode', mode.name);
   }
 
+  /// V-H1 v2.15 — verrouillage sur inactivité **au premier plan**.
+  ///
+  /// L'auto-lock existant ne couvrait que la mise en arrière-plan. Un coffre
+  /// déverrouillé puis laissé à l'écran restait ouvert aussi longtemps que
+  /// l'app tournait : téléphone posé sur une table, écran éteint par le
+  /// système (ce qui ne produit pas de `paused` sur tous les constructeurs),
+  /// et le coffre était rouvrable sans mot de passe.
+  ///
+  /// Le compteur est remis à zéro à chaque interaction tactile. Il n'est armé
+  /// que lorsque le coffre est effectivement déverrouillé : aucun timer ne
+  /// tourne dans le cas courant.
+  Timer? _idleLockTimer;
+
+  void _touch() {
+    if (!VaultService.instance.isUnlocked) {
+      _idleLockTimer?.cancel();
+      _idleLockTimer = null;
+      return;
+    }
+    _idleLockTimer?.cancel();
+    _idleLockTimer = Timer(AppConstants.foregroundIdleLockDelay, () {
+      if (VaultService.instance.isUnlocked) VaultService.instance.lock();
+    });
+  }
+
+  /// Arme le minuteur au déverrouillage et le désarme au verrouillage.
+  /// Sans ce branchement, un utilisateur qui déverrouille puis ne touche plus
+  /// l'écran ne déclencherait jamais `_touch()`.
+  void _onVaultLockStateChanged() => _touch();
+
   @override
   Widget build(BuildContext context) {
+    return Listener(
+      // `behavior: deferToChild` laisserait passer les zones sans hit-test.
+      // On veut voir *toute* interaction, y compris sur un fond vide.
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _touch(),
+      child: _buildApp(),
+    );
+  }
+
+  Widget _buildApp() {
     return MaterialApp(
       title: 'Read Files Tech',
       navigatorKey: _navigatorKey,
