@@ -138,6 +138,68 @@ DocxExtractResult extractDocxText(Uint8List bytes) {
   return DocxExtractResult(text: extracted);
 }
 
+/// Décompose le `content.xml` d'un OpenDocument (.odt / .odp) en texte brut.
+///
+/// [tagName] est le nom de la balise de paragraphe : `text:p` pour un texte,
+/// et le même pour les zones de texte d'une présentation.
+///
+/// Vivait auparavant dans `docx_viewer_screen.dart`, où sa liste d'entités
+/// codée en dur ignorait les entités numériques — un `.odt` produit par
+/// LibreOffice affichait alors `&#233;` là où il fallait lire « é ».
+String odtXmlToPlainText(String xml, {String tagName = 'text:p'}) {
+  final buffer = StringBuffer();
+  final reg = RegExp('<$tagName[^>]*>(.*?)</$tagName>', dotAll: true);
+  for (final m in reg.allMatches(xml)) {
+    final inner = m.group(1) ?? '';
+    // Les balises internes (mise en forme, annotations) sont retirées ; seul
+    // leur contenu textuel compte.
+    final clean = inner.replaceAll(RegExp(r'<[^>]+>'), '');
+    // ODF encode ses sauts de ligne en `&#xD;` (retour chariot). Le décodage
+    // générique rend un `\r`, qu'on normalise ici plutôt que de renoncer aux
+    // entités numériques pour le cas particulier.
+    final decoded = decodeXmlEntities(
+      clean,
+    ).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    if (decoded.trim().isNotEmpty) buffer.writeln(decoded);
+  }
+  return buffer.toString().trim();
+}
+
+/// Extrait le texte d'un `.odt` / `.odp` (ZIP) en mémoire.
+///
+/// Même contrat que [extractDocxText] : exactement un de `text` / `error`.
+DocxExtractResult extractOdtText(Uint8List bytes) {
+  Archive archive;
+  try {
+    archive = ZipDecoder().decodeBytes(bytes);
+  } catch (_) {
+    return const DocxExtractResult(
+      error: 'Le fichier n\'est pas un OpenDocument valide (ZIP illisible).',
+    );
+  }
+  final entry = archive.findFile('content.xml');
+  if (entry == null) {
+    return const DocxExtractResult(
+      error: '`content.xml` introuvable dans l\'archive — fichier corrompu.',
+    );
+  }
+  // Même raison que pour `.docx` : `entry.size` vient de l'en-tête du ZIP et
+  // se falsifie. `safeEntryBytes` compte ce qui sort réellement.
+  final List<int> raw;
+  try {
+    raw = safeEntryBytes(entry, 'content.xml', FileCaps.zipEntryDecompressed);
+  } on ArchiveTooLargeException catch (e) {
+    return DocxExtractResult(error: e.toString());
+  }
+  final text = odtXmlToPlainText(utf8.decode(raw, allowMalformed: true));
+  if (text.trim().isEmpty) {
+    return const DocxExtractResult(
+      error: 'Le document semble vide (aucun texte trouvé).',
+    );
+  }
+  return DocxExtractResult(text: text);
+}
+
 /// Extrait le texte sélectionnable d'un PDF en mémoire.
 ///
 /// Renvoie un [PdfExtractResult] avec le texte assemblé (séparé par

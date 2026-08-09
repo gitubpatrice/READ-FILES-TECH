@@ -121,4 +121,67 @@ void main() {
       expect(out, contains('안녕'));
     });
   });
+
+  // A-P1b — l'écran `docx_viewer_screen.dart` portait sa propre extraction
+  // OpenDocument, jamais testée, avec une liste d'entités codée en dur.
+  // Elle vit maintenant ici. Ces tests portent sur ce que l'ancienne version
+  // faisait FAUX : sans eux, la déduplication serait un déplacement de code
+  // sans preuve que le comportement retenu est le bon.
+  group('odtXmlToPlainText', () {
+    test('extrait les paragraphes text:p', () {
+      const xml =
+          '<office:text>'
+          '<text:p>Premier paragraphe</text:p>'
+          '<text:p>Second paragraphe</text:p>'
+          '</office:text>';
+      final out = odtXmlToPlainText(xml);
+      expect(out, 'Premier paragraphe\nSecond paragraphe');
+    });
+
+    test('retire les balises de mise en forme internes', () {
+      const xml =
+          '<text:p>Du <text:span text:style-name="T1">gras</text:span> ici</text:p>';
+      expect(odtXmlToPlainText(xml), 'Du gras ici');
+    });
+
+    test(
+      'décode les entités numériques — ce que l\'ancienne copie ne faisait pas',
+      () {
+        // Le décodage codé en dur de l'écran ne connaissait que les cinq
+        // entités nommées : un `.odt` de LibreOffice affichait « &#233; » en
+        // toutes lettres au lieu de « é ».
+        const xml = '<text:p>caf&#233; cr&#xE8;me</text:p>';
+        expect(odtXmlToPlainText(xml), 'café crème');
+      },
+    );
+
+    test('ne décode pas deux fois `&amp;lt;`', () {
+      // L'ancienne copie remplaçait `&amp;` EN PREMIER : `&amp;lt;` devenait
+      // `&lt;` puis `<`. Le fichier disait « &lt; », l'écran affichait « < ».
+      const xml = '<text:p>&amp;lt; reste du texte</text:p>';
+      expect(odtXmlToPlainText(xml), '&lt; reste du texte');
+    });
+
+    test('&#xD; vaut un saut de ligne, pas un retour chariot brut', () {
+      // ODF s'en sert comme saut de ligne. Passer par le décodage générique
+      // rendrait un `\r`, invisible et mal rendu dans un widget Text.
+      const xml = '<text:p>ligne un&#xD;ligne deux</text:p>';
+      final out = odtXmlToPlainText(xml);
+      expect(out, 'ligne un\nligne deux');
+      expect(out, isNot(contains('\r')));
+    });
+
+    test('ignore les paragraphes vides', () {
+      const xml = '<text:p>A</text:p><text:p>   </text:p><text:p>B</text:p>';
+      expect(odtXmlToPlainText(xml), 'A\nB');
+    });
+
+    test('préserve accents et emoji', () {
+      const xml = '<text:p>Été 🌍 你好</text:p>';
+      final out = odtXmlToPlainText(xml);
+      expect(out, contains('Été'));
+      expect(out, contains('🌍'));
+      expect(out, contains('你好'));
+    });
+  });
 }

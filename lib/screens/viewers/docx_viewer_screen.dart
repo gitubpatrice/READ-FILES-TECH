@@ -1,11 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
-import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../utils/archive_safe.dart';
+import '../../services/text_extraction_service.dart';
 import '../../utils/file_caps.dart';
 import '../explorer/file_type_helpers.dart';
 
@@ -52,21 +50,28 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
       final size = await f.length();
       final bytes = await f.readAsBytes();
       final ext = _ext;
-      final String text;
-      if (size > PerfThresholds.isolateThreshold) {
-        text = await Isolate.run(() {
-          return ext == 'odt' || ext == 'odp'
-              ? _extractOdtStatic(bytes)
-              : _extractDocxStatic(bytes);
-        });
-      } else {
-        text = ext == 'odt' || ext == 'odp'
-            ? _extractOdtStatic(bytes)
-            : _extractDocxStatic(bytes);
-      }
+      final heavy = size > PerfThresholds.isolateThreshold;
+
+      // A-P1b — les deux extracteurs (.docx et OpenDocument) vivent désormais
+      // dans `text_extraction_service.dart`, seul endroit couvert par des
+      // tests. Cet écran en portait sa propre copie, et les deux ne disaient
+      // PAS la même chose : son décodage d'entités traitait `&amp;` en
+      // premier, si bien que `&amp;lt;` ressortait en `<` au lieu de `&lt;`.
+      // Le texte affiché différait donc du texte extrait par l'outil de
+      // conversion, sur le même fichier. Elle ignorait aussi `<w:br>`,
+      // `<w:tab>`, les entités numériques (`&#233;`) et la signature OLE des
+      // vieux `.doc`.
+      final result = ext == 'odt' || ext == 'odp'
+          ? (heavy
+                ? await Isolate.run(() => extractOdtText(bytes))
+                : extractOdtText(bytes))
+          : (heavy
+                ? await Isolate.run(() => extractDocxText(bytes))
+                : extractDocxText(bytes));
       if (!mounted) return;
       setState(() {
-        _text = text;
+        _error = result.error;
+        _text = result.text ?? '';
         _isLoading = false;
       });
     } catch (e) {
@@ -76,87 +81,6 @@ class _DocxViewerScreenState extends State<DocxViewerScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  // Static helpers : pas de capture de `this`, donc Isolate-safe.
-  static String _extractDocxStatic(List<int> bytes) {
-    final archive = ZipDecoder().decodeBytes(bytes);
-    final docFile = archive.findFile('word/document.xml');
-    if (docFile == null) return 'Impossible de lire le document.';
-    // F2 : cap entry décompressée anti zip-bomb XML. `entry.size` seul ne
-    // suffit pas — il vient de l'en-tête du ZIP et se falsifie. Voir
-    // `archive_safe.dart`.
-    final List<int> raw;
-    try {
-      raw = safeEntryBytes(
-        docFile,
-        'word/document.xml',
-        FileCaps.zipEntryDecompressed,
-      );
-    } on ArchiveTooLargeException {
-      return 'Contenu suspect (zip-bomb potentielle).';
-    }
-    final xml = utf8.decode(raw, allowMalformed: true);
-    // Split paragraphs first, then concat all <w:t> inside each.
-    final paragraphs = RegExp(r'<w:p[^>]*>(.*?)</w:p>', dotAll: true);
-    final tRun = RegExp(r'<w:t[^>]*>(.*?)</w:t>', dotAll: true);
-    final out = StringBuffer();
-    for (final m in paragraphs.allMatches(xml)) {
-      final pXml = m.group(1) ?? '';
-      final line = StringBuffer();
-      for (final t in tRun.allMatches(pXml)) {
-        line.write(_decodeEntities(t.group(1) ?? ''));
-      }
-      final text = line.toString();
-      if (text.trim().isNotEmpty) out.writeln(text);
-    }
-    return out.toString().trim();
-  }
-
-  static String _decodeEntities(String s) => s
-      .replaceAll('&amp;', '&')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&quot;', '"')
-      .replaceAll('&apos;', "'")
-      .replaceAll('&#xD;', '\n');
-
-  static String _extractOdtStatic(List<int> bytes) {
-    final archive = ZipDecoder().decodeBytes(bytes);
-    final contentFile = archive.findFile('content.xml');
-    if (contentFile == null) return 'Impossible de lire le document.';
-    final List<int> raw;
-    try {
-      raw = safeEntryBytes(
-        contentFile,
-        'content.xml',
-        FileCaps.zipEntryDecompressed,
-      );
-    } on ArchiveTooLargeException {
-      return 'Contenu suspect (zip-bomb potentielle).';
-    }
-    final xml = utf8.decode(raw, allowMalformed: true);
-    return _xmlToText(xml, tagName: 'text:p');
-  }
-
-  static String _xmlToText(String xml, {required String tagName}) {
-    final buffer = StringBuffer();
-    final reg = RegExp('<$tagName[^>]*>(.*?)</$tagName>', dotAll: true);
-    for (final m in reg.allMatches(xml)) {
-      final inner = m.group(1) ?? '';
-      // Supprimer les balises internes
-      final clean = inner.replaceAll(RegExp(r'<[^>]+>'), '');
-      // Décoder les entités XML basiques
-      final decoded = clean
-          .replaceAll('&amp;', '&')
-          .replaceAll('&lt;', '<')
-          .replaceAll('&gt;', '>')
-          .replaceAll('&quot;', '"')
-          .replaceAll('&apos;', "'")
-          .replaceAll('&#xD;', '\n');
-      if (decoded.trim().isNotEmpty) buffer.writeln(decoded);
-    }
-    return buffer.toString().trim();
   }
 
   @override
