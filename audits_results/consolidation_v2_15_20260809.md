@@ -465,10 +465,8 @@ Une liste honnête de ce qui reste, plutôt qu'un rapport qui se déclare comple
   le S9 de test en dispose. Le constat §3.7 s'appuie sur la nature du paquet
   (`play-services-mlkit-document-scanner`, client léger sans modèle embarqué) et sur la lecture du
   `catch`, pas sur une exécution.
-- Les **parcours UI du coffre sur appareil** (verrouillage à la sortie de l'écran, `FLAG_SECURE`
-  libéré, partage qui aboutit) sont couverts par les tests unitaires et la lecture du code, mais
-  n'ont pas été rejoués manuellement sur le S9 — seul le démarrage de l'APK release a été vérifié.
-  **C'est le premier contrôle à faire avant de taguer.**
+- ~~Les parcours UI du coffre sur appareil n'ont pas été rejoués.~~ **Fait le 2026-08-09 sur
+  Galaxy S9 (Android 10).** Voir la campagne ci-dessous.
 - **XML dans DOCX/ODT (§3.2 du prompt)** : l'extraction passe par des `RegExp` sur le texte brut,
   **jamais par un parseur XML**. Ni expansion d'entités, ni *billion laughs*, ni entité externe ne
   sont donc atteignables — il n'y a pas de résolveur d'entités. `_decodeEntities` ne traite que six
@@ -478,6 +476,37 @@ Une liste honnête de ce qui reste, plutôt qu'un rapport qui se déclare comple
   dans `csv_editor_screen.dart:_save`. **Rien à signaler.**
 - **XLSX et images** : caps en place (`FileCaps.spreadsheet`, `FileCaps.imageFile`, `ImageBounds`
   pour les dimensions déclarées). Non approfondis au-delà de la vérification des caps.
+
+---
+
+## 6 bis. Campagne de validation sur appareil — 2026-08-09
+
+Galaxy S9 (SM-G960F, Android 10, API 29), APK **release** signé, reconstruit depuis `HEAD`,
+installé et exercé à la main. Jeu de fichiers pièges poussé sur l'appareil, dont un EPUB de 80 Ko
+qui se décompresse en 80 Mo avec un en-tête annonçant `0`.
+
+| Vérifié | Résultat |
+|---|---|
+| Accès au stockage, listing des dossiers utilisateur (§3.1 bis) | ✅ le dossier de test apparaît, bandeau disparu, `LEGACY_STORAGE: allow` |
+| « Ignorer » ferme l'éditeur — sur les **deux** écrans, code et CSV | ✅ |
+| Le coffre redemande le mot de passe après une sortie d'écran (V-H1) | ✅ |
+| `FLAG_SECURE` rendu : capture d'écran possible après visite du coffre | ✅ |
+| CSP : iframe locale vide, aucune ressource distante, lien d'ancrage fonctionnel | ✅ les trois |
+| Markdown : image distante remplacée par « image externe bloquée » | ✅ |
+| EPUB bombe (80 Ko → 80 Mo, en-tête menteur) | ✅ aucun plantage |
+| EPUB sain : `<nav>` et `<footer>` absents du mode lecture | ✅ |
+
+**Journal système sur toute la campagne** : aucune exception Dart, aucun `setState after dispose`,
+aucun crash natif, aucun kill par le low-memory-killer. Contrôlé à l'`adb logcat` et à
+`dumpsys activity exit-info`.
+
+Les corrections les plus intrusives de la session — verrouillage du coffre, sémantique des boutons
+de sortie, changement de mode de chargement de la WebView (`loadFile` → `loadHtmlString` + CSP),
+garde de décompression — sont donc **vérifiées sur l'artefact réel**, et pas seulement par les
+tests.
+
+Reste non vérifiable ici : le comportement du scanner **sans** services Google Play, l'appareil de
+test en disposant.
 
 ---
 
