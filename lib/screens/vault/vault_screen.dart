@@ -582,6 +582,12 @@ class _VaultContentState extends State<_VaultContent> {
   }
 
   Future<void> _refresh() async {
+    // `_refresh` est appelé après des opérations longues (import de plusieurs
+    // fichiers, suppression, restauration) que l'utilisateur peut avoir quittées
+    // entre-temps. Le `mounted` du milieu ne protégeait que le SECOND
+    // `setState` ; le premier partait avant tout `await`, donc sur un State
+    // potentiellement démonté depuis longtemps.
+    if (!mounted) return;
     setState(() => _loading = true);
     final files = await widget.service.listFiles();
     if (!mounted) return;
@@ -1147,13 +1153,33 @@ class _ProgressDialog {
   BuildContext? _ctx;
   StateSetter? _setSt;
 
-  void refresh() => _setSt?.call(() {});
+  /// Un dialogue ne se ferme qu'une fois. `_exportBackup` appelait `close()`
+  /// en cas de succès (:825) PUIS de nouveau dans le `catch` (:832) si le
+  /// partage qui suit échouait — le dialogue n'étant plus là, le second
+  /// `close()` dépilait la route suivante, c'est-à-dire **l'écran du coffre
+  /// lui-même**. Une erreur de partage éjectait donc l'utilisateur du coffre.
+  bool _closed = false;
+
+  void refresh() {
+    // Le job de fond continue de rapporter sa progression après la fermeture
+    // du dialogue (retour arrière Android, qui ferme même un dialogue
+    // `barrierDismissible: false`) : sans cette garde, `setState` était appelé
+    // sur le `StatefulBuilder` démonté.
+    if (_closed) return;
+    _setSt?.call(() {});
+  }
 
   void close() {
+    if (_closed) return;
+    _closed = true;
     final ctx = _ctx;
-    if (ctx != null && Navigator.of(ctx).canPop()) {
-      Navigator.of(ctx).pop();
-    }
+    _ctx = null;
+    _setSt = null;
+    // `canPop()` répondait « oui » dès que le Navigator avait quoi que ce soit
+    // à dépiler — y compris quand notre dialogue était déjà parti. Le bon test
+    // est de savoir si CE contexte est encore monté.
+    if (ctx == null || !ctx.mounted) return;
+    Navigator.of(ctx).pop();
   }
 }
 

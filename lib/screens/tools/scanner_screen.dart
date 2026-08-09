@@ -23,6 +23,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
   int _pageLimit = 10;
 
   Future<void> _scan() async {
+    // `_busy` ne désactivait le bouton qu'au rebuild SUIVANT : un double-tap
+    // rapide lançait deux `DocumentScanner` en parallèle. La garde doit être
+    // lue de façon synchrone, avant tout `await` et avant tout rebuild.
+    if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;

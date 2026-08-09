@@ -73,6 +73,11 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
   Future<void> _load() async {
     try {
       final content = await File(_resolvedPath).readAsString();
+      // Quitter l'écran pendant la lecture démonte le State : sans cette
+      // garde, la fin du `readAsString` appelait `setState` sur un widget
+      // disparu. La garde `mounted` existait déjà pour le SnackBar du `catch`
+      // — mais pas pour le `setState` qui le précède, donc au mauvais endroit.
+      if (!mounted) return;
       _ctrl.text = content;
       _original = content;
       _ctrl.addListener(() {
@@ -81,6 +86,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
       });
       setState(() => _isLoading = false);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(
@@ -254,10 +260,18 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
         title: const Text('Modifications non sauvegardées'),
         content: const Text('Voulez-vous sauvegarder avant de quitter ?'),
         actions: [
+          // « Ignorer » = quitter SANS sauvegarder : la valeur rendue doit
+          // donc être `true` (« oui, on quitte »). Elle valait `false`, que
+          // l'appelant lit comme « ne pas quitter » : l'écran restait ouvert.
+          // « Ignorer » et « Annuler » avaient exactement le même effet —
+          // aucun — et le seul moyen de sortir était de sauvegarder, c'est-à-
+          // dire l'inverse de ce que l'utilisateur demandait.
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Ignorer'),
           ),
+          // « Annuler » et la fermeture par retour arrière rendent `null`, que
+          // le `?? false` final traduit en « rester sur l'écran ».
           TextButton(
             onPressed: () => Navigator.pop(context, null),
             child: const Text('Annuler'),
