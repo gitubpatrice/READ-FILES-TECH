@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Les branches de travail etaient invisibles de la CI : une branche
+    # `fix/**` pouvait accumuler des dizaines de commits sans qu'aucun outil
+    # ne tourne. Modele repris d'Agenda Tech, seul depot du portefeuille a
+    # declencher sur les branches de travail.
+    branches: [main, 'fix/**', 'feat/**']
   pull_request:
-    branches: [main]
 
 jobs:
   build:
@@ -41,9 +44,13 @@ jobs:
         working-directory: read_files_tech
         run: flutter analyze --no-fatal-infos
 
+      # W-M3 / Q-H2 — le « || echo "No tests yet" » rendait cette etape
+      # incapable d'echouer : un test rouge passait la CI au vert. Il datait
+      # d'une epoque sans tests ; il y en a 83 aujourd'hui, dont 25 sur le
+      # coffre.
       - name: Run tests
         working-directory: read_files_tech
-        run: flutter test || echo "No tests yet"
+        run: flutter test
 
       - name: Build APK (debug, unsigned)
         working-directory: read_files_tech

@@ -59,19 +59,87 @@ jobs:
         working-directory: read_files_tech
         run: flutter pub get
 
-      - name: Build APK release (signed)
+      # W-M4 — la release enchainait keystore, build et publication sans
+      # jamais verifier que le code compile proprement ni que les tests
+      # passent. Un tag pose sur un commit casse produisait un APK signe,
+      # publie, et annonce comme une version stable.
+      - name: Analyze
+        working-directory: read_files_tech
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        working-directory: read_files_tech
+        run: flutter test
+
+      # Le tag est la seule source du numero de version affiche dans la
+      # release ; pubspec.yaml est la seule source de celui qui est compile
+      # dans l'APK. Rien ne garantissait qu'ils concordent : `v2.14.0` pouvait
+      # publier un APK portant 2.13.2.
+      - name: Verifier que le tag correspond a pubspec.yaml
+        working-directory: read_files_tech
+        env:
+          TAG_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          PUBSPEC_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/^version:[[:space:]]*//' | cut -d'+' -f1)
+          echo "tag=$TAG_VERSION pubspec=$PUBSPEC_VERSION"
+          if [ "$TAG_VERSION" != "$PUBSPEC_VERSION" ]; then
+            echo "::error::Le tag v$TAG_VERSION ne correspond pas a pubspec.yaml ($PUBSPEC_VERSION)"
+            exit 1
+          fi
+
+      # W-H1 — `flutter build apk --release` produit un APK UNIVERSEL, que le
+      # corps de la release etiquetait pourtant « APK arm64-v8a ». Les
+      # utilisateurs telechargeaient ~117 Mo en croyant prendre un binaire
+      # d'architecture unique, et build.gradle.kts affirme de son cote que le
+      # split ABI passe par `--split-per-abi`. On produit donc bien les trois
+      # APK, plus l'universel pour qui ne veut pas choisir.
+      # W-H1 — `flutter build apk --release` produit un APK UNIVERSEL, que le
+      # corps de la release etiquetait pourtant « APK arm64-v8a ». Les
+      # utilisateurs telechargeaient ~117 Mo en croyant prendre un binaire
+      # d'architecture unique, et build.gradle.kts affirme de son cote que le
+      # split ABI passe par `--split-per-abi`. On produit donc les trois APK
+      # par ABI, plus l'universel pour qui ne veut pas choisir.
+      #
+      # Chaque lot est copie hors de `build/` immediatement apres SON build :
+      # ne pas dependre du fait que le second build laisse intacts les
+      # artefacts du premier.
+      - name: Build APK release (signed, split par ABI)
+        working-directory: read_files_tech
+        run: flutter build apk --release --split-per-abi
+
+      - name: Recuperer les 3 APK par ABI
+        run: |
+          set -euo pipefail
+          V=${{ steps.version.outputs.VERSION }}
+          OUT=read_files_tech/build/app/outputs/flutter-apk
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
+            cp "$OUT/app-$ABI-release.apk" "read_files_tech-v$V-$ABI.apk"
+          done
+
+      - name: Build APK release (signed, universel)
         working-directory: read_files_tech
         run: flutter build apk --release
 
-      - name: Rename + SHA256
+      - name: Recuperer l'APK universel
+        run: |
+          set -euo pipefail
+          V=${{ steps.version.outputs.VERSION }}
+          cp read_files_tech/build/app/outputs/flutter-apk/app-release.apk              "read_files_tech-v$V-universel.apk"
+
+      - name: SHA-256 des 4 APK
         id: sha
         run: |
-          SRC=read_files_tech/build/app/outputs/flutter-apk/app-release.apk
-          DEST=read_files_tech-v${{ steps.version.outputs.VERSION }}.apk
-          cp "$SRC" "$DEST"
-          SHA=$(sha256sum "$DEST" | awk '{print $1}')
-          echo "SHA256=$SHA" >> $GITHUB_OUTPUT
-          echo "APK_PATH=$DEST" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          V=${{ steps.version.outputs.VERSION }}
+          {
+            echo "SHA_TABLE<<SHA_EOF"
+            for VARIANT in arm64-v8a armeabi-v7a x86_64 universel; do
+              F="read_files_tech-v$V-$VARIANT.apk"
+              H=$(sha256sum "$F" | awk '{print $1}')
+              echo "- **$VARIANT** : \`$H\`"
+            done
+            echo "SHA_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -80,24 +148,30 @@ jobs:
           name: ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            ## Vérification d'intégrité
+            ## Quel fichier télécharger ?
 
-            **APK arm64-v8a** : `${{ steps.sha.outputs.APK_PATH }}`
+            Prenez l'APK correspondant à votre téléphone — `arm64-v8a` couvre
+            la quasi-totalité des appareils depuis 2017. L'APK `universel`
+            contient les trois architectures : plus lourd, mais il fonctionne
+            partout.
 
-            **SHA-256** :
-            ```
-            ${{ steps.sha.outputs.SHA256 }}
-            ```
+            ## Vérification d'intégrité (SHA-256)
+
+            ${{ steps.sha.outputs.SHA_TABLE }}
 
             Vérifiez avec :
             ```
-            sha256sum read_files_tech-v${{ steps.version.outputs.VERSION }}.apk
+            sha256sum <le fichier téléchargé>
             ```
 
             ---
 
             🤖 Build automatique via GitHub Actions (commit `${{ github.sha }}`)
-          files: ${{ steps.sha.outputs.APK_PATH }}
+          files: |
+            read_files_tech-v${{ steps.version.outputs.VERSION }}-arm64-v8a.apk
+            read_files_tech-v${{ steps.version.outputs.VERSION }}-armeabi-v7a.apk
+            read_files_tech-v${{ steps.version.outputs.VERSION }}-x86_64.apk
+            read_files_tech-v${{ steps.version.outputs.VERSION }}-universel.apk
 
       - name: Cleanup
         if: always()

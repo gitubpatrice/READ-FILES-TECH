@@ -271,11 +271,20 @@ class MainActivity : FlutterFragmentActivity() {
                             Uri.fromFile(file)
                         }
 
-                        // v2.12.2 — branche spéciale APK retirée avec
-                        // REQUEST_INSTALL_PACKAGES (anti faux positif Play
-                        // Protect "dropper"). Un .apk tapé tombe dans
-                        // l'ACTION_VIEW générique ci-dessous : c'est l'OS
-                        // (Files système) qui prend le relais d'installation.
+                        // W-M8 v2.15 — ce commentaire décrivait l'inverse du
+                        // comportement réel. Il affirmait que la branche APK
+                        // avait été « retirée avec REQUEST_INSTALL_PACKAGES »
+                        // en v2.12.2 : la permission est revenue en v2.13.0,
+                        // `installApk` existe une centaine de lignes plus bas,
+                        // et un tap sur un .apk dans l'explorateur y mène
+                        // directement (file_explorer_screen.dart:961).
+                        //
+                        // Ce qui reste vrai : `openFile` n'a PAS de branche
+                        // spéciale APK. Un .apk qui arrive ici — par « Ouvrir
+                        // avec » plutôt que par un tap — tombe dans
+                        // l'ACTION_VIEW générique, et c'est l'installeur du
+                        // système qui prend le relais, en demandant sa propre
+                        // confirmation.
 
                         val view = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(uri, mime)
