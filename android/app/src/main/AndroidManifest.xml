@@ -164,6 +164,48 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="ocr" />
 
+        <!--
+            ZÉRO TÉLÉMÉTRIE — retrait du transport `datatransport` de Google.
+
+            Google ML Kit, qui fournit l'OCR hors ligne, embarque
+            `com.google.android.datatransport:transport-backend-cct`. Ce
+            composant remonte à Google des métriques d'usage de la
+            bibliothèque. Il ne transmet pas le contenu des documents, mais il
+            transmet quelque chose, et ce quelque chose n'a jamais été demandé.
+
+            Les trois déclarations ci-dessous sont celles qu'il ajoutait au
+            manifeste fusionné (vérifiées lignes 386-400 de
+            `build/app/intermediates/merged_manifest/release/…`) :
+
+              TransportBackendDiscovery              — enregistre le backend CCT
+              JobInfoSchedulerService                — planifie les envois (API 21+)
+              AlarmManagerSchedulerBroadcastReceiver — idem, repli par alarme
+
+            `tools:node="remove"` les retire du manifeste FINAL. Sans point
+            d'entrée déclaré, Android ne peut ni lier le service ni délivrer la
+            diffusion : le transport ne démarre pas.
+
+            Ce que ça ne fait PAS : le code du transport reste dans l'APK, et
+            `INTERNET` reste déclarée — l'application s'en sert elle-même pour
+            la vérification de mise à jour (§6 bis de PRIVACY.fr.md). Retirer
+            ces composants coupe l'émission, pas la présence du code.
+
+            À VÉRIFIER SUR APPAREIL, et pas seulement sur le manifeste :
+            l'OCR et le scanner doivent continuer de fonctionner. Un composant
+            de télémétrie absent fait normalement échouer l'initialisation du
+            transport en silence, sans toucher au pipeline de reconnaissance —
+            mais « normalement » n'est pas une vérification.
+        -->
+        <service
+            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+            tools:node="remove" />
+        <service
+            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+            tools:node="remove" />
+        <receiver
+            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+            tools:node="remove" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
