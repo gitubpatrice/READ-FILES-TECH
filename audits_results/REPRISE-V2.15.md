@@ -1,124 +1,132 @@
-# Reprise du chantier v2.15 — état au 2026-08-09
+# Reprise du chantier v2.15 — état au 2026-08-09, fin de deuxième session
 
-> Document de reprise. Il existe pour qu'une session repartant sans le contexte de la précédente
-> sache exactement où en est le travail, ce qui reste, et ce qui a déjà été tranché — sans avoir à
-> le redécouvrir ni, pire, à le refaire autrement.
+> Document de reprise. Il existe pour qu'une session repartant sans le contexte
+> de la précédente sache où en est le travail, ce qui reste, et ce qui a déjà été
+> tranché — sans le redécouvrir ni, pire, le refaire autrement.
 >
-> Le détail des constats est dans `consolidation_v2_15_20260809.md`. Ici : l'état et la suite.
+> Le détail est dans `consolidation_v2_15_20260809.md` (23 points du plan
+> d'audit) puis `consolidation_v2_15_suite_20260809.md` (décisions produit et
+> dette). Ici : l'état et la suite.
 
 ## 1. État de départ
 
 | | |
 |---|---|
 | Branche | `main`, arbre **propre** |
-| Dernier commit | `62dc0f3` |
-| Commits de la session | 20, depuis `c89b820` (v2.14.0) |
+| Commits depuis `c89b820` (v2.14.0) | **31** |
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **101 tests au vert** (13 fichiers) |
+| `flutter test` | **121 tests verts** (14 fichiers) |
+| `flutter build apk --release --split-per-abi` | **passe** — 35,6 / 40,8 / 43,0 Mo |
 | Version `pubspec.yaml` | **2.14.0+21400** — non bumpée, volontairement |
 | Tag | aucun créé |
-| Appareil de test | Galaxy S9 (SM-G960F), Android 10, API 29 — APK release validé dessus |
+| Appareil de test | Galaxy S9 (SM-G960F), Android 10, API 29 |
 
-**Ne pas refaire** : les 23 points du plan §8 de l'audit du 2026-08-02 sont tous tranchés
-(21 confirmés, 1 réfuté, 1 partiellement). Le verdict est dans le rapport §2, avec `fichier:ligne`.
+**Ne pas refaire** : les 23 points du plan §8 de l'audit du 2026-08-02 sont tous
+tranchés (21 confirmés, 1 réfuté, 1 partiellement). Les décisions produit sont
+tranchées aussi — voir §2.
 
-## 2. Ce qui reste — par ordre de priorité
+## 2. Décisions prises, à ne pas rouvrir
 
-### P1 — Bloquant pour publier
+| Point | Décision |
+|---|---|
+| `INTERNET` / `ACCESS_NETWORK_STATE` | **Gardées, et déclarées explicitement au manifeste.** L'application s'en sert elle-même : `AppUpdate.checkForUpdate()` interroge l'API GitHub **au lancement**. Les retirer par `tools:node="remove"` casserait la vérification **en silence** (`UpdateService` avale la `SocketException`). |
+| Community License Syncfusion | **Reportée sciemment.** L'APK embarque du code propriétaire compilé dont la licence n'est pas formellement acquise. Dit sans adoucissement dans `THIRD_PARTY_NOTICES.md`. |
+| F-Droid | **Pas un objectif à ce jour.** Mentions retirées du manifeste et de `SECURITY.md`. Le dossier `fastlane/` est conservé — il alimente les notes de release GitHub. |
+| `REQUEST_INSTALL_PACKAGES` | Conservée. |
 
-1. **`fastlane/` n'existe pas.** Aucun changelog. Il en faut un par `versionCode`, en FR **et** EN
-   (`fastlane/metadata/android/{fr-FR,en-US}/changelogs/<versionCode>.txt`), **cap 500 caractères**
-   pour F-Droid. La v2.15 apporte beaucoup : verrouillage du coffre, garde anti-zip-bomb,
-   correctif Android 7→10, « Ignorer ». Le changelog doit tenir dans 500 signes.
-2. **`SECURITY.md` s'arrête à v2.13.2.** Le README a été resynchronisé sur 2.14.0, pas lui.
-3. **Bump de version** — `pubspec.yaml` uniquement, et **seulement au moment de la release**.
-   Read Files Tech lit sa version par `PackageInfo` : **aucune constante statique à bumper**
-   (contrairement à PDF Tech et Notes Tech).
+## 3. Ce qui reste
 
-### P2 — Décisions produit, à trancher avec Patrice (ne pas décider seul)
+### P1 — Avant de publier
 
-4. **`INTERNET`** : l'APK la porte, injectée par `transport-backend-cct` (télémétrie ML Kit), et
-   elle n'est **pas** déclarée dans le manifeste source. La retirer par `tools:node="remove"`
-   rendrait « 100 % local » vérifiable et couperait la télémétrie — au prix du check de mise à jour
-   GitHub de `files_tech_core`. Mesuré à l'`aapt dump permissions`, pas déduit.
-5. **`REQUEST_INSTALL_PACKAGES`** : techniquement **nécessaire** à l'installation en un tap
-   (l'installeur système vérifie `canRequestPackageInstalls()` pour le paquet appelant). Retirable
-   au prix d'un tap de plus via « Ouvrir avec ». Permission la plus lourde du portefeuille.
-6. **Community License Syncfusion** : à enregistrer auprès de Syncfusion. Pas automatique.
-   Documenté dans `THIRD_PARTY_NOTICES.md`, **non résolu**.
-7. **F-Droid** : le manifeste annonce la distribution F-Droid, mais aucun `fastlane/`, aucun
-   `productFlavors`, et ML Kit + Syncfusion + Play Services rendent un build FOSS impossible sans
-   flavor dédié. Objectif réel, ou mention à retirer ?
+1. **Bump de version** — `pubspec.yaml` **uniquement**, et **seulement au moment
+   de la release**. Read Files Tech lit sa version par `PackageInfo` : aucune
+   constante statique à bumper, contrairement à PDF Tech et Notes Tech.
+2. **Renommer les changelogs fastlane** si le numéro retenu n'est pas 2.15.0 —
+   ils sont écrits pour le `versionCode` **21500**. Les **deux** (fr-FR et en-US),
+   pas seulement l'un.
+3. **Retirer les fichiers de test du téléphone** : `Téléchargements/rft_test`
+   contient encore `secret.txt` et une bombe zip.
 
-### P3 — Dette technique, sans risque fonctionnel
+### P2 — Dette technique
 
-8. **A-P0a — éclater `vault_service.dart` (1352 l.) et `vault_screen.dart` (1209 l.).**
-   C'est **maintenant** le bon moment : les 25 tests du coffre existent et sont **validés sur
-   appareil**. Découpage suggéré par l'audit : `VaultCrypto`, `VaultStorage`, `VaultBackupCodec`,
-   `VaultLockout`. Règle : les tests ne doivent pas être modifiés pendant la refonte — s'ils
-   doivent l'être, c'est que le comportement change.
-9. **C-C5** — 19 `SnackBar(content: Text('Erreur…` inline contre 7 `showErrorSnack`.
-10. **A-P1b** — `docx_viewer_screen.dart:81` (`_extractDocxStatic`) réimplémente
-    `text_extraction_service.dart:82` (`extractDocxText`). Les deux sont aujourd'hui d'accord —
-    vérifié — mais divergeront.
-11. **C-C8 / C-C9 résiduels** : `duplicates_screen.dart:89,213` et `global_search_screen.dart:215`
-    (style destructif) ; `zip_viewer_screen.dart:65` (formatage de tailles).
-12. **Octet NUL brut** dans `zip_viewer_screen.dart:168`. Le code est correct, mais l'octet fait
-    traiter le fichier comme **binaire** par git : les diffs y sont invisibles en revue.
-    ⚠ **Quatre tentatives de réécriture ont été annulées par un processus externe** (éditeur gardant
-    le fichier ouvert) — les écritures ne persistaient pas, même vérifiées dans le même processus.
-    **À reprendre éditeur fermé.**
-13. **A-P1a (DI)** et **C-C11 (i18n)** — hors périmètre d'une consolidation.
+4. **A-P0a — éclater `vault_service.dart` (1451 l.) et `vault_screen.dart`.**
+   **Reporté délibérément**, et la raison compte plus que le report :
 
-### P4 — Non vérifiable ici
+   - c'est le seul point restant qui n'apporte **rien à l'utilisateur** ;
+   - il touche `unlockWithPassword` et `restoreFromBackup`, les deux chemins
+     résistants au brute-force, dont la logique de verrouillage est entrelacée
+     avec `SharedPreferences` et l'horloge monotone sur **six clés** ;
+   - une régression a été introduite dans du code d'**affichage** au cours de
+     cette session, et seule une relecture externe l'a vue.
 
-14. Comportement du **scanner sans services Google Play** : l'appareil de test en dispose.
-    `play-services-mlkit-document-scanner` est un client léger — le scanner ne marchera pas, mais
-    la dégradation (`catch` générique, message opaque) n'a pas pu être observée.
+   Le bon moment est une session qui **commence** par lui, avec revalidation sur
+   appareil à la fin. **Règle** : les 25 tests du coffre ne doivent pas être
+   modifiés pendant l'opération. S'ils doivent l'être, c'est que le comportement
+   change — signal d'arrêt.
 
-## 3. Méthode — ce qui a coûté cher, à ne pas réapprendre
+5. **`docxXmlToPlainText` écrit une ligne par paragraphe, même vide.** Signalé
+   par GPT. C'est le comportement du service, déjà utilisé par l'outil de
+   conversion ; la visionneuse s'y aligne désormais, ce qui était le but. Filtrer
+   les paragraphes vides changerait aussi la sortie de l'outil — à décider à
+   part.
+6. **A-P1a (injection de dépendances)** et **C-C11 (i18n)** — hors périmètre
+   d'une consolidation.
 
-- **Vérifier sur l'artefact, pas sur la source.** `INTERNET` et `ACCESS_NETWORK_STATE` sont dans
-  l'APK et absentes du manifeste source. Lire la source seule menait à une conclusion fausse.
-- **Vérifier sur l'appareil, pas sur le code.** Le défaut le plus grave de la session — explorateur
-  inutilisable sur Android 7→10 — n'a été trouvé ni par l'audit, ni par **trois** relectures
-  externes, ni par lecture de code. Il a fallu brancher le téléphone.
-- **Une falsification qui rougit ne prouve pas que le test vise juste.** Deux tests du coffre
-  passaient au rouge pour la mauvaise raison. Toujours se demander *ce que le test resterait vert
-  à cacher*.
-- **Une falsification ratée ressemble à un test inutile.** Premier essai sur la garde v2-only :
-  test vert. Diagnostic hâtif possible. En réalité le sabotage était incomplet — il restait un
-  second garde en amont.
-- **Vérifier qu'un patch a réellement été appliqué fait partie de l'appliquer.** Un remplacement
-  de texte a échoué silencieusement (apostrophes échappées) et un commit a affirmé corriger un
-  chemin qu'il n'avait pas touché.
-- **Partir de la version résolue** (`pubspec.lock`), pas de la première trouvée dans le cache pub.
-  `gpt_markdown` 1.1.6 et 1.1.7 cohabitent et n'ont pas la même signature.
-- **Un correctif n'est fini que quand on a cherché ses frères.** Motif dominant de ce dépôt, et
-  reproduit deux fois par mes propres correctifs.
+### P3 — Non vérifiable ici
 
-## 4. Outils
+7. Comportement du **scanner sans services Google Play** : l'appareil de test en
+   dispose.
+
+## 4. Méthode — ce qui a coûté cher, à ne pas réapprendre
+
+- **Vérifier sur l'artefact, pas sur la source.** `aapt dump permissions` a
+  tranché une question que la lecture du manifeste source avait fait trancher
+  **à l'envers**.
+- **Un fait exact n'est pas une conclusion.** « La permission est absente du
+  manifeste source » était vrai ; « donc l'application n'en fait pas usage » était
+  faux. Android accorde ce que porte le manifeste **fusionné**.
+- **Vérifier sur l'appareil, pas sur le code.** Le défaut le plus grave du
+  chantier — explorateur inutilisable sur Android 7→10 — n'a été trouvé ni par
+  l'audit, ni par **trois** relectures externes. Il a fallu brancher le téléphone.
+- **Un correctif n'est fini que quand on a cherché ses frères — et le motif de
+  recherche compte.** Chercher « aperçu de contenu » a manqué deux sites
+  d'extraction portant exactement le même défaut de zip-bomb.
+- **« Les deux implémentations sont d'accord » est à vérifier, pas à consigner.**
+  Cette phrase figurait dans le rapport précédent ; trois lignes l'ont démentie.
+- **Une falsification qui rougit ne prouve pas que le test vise juste.** Toujours
+  se demander *ce que le test resterait vert à cacher*.
+- **Faire relire ses propres correctifs vaut son coût.** Une régression réelle,
+  qu'aucun test ne couvrait, a été trouvée ainsi — ainsi qu'un crash.
+- **Une relecture externe se trompe aussi.** Sur trois, une affirmation était
+  fausse sur le fond. Vérifier dans la source de la dépendance **résolue**, pas
+  croire sur parole.
+- **Vérifier qu'un patch a réellement été appliqué fait partie de l'appliquer.**
+  L'octet NUL a résisté à cinq tentatives ; seule une relecture des octets
+  **depuis le disque**, après écriture, l'a confirmé.
+
+## 5. Outils — pièges constatés
 
 **Relectures externes** — `python ~/.claude/tools/audit-ia.py`
 
-- GPT : `--provider gpt --model gpt-5.2` (⚠ `gpt-5.1-codex-max`, le défaut, rend **HTTP 404**)
-- Gemini : `--provider gemini --model gemini-3-pro-preview` (le défaut `gemini-3.1-pro-preview`
-  a rendu **503 sur plus de 90 tentatives**) — relancer en boucle, ça finit par passer.
-- Prompts réutilisables : `prompts/RELECTURE-CORRECTIFS-V2.15.md` et
-  `prompts/RELECTURE-DIALOGUES-BRANCHEMENTS.md`. Rapports dans `audits_results/ia-externe/`.
+- `--diff` attend une **plage git** (`A..B`), pas un chemin de fichier.
+- GPT : `--provider gpt --model gpt-5.2`. ⚠ `gpt-5.1-codex-max`, le défaut, rend
+  **404**.
+- Gemini : **lister d'abord** (`--provider gemini --list`). Le modèle change sous
+  les pieds : `gemini-3-pro-preview` répondait à 15 h 27 le 2026-08-09 et rendait
+  **404** à 17 h 30. `gemini-3.1-pro-preview` sature en 503.
+  `gemini-3.5-flash` a répondu.
+- Prompts réutilisables dans `prompts/`. Rapports dans `audits_results/ia-externe/`.
 
 **Appareil** — Galaxy S9, `adb`
 
-- ⚠ Sous Git Bash, préfixer par `MSYS_NO_PATHCONV=1`, sinon `/sdcard/...` est converti en chemin
-  Windows et `adb push` échoue.
+- ⚠ Sous Git Bash, préfixer par `MSYS_NO_PATHCONV=1`, sinon `/sdcard/...` est
+  converti en chemin Windows et `adb push` échoue.
 - `aapt` : `/j/android-sdk/build-tools/35.0.0/aapt.exe`
-- Jeu de fichiers pièges : `<scratchpad>/rft_test/` (HTML avec faux `<head>` + iframe + ancre,
-  Markdown à image distante, EPUB bombe 80 Ko → 80 Mo à en-tête menteur). **Encore présent dans
-  `Téléchargements/rft_test` sur le téléphone — à retirer.**
 
-## 5. Interdits, rappelés
+## 6. Interdits, rappelés
 
-- Jamais de `git add -A` ; messages de commit par `git commit -F fichier`, jamais `-m`.
+- Jamais de `git add -A` ; messages de commit par `git commit -F fichier`, jamais
+  `-m` (les accents y effacent des fragments).
 - Aucune release, aucun tag, aucun bump sans demande explicite.
 - Ne jamais toucher au keystore ni à la signature.
 - Ne pas régénérer de baseline pour faire passer un contrôle.
