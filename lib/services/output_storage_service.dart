@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'storage_access.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Catégories de sortie : chacune a son propre sous-dossier dans
@@ -225,8 +225,11 @@ class OutputStorageService {
     final basePath = await getBasePath();
     if (basePath.startsWith('/storage/emulated/0') ||
         basePath.startsWith('/sdcard')) {
-      if (!Platform.isAndroid) return true;
-      return await Permission.manageExternalStorage.isGranted;
+      // Même défaut que l'explorateur : `manageExternalStorage` n'existe
+      // qu'à partir d'Android 11. Sous cette version, la réponse était
+      // toujours `false`, et l'écran Réglages affichait un avertissement
+      // « écriture impossible » alors que l'écriture fonctionnait.
+      return StorageAccess.isGranted();
     }
     // Hors stockage partagé : on tente une écriture test.
     try {

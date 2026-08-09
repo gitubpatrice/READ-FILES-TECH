@@ -161,14 +161,33 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
     return path.startsWith('/storage/emulated/0') || path.startsWith('/sdcard');
   }
 
+  /// Bouton « Réglages » du bandeau de permission.
+  ///
+  /// Android ≤ 10 n'a pas d'écran « Accès à tous les fichiers » : y envoyer
+  /// l'utilisateur ouvrait la fiche de l'application, où il n'y a rien de ce
+  /// nom à activer. Là-bas, une demande runtime classique suffit — et elle
+  /// affiche une vraie boîte de dialogue.
   Future<void> _requestAllFilesAccess() async {
+    if (!await StorageAccess.usesAllFilesAccess()) {
+      final ok = await StorageAccess.request();
+      if (!mounted) return;
+      if (ok) {
+        _refresh();
+      } else {
+        // Refus (éventuellement « ne plus demander ») : la fiche de l'app est
+        // alors le bon endroit, la permission « Stockage » s'y trouve.
+        await StorageAccess.openSettings();
+      }
+      return;
+    }
     try {
-      await _lifecycleChannel.invokeMethod('openAllFilesAccess');
+      await StorageAccess.openSettings();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Activez "Autoriser l\'accès à tous les fichiers" puis revenez à l\'app',
+            "Activez « Autoriser l'accès à tous les fichiers » puis "
+            "revenez à l'app",
             style: TextStyle(fontSize: 13),
           ),
           duration: Duration(seconds: 6),
