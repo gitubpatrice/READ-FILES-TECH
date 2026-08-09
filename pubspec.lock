@@ -236,10 +236,12 @@ packages:
   files_tech_core:
     dependency: "direct main"
     description:
-      path: "../files_tech_core"
-      relative: true
-    source: path
-    version: "0.3.2"
+      path: "."
+      ref: "4a69aa89a7a7bf6791a03692ca2dbdbb7e66efae"
+      resolved-ref: "4a69aa89a7a7bf6791a03692ca2dbdbb7e66efae"
+      url: "https://github.com/gitubpatrice/files_tech_core.git"
+    source: git
+    version: "0.3.4"
   fixnum:
     dependency: transitive
     description:

@@ -11,9 +11,25 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
-  # Code partagé Files Tech
+  # Code partagé Files Tech.
+  #
+  # Dépendance git épinglée, et non `path: ../files_tech_core`. Un chemin relatif ne résout que
+  # dans l'arborescence de développement, là où les dépôts frères sont côte à côte ; ailleurs — un
+  # clone, une CI, un serveur de build — `pub get` échoue sur « could not find package
+  # files_tech_core ». L'application était donc incompilable par quiconque n'a pas ces dossiers,
+  # ce qui contredit le fait d'en publier les sources.
+  #
+  # Pire, c'était silencieux et non reproductible : `pubspec.lock` est passé de 0.3.2 à 0.3.4 sans
+  # qu'une seule ligne de ce fichier ne change, parce que le dépôt voisin avait bougé sur le disque.
+  # Les workflows clonaient `files_tech_core` en frère SANS `ref:`, donc sur sa branche par défaut :
+  # reconstruire un tag ancien ne redonnait pas le même binaire.
+  #
+  # Épinglé à un commit, jamais à une branche — c'est ce qui rend le build reproductible.
+  # Même patron que notes_tech (v2.0.2) et pdf_tech (v1.13.5).
   files_tech_core:
-    path: ../files_tech_core
+    git:
+      url: https://github.com/gitubpatrice/files_tech_core.git
+      ref: 4a69aa89a7a7bf6791a03692ca2dbdbb7e66efae
 
   # Fichiers
   file_picker: ^11.0.0
