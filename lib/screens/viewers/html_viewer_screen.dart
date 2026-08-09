@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../utils/color_extract.dart';
 import '../../utils/file_caps.dart';
@@ -116,6 +117,78 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
           },
         ),
       );
+    // S-M2 (audit 2026-08-02) — le NavigationDelegate ne voit QUE les
+    // navigations. Les **sous-ressources** (`<img src=https://…>`, `<link
+    // rel=stylesheet>`, `<script src>`, `fetch`) ne passent pas par
+    // `onNavigationRequest` : ouvrir un HTML piégé suffisait à émettre une
+    // requête sortante — adresse IP et confirmation de lecture — même avec
+    // JavaScript désactivé.
+    //
+    // L'atténuation supposée (« pas de permission INTERNET en release »)
+    // n'existe pas : `aapt dump permissions` sur l'APK v2.14.0 publié montre
+    // INTERNET, injectée par `transport-backend-cct` via ML Kit.
+    //
+    // `webview_flutter` n'expose PAS `shouldInterceptRequest` (vérifié dans
+    // `webview_flutter_android` 4.13.0 : ni intercepteur de ressources, ni
+    // `setBlockNetworkLoads`). La contre-mesure disponible et normative est
+    // celle que l'audit suggérait aussi : une **CSP injectée**, appliquée par
+    // le moteur Chromium de la WebView. Voir `_render`.
+    final platform = _controller.platform;
+    if (platform is AndroidWebViewController) {
+      // `loadHtmlString` passe par `loadDataWithBaseUrl`, qui n'active pas
+      // l'accès fichier — contrairement à `loadFile`. Sans ça, un HTML
+      // référençant sa feuille de style voisine s'afficherait nu.
+      platform.setAllowFileAccess(true);
+    }
+  }
+
+  /// Charge le document dans la WebView avec une **CSP** en tête de `<head>`.
+  ///
+  /// Remplace `loadFile`. La politique n'autorise que `file:` et `data:`, et
+  /// coupe `connect-src` : aucune image, feuille de style, police, iframe ni
+  /// `fetch`/XHR ne peut viser le réseau, JavaScript activé ou non.
+  ///
+  /// Un `<iframe src="file:///…">` n'était pas non plus couvert par la
+  /// whitelist d'extensions : `shouldOverrideUrlLoading` renvoie `false` pour
+  /// les sous-frames (`WebViewClientProxyApi.java:78`,
+  /// `request.isForMainFrame()`), donc `onNavigationRequest` ne pouvait rien
+  /// bloquer là — contrairement à ce qu'affirme le commentaire G8 v2.12.1
+  /// plus haut. `frame-src file:` les ramène au moins dans le périmètre du
+  /// document, et `_isFileUrlAllowed` garde la navigation principale.
+  ///
+  /// `baseUrl` pointe sur le dossier du document pour que les chemins
+  /// relatifs (`./style.css`, `img/photo.png`) continuent de résoudre.
+  Future<void> _render() async {
+    const csp =
+        "default-src 'none'; "
+        'img-src file: data: blob:; '
+        'media-src file: data: blob:; '
+        "style-src file: data: 'unsafe-inline'; "
+        'font-src file: data:; '
+        "script-src file: data: 'unsafe-inline' 'unsafe-eval'; "
+        'frame-src file:; '
+        "form-action 'none'; "
+        "connect-src 'none'; "
+        "base-uri 'none'";
+    const tag = '<meta http-equiv="Content-Security-Policy" content="$csp">';
+
+    // La CSP doit précéder toute balise qui charge une ressource. On l'insère
+    // juste après <head> quand il existe ; sinon en tout début de document,
+    // ce que le parseur HTML remonte de toute façon dans un <head> implicite.
+    final lower = _htmlContent.toLowerCase();
+    final headOpen = lower.indexOf('<head');
+    String doc;
+    if (headOpen >= 0) {
+      final close = _htmlContent.indexOf('>', headOpen);
+      doc = close >= 0
+          ? _htmlContent.replaceRange(close + 1, close + 1, tag)
+          : '$tag$_htmlContent';
+    } else {
+      doc = '$tag$_htmlContent';
+    }
+
+    final dir = File(widget.path).parent.path.replaceAll('\\', '/');
+    await _controller.loadHtmlString(doc, baseUrl: 'file://$dir/');
   }
 
   Future<void> _toggleJs() async {
@@ -151,7 +224,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
       _isLoading = true;
       _initController();
     });
-    _controller.loadFile(widget.path);
+    _render();
   }
 
   Future<void> _load() async {
@@ -173,7 +246,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
       _colors = _htmlContent.length > 1024 * 1024
           ? const []
           : extractColors(_htmlContent);
-      _controller.loadFile(widget.path);
+      await _render();
     } catch (_) {
       if (mounted) {
         setState(() {
