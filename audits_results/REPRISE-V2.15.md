@@ -1,132 +1,143 @@
-# Reprise du chantier v2.15 — état au 2026-08-09, fin de deuxième session
+# Reprise du chantier v2.15 — état au 2026-08-09, fin de journée
 
 > Document de reprise. Il existe pour qu'une session repartant sans le contexte
-> de la précédente sache où en est le travail, ce qui reste, et ce qui a déjà été
-> tranché — sans le redécouvrir ni, pire, le refaire autrement.
+> de la précédente sache où en est le travail, ce qui reste, et ce qui a déjà
+> été tranché — sans le redécouvrir ni, pire, le refaire autrement.
 >
-> Le détail est dans `consolidation_v2_15_20260809.md` (23 points du plan
+> Détail des constats : `consolidation_v2_15_20260809.md` (les 23 points du plan
 > d'audit) puis `consolidation_v2_15_suite_20260809.md` (décisions produit et
 > dette). Ici : l'état et la suite.
 
-## 1. État de départ
+## 1. État
 
 | | |
 |---|---|
 | Branche | `main`, arbre **propre** |
-| Commits depuis `c89b820` (v2.14.0) | **31** |
+| Commits depuis `c89b820` (v2.14.0) | **40** |
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **121 tests verts** (14 fichiers) |
-| `flutter build apk --release --split-per-abi` | **passe** — 35,6 / 40,8 / 43,0 Mo |
+| `flutter test` | **140 tests verts** (16 fichiers) |
+| Build release | **passe** — 35,3 / 40,5 / 42,7 Mo |
 | Version `pubspec.yaml` | **2.14.0+21400** — non bumpée, volontairement |
-| Tag | aucun créé |
-| Appareil de test | Galaxy S9 (SM-G960F), Android 10, API 29 |
+| Tag | aucun |
+| Appareils | Galaxy S9 (Android 10, **API 29**) et Galaxy S24 FE (Android 16, **API 36**), APK installé sur les deux |
 
-**Ne pas refaire** : les 23 points du plan §8 de l'audit du 2026-08-02 sont tous
-tranchés (21 confirmés, 1 réfuté, 1 partiellement). Les décisions produit sont
-tranchées aussi — voir §2.
+## 2. ⚠️ LE POINT À FAIRE EN PREMIER DEMAIN
 
-## 2. Décisions prises, à ne pas rouvrir
+**Vérifier que l'extraction d'archive fonctionne sur le S9.**
+
+Fichier : `Téléchargements/rft_test_v215/01_bombe_300Mo.zip` — 306 Ko sur le
+disque, annonce 1 Ko, produit 300 Mo. L'ouvrir, puis toucher l'icône
+« Extraire tout » en haut à droite.
+
+**Attendu** : bandeau rouge « Extrait dans : … — 1 entrée(s) refusée(s) »,
+sans gel, sans « Invalid argument », sans boîte « ne répond pas ».
+
+**Pourquoi c'est le premier point.** Ce chemin a cassé **deux fois de suite**
+aujourd'hui, chaque fois avec `flutter analyze` à 0 et tous les tests verts :
+
+1. d'abord un **ANR** — la garde inflatait 200 Mo sur le thread de l'interface ;
+2. puis, après correction, une fermeture d'`Isolate.run` qui **embarquait
+   l'arbre de widgets** et rendait `Invalid argument(s): object is unsendable`.
+   L'extraction était entièrement cassée.
+
+Les deux ont été trouvés par l'appareil. Aucun test, aucune relecture externe —
+il y en a eu trois — ne les a vus. Le correctif de la seconde est en place mais
+**n'a pas encore été constaté sur appareil**.
+
+## 3. Décisions prises, à ne pas rouvrir
 
 | Point | Décision |
 |---|---|
-| `INTERNET` / `ACCESS_NETWORK_STATE` | **Gardées, et déclarées explicitement au manifeste.** L'application s'en sert elle-même : `AppUpdate.checkForUpdate()` interroge l'API GitHub **au lancement**. Les retirer par `tools:node="remove"` casserait la vérification **en silence** (`UpdateService` avale la `SocketException`). |
-| Community License Syncfusion | **Reportée sciemment.** L'APK embarque du code propriétaire compilé dont la licence n'est pas formellement acquise. Dit sans adoucissement dans `THIRD_PARTY_NOTICES.md`. |
-| F-Droid | **Pas un objectif à ce jour.** Mentions retirées du manifeste et de `SECURITY.md`. Le dossier `fastlane/` est conservé — il alimente les notes de release GitHub. |
-| `REQUEST_INSTALL_PACKAGES` | Conservée. |
+| **Télémétrie** | **Zéro.** Les trois composants `datatransport` de Google sont retirés du manifeste final. Vérifié à l'`aapt` sur l'APK : aucun composant de télémétrie. Vérifié au `dumpsys jobscheduler` après OCR sur les deux appareils : aucun job — alors que d'autres applications des mêmes téléphones en planifient, ce qui prouve que le contrôle sait détecter. **OCR et scanner fonctionnent toujours**, testés sur les deux. |
+| `INTERNET` / `ACCESS_NETWORK_STATE` | **Gardées et déclarées.** L'application interroge l'API GitHub au lancement pour signaler les mises à jour. Les retirer casserait la vérification **en silence**. |
+| Community License Syncfusion | **Reportée sciemment.** |
+| F-Droid | **Pas un objectif.** |
+| **Passer à Kotlin** | **Non.** Ne retirerait pas la télémétrie — ML Kit est un AAR natif, identique en Kotlin. Coût : réécriture de plusieurs mois qui reperdrait tous les défauts corrigés ces deux jours. |
 
-## 3. Ce qui reste
+## 4. Dépendances — la carte, vérifiée au solveur
 
-### P1 — Avant de publier
+**Fait** : 16 paquets dans les contraintes existantes, `permission_handler`
+12→13, ML Kit OCR 0.15→0.16, scanner 0.4→0.5, et `compileSdk` 36→**37**
+(`permission_handler` 13 est compilé contre l'API 37 ; compiler en dessous peut
+produire un `NoSuchMethodError` **à l'exécution**).
 
-1. **Bump de version** — `pubspec.yaml` **uniquement**, et **seulement au moment
-   de la release**. Read Files Tech lit sa version par `PackageInfo` : aucune
-   constante statique à bumper, contrairement à PDF Tech et Notes Tech.
-2. **Renommer les changelogs fastlane** si le numéro retenu n'est pas 2.15.0 —
-   ils sont écrits pour le `versionCode` **21500**. Les **deux** (fr-FR et en-US),
-   pas seulement l'un.
-3. **Retirer les fichiers de test du téléphone** : `Téléchargements/rft_test`
-   contient encore `secret.txt` et une bombe zip.
+**Bloqué, et une seule clé de voûte :**
 
-### P2 — Dette technique
+```
+excel 4.0.6  →  exige xml <7        →  bloque syncfusion 34
+             →  exige archive ^3.6  →  bloque archive 4
+                                     →  bloque image 4.9
+```
 
-4. **A-P0a — éclater `vault_service.dart` (1451 l.) et `vault_screen.dart`.**
-   **Reporté délibérément**, et la raison compte plus que le report :
+`excel 4.0.6` **est sa dernière version publiée**. Il n'est utilisé qu'à deux
+endroits : `xlsx_viewer_screen.dart:33` (lecture) et `convert_screen.dart:143`
+(écriture). **Le remplacer débloquerait trois montées d'un coup** — mais c'est
+un changement de fonctionnalité qui exige de revalider de vrais `.xlsx` et
+`.ods` sur appareil. À décider en début de session, pas en fin.
 
-   - c'est le seul point restant qui n'apporte **rien à l'utilisateur** ;
-   - il touche `unlockWithPassword` et `restoreFromBackup`, les deux chemins
-     résistants au brute-force, dont la logique de verrouillage est entrelacée
-     avec `SharedPreferences` et l'horloge monotone sur **six clés** ;
-   - une régression a été introduite dans du code d'**affichage** au cours de
-     cette session, et seule une relecture externe l'a vue.
+`share_plus` 13 est bloqué par **`files_tech_core`**, qui épingle `^10.0.3`. Le
+débloquer engage tout le portefeuille.
 
-   Le bon moment est une session qui **commence** par lui, avec revalidation sur
-   appareil à la fin. **Règle** : les 25 tests du coffre ne doivent pas être
-   modifiés pendant l'opération. S'ils doivent l'être, c'est que le comportement
-   change — signal d'arrêt.
+`package_info_plus` 10 est bloqué en amont par `file_picker` 11 (`win32 ^5.9`).
 
-5. **`docxXmlToPlainText` écrit une ligne par paragraphe, même vide.** Signalé
-   par GPT. C'est le comportement du service, déjà utilisé par l'outil de
-   conversion ; la visionneuse s'y aligne désormais, ce qui était le but. Filtrer
-   les paragraphes vides changerait aussi la sortie de l'outil — à décider à
-   part.
-6. **A-P1a (injection de dépendances)** et **C-C11 (i18n)** — hors périmètre
-   d'une consolidation.
+## 5. Ce qui reste
 
-### P3 — Non vérifiable ici
+1. **Le test du S9** (§2).
+2. **Décider du sort d'`excel`** (§4).
+3. **A-P0a — éclater `vault_service.dart` (1451 l.)**, dans une session qui
+   *commence* par lui. Règle : les 25 tests du coffre ne doivent pas être
+   modifiés. S'ils doivent l'être, le comportement change — signal d'arrêt.
+4. `docxXmlToPlainText` écrit une ligne par paragraphe même vide (signalé par
+   GPT). Comportement du service, aligné avec l'outil de conversion. Le changer
+   modifierait aussi la sortie de l'outil — à décider à part.
+5. Bump + tag, quand vous le déciderez.
 
-7. Comportement du **scanner sans services Google Play** : l'appareil de test en
-   dispose.
+## 6. Méthode — ce que cette journée a coûté et enseigné
 
-## 4. Méthode — ce qui a coûté cher, à ne pas réapprendre
-
-- **Vérifier sur l'artefact, pas sur la source.** `aapt dump permissions` a
-  tranché une question que la lecture du manifeste source avait fait trancher
-  **à l'envers**.
+- **L'appareil dit ce que rien d'autre ne dit.** Trois défauts majeurs
+  aujourd'hui (impasse Android 7→10, ANR, isolate non transmissible) : zéro
+  trouvé par les tests, zéro par trois relectures externes, trois par le
+  téléphone.
+- **Deux appareils valent bien plus que deux fois un.** L'ANR ne se voyait que
+  sur le S9 (4 Go) ; le S24 (8 Go) encaissait sans broncher.
 - **Un fait exact n'est pas une conclusion.** « La permission est absente du
-  manifeste source » était vrai ; « donc l'application n'en fait pas usage » était
-  faux. Android accorde ce que porte le manifeste **fusionné**.
-- **Vérifier sur l'appareil, pas sur le code.** Le défaut le plus grave du
-  chantier — explorateur inutilisable sur Android 7→10 — n'a été trouvé ni par
-  l'audit, ni par **trois** relectures externes. Il a fallu brancher le téléphone.
-- **Un correctif n'est fini que quand on a cherché ses frères — et le motif de
-  recherche compte.** Chercher « aperçu de contenu » a manqué deux sites
-  d'extraction portant exactement le même défaut de zip-bomb.
-- **« Les deux implémentations sont d'accord » est à vérifier, pas à consigner.**
-  Cette phrase figurait dans le rapport précédent ; trois lignes l'ont démentie.
-- **Une falsification qui rougit ne prouve pas que le test vise juste.** Toujours
-  se demander *ce que le test resterait vert à cacher*.
-- **Faire relire ses propres correctifs vaut son coût.** Une régression réelle,
-  qu'aucun test ne couvrait, a été trouvée ainsi — ainsi qu'un crash.
-- **Une relecture externe se trompe aussi.** Sur trois, une affirmation était
-  fausse sur le fond. Vérifier dans la source de la dépendance **résolue**, pas
-  croire sur parole.
-- **Vérifier qu'un patch a réellement été appliqué fait partie de l'appliquer.**
-  L'octet NUL a résisté à cinq tentatives ; seule une relecture des octets
-  **depuis le disque**, après écriture, l'a confirmé.
+  manifeste source » était vrai ; « donc l'application ne s'en sert pas » était
+  faux. C'est le manifeste **fusionné** qui compte.
+- **Vérifier au solveur, pas au commentaire.** `pubspec.yaml` attribuait deux
+  blocages à `win32` ; un seul l'était.
+- **Écrire le test révèle ce que lire le code ne montre pas.** Trois fois :
+  `safeJoin` refusait des chemins légitimes, l'ODT perdait ses titres, la garde
+  STORE arrivait trop tard.
+- **Une relecture externe se trompe aussi.** Sur quatre, une affirmation était
+  fausse sur le fond (`raw.length` = taille totale — c'est le restant).
+- **Un correctif générique juste devient faux là où les contraintes sont
+  contraires.** « Ne jamais taire un échec » et « ne rien laisser échapper du
+  coffre » se contredisent ; j'ai appliqué la première sans voir la seconde.
+- **Vérifier qu'un patch est appliqué fait partie de l'appliquer.** L'octet NUL
+  a résisté à cinq tentatives.
 
-## 5. Outils — pièges constatés
+## 7. Outils — pièges constatés
 
-**Relectures externes** — `python ~/.claude/tools/audit-ia.py`
-
-- `--diff` attend une **plage git** (`A..B`), pas un chemin de fichier.
-- GPT : `--provider gpt --model gpt-5.2`. ⚠ `gpt-5.1-codex-max`, le défaut, rend
-  **404**.
-- Gemini : **lister d'abord** (`--provider gemini --list`). Le modèle change sous
-  les pieds : `gemini-3-pro-preview` répondait à 15 h 27 le 2026-08-09 et rendait
-  **404** à 17 h 30. `gemini-3.1-pro-preview` sature en 503.
-  `gemini-3.5-flash` a répondu.
-- Prompts réutilisables dans `prompts/`. Rapports dans `audits_results/ia-externe/`.
-
-**Appareil** — Galaxy S9, `adb`
-
-- ⚠ Sous Git Bash, préfixer par `MSYS_NO_PATHCONV=1`, sinon `/sdcard/...` est
-  converti en chemin Windows et `adb push` échoue.
+- `audit-ia.py --diff` attend une **plage git** (`A..B`), pas un chemin.
+- GPT : `--model gpt-5.2`. ⚠ `gpt-5.1-codex-max`, le défaut, rend **404**.
+- Gemini : **lister d'abord** (`--provider gemini --list`). Les modèles
+  disparaissent en cours de journée : `gemini-3-pro-preview` répondait à 15 h 27
+  et rendait 404 à 17 h 30. `gemini-3.5-flash` a répondu.
+- `adb` sous Git Bash : préfixer par `MSYS_NO_PATHCONV=1`, sinon `/sdcard/...`
+  est converti en chemin Windows.
 - `aapt` : `/j/android-sdk/build-tools/35.0.0/aapt.exe`
+- **Capture d'écran** : `adb -s <id> exec-out screencap -p > x.png`. C'est ce
+  qui a donné le message d'erreur complet que logcat ne montrait pas — le code
+  attrape l'exception et l'affiche, donc rien ne passe par le journal.
+- Jeu de fichiers piégés : `scratchpad/make_corpus.py` et `make_bomb.py`,
+  déployés dans `Téléchargements/rft_test_v215` sur les deux appareils.
+  ⚠ La première bombe produisait 80 Mo, **sous** le plafond de 200 Mo : elle
+  n'aurait rien prouvé. Calibrer au-dessus du plafond visé.
 
-## 6. Interdits, rappelés
+## 8. Interdits, rappelés
 
-- Jamais de `git add -A` ; messages de commit par `git commit -F fichier`, jamais
-  `-m` (les accents y effacent des fragments).
+- Jamais de `git add -A` ; messages de commit par `git commit -F fichier`,
+  jamais `-m` (les accents y effacent des fragments).
 - Aucune release, aucun tag, aucun bump sans demande explicite.
 - Ne jamais toucher au keystore ni à la signature.
 - Ne pas régénérer de baseline pour faire passer un contrôle.
