@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import '../viewers/md_viewer_screen.dart';
 import '../viewers/json_viewer_screen.dart';
 import '../viewers/html_viewer_screen.dart';
 import '../viewers/csv_viewer_screen.dart';
+import '../../utils/snack_utils.dart';
 
 class ContentSearchScreen extends StatefulWidget {
   const ContentSearchScreen({super.key});
@@ -49,6 +51,10 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
 
   @override
   void dispose() {
+    // Sans ce cancel, le timer de flush survivait à l'écran et rappelait
+    // `setState` sur un State démonté.
+    _flushTimer?.cancel();
+    _flushTimer = null;
     _queryCtrl.dispose();
     super.dispose();
   }
@@ -65,9 +71,25 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
   /// d'un cas d'usage réel (recherche dans documents perso).
   static const int _maxRegexPatternLength = 200;
 
+  /// V-H2 (audit 2026-08-02) — cap de lecture par fichier.
+  ///
+  /// `readAsLines()` chargeait le fichier ENTIER en RAM avant de chercher :
+  /// un `.log` de 500 Mo dans le dossier scanné suffisait à tuer l'app par
+  /// OOM. Le service de recherche globale plafonnait déjà à 2 Mo
+  /// (`global_search_service.dart:24`) — le même besoin, résolu là, retombé
+  /// ici. On aligne sur cette valeur : au-delà, le fichier est ignoré et
+  /// compté, plutôt que silencieusement sauté.
+  static const int _maxContentBytes = 2 * 1024 * 1024;
+
+  /// Garde anti-réentrance : sans elle, deux appuis rapides sur « Rechercher »
+  /// lançaient deux balayages concurrents écrivant dans les mêmes champs.
+  bool _running = false;
+
   Future<void> _search() async {
     final query = _queryCtrl.text.trim();
     if (query.isEmpty || _folderPath == null) return;
+    if (_running) return;
+    _running = true;
 
     if (_useRegex && query.length > _maxRegexPatternLength) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,36 +120,89 @@ class _ContentSearchScreenState extends State<ContentSearchScreen> {
     setState(() => _totalFiles = allFiles.length);
 
     final results = <_SearchResult>[];
-    for (final file in allFiles) {
+    // La RegExp était reconstruite à CHAQUE LIGNE de chaque fichier : sur un
+    // scan de 50 000 fichiers, c'est autant de compilations inutiles. Une
+    // seule construction, ici, et un motif invalide arrête la recherche au
+    // lieu de rendre « aucun résultat » — ce qui se lisait comme « rien
+    // trouvé » alors que rien n'avait été cherché.
+    RegExp? re;
+    if (_useRegex) {
       try {
+        re = RegExp(query, caseSensitive: _caseSensitive);
+      } catch (e) {
+        _running = false;
+        if (!mounted) return;
+        setState(() => _isSearching = false);
+        showErrorSnack(context, 'Motif regex invalide : $e');
+        return;
+      }
+    }
+    final needle = _caseSensitive ? query : query.toLowerCase();
+
+    int skipped = 0;
+    for (final file in allFiles) {
+      // La boucle peut durer des minutes : sans cette garde, chaque
+      // `setState` après un retour arrière déclenchait un « setState after
+      // dispose », et le balayage continuait à tourner dans le vide.
+      if (!mounted) return;
+      try {
+        // V-H2 : cap AVANT lecture. `length()` puis lecture reste un TOCTOU
+        // théorique (le fichier peut grossir entre les deux) mais borne le
+        // cas réel, qui est un gros fichier déjà présent.
+        if (await file.length() > _maxContentBytes) {
+          skipped++;
+          continue;
+        }
         final lines = await file.readAsLines();
         final matches = <_LineMatch>[];
         for (int i = 0; i < lines.length; i++) {
           final line = lines[i];
-          final haystack = _caseSensitive ? line : line.toLowerCase();
-          final needle = _caseSensitive ? query : query.toLowerCase();
-          bool hit;
-          if (_useRegex) {
-            try {
-              hit = RegExp(query, caseSensitive: _caseSensitive).hasMatch(line);
-            } catch (_) {
-              hit = false;
-            }
-          } else {
-            hit = haystack.contains(needle);
-          }
+          final hit = re != null
+              ? re.hasMatch(line)
+              : (_caseSensitive ? line : line.toLowerCase()).contains(needle);
           if (hit) matches.add(_LineMatch(i + 1, line.trim()));
         }
         if (matches.isNotEmpty) {
           results.add(_SearchResult(file.path, matches));
         }
       } catch (_) {}
-      setState(() => _scannedFiles++);
+      _scanned++;
+      // Q-H8 : un `setState` par fichier scanné produisait 50 000 rebuilds
+      // sur un scan de carte SD. Le correctif existait déjà dans
+      // `global_search_screen.dart:28-54` (buffer + flush 100 ms) — il est
+      // répliqué ici plutôt que réinventé.
+      _scheduleFlush();
     }
 
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _running = false;
+    if (!mounted) return;
     setState(() {
       _results = results;
+      _scannedFiles = _scanned;
       _isSearching = false;
+    });
+    if (skipped > 0) {
+      // Un fichier ignoré doit se voir : sinon « aucun résultat » se lit
+      // comme « le mot n'y est pas », alors qu'on n'a pas regardé.
+      showErrorSnack(
+        context,
+        '$skipped fichier(s) ignoré(s) : au-delà de '
+        '${_maxContentBytes ~/ (1024 * 1024)} Mo.',
+      );
+    }
+  }
+
+  /// Compteur brut, publié dans l'UI par lots via [_scheduleFlush].
+  int _scanned = 0;
+  Timer? _flushTimer;
+
+  void _scheduleFlush() {
+    _flushTimer ??= Timer(const Duration(milliseconds: 100), () {
+      _flushTimer = null;
+      if (!mounted) return;
+      setState(() => _scannedFiles = _scanned);
     });
   }
 

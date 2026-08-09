@@ -65,7 +65,7 @@ class ReaderService {
       throw const FormatException('EPUB invalide : container.xml manquant');
     }
     final containerXml = utf8.decode(
-      container.content as List<int>,
+      _entryBytes(container, 'META-INF/container.xml'),
       allowMalformed: true,
     );
     final opfMatch = RegExp(r'full-path="([^"]+)"').firstMatch(containerXml);
@@ -80,7 +80,7 @@ class ReaderService {
       throw const FormatException('EPUB invalide : OPF introuvable');
     }
     final opfXml = utf8.decode(
-      opfFile.content as List<int>,
+      _entryBytes(opfFile, opfPath),
       allowMalformed: true,
     );
     final basePath = p.dirname(opfPath);
@@ -120,12 +120,16 @@ class ReaderService {
       if (href.startsWith('/') || href.contains('://')) continue;
       final entry = archive.findFile(fullPath);
       if (entry == null) continue;
-      // F4 : cap par chapitre (anti zip-bomb XHTML 2 Go).
-      if (entry.size > FileCaps.epubChapter) continue;
-      final xhtml = utf8.decode(
-        entry.content as List<int>,
-        allowMalformed: true,
-      );
+      // F4 : cap par chapitre (anti zip-bomb XHTML 2 Go). Passe par le même
+      // helper que les deux autres entrées pour que la garde ne puisse plus
+      // couvrir un seul site sur trois.
+      final List<int> xhtmlBytes;
+      try {
+        xhtmlBytes = _entryBytes(entry, fullPath, max: FileCaps.epubChapter);
+      } on FormatException {
+        continue; // chapitre suspect : on saute, on n'annule pas le livre
+      }
+      final xhtml = utf8.decode(xhtmlBytes, allowMalformed: true);
       final doc = html_parser.parse(xhtml);
       final root = doc.body;
       if (root == null) continue;
@@ -143,6 +147,34 @@ class ReaderService {
       out.add(EpubChapter(title: firstHeading.text, blocks: blocks));
     }
     return out;
+  }
+
+  /// Lit le contenu décompressé d'une entrée d'archive **après** avoir vérifié
+  /// sa taille annoncée.
+  ///
+  /// V-M5 (audit 2026-08-02) — `readEpub` accédait à `.content` sur trois
+  /// entrées et n'en vérifiait la taille que sur une seule : les chapitres.
+  /// `META-INF/container.xml` et le fichier OPF étaient lus sans aucune borne.
+  /// Or `.content` déclenche la décompression : un EPUB de quelques centaines
+  /// de kilo-octets dont le `container.xml` se décompresse en plusieurs Go
+  /// (du zéro compressé atteint un ratio de ~1000:1) faisait tomber l'app par
+  /// OOM à la simple ouverture, sous le cap de 100 Mo du fichier.
+  ///
+  /// La garde est passée dans un helper unique précisément pour qu'un
+  /// quatrième site d'accès ne puisse plus l'oublier — c'est le motif
+  /// « résolu ici, retombé là » qui a produit ce défaut.
+  static List<int> _entryBytes(
+    ArchiveFile entry,
+    String label, {
+    int max = FileCaps.zipEntryDecompressed,
+  }) {
+    if (entry.size > max) {
+      throw FormatException(
+        'Entrée « $label » suspecte : ${entry.size ~/ (1024 * 1024)} Mo '
+        'décompressés (max ${max ~/ (1024 * 1024)} Mo).',
+      );
+    }
+    return entry.content as List<int>;
   }
 
   List<ReaderBlock> _walk(dom.Element root) {

@@ -1,7 +1,38 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import '../file_type_helpers.dart';
+
+/// Lit au plus [max] lignes en flux, puis referme la source.
+///
+/// `openRead()` ne lit que les blocs consommés : dès que [max] lignes sont
+/// obtenues on rompt la boucle, et le reste du fichier n'est jamais touché.
+/// Un plafond d'octets double la garde, pour le cas d'un fichier binaire sans
+/// aucun saut de ligne — où « 40 lignes » vaudrait « tout le fichier ».
+Future<List<String>> _firstLines(File f, int max) async {
+  const maxBytes = 512 * 1024;
+  final out = <String>[];
+  var read = 0;
+  final stream = f
+      .openRead()
+      .transform(
+        StreamTransformer<List<int>, List<int>>.fromHandlers(
+          handleData: (data, sink) {
+            read += data.length;
+            sink.add(data);
+          },
+        ),
+      )
+      .transform(const Utf8Decoder(allowMalformed: true))
+      .transform(const LineSplitter());
+  await for (final line in stream) {
+    out.add(line);
+    if (out.length >= max || read >= maxBytes) break;
+  }
+  return out;
+}
 
 Future<void> showFilePreviewSheet(
   BuildContext context,
@@ -14,8 +45,13 @@ Future<void> showFilePreviewSheet(
   String type = 'text';
   try {
     if (previewExts.contains(ext)) {
-      final lines = await File(path).readAsLines();
-      preview = lines.take(40).join('\n');
+      // V-H3 (audit 2026-08-02) — `readAsLines()` chargeait le fichier ENTIER
+      // en mémoire pour n'en afficher que 40 lignes. Un appui long → Aperçu
+      // sur un journal de 2 Go tuait l'app par OOM. On lit maintenant en flux
+      // et on s'arrête dès la 40ᵉ ligne : le coût ne dépend plus de la taille
+      // du fichier mais de ce qu'on affiche.
+      final lines = await _firstLines(File(path), 40);
+      preview = lines.join('\n');
       if (ext == 'json') {
         type = 'json';
       } else if (ext == 'csv') {

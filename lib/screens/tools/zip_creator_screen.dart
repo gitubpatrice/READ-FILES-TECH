@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:archive/archive.dart';
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/output_storage_service.dart';
 import '../../utils/atomic_write.dart';
+import '../../utils/file_caps.dart';
 import '../../widgets/rft_picker_screen.dart';
 
 class ZipCreatorScreen extends StatefulWidget {
@@ -46,13 +48,38 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isProcessing = true);
     try {
+      // V-H4 (audit 2026-08-02) — cet écran était le seul outil sans aucun
+      // `FileCaps`. `readAsBytes()` sans borne, sur autant de fichiers que
+      // l'utilisateur en avait sélectionnés, TOUS vivants en RAM en même
+      // temps, puis `ZipEncoder().encode()` synchrone sur le thread UI.
+      // Une vidéo de 1,5 Go tuait l'app ; 200 Mo la figeaient plusieurs
+      // secondes avec un pic RAM au triple (source + archive + sortie).
+      //
+      // Le cap porte sur le CUMUL, pas sur chaque fichier pris isolément :
+      // c'est la somme qui tient en mémoire, et vingt fichiers de 100 Mo
+      // passaient chacun un contrôle unitaire sans problème.
+      int total = 0;
+      for (final path in _files) {
+        total += await File(path).length();
+      }
+      if (total > FileCaps.zipCreateTotal) {
+        throw Exception(
+          'Sélection trop volumineuse : '
+          '${total ~/ (1024 * 1024)} Mo (max '
+          '${FileCaps.zipCreateTotal ~/ (1024 * 1024)} Mo).',
+        );
+      }
+
       final archive = Archive();
       for (final path in _files) {
         final name = PathUtils.fileName(path);
         final bytes = await File(path).readAsBytes();
         archive.addFile(ArchiveFile(name, bytes.length, bytes));
       }
-      final encoded = ZipEncoder().encode(archive);
+      // L'encodage part sur un Isolate : c'est la doctrine du projet
+      // (`hash_screen`, `convert_screen`, `docx_viewer`) et cet écran en
+      // était la seule exception.
+      final encoded = await Isolate.run(() => ZipEncoder().encode(archive));
       if (encoded == null) throw Exception('Compression échouée');
 
       // Sauvegarde dans Files Tech/Conversions/ — apparaîtra dans Récents

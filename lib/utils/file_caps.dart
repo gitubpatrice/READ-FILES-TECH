@@ -43,6 +43,11 @@ abstract final class FileCaps {
   /// dépasse rarement 100 Mo.
   static const int vaultBackup = 100 * 1024 * 1024;
 
+  /// V-H4 v2.15 — création d'archive ZIP : cumul des sources sélectionnées.
+  /// L'encodeur matérialise toutes les entrées puis l'archive complète en RAM,
+  /// donc le pic vaut environ 3× ce total. 200 Mo tient sur un Redmi 9C 3 Go.
+  static const int zipCreateTotal = 200 * 1024 * 1024;
+
   /// v2.13.2 (#5) — viewers ZIP / HTML : caps centralisés ici au lieu de
   /// constants inline (anti-divergence si un autre écran ouvre du ZIP/HTML).
   ///
