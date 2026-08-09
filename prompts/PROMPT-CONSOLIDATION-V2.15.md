@@ -233,7 +233,61 @@ après le correctif asymétrique.
 
 ---
 
-## 5. Interdits — non négociables
+## 5. Les relectures externes — quand, sur quoi, et avec quelle méfiance
+
+Elles ne sont pas facultatives sur ce dépôt. Sur Agenda Tech, **GPT et Gemini ont trouvé
+indépendamment le défaut le plus grave de tout l'audit — et il était dans un correctif que je venais
+d'écrire** : un budget partagé qui, au redémarrage, laissait désarmés tous les rappels situés
+derrière une série pathologique. Aucune relecture de mon propre code ne l'avait vu.
+
+### Comment les lancer
+
+```bash
+python ~/.claude/tools/audit-ia.py --provider gpt --model gpt-5.2 \
+  --prompt prompts/<le-prompt-cible>.md \
+  --out audits_results/ia-externe/rapport-gpt-<sujet>-<date>.md \
+  <les fichiers à joindre>
+```
+
+Idem avec `--provider gemini`. **Gemini rend souvent `HTTP 503`** (« high demand ») : relancer en
+boucle, ça finit par passer — parfois du premier coup, parfois après une trentaine de tentatives.
+Ne jamais lire une clé d'API dans la conversation : c'est le script qui les lit.
+
+### Le moment qui compte
+
+Ne les lance **pas** au début, sur du code que tu n'as pas encore touché — l'audit du 2026-08-02 a
+déjà fait ce travail. Lance-les **après avoir écrit tes correctifs, sur tes correctifs**. C'est là
+qu'elles paient, parce que c'est le seul endroit où personne d'autre n'a regardé.
+
+### Les zones qui les méritent ici
+
+Par ordre de rendement attendu :
+
+1. **Le coffre**, une fois tes tests écrits — joins `vault_service.dart`, `vault_screen.dart` et tes
+   nouveaux tests, et demande explicitement : *ces tests peuvent-ils passer alors que la propriété
+   qu'ils prétendent vérifier est fausse ?* Sur Agenda Tech, **un de mes tests épinglait un défaut**
+   au lieu de le détecter — il affirmait que le comportement fautif était le comportement attendu.
+   C'est le pire endroit où se tromper.
+2. **Les cinq sites `ZipDecoder`** ensemble, jamais un seul : la question utile est « la garde
+   couvre-t-elle les cinq ? », et elle ne se pose qu'en les voyant côte à côte.
+3. **La WebView + le viewer Markdown** ensemble, pour la même raison.
+4. **Tes correctifs de permissions**, avec le manifeste fusionné en pièce jointe.
+
+### La discipline, qui vaut autant que la relecture
+
+**Chaque constat externe se vérifie contre le code avant d'être corrigé.** Sur ~20 constats
+rendus sur Agenda Tech, **6 étaient réfutables** — dont un signalé en ÉLEVÉ par les deux
+relecteurs simultanément, et faux. Et à l'inverse, **les deux ont validé une version qui armait
+zéro rappel** sur un agenda ordinaire.
+
+Une relecture externe est un générateur d'hypothèses, pas une autorité. Réfute par un test quand
+c'est possible : c'est la seule réponse qui ne se re-discute pas. Consigne les réfutations dans ton
+rapport au même titre que les corrections — savoir qu'un constat est faux évite de le re-traiter
+dans six mois.
+
+---
+
+## 6. Interdits — non négociables
 
 - 🔴 **Ne touche jamais au keystore ni à la signature.** `keystore.properties` et
   `local.properties` sont présents en local : ne pas les lire, ne pas les commiter, ne pas les
@@ -253,7 +307,7 @@ après le correctif asymétrique.
 
 ---
 
-## 6. Ce que j'attends en retour
+## 7. Ce que j'attends en retour
 
 Dépose tes rapports dans **`audits_results/`** — et dans `audits_results/ia-externe/` s'ils
 viennent d'une relecture extérieure (GPT, Gemini). Les prompts vivent dans `prompts/`, les rapports
