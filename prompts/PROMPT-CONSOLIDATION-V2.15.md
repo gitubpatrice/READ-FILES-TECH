@@ -13,8 +13,8 @@ Ce n'est pas un audit à blanc. **Un audit existe déjà et n'a jamais été app
 ## 0. Le point de départ, à lire avant tout le reste
 
 `audits_results/audit_haut_niveau_20260802.txt` — 579 lignes, 6 agents en lecture seule, produit le
-**2026-08-02 sur la v2.14.0**, c'est-à-dire sur le code actuel. Il est **non commité** (untracked)
-et **aucune de ses 23 recommandations n'a été appliquée**.
+**2026-08-02 sur la v2.14.0**, c'est-à-dire sur le code actuel, et **aucune de ses 23
+recommandations n'a été appliquée**.
 
 Ses notes : sécurité 8,5/10, qualité 7/10, architecture 6,5/10, cohérence 78/100. Aucun Critical.
 Son observation la plus utile, et qui doit guider tout ton travail :
@@ -43,7 +43,7 @@ Ensuite seulement, corrige — en commençant par ce que l'audit classe PRIORIT�
 | Tests | **7 fichiers, 592 lignes — soit 2,8 %**, et **zéro test sur le coffre** |
 | `flutter analyze` | **0 issue** (après `flutter pub get` — voir le piège ci-dessous) |
 | CI | `ci.yml`, `release.yml`, `security.yml`, `claude-review.yml` |
-| Arbre de travail | propre, sauf `pubspec.lock` et le rapport d'audit untracked |
+| Arbre de travail | **propre**, tout est commité et poussé |
 
 ⚠️ **Piège de mesure rencontré** : `flutter analyze --no-pub` a d'abord rendu **30 erreurs**
 (`Target of URI doesn't exist: package:file_picker`). Ce n'était pas le code — c'était une
@@ -103,24 +103,31 @@ explicitement — c'est la correction qui vient d'être faite sur PDF Tech (comm
 même texte s'applique ici. Aucune décision de licence n'est de ton ressort ; signale, ne tranche
 pas.
 
-### 2.4 `files_tech_core` en chemin relatif — l'app n'est compilable que sur ce poste
+### 2.4 ✅ CLOS le 2026-08-09 — `files_tech_core` est passé en dépendance git épinglée
 
-```yaml
-files_tech_core:
-  path: ../files_tech_core
-```
+**Ne cherche pas ce défaut, il est corrigé** (commit `a5a38f7`). Il est conservé ici parce que ce
+qu'il a révélé vaut pour le reste de ton travail.
 
-Hors de l'arborescence de développement — un clone, la CI, un buildserver — `pub get` échoue sur
-« could not find package files_tech_core ». **Publier les sources d'une application que personne ne
-peut compiler est contradictoire.**
+L'app déclarait `files_tech_core` par `path: ../files_tech_core`. Hors de l'arborescence de
+développement — un clone, la CI, un buildserver — `pub get` échouait sur « could not find package
+files_tech_core » : **les sources publiées n'étaient compilables par personne d'autre.**
 
-Pire, c'est silencieux : un simple `flutter pub get` a fait passer `pubspec.lock` de `0.3.2` à
-`0.3.4` **sans aucun changement de `pubspec.yaml`**, parce que le dépôt frère avait bougé sur le
-disque. Deux builds du même commit ne produisent pas le même binaire.
+Deux symptômes du même défaut, et c'est le second qui instruit :
 
-Correctif déjà appliqué à `notes_tech` et `pdf_tech` : dépendance **git épinglée à un commit**. Le
-paquet est public (`github.com/gitubpatrice/files_tech_core`). Applique le même patron, épingle un
-commit précis, et vérifie que `flutter pub get` puis `flutter analyze` passent ensuite.
+- un simple `flutter pub get` a fait passer `pubspec.lock` de `0.3.2` à `0.3.4` **sans qu'une ligne
+  de `pubspec.yaml` ne change**, parce que le dépôt voisin avait bougé sur le disque ;
+- `ci.yml` et `release.yml` clonaient `files_tech_core` en frère **sans `ref:`**, donc sur sa
+  branche par défaut au moment du build. Le code de l'app était figé par le tag, **sa dépendance
+  partagée ne l'était pas** : reconstruire `v2.14.0` ne redonnait pas le même binaire, et rien dans
+  l'historique du dépôt ne l'aurait montré.
+
+La dépendance est désormais épinglée à un commit et les deux étapes de clonage frère sont retirées.
+Vérifié dans un clone **sans aucun dépôt voisin** : `pub get`, `flutter analyze` et
+`flutter build apk --debug` passent ; CI verte.
+
+**Ce que tu dois en retenir pour la suite** : un défaut de reproductibilité ne se voit pas dans le
+code, il se voit en construisant **ailleurs**. Quand tu douteras d'une propriété de build, ne la
+raisonne pas — reproduis-la dans un clone isolé.
 
 ### 2.5 Google ML Kit contre la promesse « 100 % local »
 
