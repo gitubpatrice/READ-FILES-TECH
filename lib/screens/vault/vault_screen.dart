@@ -52,9 +52,22 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
     // plein typing. Désactivé seulement quand on quitte VaultScreen ou qu'on
     // lock explicitement.
     SecureWindow.enable();
+    // Le verrouillage peut désormais venir d'ailleurs que de cet écran :
+    // minuteur d'inactivité au premier plan (`main.dart`), panic wipe. Sans
+    // cette écoute, `_unlocked` restait à `true` et l'écran continuait
+    // d'afficher la LISTE DES NOMS de fichiers du coffre alors que la clé
+    // était déjà zéroïsée — le contenu restait protégé, mais les
+    // métadonnées, non.
+    VaultService.unlockedNotifier.addListener(_onLockStateChanged);
     // Au boot du coffre, purger d'éventuels fichiers déchiffrés laissés.
     _service.purgeTempDecrypted();
     _bootstrap();
+  }
+
+  void _onLockStateChanged() {
+    if (!mounted) return;
+    final unlocked = _service.isUnlocked;
+    if (unlocked != _unlocked) setState(() => _unlocked = unlocked);
   }
 
   @override
@@ -73,6 +86,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
     //
     // Le lock d'inactivité au premier plan (`main.dart`) couvre l'oubli ;
     // celui-ci couvre l'intention : quitter l'écran, c'est en avoir fini.
+    VaultService.unlockedNotifier.removeListener(_onLockStateChanged);
     if (_service.isUnlocked) _service.lock();
     // Un seul `enable()` (initState) ⇄ un seul `disable()` (ici). Les
     // `enable()` supplémentaires posés à la création et au déverrouillage
@@ -637,14 +651,8 @@ class _VaultContentState extends State<_VaultContent> {
   Future<void> _share(File enc) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // `withShare` suspend la purge défensive déclenchée par le passage en
-      // arrière-plan (la share-sheet en est un), puis purge au retour. Sans
-      // elle, le fichier déchiffré était supprimé avant que l'app cible ne
-      // l'ait lu, et la copie interne de share_plus survivait indéfiniment.
-      await widget.service.withShare(() async {
-        final tmp = await widget.service.decryptToTemp(enc);
-        await Share.shareXFiles([XFile(tmp.path)]);
-      });
+      final tmp = await widget.service.decryptToTemp(enc);
+      await Share.shareXFiles([XFile(tmp.path)]);
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
@@ -816,13 +824,9 @@ class _VaultContentState extends State<_VaultContent> {
       if (!mounted) return;
       progressDialog.close();
       // Partage du fichier produit (l'utilisateur choisit où le sauver).
-      // Même garde que `_share` : le `.rftvault` vit dans `cache/exports/`,
-      // que la purge défensive efface au passage en arrière-plan.
-      await widget.service.withShare(
-        () => Share.shareXFiles([
-          XFile(out.path, mimeType: 'application/octet-stream'),
-        ], subject: 'Sauvegarde Read Files Tech'),
-      );
+      await Share.shareXFiles([
+        XFile(out.path, mimeType: 'application/octet-stream'),
+      ], subject: 'Sauvegarde Read Files Tech');
     } catch (e) {
       if (!mounted) return;
       progressDialog.close();

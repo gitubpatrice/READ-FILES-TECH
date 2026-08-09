@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data' show BytesBuilder;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -396,12 +397,20 @@ void main() {
         exportPassword: 'export',
       );
 
-      // Offset 12 = premier octet du champ `argon2_mem` (u32 BE), donc dans
-      // l'en-tête et hors du ciphertext. Sans AAD liée au header, cette
-      // modification passerait inaperçue — c'est exactement la propriété
-      // annoncée par le commentaire de `exportToBackup`.
+      // Offset 9 = premier des trois octets `reserved` du header. Choisi
+      // délibérément : `reserved` n'est lu NULLE PART ailleurs — ni pour
+      // dériver la clé, ni pour parser. La seule chose qui puisse faire
+      // échouer le déchiffrement après l'avoir modifié, c'est l'AAD liée à
+      // l'en-tête complet. C'est donc cette propriété, et rien d'autre, qui
+      // est testée ici.
+      //
+      // La première version flippait l'octet 12 (`argon2_mem`). Une relecture
+      // externe a montré qu'elle restait verte même sans AAD-binding :
+      // `argon2_mem` sert à dériver la clé, donc le modifier casse le
+      // déchiffrement de toute façon. Le test prouvait autre chose que ce
+      // qu'il annonçait.
       final blob = backup.readAsBytesSync();
-      blob[12] ^= 0x01;
+      blob[9] ^= 0x01;
       backup.writeAsBytesSync(blob);
 
       expect(
@@ -612,20 +621,90 @@ void main() {
 
   // ── Payload de sauvegarde forgé ──────────────────────────────────────────
 
-  test('restore ignore une entrée dont le nom tente une traversée', () async {
-    await VaultService.instance.setupWithPassword('traversee');
-    // Un nom de fichier ne peut pas contenir « / » sur le FS, donc on ne peut
-    // pas fabriquer l'entrée par un import. On vérifie la garde en amont :
-    // `importFileSafe` construit toujours le nom via PathSafe.basename, donc
-    // aucune entrée du coffre ne porte de séparateur.
-    final src = sourceFile('normal.txt', utf8.encode('x'));
-    final encPath = await VaultService.instance.importFileSafe(src);
-    expect(encPath.contains('/vault/normal.txt.enc'), isTrue);
+  test('restore ignore une entrée de sauvegarde au nom traversant', () async {
+    // Ce test FORGE une sauvegarde hostile : il déchiffre l'enveloppe produite
+    // par l'app, réécrit le nom d'une entrée en « ../../evade.txt », puis
+    // re-chiffre avec la même clé, le même nonce et la même AAD. C'est ce que
+    // ferait un attaquant qui connaît le mot de passe d'export — le scénario
+    // exact contre lequel `_parseBackupPayload` défend.
+    //
+    // La version précédente ne restaurait rien : elle vérifiait que les
+    // fichiers déjà dans le coffre ne contenaient pas « .. », ce qu'aucun
+    // système de fichiers n'autorise de toute façon. Elle serait restée verte
+    // même si la garde anti-traversée avait disparu. (Signalé par une
+    // relecture externe, 2026-08-09.)
+    const pwd = 'export forge';
+    await VaultService.instance.setupWithPassword('principal');
+    await VaultService.instance.importFileSafe(
+      sourceFile('sain.txt', utf8.encode('contenu sain')),
+    );
+    final backup = await VaultService.instance.exportToBackup(
+      exportPassword: pwd,
+    );
 
-    final files = await VaultService.instance.listFiles();
-    for (final f in files) {
-      final name = f.path.split(RegExp(r'[/\\]')).last;
-      expect(name.contains('..'), isFalse);
+    // ── Déchiffrement de l'enveloppe avec les paramètres lus dans le header.
+    final raw = backup.readAsBytesSync();
+    const headerLen = 8 + 1 + 3 + 4 + 4 + 16 + 12;
+    int u32(int o) =>
+        (raw[o] << 24) | (raw[o + 1] << 16) | (raw[o + 2] << 8) | raw[o + 3];
+    final salt = Uint8List.fromList(raw.sublist(20, 36));
+    final nonce = Uint8List.fromList(raw.sublist(36, 48));
+    final aad = Uint8List.fromList(raw.sublist(0, headerLen));
+
+    final argon = Argon2BytesGenerator()
+      ..init(
+        Argon2Parameters(
+          Argon2Parameters.ARGON2_id,
+          salt,
+          desiredKeyLength: 32,
+          iterations: u32(16),
+          memory: u32(12),
+          lanes: 1,
+          version: Argon2Parameters.ARGON2_VERSION_13,
+        ),
+      );
+    final key = Uint8List(32);
+    argon.deriveKey(Uint8List.fromList(utf8.encode(pwd)), 0, key, 0);
+
+    Uint8List gcm(bool encrypt, Uint8List input) =>
+        (GCMBlockCipher(AESEngine())..init(
+              encrypt,
+              AEADParameters(KeyParameter(key), 128, nonce, aad),
+            ))
+            .process(input);
+
+    final payload = gcm(false, Uint8List.fromList(raw.sublist(headerLen)));
+
+    // ── Réécriture du nom de la 1re entrée en chemin traversant.
+    // Format : count(4) | [ nameLen(2) | name | dataLen(4) | data ]*
+    final evil = utf8.encode('../../evade.txt');
+    final oldNameLen = (payload[4] << 8) | payload[5];
+    final forged = BytesBuilder()
+      ..add(payload.sublist(0, 4))
+      ..add([(evil.length >> 8) & 0xFF, evil.length & 0xFF])
+      ..add(evil)
+      ..add(payload.sublist(6 + oldNameLen));
+
+    final reforged = BytesBuilder()
+      ..add(raw.sublist(0, headerLen))
+      ..add(gcm(true, Uint8List.fromList(forged.toBytes())));
+    backup.writeAsBytesSync(reforged.toBytes());
+
+    // ── L'enveloppe est authentique : le restore la déchiffre, puis doit
+    // refuser l'entrée sur son NOM, sans rien écrire hors du coffre.
+    final res = await VaultService.instance.restoreFromBackup(
+      backupFile: backup,
+      exportPassword: pwd,
+    );
+    expect(
+      res.restored,
+      0,
+      reason: 'une entrée au nom traversant ne doit jamais être écrite',
+    );
+    expect(File('${tmp.path}/evade.txt').existsSync(), isFalse);
+    expect(File('${tmp.path}/docs/evade.txt').existsSync(), isFalse);
+    for (final f in await VaultService.instance.listFiles()) {
+      expect(f.path.contains('..'), isFalse);
     }
   });
 

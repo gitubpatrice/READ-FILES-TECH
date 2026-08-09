@@ -69,11 +69,9 @@ class PanicService {
       if (kDebugMode) debugPrint('panic prefs: $e');
     }
     // 4. Purge des dossiers cache portant du plaintext (cf
-    // VaultService.purgeTempDecrypted). `force` : un partage en cours ne doit
-    // pas faire échouer un wipe de panique — c'est même le cas où l'utilisateur
-    // a le plus besoin que le fichier disparaisse.
+    // VaultService.purgeTempDecrypted), `share_plus/` compris.
     try {
-      await VaultService.instance.purgeTempDecrypted(force: true);
+      await VaultService.instance.purgeTempDecrypted();
       report.cachePurged = true;
     } catch (e) {
       if (kDebugMode) debugPrint('panic cache: $e');

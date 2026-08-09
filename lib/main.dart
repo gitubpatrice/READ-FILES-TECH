@@ -249,8 +249,18 @@ class _ReadFilesTechAppState extends State<ReadFilesTechApp>
               }
             });
           }
-          // Purge defensive immédiate (avant 30 s) du staging plaintext.
-          unawaited(VaultService.instance.purgeTempDecrypted());
+          // V-L4 — plus de purge ici. Ouvrir une share-sheet fait passer
+          // l'app en `inactive` puis `paused` : purger à cet instant
+          // supprimait le fichier que l'application destinataire venait tout
+          // juste de recevoir. Et `cache/share_plus/` n'appartient pas au
+          // coffre — c'est le staging que share_plus utilise pour les 29
+          // partages de l'app, coffre ou non.
+          //
+          // Le plaintext est borné par le VERROUILLAGE, qui purge : 30 s
+          // après le passage en arrière-plan (le timer ci-dessus), 3 min
+          // d'inactivité au premier plan, à la sortie de l'écran du coffre,
+          // ou immédiatement sur `detached`. Et `main()` repurge au démarrage
+          // si le process a été tué entre-temps.
           break;
         case AppLifecycleState.resumed:
           _autoLockTimer?.cancel();

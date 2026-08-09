@@ -10,6 +10,59 @@ import '../../utils/file_caps.dart';
 import 'reader_viewer_screen.dart';
 import '../explorer/file_type_helpers.dart';
 
+/// Politique appliquée au document rendu dans la WebView.
+///
+/// `default-src 'none'` par défaut, puis on ré-autorise strictement ce dont un
+/// document local a besoin. `connect-src 'none'` coupe `fetch`, XHR et
+/// WebSocket ; aucune directive n'autorise `http:` ni `https:`.
+const String kHtmlViewerCsp =
+    "default-src 'none'; "
+    'img-src file: data: blob:; '
+    'media-src file: data: blob:; '
+    "style-src file: data: 'unsafe-inline'; "
+    'font-src file: data:; '
+    "script-src file: data: 'unsafe-inline' 'unsafe-eval'; "
+    'frame-src file:; '
+    "form-action 'none'; "
+    "connect-src 'none'; "
+    "base-uri 'none'";
+
+/// Insère la balise CSP en tête de [html] et renvoie le document à charger.
+///
+/// La CSP doit précéder toute balise capable de charger une ressource.
+///
+/// La première version cherchait `<head` dans le texte brut et insérait après
+/// le `>` suivant. Contournable en une ligne : un document commençant par
+/// `<!-- <head> -->` faisait insérer la balise DANS le commentaire, donc
+/// inerte, et l'`<img src=https://…>` du vrai `<head>` partait quand même.
+/// Chercher un tag par sous-chaîne, c'est parser du HTML à la main — et le
+/// HTML gagne toujours. (Signalé par une relecture externe, 2026-08-09.)
+///
+/// On n'en cherche donc plus aucun. La balise est placée en TÊTE du document,
+/// où rien ne peut la précéder ; le parseur HTML la remonte lui-même dans le
+/// `<head>` implicite (« before html » → « before head » → insertion dans
+/// head), quel que soit le contenu qui suit.
+///
+/// Seule exception : un `<!DOCTYPE>` doit rester le tout premier nœud, faute
+/// de quoi la page bascule en quirks mode et se réaffiche différemment. On
+/// insère donc juste après lui quand il ouvre le document. Un doctype précédé
+/// d'autre chose est de toute façon déjà ignoré par le parseur : le cas ne se
+/// dégrade pas.
+///
+/// Fonction pure et publique pour être testable sans WebView (voir
+/// `test/html_csp_injection_test.dart`).
+String injectCsp(String html) {
+  const tag =
+      '<meta http-equiv="Content-Security-Policy" content="$kHtmlViewerCsp">';
+  final lead = html.trimLeft();
+  final skipped = html.length - lead.length;
+  if (lead.toLowerCase().startsWith('<!doctype')) {
+    final close = html.indexOf('>', skipped);
+    if (close >= 0) return html.replaceRange(close + 1, close + 1, tag);
+  }
+  return '$tag$html';
+}
+
 class HtmlViewerScreen extends StatefulWidget {
   final String path;
   const HtmlViewerScreen({super.key, required this.path});
@@ -159,34 +212,7 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   /// `baseUrl` pointe sur le dossier du document pour que les chemins
   /// relatifs (`./style.css`, `img/photo.png`) continuent de résoudre.
   Future<void> _render() async {
-    const csp =
-        "default-src 'none'; "
-        'img-src file: data: blob:; '
-        'media-src file: data: blob:; '
-        "style-src file: data: 'unsafe-inline'; "
-        'font-src file: data:; '
-        "script-src file: data: 'unsafe-inline' 'unsafe-eval'; "
-        'frame-src file:; '
-        "form-action 'none'; "
-        "connect-src 'none'; "
-        "base-uri 'none'";
-    const tag = '<meta http-equiv="Content-Security-Policy" content="$csp">';
-
-    // La CSP doit précéder toute balise qui charge une ressource. On l'insère
-    // juste après <head> quand il existe ; sinon en tout début de document,
-    // ce que le parseur HTML remonte de toute façon dans un <head> implicite.
-    final lower = _htmlContent.toLowerCase();
-    final headOpen = lower.indexOf('<head');
-    String doc;
-    if (headOpen >= 0) {
-      final close = _htmlContent.indexOf('>', headOpen);
-      doc = close >= 0
-          ? _htmlContent.replaceRange(close + 1, close + 1, tag)
-          : '$tag$_htmlContent';
-    } else {
-      doc = '$tag$_htmlContent';
-    }
-
+    final doc = injectCsp(_htmlContent);
     final dir = File(widget.path).parent.path.replaceAll('\\', '/');
     await _controller.loadHtmlString(doc, baseUrl: 'file://$dir/');
   }

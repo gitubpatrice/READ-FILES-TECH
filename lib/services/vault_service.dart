@@ -376,36 +376,9 @@ class VaultService {
     if (k != null) _zeroize(k);
     _cachedKey = null;
     _publishUnlocked();
-    // Best-effort : nettoyer les fichiers déchiffrés laissés en tmp
-    // (vault_decrypt/ + la copie faite par share_plus).
-    // `force` : le verrouillage prime sur un partage en cours. Si l'auto-lock
-    // se déclenche pendant qu'une share-sheet est encore ouverte, le partage
-    // échouera — c'est le comportement voulu, pas un effet de bord.
-    purgeTempDecrypted(force: true);
-  }
-
-  /// Nombre de partages en cours. Compteur plutôt que booléen : deux partages
-  /// peuvent se chevaucher (l'utilisateur revient et repart aussitôt), et un
-  /// booléen remis à false par le premier rouvrirait la fenêtre pour le second.
-  static int _sharesInFlight = 0;
-
-  /// Encadre un partage de contenu issu du coffre : suspend la purge
-  /// défensive, puis purge dès le retour de la share-sheet — y compris si
-  /// l'utilisateur l'annule, et y compris en cas d'exception.
-  ///
-  /// À utiliser pour **tout** `Share.shareXFiles` portant du plaintext venant
-  /// du coffre (fichier déchiffré ou `.rftvault` exporté).
-  Future<T> withShare<T>(Future<T> Function() body) async {
-    _sharesInFlight++;
-    try {
-      return await body();
-    } finally {
-      _sharesInFlight--;
-      if (_sharesInFlight <= 0) {
-        _sharesInFlight = 0;
-        await purgeTempDecrypted(force: true);
-      }
-    }
+    // Le verrouillage est la frontière de sécurité : c'est là que le
+    // plaintext doit disparaître, et nulle part ailleurs par précaution.
+    purgeTempDecrypted();
   }
 
   /// Importe un fichier en clair → chiffre + stocke. Retourne le path chiffré.
@@ -497,17 +470,16 @@ class VaultService {
   /// Toute mise à jour majeure de `share_plus` doit revérifier le nom de ce
   /// dossier : il est fixé par le plugin, pas par nous.
   ///
-  /// [force] outrepasse la garde de partage en cours ([beginShare]) : le lock
-  /// et le panic wipe l'utilisent, eux ne négocient pas.
-  Future<void> purgeTempDecrypted({bool force = false}) async {
-    // V-L4 — ne pas retirer le fichier sous les pieds d'un partage en cours.
-    // La share-sheet met l'app en `inactive` puis `paused`, ce qui déclenchait
-    // la purge défensive de `main.dart` : l'app cible recevait une URI dont le
-    // fichier venait d'être supprimé. `beginShare`/`endShare` encadrent la
-    // fenêtre ; `endShare` purge dès le retour, donc rien ne survit plus
-    // longtemps qu'avant — c'est même l'inverse, puisque la copie faite par
-    // share_plus n'était jusqu'ici jamais nettoyée.
-    if (!force && _sharesInFlight > 0) return;
+  /// **Quand l'appeler.** Au verrouillage, au panic wipe, et au démarrage —
+  /// jamais au simple passage en arrière-plan. Ouvrir une share-sheet met
+  /// l'app en `paused` : purger là revient à supprimer le fichier sous les
+  /// pieds de l'application qui vient de le recevoir (V-L4), et
+  /// `cache/share_plus/` n'appartient pas au coffre — il porte AUSSI les 27
+  /// partages non liés au coffre. Le verrouillage automatique (30 s en
+  /// arrière-plan, 3 min d'inactivité, ou sortie de l'écran) borne de toute
+  /// façon la durée de vie du plaintext, et `main()` repurge au démarrage
+  /// pour le cas d'un process tué.
+  Future<void> purgeTempDecrypted() async {
     final tmpRoot = await getTemporaryDirectory();
     for (final sub in const [
       'vault_decrypt',
