@@ -253,6 +253,72 @@ sinon on applique des correctifs à des problèmes qui n'existent pas.
 Sur trois relectures, **une seule affirmation était fausse sur le fond** (celle
 de Gemini), et elle était accompagnée de son propre démenti.
 
+
+## 3 bis. Ce que le contrôle sécurité de fin de session a trouvé
+
+Le hook de fin de turn impose un audit sécurité dès que le manifeste ou une
+permission bouge. Il a trouvé deux choses que **les trois relectures externes
+avaient manquées** — parce qu'elles portaient sur la logique, et que celles-ci
+portent sur le temps et sur le cycle de vie.
+
+### Un `.docx` de 100 Ko gelait l'application vingt secondes
+
+Les deux extracteurs cherchaient leurs balises avec `<tag…>(.*?)</tag>` en
+`dotAll`. Sur un document bien formé, linéaire et instantané. Sur un document
+dont les balises ne sont **jamais fermées**, `.*?` repart à chaque position
+candidate et balaie jusqu'à la fin.
+
+Mesuré indépendamment, refait plutôt que repris :
+
+| entrée | longueur | temps |
+|---|---|---|
+| `.odt` légitime, balises fermées | 440 Ko | **4 ms** |
+| `.odt` piégé, `<text:p>` jamais fermé | 160 Ko | **5 365 ms** |
+| `.docx` piégé, `<w:t>` jamais fermé | 100 Ko | **19 553 ms** |
+
+Le temps quadruple à chaque doublement.
+
+**Ce qui rend le défaut exploitable plutôt que théorique** : le choix de passer
+en isolate se fait sur la taille du fichier **compressé** (seuil 1 Mio). Une
+chaîne répétitive se compresse à presque rien. Le document piégé s'exécutait
+donc sur le **thread principal**, et Android tue une activité bloquée au-delà de
+cinq secondes. Ouvrir le fichier suffisait à faire disparaître l'application.
+
+Le défaut DOCX était **antérieur à ce chantier**, et pire que celui de l'ODT. Le
+corriger seul aurait reproduit le motif que ce dépôt répète : le correctif
+asymétrique entre jumeaux.
+
+Quatre tests ajoutés. Ils portent sur le **temps**, pas sur le résultat — c'est
+le seul angle qui attrape ce défaut, puisque l'ancienne implémentation rendait
+exactement le même texte, simplement vingt secondes plus tard. Le quatrième est
+le témoin : un document légitime de 660 Ko doit rester rapide, sans quoi les
+trois autres passeraient au vert pour la mauvaise raison.
+
+Au passage, la sentinelle SOH était écrite en **octet de contrôle brut** dans la
+source, comme l'était l'octet NUL de `zip_viewer`. Même famille, même
+invisibilité.
+
+### Le coffre parlait après s'être refermé
+
+`VaultScreen.dispose()` **verrouille** le coffre (V-H1). Or ma migration vers
+`SnackTarget` avait retiré, sur sept méthodes de cet écran, la garde `mounted`
+qui précédait l'affichage.
+
+C'est le comportement voulu partout ailleurs — c'est même tout l'intérêt de la
+classe. **Ici il produit l'inverse de ce qu'on cherche** : l'utilisateur lance un
+export, quitte, le coffre se verrouille, puis « Exporté :
+relevé_bancaire.pdf » s'affiche sur l'écran où il se trouve. Un nom de fichier
+du coffre apparaît hors du coffre, après fermeture — précisément ce que le
+verrouillage automatique existe pour empêcher.
+
+`SnackTarget.of(context, stillWanted: () => mounted)` : une ligne par méthode,
+la raison écrite une fois dans la docstring plutôt que sept fois sur place.
+
+**La leçon** : un correctif générique juste devient faux sur l'écran qui a des
+contraintes contraires. « Ne jamais taire un échec » et « ne rien laisser
+échapper du coffre » sont deux bonnes règles qui se contredisent, et j'avais
+appliqué la première sans voir que la seconde régnait ici.
+
 ## 4. Vérifications
 
 Sur l'artefact, pas sur le raisonnement.
@@ -260,7 +326,7 @@ Sur l'artefact, pas sur le raisonnement.
 | Contrôle | Résultat |
 |---|---|
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **121 tests verts** (13 → 14 fichiers, +20 tests) |
+| `flutter test` | **127 tests verts** (13 → 14 fichiers, +26 tests) |
 | `flutter build apk --release --split-per-abi` | **3 APK produits** — 35,6 / 40,8 / 43,0 Mo |
 | `aapt dump permissions` sur l'APK reconstruit | **coïncide exactement** avec le manifeste source |
 | `requestLegacyExternalStorage` dans le manifeste fusionné | présent |
@@ -276,6 +342,7 @@ faire rougir.
 | Retirer `persist: false` du helper | 1 test rouge | conforme |
 | Remettre l'ancien décodage d'entités ODT | 2 tests rouges, ciblés | conforme — les autres restent verts |
 | Retirer le garde `_messenger.mounted` | 1 test rouge, le nouveau | conforme |
+| Remettre l'ancienne regex ODT quadratique | 1 test rouge, sur le temps | conforme — les 23 autres restent verts |
 
 Les trois tests d'entrées STORE ajoutés à `archive_safe_test.dart` n'ont pas été
 falsifiés par sabotage, mais par constat : **aucun des six tests préexistants ne
