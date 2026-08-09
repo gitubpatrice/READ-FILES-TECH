@@ -2,6 +2,72 @@
 
 ## Historique des durcissements
 
+- **v2.15.0** — *travaux terminés, version non publiée à ce jour.* Consolidation
+  menée sur les 23 points du plan d'audit du 2026-08-02 : 21 confirmés, 1 réfuté,
+  1 partiellement. Rapport complet dans
+  `audits_results/consolidation_v2_15_20260809.md`.
+  - **Archives** — La garde anti-zip-bomb reposait sur `ArchiveFile.size`,
+    c'est-à-dire sur la taille **déclarée dans l'en-tête** de l'entrée. Un ZIP
+    de 80 Ko annonçant 1 Ko et décompressant 80 Mo passait la garde sans la
+    déclencher, sur les **4** sites qui l'utilisaient, et ce depuis la v2.12.0.
+    Nouveau `lib/utils/archive_safe.dart` : la décompression passe par un flux
+    plafonné qui interrompt l'inflation dès le cap atteint, quoi qu'annonce
+    l'en-tête. La taille déclarée n'est plus qu'un rejet précoce.
+  - **Coffre** — `reset()` ne purgeait pas les compteurs de lockout : un coffre
+    réinitialisé repartait avec le backoff de l'ancien. `decryptToTemp` écrivait
+    dans un dossier partagé, deux déchiffrements concurrents pouvant se marcher
+    dessus. `exportFile` écrasait sans le dire.
+  - **Visionneuse HTML** — L'injection de CSP était contournable de deux façons
+    distinctes : par un faux `<head>` en commentaire, et par un `<!DOCTYPE>`
+    portant un attribut entre guillemets contenant `>`. La construction du CSP
+    est désormais une fonction pure couverte par 8 tests, `frame-src 'none'` et
+    `connect-src 'none'` inclus.
+  - **Android 7 → 10** — L'explorateur était **inutilisable** sur toute la plage
+    que `minSdk 24` annonce supporter : l'application n'interrogeait que
+    `MANAGE_EXTERNAL_STORAGE`, qui n'existe qu'à partir d'Android 11. Le bandeau
+    « autorisez tous les fichiers » ne disparaissait jamais et son bouton menait
+    à un écran sans option correspondante. Constaté en exécutant l'APK sur
+    Galaxy S9 — ni l'audit ni trois relectures externes ne l'avaient vu.
+    Nouveau `lib/services/storage_access.dart`, source unique de la décision.
+  - **Éditeurs** — Le bouton « Ignorer » de la boîte « quitter sans
+    enregistrer ? » renvoyait la mauvaise valeur : quitter sans enregistrer ne
+    quittait pas. Garde de réentrance sur la sauvegarde.
+  - **Déplacement par lot** — La suppression de la source n'était pas
+    conditionnée à la vérification de la copie. Taille comparée avant `delete()`,
+    et destination rendue unique au lieu d'écraser.
+  - **Kotlin** — `safeCanonical` refuse désormais l'ensemble des dossiers de
+    cache porteurs de clair (`vault_decrypt`, `share_plus`, `share`, `exports`).
+  - **Permissions** — `INTERNET` et `ACCESS_NETWORK_STATE` étaient dans l'APK
+    sans être dans le manifeste source, injectées par la télémétrie ML Kit,
+    pendant que l'application s'en servait pour la vérification de mise à jour.
+    Déclarées explicitement, avec leur motif. `PRIVACY.fr.md` §6 bis.
+  - **Tests** — 101 tests (13 fichiers), dont 25 sur le coffre et 6 sur la garde
+    d'archive, chacun validé par falsification. Campagne de 8 contrôles passée
+    sur appareil réel. `flutter analyze` : 0 issue.
+
+- **v2.14.0** (2026-07-19) — Corbeille et fiabilité des bandeaux.
+  - **Corbeille** — La suppression depuis l'explorateur devient réversible.
+    `TrashService` déplace vers `<volume>/.RFT_Corbeille` par `rename()`
+    atomique (repli copie + suppression si volumes distincts). Aucune purge
+    automatique.
+  - **Sécurité** — Les métadonnées de corbeille vivent **en clair sur le
+    stockage partagé** et peuvent donc être réécrites par un tiers. `id`, `name`
+    et `originalPath` sont validés à la lecture : `id` contraint au format
+    généré, `name` réduit à un segment sûr, `originalPath` absolu et sans `..`.
+    `list()` exige que le nom du fichier de métadonnées corresponde à l'`id`
+    déclaré — sans quoi un `meta/*.json` déposé de l'extérieur remonterait comme
+    entrée légitime et ferait porter « Restaurer » ou « Supprimer » sur un
+    fichier arbitraire. `restore()` revalide en défense en profondeur. `_copyDir`
+    ignore les liens symboliques.
+  - **Fix SnackBar permanent** — `SnackBar.persist` vaut par défaut
+    `action != null` : **tout** bandeau porteur d'une action restait affiché
+    indéfiniment, sa `duration` étant silencieusement ignorée. `persist: false`
+    posé dans les helpers `snack_utils` et sur les 4 bandeaux « Partager »
+    inline.
+  - **Contraste** — `confirmDelete()` passe de `cs.errorContainer` à un rouge
+    plein (5.6:1, AA) : sur une action irréversible, le bouton pâle se
+    distinguait mal de l'annulation.
+
 - **v2.13.2** (2026-05-20) — Audit expert post-v2.13.1 (3 axes en parallèle
   + audit cohérence transversal) : 17 corrections (4 Haute + 9 Moyenne +
   2 Basse + 2 Info).
@@ -43,8 +109,8 @@
   **Note REQUEST_INSTALL_PACKAGES** : permission ré-introduite après
   retrait v2.12.2 pour restaurer la fonctionnalité "tap APK direct
   depuis l'explorateur Read Files Tech" (UX file manager complet).
-  Trade-off Play Protect documenté dans `AndroidManifest.xml` ligne
-  27-38. Public cible Files Tech = sideload + F-Droid, risque accepté.
+  Trade-off Play Protect documenté dans `AndroidManifest.xml`. Public
+  cible Files Tech = sideload par GitHub Releases, risque accepté.
 
   **Sécurité** :
   - **F1** — Les sauvegardes `.rftvault` exportées étaient écrites à la
@@ -187,8 +253,8 @@ Seule la dernière version publiée sur GitHub Releases est activement maintenue
 
 | Version       | Supportée  |
 | ------------- | ---------- |
-| 2.13.x        | ✅          |
-| < 2.13.0      | ❌          |
+| 2.14.x        | ✅          |
+| < 2.14.0      | ❌          |
 
 ## Signaler une vulnérabilité
 

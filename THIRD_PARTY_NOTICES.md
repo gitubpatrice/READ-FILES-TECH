@@ -22,10 +22,16 @@ No Syncfusion source code is contained in this repository: the packages are fetc
 pub.dev at build time. Compiled Syncfusion code **is** embedded in the distributed APK, which is
 therefore not, as a whole, an Apache 2.0 artifact.
 
-> Still to be settled, and outside the scope of a documentation fix: Read Files Tech must hold a
-> registered Syncfusion Community License. It is not automatic, and using it in an open source
-> project requires a prior application to Syncfusion. This notice reports the situation; it does
-> not resolve it.
+> **Status as of 2026-08-09: knowingly deferred, not overlooked.** Read Files Tech does not hold a
+> registered Syncfusion Community License. Registration is not automatic — using the Community
+> License in an open source project requires a prior application to Syncfusion — and the decision
+> to postpone it was taken deliberately.
+>
+> What that means concretely, stated plainly rather than softened: the APK embeds compiled
+> proprietary code whose licence has not been formally secured. This notice reports the situation;
+> it does not resolve it, and nothing in this repository resolves it. It should be settled before
+> any distribution channel that reviews licensing (an F-Droid submission would be the obvious
+> trigger), or by replacing the two packages.
 
 ## Native libraries actually present in the APK
 
@@ -35,7 +41,7 @@ Verified by unpacking the published release APK, not inferred from `pubspec.yaml
 | --- | --- | --- |
 | `libmlkit_google_ocr_pipeline.so` + `assets/mlkit-google-ocr-models` | Google ML Kit | OCR model bundled — runs fully offline. |
 | `play-services-mlkit-document-scanner` | Google Play services | Thin client: the scanner UI and model are downloaded on demand and require Play services. |
-| `transport-backend-cct`, `transport-runtime`, `transport-api` | Google | Telemetry transport pulled in by ML Kit. Source of the `INTERNET` and `ACCESS_NETWORK_STATE` permissions found in the APK — see `PRIVACY.md` §9. |
+| `transport-backend-cct`, `transport-runtime`, `transport-api` | Google | Telemetry transport pulled in by ML Kit. It contributed `INTERNET` and `ACCESS_NETWORK_STATE` to the merged manifest until v2.15 declared them explicitly in the source manifest — the app uses them itself for the update check. See `PRIVACY.md` §6 bis and §9 bis. |
 
 ## Direct Flutter / Dart dependencies
 
