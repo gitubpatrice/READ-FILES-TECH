@@ -278,7 +278,14 @@ Lancée sur **mes correctifs**, conformément au §5 du prompt. GPT-5.2 a rendu 
 | `Uint8List` sans `dart:typed_data` → compilation KO | **RÉFUTÉ** | `flutter/services.dart` le réexporte ; l'ajouter fait échouer l'analyse |
 | 2 autres | Observations justes, sans action | — |
 
-**Les deux plus instructifs.**
+**Gemini n'a pas abouti.** Environ 50 tentatives, toutes en `HTTP 503`
+(« Deadline expired » / `UNAVAILABLE`). Le prompt annonce ce comportement et conseille de relancer
+en boucle ; une boucle longue tourne encore. **La relecture croisée annoncée n'a donc été faite
+qu'à moitié** — je le signale plutôt que de laisser croire à deux avis indépendants. Sur Agenda
+Tech, GPT et Gemini avaient trouvé le défaut le plus grave *indépendamment* : l'absence du second
+avis est une lacune réelle de cette session, pas un détail de procédure.
+
+**Les deux constats les plus instructifs.**
 
 **Ma CSP était perçable.** `injectCsp` cherchait `<head` dans le texte brut. Un document commençant
 par `<!-- <head> -->` faisait insérer la balise **dans le commentaire** : CSP inerte, image distante
