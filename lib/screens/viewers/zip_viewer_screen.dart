@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/archive_extract_service.dart';
 import '../../utils/file_caps.dart';
 import '../../utils/snack_utils.dart';
+import '../../widgets/error_panel.dart';
 import '../explorer/file_type_helpers.dart';
 
 class ZipViewerScreen extends StatefulWidget {
@@ -269,7 +270,7 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(child: Text('Erreur : $_error'))
+          ? ErrorPanel(message: _error!)
           : Column(
               children: [
                 Padding(

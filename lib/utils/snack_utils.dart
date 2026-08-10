@@ -6,6 +6,25 @@ import 'package:flutter/material.dart';
 /// par défaut de Material.
 const kBrandBlue = Color(0xFF1565C0);
 
+/// Rouge des bandeaux d'erreur.
+///
+/// Les bandeaux utilisaient `colorScheme.errorContainer`. En Material 3, cette
+/// teinte est dérivée du `seedColor` — ici un bleu — et l'harmonisation la
+/// désature jusqu'à un rose pâle : à l'écran, un refus de sécurité passait pour
+/// du saumon décoratif. Une alerte doit se lire comme une alerte.
+///
+/// Valeur fixe et non dérivée du thème, parce qu'un SnackBar porte son propre
+/// fond : la même couleur convient en clair comme en sombre. Le texte est
+/// blanc, contraste 4,98:1 — au-dessus du seuil AA de 4,5:1, mais de peu :
+/// un rouge sensiblement plus clair passerait sous le seuil, ce que le test
+/// « l'erreur porte un rouge franc » verrouille.
+///
+/// `ErrorPanel` s'en sert pour sa **bordure**, jamais pour son texte : un
+/// filet coloré tient sur n'importe quel fond, alors qu'un rouge fixe posé en
+/// texte sur le fond sombre de l'app tomberait sous le seuil de lisibilité.
+/// Le texte y reste donc `colorScheme.error`, qui suit le thème.
+const kErrorRed = Color(0xFFD32F2F);
+
 /// Durées standardisées pour SnackBar (homogénéise les valeurs disparates).
 const kSnackShort = Duration(seconds: 2);
 const kSnackMedium = Duration(seconds: 4);
@@ -26,9 +45,8 @@ const kSnackLong = Duration(seconds: 6);
 ///
 /// Le second comportement est le bon : le messager appartient au `Scaffold`
 /// englobant, qui survit à l'écran qu'on vient de quitter. C'était la mise en
-/// forme qui manquait. [SnackTarget] capture le messager **et** le
-/// `ColorScheme` en une ligne, et rend les mêmes bandeaux que les fonctions
-/// ci-dessous.
+/// forme qui manquait. [SnackTarget] capture le messager en une ligne, et rend
+/// les mêmes bandeaux que les fonctions ci-dessous.
 ///
 /// ```dart
 /// final snack = SnackTarget.of(context);
@@ -41,10 +59,11 @@ const kSnackLong = Duration(seconds: 6);
 @immutable
 final class SnackTarget {
   final ScaffoldMessengerState _messenger;
-  final ColorScheme _colors;
+  // Le `ColorScheme` n'est plus retenu : depuis que les bandeaux d'erreur
+  // utilisent kErrorRed, aucune couleur ne se dérive plus du thème ici.
   final bool Function()? _stillWanted;
 
-  const SnackTarget._(this._messenger, this._colors, this._stillWanted);
+  const SnackTarget._(this._messenger, this._stillWanted);
 
   /// À appeler **avant** le premier `await`, tant que [context] est valide.
   ///
@@ -66,11 +85,7 @@ final class SnackTarget {
   factory SnackTarget.of(
     BuildContext context, {
     bool Function()? stillWanted,
-  }) => SnackTarget._(
-    ScaffoldMessenger.of(context),
-    Theme.of(context).colorScheme,
-    stillWanted,
-  );
+  }) => SnackTarget._(ScaffoldMessenger.of(context), stillWanted);
 
   /// Bandeau neutre.
   void info(
@@ -81,7 +96,7 @@ final class SnackTarget {
     _show(_build(content: Text(message), duration: duration, action: action));
   }
 
-  /// Bandeau d'erreur : fond `errorContainer`, texte `onErrorContainer`.
+  /// Bandeau d'erreur : fond [kErrorRed], texte blanc.
   void error(
     Object error, {
     Duration duration = kSnackMedium,
@@ -91,9 +106,9 @@ final class SnackTarget {
       _build(
         content: Text(
           error.toString(),
-          style: TextStyle(color: _colors.onErrorContainer),
+          style: const TextStyle(color: Colors.white),
         ),
-        background: _colors.errorContainer,
+        background: kErrorRed,
         duration: duration,
         action: action,
       ),
@@ -158,9 +173,9 @@ void showFloatingSnack(
 /// Variante erreur : couleur error + durée medium par défaut.
 ///
 /// U4 v2.13.0 — Accepte une [action] optionnelle (typiquement "Réessayer" /
-/// "Annuler") afin de standardiser le pattern d'erreur récupérable. La
-/// couleur du texte est explicitement `onErrorContainer` pour garantir le
-/// contraste WCAG AA même en thème clair.
+/// "Annuler") afin de standardiser le pattern d'erreur récupérable. Le fond
+/// est [kErrorRed] et le texte blanc, ce qui garantit le contraste WCAG AA
+/// dans les deux thèmes.
 ///
 /// Ne fait rien si [context] n'est plus monté — voir [SnackTarget].
 void showErrorSnack(

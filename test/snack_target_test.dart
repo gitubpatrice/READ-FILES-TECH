@@ -103,21 +103,33 @@ void main() {
     expect(find.text('jamais affiché'), findsNothing);
   });
 
-  testWidgets('l\'erreur porte les couleurs d\'erreur du thème', (
+  testWidgets('l\'erreur porte un rouge franc, pas la teinte du thème', (
     tester,
   ) async {
+    // Ce test exigeait `colorScheme.errorContainer` jusqu'au 2026-08-10.
+    // En Material 3 cette teinte se dérive du `seedColor` — un bleu ici — et
+    // l'harmonisation la désature en rose pâle : à l'écran, le refus d'une
+    // entrée de zip piégée s'affichait en saumon. Une alerte doit se lire
+    // comme une alerte, d'où une couleur fixe.
+    //
+    // Elle est fixe et non dérivée du thème parce qu'un SnackBar porte son
+    // propre fond : la même valeur convient en clair comme en sombre.
     final snack = await pumpAndCapture(tester);
     snack.error('rouge');
     await tester.pump();
 
     final bar = tester.widget<SnackBar>(find.byType(SnackBar));
-    final context = tester.element(find.byType(Scaffold));
-    final cs = Theme.of(context).colorScheme;
-    expect(bar.backgroundColor, cs.errorContainer);
+    expect(bar.backgroundColor, kErrorRed);
     expect(bar.behavior, SnackBarBehavior.floating);
 
     final text = tester.widget<Text>(find.text('rouge'));
-    expect(text.style?.color, cs.onErrorContainer);
+    expect(text.style?.color, Colors.white);
+
+    // Le contraste doit rester au-dessus du seuil AA de 4,5:1. Sans ce
+    // contrôle, un futur « rouge plus clair » pourrait rendre le texte blanc
+    // illisible sans qu'aucun test ne bronche.
+    final lum = kErrorRed.computeLuminance();
+    expect((1.05) / (lum + 0.05), greaterThan(4.5));
   });
 
   testWidgets('un bandeau à action n\'est pas permanent', (tester) async {

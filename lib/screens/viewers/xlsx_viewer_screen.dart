@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:excel_community/excel_community.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../utils/file_caps.dart';
+import '../../widgets/error_panel.dart';
 import '../explorer/file_type_helpers.dart';
 
 class XlsxViewerScreen extends StatefulWidget {
@@ -127,7 +128,7 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(child: Text('Erreur : $_error'))
+          ? ErrorPanel(message: _error!)
           : _buildContent(),
     );
   }
