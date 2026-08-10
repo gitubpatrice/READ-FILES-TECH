@@ -306,9 +306,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: Text(
                       'Les fichiers que vous générez (scans, conversions, signatures, '
-                      'OCR, images sans EXIF) sont automatiquement sauvegardés dans le '
-                      'dossier ci-dessus. Vous pouvez les retrouver à tout moment dans '
-                      'l\'explorateur, même sans les avoir partagés.',
+                      'OCR, images sans EXIF, sauvegardes du coffre) sont '
+                      'automatiquement enregistrés dans le dossier ci-dessus. Vous '
+                      'pouvez les retrouver à tout moment dans l\'explorateur, même '
+                      'sans les avoir partagés.',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),
