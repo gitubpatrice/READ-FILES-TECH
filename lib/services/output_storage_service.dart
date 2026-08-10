@@ -179,8 +179,15 @@ class OutputStorageService {
     required String extension,
   }) async {
     final safeBase = PathSafe.sanitizeForFs(suggestedName);
+    // L'extension est assainie comme le reste du nom. Elle vient aujourd'hui
+    // exclusivement de constantes du code ('pdf', 'xlsx', 'rftvault'), donc
+    // rien n'est exploitable en l'etat — mais elle alimente un CHEMIN, et un
+    // service qui construit des chemins ne doit pas dependre de la discipline
+    // de ses appelants. Une extension contenant `../` ecrirait hors du dossier
+    // de sortie.
+    final safeExt = PathSafe.sanitizeForFs(extension);
     final ts = _timestamp();
-    final fileName = '${safeBase}_$ts.$extension';
+    final fileName = '${safeBase}_$ts.$safeExt';
 
     // 1. Tente le dossier configuré (par défaut /storage/emulated/0/Files Tech/<cat>/)
     final basePath = await getBasePath();
@@ -212,20 +219,38 @@ class OutputStorageService {
   Future<File?> _tryCreateAndReserve(Directory dir, String fileName) async {
     try {
       if (!await dir.exists()) await dir.create(recursive: true);
-      var dest = File('${dir.path}/$fileName');
-      // Collision improbable (le timestamp inclut les ms), mais on suffixe au
-      // cas où, plutôt que d'écraser silencieusement.
-      var counter = 1;
-      while (await dest.exists()) {
-        final dot = fileName.lastIndexOf('.');
-        final base = dot >= 0 ? fileName.substring(0, dot) : fileName;
-        final ext = dot >= 0 ? fileName.substring(dot) : '';
-        dest = File('${dir.path}/${base}_$counter$ext');
-        counter++;
+
+      // Le chemin est RÉSERVÉ, pas seulement testé.
+      //
+      // Le commentaire qui vivait ici affirmait « le timestamp inclut les ms ».
+      // C'était faux — `_timestamp()` s'arrête à la seconde — et cette phrase
+      // aurait dissuadé quiconque de creuser. Deux réservations dans la même
+      // seconde produisent donc le même nom, voyaient toutes deux le fichier
+      // absent, puis appelaient `create()` sans exclusivité : les deux
+      // repartaient avec le MÊME chemin, et la seconde écriture écrasait la
+      // première. Un scan ou une conversion disparaissait sans un mot.
+      //
+      // `create(exclusive: true)` échoue si le chemin existe : la réservation
+      // devient atomique, et le suffixe ne sert plus qu'aux collisions
+      // légitimes entre deux exécutions distinctes.
+      final dot = fileName.lastIndexOf('.');
+      final base = dot >= 0 ? fileName.substring(0, dot) : fileName;
+      final ext = dot >= 0 ? fileName.substring(dot) : '';
+      for (var counter = 0; counter < 1000; counter++) {
+        final dest = File(
+          counter == 0
+              ? '${dir.path}/$fileName'
+              : '${dir.path}/${base}_$counter$ext',
+        );
+        try {
+          await dest.create(exclusive: true);
+          return dest;
+        } on FileSystemException {
+          // Déjà pris — soit par une exécution antérieure, soit par une
+          // réservation concurrente. Candidat suivant.
+        }
       }
-      // Test d'écriture par création vide
-      await dest.create();
-      return dest;
+      return null;
     } catch (_) {
       return null;
     }
