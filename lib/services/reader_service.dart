@@ -62,7 +62,22 @@ class ReaderService {
       );
     }
     final bytes = await file.readAsBytes();
+    // Cinquieme site de decodage ZIP de l'application, et le seul qui avait
+    // ete manque le 2026-08-10 en posant cette garde sur les quatre autres.
+    //
+    // `archive` 4 ne leve plus sur des octets qui ne sont pas une archive : il
+    // rend une archive VIDE. Sans ce controle, un `.epub` qui n'en est pas un
+    // produisait « EPUB invalide : container.xml manquant » — un message qui
+    // accuse le contenu du fichier alors que ce n'est pas une archive du tout.
+    if (!looksLikeZip(bytes)) {
+      throw const FormatException(
+        "Ce fichier n'est pas un EPUB valide (archive ZIP illisible).",
+      );
+    }
     final archive = ZipDecoder().decodeBytes(bytes);
+    if (archive.files.isEmpty && zipDeclaresEntries(bytes)) {
+      throw const FormatException("EPUB invalide : l'archive est corrompue.");
+    }
 
     // 1. container.xml → trouve le rootfile (OPF)
     final container = archive.findFile('META-INF/container.xml');
