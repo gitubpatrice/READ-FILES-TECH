@@ -14,6 +14,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/atomic_write.dart';
 import '../utils/file_caps.dart';
 import '../utils/monotonic_clock.dart';
+import 'vault/vault_blob.dart';
+import 'vault/vault_bytes.dart';
+import 'vault/vault_kdf.dart';
 
 /// Coffre fort local : fichiers chiffrés AES-256-GCM.
 ///
@@ -84,50 +87,29 @@ class VaultService {
   static const _kArgon2MemoryKB = 'vault_argon2_mem_kb';
   static const _kArgon2Iterations = 'vault_argon2_iter';
 
-  static const _iterations = 600000; // PBKDF2 (legacy)
-
   // ── Argon2id : auto-tuning ─────────────────────────────────────────────────
   // Cible : ~2.5s par dérivation, quel que soit le device.
   // Algo : 1 bench à params min, calcul du facteur d'échelle, choix de
   // params dans des bornes [4Mo..32Mo] × [2..4] itérations.
 
-  static const _argon2BenchMemoryKB = 4096; // 4 MB pour le bench
-  static const _argon2BenchIterations = 2;
-  static const _argon2TargetMs = 2500;
   // Plancher absolu 8 Mo (pas 4) : protège contre un setup faussé par
   // thermal-throttle qui fixerait des params trop faibles à vie. 8 Mo
   // reste tenable même sur Redmi 9C 3GB.
-  static const _argon2MinMemoryKB = 8192; // 8 MB
-  static const _argon2MaxMemoryKB = 32768; // 32 MB (cap haut Redmi 9C 3GB)
-  static const _argon2MinIterations = 2;
-  static const _argon2MaxIterations = 4;
   // Nombre d'échantillons du bench. On garde le minimum (= meilleur cas
   // CPU non-throttled) pour éviter un calibrage trop bas si le device
   // est sous load au moment du setup.
-  static const _argon2BenchSamples = 3;
 
   // Legacy params pour coffres v2.6.0–v2.7.0 (sans calibrage stocké) :
   // m=16 Mo, t=4. Lus en fallback à l'unlock pour rétro-compat.
-  static const _argon2LegacyMemoryKB = 16384; // 16 MB
-  static const _argon2LegacyIterations = 4;
 
   // Params utilisés pour l'export `.rftvault` (fixes, indépendants du
   // calibrage du coffre — le fichier peut être restauré sur n'importe
   // quel device, donc on cible la sécurité plutôt que la vitesse).
-  static const _argon2ExportMemoryKB = 16384; // 16 MB
-  static const _argon2ExportIterations = 4;
 
-  static const _argon2Lanes = 1;
-
-  static const _saltLen = 16;
-  static const _nonceLen = 12;
-  static const _keyLen = 32;
   static const _checkFile = '_check.enc';
   static const _checkPlain = 'read_files_tech_vault_v1';
 
   /// Magic bytes du format v2 : "RFT2".
-  static const _magicV2 = [0x52, 0x46, 0x54, 0x32];
-  static const _aadPrefix = 'rft-vault-v2|';
 
   // v2.11.1 — utilise PerfThresholds.isolateThreshold (files_tech_core).
   // 1 Mo = ~30 ms PointyCastle GCM sur S9 → acceptable. Au-dessus, isolate.
@@ -167,7 +149,7 @@ class VaultService {
   /// Le calibrage tourne en Isolate (~1-3s) avant la dérivation effective
   /// (~2.5s ciblés). Cible UX globale ~3-5s à la création.
   Future<void> setupWithPassword(String password) async {
-    final salt = _randomBytes(_saltLen);
+    final salt = _randomBytes(kVaultSaltLen);
     // Auto-tuning : mesure le device puis choisit des params Argon2id
     // optimaux dans les bornes [4-32 Mo] × [2-4 iter] pour cibler ~2.5s
     // par dérivation, quel que soit le hardware.
@@ -243,8 +225,8 @@ class VaultService {
     final kdf = prefs.getString(_kKdfVersion) ?? _kdfPbkdf2;
     final Uint8List key;
     if (kdf == _kdfArgon2id) {
-      final memKB = prefs.getInt(_kArgon2MemoryKB) ?? _argon2LegacyMemoryKB;
-      final iter = prefs.getInt(_kArgon2Iterations) ?? _argon2LegacyIterations;
+      final memKB = prefs.getInt(_kArgon2MemoryKB) ?? kArgon2LegacyMemoryKB;
+      final iter = prefs.getInt(_kArgon2Iterations) ?? kArgon2LegacyIterations;
       key = await Isolate.run(
         () => _deriveKeyArgon2id(password, salt, memKB, iter),
       );
@@ -617,13 +599,13 @@ class VaultService {
       // peut être restauré sur n'importe quel device, on cible donc la
       // sécurité maximale plutôt que la vitesse. Cohérent avec les
       // anciens coffres v2.6.0–v2.7.0.
-      final salt = _randomBytes(_saltLen);
+      final salt = _randomBytes(kVaultSaltLen);
       final exportKeyLocal = await Isolate.run(
         () => _deriveKeyArgon2id(
           exportPassword,
           salt,
-          _argon2ExportMemoryKB,
-          _argon2ExportIterations,
+          kArgon2ExportMemoryKB,
+          kArgon2ExportIterations,
         ),
       );
       exportKey = exportKeyLocal;
@@ -633,14 +615,14 @@ class VaultService {
       // (magic|version|reserved|argon2_mem|argon2_iter|salt|nonce). Tout
       // tampering du header (incl. params Argon2 ou sel) est détecté par
       // le tag GCM lors du decrypt.
-      final nonce = _randomBytes(_nonceLen);
+      final nonce = _randomBytes(kVaultNonceLen);
       final headerForAad =
           (BytesBuilder()
                 ..add(_backupMagic)
                 ..addByte(_backupVersion)
                 ..add(const [0, 0, 0]) // reserved
-                ..add(_int32be(_argon2ExportMemoryKB))
-                ..add(_int32be(_argon2ExportIterations))
+                ..add(_int32be(kArgon2ExportMemoryKB))
+                ..add(_int32be(kArgon2ExportIterations))
                 ..add(salt)
                 ..add(nonce))
               .toBytes();
@@ -749,15 +731,15 @@ class VaultService {
       // v1 (legacy) : pas de params en header → constantes export historiques.
       // AAD = constante "rftvault-v1" (ne lie rien au header — accepté pour
       // rétro-compat des sauvegardes existantes).
-      memKB = _argon2ExportMemoryKB;
-      iter = _argon2ExportIterations;
-      headerLen = 8 + 1 + 3 + _saltLen + _nonceLen;
+      memKB = kArgon2ExportMemoryKB;
+      iter = kArgon2ExportIterations;
+      headerLen = 8 + 1 + 3 + kVaultSaltLen + kVaultNonceLen;
       saltOffset = 12;
       aad = Uint8List.fromList(utf8.encode(_backupAadV1));
     } else if (version == _backupVersionV2) {
       // v2 : params Argon2id dans le header + AAD = bytes complets du header.
       // Tampering du magic, version, params, sel ou nonce → tag GCM invalide.
-      headerLen = 8 + 1 + 3 + 4 + 4 + _saltLen + _nonceLen;
+      headerLen = 8 + 1 + 3 + 4 + 4 + kVaultSaltLen + kVaultNonceLen;
       if (raw.length < headerLen + 16) {
         throw StateError('Fichier .rftvault invalide (taille).');
       }
@@ -774,11 +756,15 @@ class VaultService {
       throw StateError('Version $version non supportée.');
     }
 
-    final salt = Uint8List.sublistView(raw, saltOffset, saltOffset + _saltLen);
+    final salt = Uint8List.sublistView(
+      raw,
+      saltOffset,
+      saltOffset + kVaultSaltLen,
+    );
     final nonce = Uint8List.sublistView(
       raw,
-      saltOffset + _saltLen,
-      saltOffset + _saltLen + _nonceLen,
+      saltOffset + kVaultSaltLen,
+      saltOffset + kVaultSaltLen + kVaultNonceLen,
     );
     final ct = Uint8List.sublistView(raw, headerLen);
 
@@ -1009,30 +995,16 @@ class VaultService {
     return cipher.process(input);
   }
 
-  // Helpers big-endian.
-  static int _readU32be(Uint8List b, int off) {
-    return (b[off] << 24) | (b[off + 1] << 16) | (b[off + 2] << 8) | b[off + 3];
-  }
-
-  static Uint8List _int32be(int v) {
-    final out = Uint8List(4);
-    out[0] = (v >> 24) & 0xff;
-    out[1] = (v >> 16) & 0xff;
-    out[2] = (v >> 8) & 0xff;
-    out[3] = v & 0xff;
-    return out;
-  }
-
-  static Uint8List _int16be(int v) {
-    final out = Uint8List(2);
-    out[0] = (v >> 8) & 0xff;
-    out[1] = v & 0xff;
-    return out;
-  }
-
-  static int _readInt32be(Uint8List b, int o) =>
-      (b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3];
-  static int _readInt16be(Uint8List b, int o) => (b[o] << 8) | b[o + 1];
+  // Helpers big-endian — implementation unique dans `vault/vault_bytes.dart`.
+  //
+  // `_readU32be` et `_readInt32be` avaient ici DEUX corps distincts, mot pour
+  // mot identiques. Rien ne le signalait, et rien n'empechait qu'un correctif
+  // applique a l'un manque a l'autre. Ils delegent desormais au meme code.
+  static int _readU32be(Uint8List b, int off) => readU32be(b, off);
+  static int _readInt32be(Uint8List b, int o) => readU32be(b, o);
+  static int _readInt16be(Uint8List b, int o) => readU16be(b, o);
+  static Uint8List _int32be(int v) => u32be(v);
+  static Uint8List _int16be(int v) => u16be(v);
 
   /// Réinitialise complètement le coffre.
   ///
@@ -1086,126 +1058,32 @@ class VaultService {
 
   Uint8List _randomBytes(int n) => SecretBytes.randomBytes(n);
 
-  /// PBKDF2 legacy (coffres < v2.6.0). Static pour `Isolate.run`.
-  ///
-  /// Note : le `String password` reste en RAM (limitation Dart, immuable).
-  /// On ne zeroize que la copie bytes UTF-8 que l'on a contrôle.
-  static Uint8List _deriveKey(String password, Uint8List salt) {
-    final pwBytes = Uint8List.fromList(utf8.encode(password));
-    try {
-      final pbkdf2 = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
-        ..init(Pbkdf2Parameters(salt, _iterations, _keyLen));
-      return pbkdf2.process(pwBytes);
-    } finally {
-      for (var i = 0; i < pwBytes.length; i++) {
-        pwBytes[i] = 0;
-      }
-    }
-  }
+  /// PBKDF2 legacy (coffres < v2.6.0) — implementation dans `vault/vault_kdf`.
+  static Uint8List _deriveKey(String password, Uint8List salt) =>
+      derivePbkdf2(password, salt);
 
-  /// Argon2id (coffres ≥ v2.6.0). Params [memoryKB] et [iterations] passés
-  /// dynamiquement (auto-tuning depuis v2.7.1, ou legacy/export sinon).
-  /// `p=1`, type ARGON2_id, version 1.3. Memory-hard → résiste au cracking
-  /// GPU bien mieux que PBKDF2.
-  /// Static pour `Isolate.run`.
-  ///
-  /// Note : le `String password` reste en RAM (limitation Dart, immuable).
-  /// On ne zeroize que la copie bytes UTF-8 que l'on contrôle. L'isolate
-  /// duplique aussi le password à l'envoi du message — ces bytes sont
-  /// hors de notre contrôle (limitation Isolate.run).
+  /// Argon2id (coffres ≥ v2.6.0) — implementation dans `vault/vault_kdf`.
   static Uint8List _deriveKeyArgon2id(
     String password,
     Uint8List salt,
     int memoryKB,
     int iterations,
-  ) {
-    final pwBytes = Uint8List.fromList(utf8.encode(password));
-    try {
-      final params = Argon2Parameters(
-        Argon2Parameters.ARGON2_id,
-        salt,
-        desiredKeyLength: _keyLen,
-        iterations: iterations,
-        memory: memoryKB,
-        lanes: _argon2Lanes,
-        version: Argon2Parameters.ARGON2_VERSION_13,
-      );
-      final argon2 = Argon2BytesGenerator()..init(params);
-      final out = Uint8List(_keyLen);
-      argon2.deriveKey(pwBytes, 0, out, 0);
-      return out;
-    } finally {
-      for (var i = 0; i < pwBytes.length; i++) {
-        pwBytes[i] = 0;
-      }
-    }
-  }
+  ) => deriveArgon2id(password, salt, memoryKB, iterations);
 
   // ── Auto-tuning Argon2id (par device) ──────────────────────────────────────
 
-  /// Bench rapide à params minimums pour estimer la vitesse Argon2id du
-  /// device. Static pour `Isolate.run`. Retourne le temps en ms.
-  static int _benchArgon2id() {
-    final salt = Uint8List(_saltLen);
-    final pwBytes = Uint8List(32);
-    final stopwatch = Stopwatch()..start();
-    final params = Argon2Parameters(
-      Argon2Parameters.ARGON2_id,
-      salt,
-      desiredKeyLength: _keyLen,
-      iterations: _argon2BenchIterations,
-      memory: _argon2BenchMemoryKB,
-      lanes: _argon2Lanes,
-      version: Argon2Parameters.ARGON2_VERSION_13,
-    );
-    final argon2 = Argon2BytesGenerator()..init(params);
-    final out = Uint8List(_keyLen);
-    argon2.deriveKey(pwBytes, 0, out, 0);
-    stopwatch.stop();
-    return stopwatch.elapsedMilliseconds;
-  }
+  /// Bench et calibrage — implementation dans `vault/vault_kdf`, ou ils sont
+  /// enfin testables. `_calibrateFromBench` decide des parametres de securite
+  /// du coffre A VIE : ils sont ecrits au setup et jamais recalcules.
+  static int _benchArgon2id() => benchArgon2id();
 
-  /// Calcule des params Argon2id qui ciblent ~[_argon2TargetMs] sur ce
-  /// device, à partir d'un temps mesuré [benchMs] aux params bench.
-  /// Bornes [4Mo..32Mo] × [2..4] iter pour rester safe sur low-end (Redmi 9C 3GB).
-  static ({int memoryKB, int iterations}) _calibrateFromBench(int benchMs) {
-    if (benchMs <= 0) {
-      // Fallback de sécurité (mesure absurde) : params médians.
-      return (memoryKB: 12288, iterations: 2);
-    }
-    if (benchMs >= _argon2TargetMs) {
-      // Device déjà lent au bench min → params minimums.
-      return (memoryKB: _argon2MinMemoryKB, iterations: _argon2MinIterations);
-    }
-    // Argon2id est ~linéaire en (memory × iterations).
-    const benchWork = _argon2BenchMemoryKB * _argon2BenchIterations; // 8192
-    final scaleFactor = _argon2TargetMs / benchMs;
-    final targetWork = (benchWork * scaleFactor).round();
-
-    int mem;
-    int iter;
-    if (targetWork <= _argon2MaxMemoryKB * _argon2MinIterations) {
-      // On peut tenir avec t=2, on bumpe juste la memory.
-      mem = (targetWork / _argon2MinIterations).round();
-      iter = _argon2MinIterations;
-    } else {
-      // Memory au max, on bumpe iter.
-      mem = _argon2MaxMemoryKB;
-      iter = (targetWork / _argon2MaxMemoryKB).round();
-    }
-    // Arrondi à des multiples de 1024 KB (cohérence + lecture humaine).
-    mem = ((mem / 1024).round() * 1024).clamp(
-      _argon2MinMemoryKB,
-      _argon2MaxMemoryKB,
-    );
-    iter = iter.clamp(_argon2MinIterations, _argon2MaxIterations);
-    return (memoryKB: mem, iterations: iter);
-  }
+  static ({int memoryKB, int iterations}) _calibrateFromBench(int benchMs) =>
+      calibrateArgon2Params(benchMs);
 
   /// Mesure + calcule les params Argon2id optimaux pour le device courant.
   /// À appeler une fois au setup.
   ///
-  /// Lance [_argon2BenchSamples] benchs successifs en Isolate et garde le
+  /// Lance [kArgon2BenchSamples] benchs successifs en Isolate et garde le
   /// minimum (= meilleur cas, CPU non-throttled). Évite qu'un setup fait
   /// téléphone chaud / sous load fixe des params trop faibles à vie.
   ///
@@ -1213,7 +1091,7 @@ class VaultService {
   /// params médians (m=12 Mo, t=2) — sécurité priorisée sur vitesse.
   Future<({int memoryKB, int iterations})> _calibrateArgon2() async {
     final samples = <int>[];
-    for (var i = 0; i < _argon2BenchSamples; i++) {
+    for (var i = 0; i < kArgon2BenchSamples; i++) {
       try {
         samples.add(await Isolate.run(_benchArgon2id));
       } catch (e) {
@@ -1237,56 +1115,33 @@ class VaultService {
 
   /// Chiffre en v2 (magic "RFT2" + nonce + ciphertext+tag, AAD = prefix|filename).
   Uint8List _encryptV2(List<int> plain, Uint8List key, String filename) {
-    final nonce = _randomBytes(_nonceLen);
-    final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
+    final nonce = _randomBytes(kVaultNonceLen);
+    final aad = vaultAad(filename);
     final cipher = GCMBlockCipher(AESEngine())
       ..init(true, AEADParameters(KeyParameter(key), 128, nonce, aad));
     final ct = cipher.process(Uint8List.fromList(plain));
     final out = BytesBuilder()
-      ..add(_magicV2)
+      ..add(kVaultMagicV2)
       ..add(nonce)
       ..add(ct);
     return out.toBytes();
   }
 
-  /// Déchiffre auto-détectant le format (magic v2 sinon fallback v1 sans AAD).
+  /// Déchiffre en détectant le format — implementation dans
+  /// `vault/vault_blob.dart`.
   ///
-  /// Si le coffre est marqué `v2-only` (`_kV2Only=true`, set au setup d'un
-  /// coffre v2.12.0+), on refuse le fallback v1 — protection contre une
-  /// substitution malveillante .enc v2 → blob v1 forgé qui contournerait
-  /// l'AAD-binding au filename.
-  Uint8List _decryptAuto(Uint8List blob, Uint8List key, String filename) {
-    if (blob.length >= 4 + _nonceLen + 16 &&
-        blob[0] == _magicV2[0] &&
-        blob[1] == _magicV2[1] &&
-        blob[2] == _magicV2[2] &&
-        blob[3] == _magicV2[3]) {
-      // Format v2.
-      // G6 v2.12.1 — sublistView (zéro-copie) au lieu de sublist (copie).
-      // Sur blobs 4-5 Mo : ~10-20 ms gagnés + 2× footprint RAM transitoire
-      // évité. Cohérence avec path natif déjà optimisé.
-      final nonce = Uint8List.sublistView(blob, 4, 4 + _nonceLen);
-      final ct = Uint8List.sublistView(blob, 4 + _nonceLen);
-      final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
-      final cipher = GCMBlockCipher(AESEngine())
-        ..init(false, AEADParameters(KeyParameter(key), 128, nonce, aad));
-      return cipher.process(ct);
-    }
-    // F1/P1 sécu — coffre v2-only : refus du fallback v1.
-    if (_v2OnlyCache == true) {
-      throw StateError(
-        'Format invalide (coffre v2-only) — possible tampering.',
+  /// `v2Only` y est un PARAMETRE et non plus un champ statique lu au passage.
+  /// Le refus du repli v1 protege contre la substitution d'un `.enc` v2 par un
+  /// blob v1 forge, qui contournerait la liaison de l'AAD au nom de fichier ;
+  /// il n'etait couvert par aucun test direct, faute de pouvoir l'atteindre
+  /// sans monter un coffre complet. Il l'est desormais.
+  Uint8List _decryptAuto(Uint8List blob, Uint8List key, String filename) =>
+      decryptAuto(
+        blob: blob,
+        key: key,
+        filename: filename,
+        v2Only: _v2OnlyCache == true,
       );
-    }
-    // Format v1 (legacy) : nonce + ciphertext+tag, AAD vide.
-    if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
-    final nonce = Uint8List.sublistView(blob, 0, _nonceLen);
-    final ct = Uint8List.sublistView(blob, _nonceLen);
-    final cipher = GCMBlockCipher(
-      AESEngine(),
-    )..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
-    return cipher.process(ct);
-  }
 
   /// Encrypt avec routing 3 niveaux :
   /// - <1 Mo : main isolate (PointyCastle Dart pur, instantané)
@@ -1347,12 +1202,14 @@ class VaultService {
     return Isolate.run(() => _decryptAuto(blob, key, filename));
   }
 
+  /// Le controle du magic etait recopie a la main a QUATRE endroits de ce
+  /// fichier, chacun avec ses propres index. Un seul `startsWithMagic`
+  /// desormais : c'est exactement le genre de code ou un index oublie passe
+  /// inapercu, et ou l'erreur consiste a accepter un blob qu'il fallait
+  /// refuser.
   static bool _isV2Format(Uint8List blob) =>
-      blob.length >= 4 + _nonceLen + 16 &&
-      blob[0] == _magicV2[0] &&
-      blob[1] == _magicV2[1] &&
-      blob[2] == _magicV2[2] &&
-      blob[3] == _magicV2[3];
+      blob.length >= 4 + kVaultNonceLen + kVaultTagLen &&
+      startsWithMagic(blob, kVaultMagicV2);
 
   /// True si le code d'erreur du channel crypto natif est une erreur réelle
   /// d'authentification / validation — qui doit être propagée et non masquée
@@ -1372,8 +1229,8 @@ class VaultService {
     Uint8List key,
     String filename,
   ) async {
-    final nonce = _randomBytes(_nonceLen);
-    final aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
+    final nonce = _randomBytes(kVaultNonceLen);
+    final aad = vaultAad(filename);
     final result = await _nativeChannel.invokeMethod<Uint8List>('encrypt', {
       'key': key,
       'nonce': nonce,
@@ -1382,7 +1239,7 @@ class VaultService {
     });
     if (result == null) throw StateError('Native encrypt returned null');
     final out = BytesBuilder()
-      ..add(_magicV2)
+      ..add(kVaultMagicV2)
       ..add(nonce)
       ..add(result);
     return out.toBytes();
@@ -1397,20 +1254,16 @@ class VaultService {
     Uint8List nonce;
     Uint8List ct;
     Uint8List aad;
-    if (blob.length >= 4 + _nonceLen + 16 &&
-        blob[0] == _magicV2[0] &&
-        blob[1] == _magicV2[1] &&
-        blob[2] == _magicV2[2] &&
-        blob[3] == _magicV2[3]) {
+    if (_isV2Format(blob)) {
       // Format v2
-      nonce = Uint8List.sublistView(blob, 4, 4 + _nonceLen);
-      ct = Uint8List.sublistView(blob, 4 + _nonceLen);
-      aad = Uint8List.fromList(utf8.encode('$_aadPrefix$filename'));
+      nonce = Uint8List.sublistView(blob, 4, 4 + kVaultNonceLen);
+      ct = Uint8List.sublistView(blob, 4 + kVaultNonceLen);
+      aad = vaultAad(filename);
     } else {
       // Format v1 (legacy) : nonce + ct+tag, AAD vide.
-      if (blob.length < _nonceLen + 16) throw StateError('Bloc invalide');
-      nonce = Uint8List.sublistView(blob, 0, _nonceLen);
-      ct = Uint8List.sublistView(blob, _nonceLen);
+      if (blob.length < kVaultNonceLen + 16) throw StateError('Bloc invalide');
+      nonce = Uint8List.sublistView(blob, 0, kVaultNonceLen);
+      ct = Uint8List.sublistView(blob, kVaultNonceLen);
       aad = Uint8List(0);
     }
     final result = await _nativeChannel.invokeMethod<Uint8List>('decrypt', {
