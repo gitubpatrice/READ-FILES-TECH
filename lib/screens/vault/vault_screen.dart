@@ -876,6 +876,100 @@ class _VaultContentState extends State<_VaultContent> {
 
   // ── Restaurer un coffre depuis un .rftvault ───────────────────────────────
 
+  /// Rend compte d'une restauration, en distinguant les trois issues.
+  ///
+  /// Elles etaient auparavant fondues en deux nombres, et le message
+  /// s'affichait « N ignore(s) (homonyme) » y compris quand l'ecriture avait
+  /// ECHOUE. L'utilisateur en concluait que ses fichiers etaient deja la,
+  /// alors qu'ils n'avaient pas ete ecrits — le pire message possible sur un
+  /// chemin de restauration.
+  ///
+  /// Le cas « tout etait deja present » meritait en outre une sortie : rien ne
+  /// permettait de forcer le remplacement, si bien qu'une restauration sur un
+  /// coffre non vide ne pouvait RIEN faire et ne le disait pas.
+  void _annonceRestauration(RestoreResult r, File backup, String pwd) {
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
+
+    if (r.failed > 0) {
+      snack.error(
+        '${r.restored} restauré(s), ${r.failed} en échec — '
+        'vérifiez l\'espace disque disponible.',
+        duration: kSnackLong,
+      );
+      return;
+    }
+
+    if (r.restored == 0 && r.skipped > 0) {
+      snack.info(
+        'Rien restauré : ${r.skipped} fichier(s) déjà présent(s) dans le '
+        'coffre.',
+        duration: kSnackLong,
+        action: SnackBarAction(
+          label: 'Remplacer',
+          onPressed: () => _restoreOverwrite(backup, pwd),
+        ),
+      );
+      return;
+    }
+
+    final parts = <String>[
+      '${r.restored} restauré${r.restored > 1 ? "s" : ""}',
+      if (r.skipped > 0) '${r.skipped} déjà présent${r.skipped > 1 ? "s" : ""}',
+    ];
+    snack.info(parts.join(' · '));
+  }
+
+  /// Rejoue la restauration en ecrasant les homonymes, apres confirmation.
+  Future<void> _restoreOverwrite(File backup, String pwd) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Remplacer les fichiers ?'),
+        content: const Text(
+          'Les fichiers du coffre portant le même nom seront écrasés par ceux '
+          'de la sauvegarde. Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remplacer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final snack = SnackTarget.of(context, stillWanted: () => mounted);
+    double progress = 0;
+    final dialog = _showProgressDialog(
+      title: 'Restauration en cours…',
+      progressOf: () => progress,
+    );
+    try {
+      final r = await widget.service.restoreFromBackup(
+        backupFile: backup,
+        exportPassword: pwd,
+        overwriteExisting: true,
+        onProgress: (p) {
+          progress = p;
+          dialog.refresh();
+        },
+      );
+      if (!mounted) return;
+      dialog.close();
+      await _refresh();
+      if (!mounted) return;
+      _annonceRestauration(r, backup, pwd);
+    } catch (e) {
+      if (mounted) dialog.close();
+      snack.error('Erreur : $e');
+    }
+  }
+
   Future<void> _restoreBackup() async {
     final snack = SnackTarget.of(context, stillWanted: () => mounted);
     // Picker custom RFT cohérent avec le reste de l'app — raccourcis colorés
@@ -937,12 +1031,7 @@ class _VaultContentState extends State<_VaultContent> {
       );
       if (mounted) progressDialog.close();
       await _refresh();
-      final parts = <String>[
-        '${result.restored} restauré${result.restored > 1 ? "s" : ""}',
-        if (result.skipped > 0)
-          '${result.skipped} ignoré${result.skipped > 1 ? "s" : ""} (homonyme)',
-      ];
-      snack.info(parts.join(' · '));
+      _annonceRestauration(result, File(path), pwd);
     } catch (e) {
       if (mounted) progressDialog.close();
       // Tampering ou mauvais password → message neutre (pas d'oracle).

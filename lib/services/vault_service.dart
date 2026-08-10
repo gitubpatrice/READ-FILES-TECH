@@ -860,7 +860,8 @@ class VaultService {
       return RestoreResult(
         total: entries.length,
         restored: restored,
-        skipped: skipped + failed,
+        skipped: skipped,
+        failed: failed,
       );
     } finally {
       // _parseBackupPayload alloue une COPIE pour chaque e.plain (via
@@ -1294,14 +1295,26 @@ class RestoreResult {
   /// Nombre de fichiers effectivement restaurés (écrits dans le coffre).
   final int restored;
 
-  /// Nombre de fichiers ignorés car homonymes existent déjà
-  /// (et `overwriteExisting=false`).
+  /// Nombre de fichiers ignorés car un homonyme existe déjà dans le coffre
+  /// (et `overwriteExisting=false`). Cas bénin : rien n'a été perdu.
   final int skipped;
+
+  /// Nombre d'entrées dont l'écriture a ÉCHOUÉ — disque plein, permission
+  /// refusée, nom rejeté par le système de fichiers.
+  ///
+  /// **Séparé de [skipped] depuis le 2026-08-10.** Les deux étaient additionnés
+  /// avant d'être rendus, et l'interface étiquetait le total « (homonyme) » :
+  /// une écriture ratée était donc annoncée à l'utilisateur comme un fichier
+  /// déjà présent. Il en concluait que ses données étaient là, alors qu'elles
+  /// n'avaient pas été écrites — le pire message possible sur un chemin de
+  /// restauration.
+  final int failed;
 
   const RestoreResult({
     required this.total,
     required this.restored,
     required this.skipped,
+    this.failed = 0,
   });
 }
 
