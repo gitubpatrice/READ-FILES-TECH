@@ -26,9 +26,25 @@ const kBrandBlue = Color(0xFF1565C0);
 const kErrorRed = Color(0xFFD32F2F);
 
 /// Durées standardisées pour SnackBar (homogénéise les valeurs disparates).
-const kSnackShort = Duration(seconds: 2);
+///
+/// [kSnackShort] est passée de 2 à 3 secondes le 2026-08-10 : deux secondes ne
+/// suffisaient pas à lire un message un peu long avant qu'il ne parte.
+const kSnackShort = Duration(seconds: 3);
 const kSnackMedium = Duration(seconds: 4);
 const kSnackLong = Duration(seconds: 6);
+
+/// Durée d'un bandeau qui demande une **décision**, pas seulement une lecture.
+///
+/// Les durées ci-dessus sont calibrées pour lire et laisser partir. Dès qu'une
+/// action est proposée, il faut lire, comprendre l'enjeu, puis viser un
+/// bouton. Plusieurs bandeaux à action n'indiquaient aucune durée et tombaient
+/// donc sur le défaut « info » : l'action disparaissait avant d'avoir pu être
+/// lue — constaté le 2026-08-10 sur « Rien restauré … Remplacer ».
+///
+/// Sept secondes, valeur choisie par Patrice à l'usage sur appareil. C'est
+/// court pour lire *et* décider ; si une action se révèle manquée en pratique,
+/// c'est ici qu'il faut l'allonger, pas au site d'appel.
+const kSnackAction = Duration(seconds: 7);
 
 /// De quoi afficher un bandeau **après** un `await`.
 ///
@@ -88,20 +104,42 @@ final class SnackTarget {
   }) => SnackTarget._(ScaffoldMessenger.of(context), stillWanted);
 
   /// Bandeau neutre.
-  void info(
-    String message, {
-    Duration duration = kSnackShort,
+  ///
+  /// [duration] laissee nulle, la duree se deduit de la presence d'une action —
+  /// voir [_resolve].
+  void info(String message, {Duration? duration, SnackBarAction? action}) {
+    _show(
+      _build(
+        content: Text(message),
+        duration: _resolve(duration, action, kSnackShort),
+        action: action,
+      ),
+    );
+  }
+
+  /// Duree effective d'un bandeau.
+  ///
+  /// **Pourquoi ce n'est pas un simple defaut de parametre.** Un bandeau qui
+  /// PROPOSE quelque chose demande de lire, de comprendre l'enjeu, puis de
+  /// viser un bouton. Les durees de lecture n'y suffisent pas : plusieurs
+  /// bandeaux a action n'indiquaient aucune duree et tombaient donc sur les
+  /// deux secondes du defaut « info » — l'action disparaissait avant d'avoir
+  /// pu etre lue. Constate le 2026-08-10 sur « Rien restaure … Remplacer ».
+  ///
+  /// Le resoudre ICI plutot qu'a chaque appel ferme le mode de panne pour de
+  /// bon : un futur bandeau a action heritera de la bonne duree sans que
+  /// personne ait a y penser.
+  static Duration _resolve(
+    Duration? explicite,
     SnackBarAction? action,
-  }) {
-    _show(_build(content: Text(message), duration: duration, action: action));
+    Duration defautSansAction,
+  ) {
+    if (explicite != null) return explicite;
+    return action != null ? kSnackAction : defautSansAction;
   }
 
   /// Bandeau d'erreur : fond [kErrorRed], texte blanc.
-  void error(
-    Object error, {
-    Duration duration = kSnackMedium,
-    SnackBarAction? action,
-  }) {
+  void error(Object error, {Duration? duration, SnackBarAction? action}) {
     _show(
       _build(
         content: Text(
@@ -109,7 +147,7 @@ final class SnackTarget {
           style: const TextStyle(color: Colors.white),
         ),
         background: kErrorRed,
-        duration: duration,
+        duration: _resolve(duration, action, kSnackMedium),
         action: action,
       ),
     );
@@ -163,7 +201,7 @@ final class SnackTarget {
 void showFloatingSnack(
   BuildContext context,
   String message, {
-  Duration duration = kSnackShort,
+  Duration? duration,
   SnackBarAction? action,
 }) {
   if (!context.mounted) return;
@@ -181,7 +219,7 @@ void showFloatingSnack(
 void showErrorSnack(
   BuildContext context,
   Object error, {
-  Duration duration = kSnackMedium,
+  Duration? duration,
   SnackBarAction? action,
 }) {
   if (!context.mounted) return;

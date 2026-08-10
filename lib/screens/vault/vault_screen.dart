@@ -860,7 +860,7 @@ class _VaultContentState extends State<_VaultContent> {
       snack.info(
         'Sauvegarde : Files Tech/Sauvegardes coffre/'
         '${PathSafe.basename(out.path)}',
-        duration: kSnackLong,
+
         action: SnackBarAction(
           label: 'Partager',
           onPressed: () => Share.shareXFiles([
@@ -894,7 +894,6 @@ class _VaultContentState extends State<_VaultContent> {
       snack.error(
         '${r.restored} restauré(s), ${r.failed} en échec — '
         'vérifiez l\'espace disque disponible.',
-        duration: kSnackLong,
       );
       return;
     }
@@ -903,7 +902,7 @@ class _VaultContentState extends State<_VaultContent> {
       snack.info(
         'Rien restauré : ${r.skipped} fichier(s) déjà présent(s) dans le '
         'coffre.',
-        duration: kSnackLong,
+
         action: SnackBarAction(
           label: 'Remplacer',
           onPressed: () => _restoreOverwrite(backup, pwd),
