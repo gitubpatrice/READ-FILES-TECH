@@ -10,39 +10,41 @@
 
 ## 1. État
 
+*État au 2026-08-10, après la bascule `excel` et les correctifs d'affichage.*
+
 | | |
 |---|---|
 | Branche | `main`, arbre **propre** |
-| Commits depuis `c89b820` (v2.14.0) | **40** |
+| Commits depuis `c89b820` (v2.14.0) | **43** |
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **140 tests verts** (16 fichiers) |
-| Build release | **passe** — 35,3 / 40,5 / 42,7 Mo |
+| `flutter test` | **141 tests verts** (16 fichiers) |
+| Build release | **passe** — 35,6 / 40,7 / 42,9 Mo |
 | Version `pubspec.yaml` | **2.14.0+21400** — non bumpée, volontairement |
 | Tag | aucun |
 | Appareils | Galaxy S9 (Android 10, **API 29**) et Galaxy S24 FE (Android 16, **API 36**), APK installé sur les deux |
 
-## 2. ⚠️ LE POINT À FAIRE EN PREMIER DEMAIN
+## 2. ✅ CLOS le 2026-08-10 — l'extraction d'archive est vérifiée sur appareil
 
-**Vérifier que l'extraction d'archive fonctionne sur le S9.**
+Ce paragraphe demandait de confirmer que l'extraction fonctionnait, après deux
+pannes consécutives sur ce chemin le 2026-08-09 (un **ANR**, puis une fermeture
+d'`Isolate.run` qui **embarquait l'arbre de widgets**), chacune avec
+`flutter analyze` à 0 et tous les tests verts.
 
-Fichier : `Téléchargements/rft_test_v215/01_bombe_300Mo.zip` — 306 Ko sur le
-disque, annonce 1 Ko, produit 300 Mo. L'ouvrir, puis toucher l'icône
-« Extraire tout » en haut à droite.
+**Constaté sur les deux téléphones** : `01_bombe_300Mo.zip` s'ouvre, « Extraire
+tout » produit le bandeau rouge de refus, sans gel, sans « Invalid argument »,
+sans boîte « ne répond pas ». Journaux vides des deux côtés.
 
-**Attendu** : bandeau rouge « Extrait dans : … — 1 entrée(s) refusée(s) »,
-sans gel, sans « Invalid argument », sans boîte « ne répond pas ».
+**Ce que la vérification a coûté en plus.** La migration vers `archive` 4 a
+révélé que ce chemin n'était toujours pas testé pour ce qui compte — voir §4.
 
-**Pourquoi c'est le premier point.** Ce chemin a cassé **deux fois de suite**
-aujourd'hui, chaque fois avec `flutter analyze` à 0 et tous les tests verts :
+## 2 bis. Le point à faire en premier la prochaine fois
 
-1. d'abord un **ANR** — la garde inflatait 200 Mo sur le thread de l'interface ;
-2. puis, après correction, une fermeture d'`Isolate.run` qui **embarquait
-   l'arbre de widgets** et rendait `Invalid argument(s): object is unsendable`.
-   L'extraction était entièrement cassée.
-
-Les deux ont été trouvés par l'appareil. Aucun test, aucune relecture externe —
-il y en a eu trois — ne les a vus. Le correctif de la seconde est en place mais
-**n'a pas encore été constaté sur appareil**.
+Un doute non levé : le bandeau de refus n'est apparu **qu'au second appui** sur
+« Extraire tout ». L'explication probable est que le premier appui a eu lieu
+pendant le chargement, quand l'icône est désactivée et ne donne aucun retour —
+ni visuel, ni sonore. **Non confirmé.** Si le bandeau manque alors que la liste
+des entrées est déjà affichée, ce n'est plus une question d'ergonomie mais un
+défaut réel.
 
 ## 3. Décisions prises, à ne pas rouvrir
 
@@ -53,6 +55,8 @@ il y en a eu trois — ne les a vus. Le correctif de la seconde est en place mai
 | Community License Syncfusion | **Reportée sciemment.** |
 | F-Droid | **Pas un objectif.** |
 | **Passer à Kotlin** | **Non.** Ne retirerait pas la télémétrie — ML Kit est un AAR natif, identique en Kotlin. Coût : réécriture de plusieurs mois qui reperdrait tous les défauts corrigés ces deux jours. |
+| **Tableur : `excel` → `excel_community`** | **Fait le 2026-08-10.** `excel 4.0.6` est mort depuis août 2024 et ne lisait que le `.xlsx`. Comparé à `excel_plus` sur banc isolé ; retenu pour le diff le plus étroit. Voir §4. |
+| **Couleurs d'alerte** | `kErrorRed` (#D32F2F) pour un **fond de bandeau** ou une **bordure**, qui tiennent sur n'importe quel fond ; `colorScheme.error` pour le **texte posé sur la page**, où un rouge fixe deviendrait illisible en thème sombre. Ne pas unifier les deux. |
 
 ## 4. Dépendances — la carte, vérifiée au solveur
 
@@ -61,19 +65,48 @@ il y en a eu trois — ne les a vus. Le correctif de la seconde est en place mai
 (`permission_handler` 13 est compilé contre l'API 37 ; compiler en dessous peut
 produire un `NoSuchMethodError` **à l'exécution**).
 
-**Bloqué, et une seule clé de voûte :**
+**La clé de voûte `excel` — ✅ tranchée le 2026-08-10.**
 
-```
-excel 4.0.6  →  exige xml <7        →  bloque syncfusion 34
-             →  exige archive ^3.6  →  bloque archive 4
-                                     →  bloque image 4.9
-```
+`excel 4.0.6` était sa dernière version publiée (20 août 2024) et bloquait
+`archive` 4, `image` 4.9 et syncfusion 34. En allant le vérifier on a trouvé
+pire que de la dette : **il ne lit que le `.xlsx`**, alors que l'application lui
+route aussi le `.xls` et le `.ods`. Les deux affichaient « Fichier illisible ».
 
-`excel 4.0.6` **est sa dernière version publiée**. Il n'est utilisé qu'à deux
-endroits : `xlsx_viewer_screen.dart:33` (lecture) et `convert_screen.dart:143`
-(écriture). **Le remplacer débloquerait trois montées d'un coup** — mais c'est
-un changement de fonctionnalité qui exige de revalider de vrais `.xlsx` et
-`.ods` sur appareil. À décider en début de session, pas en fin.
+Bascule vers **`excel_community`**, fork vivant à l'API identique. Comparé à
+`excel_plus` sur banc isolé : les deux lisent le `.xlsx` et un vrai `.xls`
+BIFF8, **aucun ne lit l'ODS**. `excel_community` retenu pour le diff le plus
+étroit. Résultat : `.xls` réellement lisible, `.ods` refusé explicitement.
+
+`archive` 3.6.1 → 4.0.9 suit, imposé par le fork. **`image` 4.9 et syncfusion
+34 sont désormais débloqués** — à faire séparément, avec repassage appareil.
+
+### ⚠️ Le piège d'archive 4, à ne jamais rouvrir
+
+`ZipFile.decompress(output)` est le raccourci qui semble évident en 4.x. **Il
+est à proscrire.** Sur `dart:io` — donc sur Android — il délègue à
+`ZLibDecoder.decodeStream`, qui alimente un `ChunkedConversionSink.withCallback`
+(`_zlib_decoder_io.dart:24`) : cette variante accumule tous les fragments et ne
+rappelle le puits qu'à la fermeture. La bombe est intégralement décompressée
+avant que la garde ne parle. Le refus reste correct, l'allocation ne l'est plus
+— c'est mot pour mot l'ANR du S9. `Inflate.stream` reste donc en place.
+
+### Le trou de tests que ça a révélé
+
+En substituant `decompress(out)` à `Inflate.stream`, **les neuf tests de
+`archive_safe` sont restés verts**. Ils vérifiaient que l'entrée est *refusée*,
+jamais que la mémoire reste *bornée* — la distinction exacte qui séparait le
+correctif du S9 de l'ANR qu'il devait guérir.
+
+Nouveau test « la borne tient, pas seulement le refus », à seuil
+**auto-étalonné** : il mesure d'abord le coût d'une décompression complète de
+256 Mo sur la machine courante, puis exige que le refus en coûte moins du quart.
+Falsifié dans les deux sens — rouge avec le sabotage (110 ms contre 293 ms), vert
+sans.
+
+Deux observables essayés et écartés, trace gardée dans le fichier : la taille de
+notre propre tampon ne bouge pas (l'accumulation a lieu **dans** le sink de
+zlib), et `ProcessInfo.currentRss` ne reflète pas le tas Dart sous Windows —
+mesuré à −1 Mo pendant que 256 Mo étaient décompressés.
 
 `share_plus` 13 est bloqué par **`files_tech_core`**, qui épingle `^10.0.3`. Le
 débloquer engage tout le portefeuille.
@@ -82,11 +115,18 @@ débloquer engage tout le portefeuille.
 
 ## 5. Ce qui reste
 
-1. **Le test du S9** (§2).
-2. **Décider du sort d'`excel`** (§4).
-3. **A-P0a — éclater `vault_service.dart` (1451 l.)**, dans une session qui
+1. **`image` 4.9 et syncfusion 34**, débloqués par la bascule d'`excel`. À faire
+   dans un commit séparé, avec repassage sur les deux appareils.
+2. **A-P0a — éclater `vault_service.dart` (1451 l.)**, dans une session qui
    *commence* par lui. Règle : les 25 tests du coffre ne doivent pas être
    modifiés. S'ils doivent l'être, le comportement change — signal d'arrêt.
+3. **L'ODS n'est toujours pas lisible**, il est seulement refusé franchement.
+   La machinerie existe pourtant déjà : `text_extraction_service.dart` sait
+   parser du XML OpenDocument (`odtXmlToPlainText`) avec `archive` + `xml`, et
+   un `content.xml` d'ODS n'est qu'une suite de `table:table-row` /
+   `table:table-cell` / `text:p`. Aucune dépendance nouvelle ne serait requise.
+   À décider comme une fonctionnalité, pas comme un correctif.
+4. **Le doute du second appui** (§2 bis).
 4. `docxXmlToPlainText` écrit une ligne par paragraphe même vide (signalé par
    GPT). Comportement du service, aligné avec l'outil de conversion. Le changer
    modifierait aussi la sortie de l'outil — à décider à part.
@@ -115,6 +155,22 @@ débloquer engage tout le portefeuille.
   coffre » se contredisent ; j'ai appliqué la première sans voir la seconde.
 - **Vérifier qu'un patch est appliqué fait partie de l'appliquer.** L'octet NUL
   a résisté à cinq tentatives.
+- **Un test vert ne dit pas lequel des deux faits il vérifie.** Ceux de
+  `archive_safe` prouvaient le *refus* et personne n'avait remarqué qu'ils ne
+  prouvaient pas la *borne*. Saboter le correctif et constater que rien ne
+  rougit est le seul moyen de le découvrir — c'est devenu un geste systématique
+  après tout correctif de sécurité.
+- **Une mesure invalide est pire qu'aucune mesure.** La première mesure du temps
+  de refus donnait 0 ms parce que la bombe était *honnête* : refusée au contrôle
+  bon marché, elle n'atteignait jamais le chemin testé. Le chiffre était réel et
+  ne mesurait rien.
+- **Un seuil absolu dans un test de performance est une dette.** Celui de la
+  borne s'étalonne sur la machine courante avant de juger.
+- **Vérifier une affirmation chiffrée avant de l'écrire en commentaire.** Le
+  contraste de `kErrorRed` a été annoncé à 5,7:1 puis calculé à 4,98:1.
+- **Le thème dérivé peut trahir l'intention.** `errorContainer` en Material 3
+  se dérive du `seedColor` : avec une graine bleue, un refus de sécurité
+  s'affichait en saumon. Une couleur d'alerte ne se délègue pas.
 
 ## 7. Outils — pièges constatés
 
