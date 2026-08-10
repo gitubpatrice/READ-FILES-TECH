@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:csv/csv.dart';
-import 'package:excel/excel.dart' as xls;
+import 'package:excel_community/excel_community.dart' as xls;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show compute;
 import 'package:files_tech_core/files_tech_core.dart';

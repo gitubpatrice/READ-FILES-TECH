@@ -47,13 +47,11 @@ class ArchiveTooLargeException implements Exception {
 /// `Inflate.stream` écrit au fil de l'eau ; lever depuis `writeBytes`
 /// interrompt la décompression sur-le-champ, donc la mémoire consommée reste
 /// bornée par [maxBytes] au lieu de suivre la bombe.
-/// Puits de décompression qui refuse de dépasser [maxBytes].
 ///
-/// Enveloppe un `OutputStream` réel plutôt que de réimplémenter un tampon :
-/// `Inflate` ne se contente pas de l'interface `OutputStreamBase`, il appelle
-/// aussi `subset()` et `getBytes()` sur un `output` typé `dynamic`
-/// (`inflate.dart:312-319`, la copie arrière LZ77 relit ce qui vient d'être
-/// écrit). Un puits qui n'exposerait que l'interface abstraite ferait échouer
+/// Enveloppe un `OutputMemoryStream` réel plutôt que de réimplémenter un
+/// tampon : `Inflate` appelle aussi `subset()` et `getBytes()` pour la copie
+/// arrière LZ77, qui relit ce qui vient d'être écrit (`inflate.dart:335`). Un
+/// puits qui ne tiendrait pas son propre contenu à disposition ferait échouer
 /// la décompression de tout fichier légitime — c'est ce qu'a montré le test
 /// « une entrée pile à la limite passe ».
 ///
@@ -61,12 +59,13 @@ class ArchiveTooLargeException implements Exception {
 /// plafond d'un bloc d'inflate au plus (quelques dizaines de kilo-octets)
 /// avant de lever. C'est sans effet sur l'objectif, qui est d'empêcher une
 /// allocation de plusieurs gigaoctets.
-class _CappedOutput extends OutputStreamBase {
+class _CappedOutput extends OutputStream {
   final int maxBytes;
   final String label;
-  final OutputStream _inner = OutputStream();
+  final OutputMemoryStream _inner = OutputMemoryStream();
 
-  _CappedOutput(this.maxBytes, this.label);
+  _CappedOutput(this.maxBytes, this.label)
+    : super(byteOrder: ByteOrder.littleEndian);
 
   @override
   int get length => _inner.length;
@@ -84,43 +83,53 @@ class _CappedOutput extends OutputStreamBase {
   }
 
   @override
-  void writeBytes(List<int> bytes, [int? len]) {
-    _inner.writeBytes(bytes, len);
+  void writeBytes(List<int> bytes, {int? length}) {
+    _inner.writeBytes(bytes, length: length);
     _check();
   }
 
+  /// Copie **par tranches**, et c'est la seule façon correcte de l'écrire.
+  ///
+  /// Le plafond n'est vérifié qu'APRÈS chaque écriture. Recopier un flux d'un
+  /// seul appel aurait donc tout matérialisé avant que la borne ne puisse
+  /// s'exprimer — la garde serait présente et inopérante. Le défaut existait
+  /// dans la version archive 3, où l'appelant devait découper lui-même ;
+  /// signalé par la relecture GPT du 2026-08-09. Le découpage vit désormais
+  /// **ici**, si bien que la borne tient quel que soit l'appelant : c'est ce
+  /// que le chemin STORE d'archive 4 exige, `ZipFile.decompress` s'y réduisant
+  /// à un unique `output.writeStream(...)`.
   @override
-  void writeInputStream(InputStreamBase stream) {
-    _inner.writeInputStream(stream);
-    _check();
-  }
-
-  @override
-  void writeUint16(int value) {
-    _inner.writeUint16(value);
-    _check();
-  }
-
-  @override
-  void writeUint32(int value) {
-    _inner.writeUint32(value);
-    _check();
-  }
-
-  @override
-  void writeUint64(int value) {
-    _inner.writeUint64(value);
-    _check();
+  void writeStream(InputStream stream) {
+    const chunk = 64 * 1024;
+    while (!stream.isEOS) {
+      // `InputStream.length` vaut le nombre d'octets RESTANTS, pas la taille
+      // totale du flux — la 4.x le documente ainsi (« How many bytes are left
+      // in the stream »). Une relecture externe a soutenu le contraire le
+      // 2026-08-09 ; c'est la source qui tranche.
+      final remaining = stream.length;
+      if (remaining <= 0) break;
+      _inner.writeStream(
+        stream.readBytes(remaining < chunk ? remaining : chunk),
+      );
+      _check();
+    }
   }
 
   @override
   void flush() => _inner.flush();
 
-  // Utilisés par Inflate via `dynamic` — absents de OutputStreamBase, donc
-  // pas de @override.
-  List<int> subset(int start, [int? end]) => _inner.subset(start, end);
-  List<int> getBytes() => _inner.getBytes();
+  @override
   void clear() => _inner.clear();
+
+  // Utilisés par Inflate pour la copie arrière LZ77 (`inflate.dart:335`), qui
+  // relit ce qu'il vient d'écrire. En archive 3 ils étaient appelés via
+  // `dynamic` et absents de l'interface ; la 4.x les y a remontés. D'où le
+  // besoin de déléguer au tampon réel plutôt que de tenir notre propre buffer.
+  @override
+  Uint8List subset(int start, [int? end]) => _inner.subset(start, end);
+
+  @override
+  Uint8List getBytes() => _inner.getBytes();
 }
 
 /// Renvoie le contenu décompressé de [entry], en refusant de dépasser
@@ -138,57 +147,66 @@ Uint8List safeEntryBytes(ArchiveFile entry, String label, int maxBytes) {
 
   // 2. Contrôle réel : on inflate NOUS-MÊMES vers un puits borné.
   //
-  //    `ArchiveFile.decompress(output)` ne convient pas : pour une entrée
-  //    issue d'un `ZipDecoder`, le décodeur passe un `ZipFile` — qui étend
-  //    `FileContent` — si bien que `_content` n'est pas nul et que
-  //    `decompress()` sort immédiatement sans rien écrire dans notre puits
-  //    (`archive_file.dart:176`). C'est `ZipFile.content` qui décompresse, et
-  //    il le fait par `inflateBuffer(_rawContent.toUint8List())`, sans aucune
-  //    borne (`zip_file.dart:164`). Passer par lui, c'est déjà avoir alloué la
-  //    bombe.
+  //    On part de `rawContent` — les octets encore compressés — et on dirige
+  //    l'inflate vers le puits. En archive 3, la première version de cette
+  //    fonction appelait `decompress(out)` et rendait un buffer VIDE ; les
+  //    tests l'ont montré tout de suite. Sans eux, elle aurait été livrée en
+  //    annonçant une protection qu'elle n'exerçait pas — pire que pas de garde
+  //    du tout.
   //
-  //    On part donc de `rawContent` — les octets encore compressés — et on
-  //    dirige l'inflate vers le puits. La première version de cette fonction
-  //    appelait `decompress(out)` et rendait un buffer VIDE ; les tests l'ont
-  //    montré tout de suite. Sans eux, elle aurait été livrée en annonçant une
-  //    protection qu'elle n'exerçait pas — pire que pas de garde du tout.
-  final raw = entry.rawContent;
-  if (raw == null) {
+  //    **En archive 4, `decompress(out)` remplit bien le puits — et reste
+  //    pourtant à proscrire, pour une raison entièrement différente.** Il
+  //    délègue à `ZLibDecoder.decodeStream`, qui sur `dart:io` alimente un
+  //    `ChunkedConversionSink.withCallback` (`_zlib_decoder_io.dart:24`) :
+  //    cette variante accumule tous les fragments et ne rappelle notre puits
+  //    qu'à la fermeture. La bombe est donc intégralement décompressée avant
+  //    que la garde ne puisse parler. Le refus reste correct, l'allocation ne
+  //    l'est plus — c'est exactement l'ANR du Galaxy S9 du 2026-08-09.
+  //
+  //    Mesuré le 2026-08-10 sur une bombe de 256 Mo plafonnée à 1 Mo : 0 ms
+  //    par `Inflate.stream`, 110 ms par `decompress`. Le test « la borne tient,
+  //    pas seulement le refus » garde ce piège fermé ; il a été écrit APRÈS
+  //    avoir constaté que les neuf tests existants restaient verts malgré la
+  //    substitution.
+  final rawContent = entry.rawContent;
+  if (rawContent == null) {
     // Entrée construite en mémoire (pas issue d'un décodage) : le contenu est
     // déjà là, il n'y a rien à inflater.
-    final direct = entry.content as List<int>;
+    final direct = entry.content;
     if (direct.length > maxBytes) {
       throw ArchiveTooLargeException(label, maxBytes);
     }
     return Uint8List.fromList(direct);
   }
 
+  // `getStream(decompress: false)` rend les octets ENCORE COMPRESSÉS, mais
+  // après déchiffrement éventuel (`zip_file.dart:201-219`). En archive 3 il
+  // fallait lire `rawContent` directement, ce qui court-circuitait ZipCrypto
+  // et AES ; la 4.x rend donc ce chemin strictement meilleur.
+  final raw = rawContent.getStream(decompress: false);
   final out = _CappedOutput(maxBytes, label);
-  if (entry.compressionType == ArchiveFile.DEFLATE) {
-    Inflate.stream(raw, out);
+
+  if (entry.compression == CompressionType.deflate) {
+    // **Inflate en pur Dart, délibérément — ne pas remplacer par
+    // `rawContent.decompress(out)`.**
+    //
+    // Ce raccourci semble naturel en archive 4 : `ZipFile.decompress` sait
+    // traiter DEFLATE, BZIP2 et STORE d'un seul appel. Mais sur `dart:io` —
+    // c'est-à-dire sur Android, la seule cible qui compte ici — il délègue à
+    // `ZLibDecoder.decodeStream`, qui alimente un
+    // `ChunkedConversionSink.withCallback` (`_zlib_decoder_io.dart:24`). Cette
+    // variante **accumule tous les fragments et ne rappelle qu'à la
+    // fermeture** : les 300 Mo d'une bombe seraient intégralement matérialisés
+    // avant que `writeBytes` n'atteigne notre puits. La garde serait présente,
+    // et sans effet.
+    //
+    // `Inflate` écrit bloc par bloc, donc le contrôle s'intercale réellement.
+    Inflate.stream(raw, output: out);
   } else {
-    // STORE : rien à décompresser, mais la taille reste à contrôler.
-    //
-    // La copie se fait par tranches et non d'un seul `writeInputStream`.
-    // `_CappedOutput` ne vérifie le plafond qu'APRÈS chaque écriture : un
-    // unique appel aurait donc tout copié avant que la borne ne s'exprime, ce
-    // qui la rendait inopérante sur ce chemin. Signalé par la relecture GPT
-    // du 2026-08-09. Le chemin DEFLATE n'avait pas ce défaut : `Inflate`
-    // écrit par blocs, donc le contrôle s'intercale naturellement.
-    //
-    // `raw.length` vaut bien le NOMBRE D'OCTETS RESTANTS, pas la taille totale
-    // du flux — vérifié dans la version résolue (`pubspec.lock` : archive
-    // 3.6.1, `input_stream.dart:73` → `_length - (offset - start)`), et la 4.x
-    // le documente explicitement (« How many bytes are left in the stream »).
-    // Une relecture externe a soutenu le contraire le 2026-08-09 ; c'est la
-    // source qui tranche, et elle dit remaining.
-    const chunk = 64 * 1024;
-    while (!raw.isEOS) {
-      final remaining = raw.length;
-      out.writeInputStream(
-        raw.readBytes(remaining < chunk ? remaining : chunk),
-      );
-    }
+    // STORE (ou toute autre méthode) : rien à décompresser, mais la taille
+    // reste à contrôler. Le découpage nécessaire vit dans
+    // `_CappedOutput.writeStream`, pas ici.
+    out.writeStream(raw);
   }
   return Uint8List.fromList(out.getBytes());
 }

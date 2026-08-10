@@ -80,8 +80,9 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
       // L'encodage part sur un Isolate : c'est la doctrine du projet
       // (`hash_screen`, `convert_screen`, `docx_viewer`) et cet écran en
       // était la seule exception.
+      // `encode` rendait un `Uint8List?` en archive 3 ; la 4.x le rend non
+      // nullable, d'où la disparition du test de nullité qui suivait.
       final encoded = await Isolate.run(() => ZipEncoder().encode(archive));
-      if (encoded == null) throw Exception('Compression échouée');
 
       // Sauvegarde dans Files Tech/Conversions/ — apparaîtra dans Récents
       // via le scan auto-output de RftPickerScreen.

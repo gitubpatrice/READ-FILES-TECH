@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'package:flutter/material.dart';
-import 'package:excel/excel.dart';
+import 'package:excel_community/excel_community.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../utils/file_caps.dart';
 import '../explorer/file_type_helpers.dart';
@@ -66,6 +66,23 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
 
   Future<void> _load() async {
     try {
+      // `.ods` est routé ici depuis toujours (`file_viewer_router.dart`,
+      // `home_screen.dart`), mais aucune version du lecteur ne l'a jamais su
+      // lire : `excel` 4.0.6 refusait tout ce qui n'était pas `.xlsx`, et son
+      // fork ne fait pas mieux. L'utilisateur voyait « Fichier illisible » —
+      // un message qui accuse le fichier alors que c'est l'application qui ne
+      // sait pas. On le dit franchement, comme le fait déjà l'extraction de
+      // texte pour le `.doc` binaire (`text_extraction_service.dart:145`).
+      if (widget.path.toLowerCase().endsWith('.ods')) {
+        if (!mounted) return;
+        setState(() {
+          _error =
+              'Format .ods (OpenDocument) non supporté. Réenregistrez le '
+              'classeur en .xlsx depuis LibreOffice ou Excel.';
+          _isLoading = false;
+        });
+        return;
+      }
       // F3 : cap fichier source (anti XLSX-bomb).
       final capErr = await checkFileCap(
         File(widget.path),

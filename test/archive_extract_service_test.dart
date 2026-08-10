@@ -27,7 +27,7 @@ void main() {
     final archive = Archive();
     build(archive);
     final path = '${tmp.path}/$name';
-    File(path).writeAsBytesSync(ZipEncoder().encode(archive)!);
+    File(path).writeAsBytesSync(ZipEncoder().encode(archive));
     return path;
   }
 
@@ -35,7 +35,7 @@ void main() {
   String writeLyingZip(String name, {required int real, required int lied}) {
     final archive = Archive()
       ..addFile(ArchiveFile('bombe.bin', real, Uint8List(real)));
-    final bytes = Uint8List.fromList(ZipEncoder().encode(archive)!);
+    final bytes = Uint8List.fromList(ZipEncoder().encode(archive));
 
     // `uncompressed size`, u32 little-endian :
     //   local file header : signature 0x04034b50, champ à +22
@@ -163,7 +163,7 @@ void main() {
       for (var i = 0; i < 3; i++) {
         archive.addFile(ArchiveFile('e$i.bin', 4096, Uint8List(4096)));
       }
-      final bytes = Uint8List.fromList(ZipEncoder().encode(archive)!);
+      final bytes = Uint8List.fromList(ZipEncoder().encode(archive));
       final zip = '${tmp.path}/cumul.zip';
       File(zip).writeAsBytesSync(bytes);
       final out = '${tmp.path}/out';
@@ -188,7 +188,7 @@ void main() {
         archive.addFile(ArchiveFile('e$i.bin', 2048, Uint8List(2048)));
       }
       final zip = '${tmp.path}/plein.zip';
-      File(zip).writeAsBytesSync(ZipEncoder().encode(archive)!);
+      File(zip).writeAsBytesSync(ZipEncoder().encode(archive));
 
       expect(
         () => extractArchive(
@@ -308,7 +308,7 @@ void main() {
         archive.addFile(ArchiveFile('e$i.bin', 2048, Uint8List(2048)));
       }
       final zip = '${tmp.path}/isoplein.zip';
-      File(zip).writeAsBytesSync(ZipEncoder().encode(archive)!);
+      File(zip).writeAsBytesSync(ZipEncoder().encode(archive));
 
       await expectLater(
         extractArchiveIsolate(

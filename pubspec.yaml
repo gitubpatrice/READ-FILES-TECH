@@ -56,9 +56,14 @@ dependencies:
   shared_preferences: ^2.3.2
 
   # Formats documents
-  excel: ^4.0.6              # XLSX / ODS
+  # XLSX + XLS. Fork communautaire de `excel`, dont la dernière version
+  # (4.0.6, août 2024) ne lisait QUE le .xlsx tout en étant câblée sur .xls et
+  # .ods — les deux affichaient « Fichier illisible ». Le fork lit réellement
+  # le .xls (vérifié sur fixture BIFF8) ; l'ODS reste non supporté et est
+  # désormais refusé explicitement, comme le .doc l'est déjà côté texte.
+  excel_community: ^2.2.1
   csv: ^8.0.0                # CSV
-  archive: ^3.6.1            # DOCX / ODT (ZIP + XML)
+  archive: ^4.0.9            # DOCX / ODT (ZIP + XML)
   webview_flutter: ^4.10.0   # rendu HTML
   # Importé explicitement : `html_viewer_screen` a besoin de
   # `AndroidWebViewController.setAllowFileAccess` pour que la CSP injectée

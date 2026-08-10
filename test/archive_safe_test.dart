@@ -26,7 +26,7 @@ void main() {
       ..addFile(
         ArchiveFile(name, realSize, Uint8List(realSize)), // que des zéros
       );
-    final bytes = Uint8List.fromList(ZipEncoder().encode(archive)!);
+    final bytes = Uint8List.fromList(ZipEncoder().encode(archive));
 
     // Le champ `uncompressed size` est un u32 little-endian :
     //  - local file header  : signature 0x04034b50, offset +22
@@ -93,7 +93,7 @@ void main() {
   test('une entrée honnête sous le plafond est lue normalement', () {
     final archive = Archive()
       ..addFile(ArchiveFile('ok.txt', 5, Uint8List.fromList([1, 2, 3, 4, 5])));
-    final zip = Uint8List.fromList(ZipEncoder().encode(archive)!);
+    final zip = Uint8List.fromList(ZipEncoder().encode(archive));
     final entry = ZipDecoder().decodeBytes(zip).findFile('ok.txt')!;
 
     expect(safeEntryBytes(entry, 'ok.txt', 100000), [1, 2, 3, 4, 5]);
@@ -103,7 +103,7 @@ void main() {
       'décompression', () {
     final archive = Archive()
       ..addFile(ArchiveFile('gros.bin', 50000, Uint8List(50000)));
-    final zip = Uint8List.fromList(ZipEncoder().encode(archive)!);
+    final zip = Uint8List.fromList(ZipEncoder().encode(archive));
     final entry = ZipDecoder().decodeBytes(zip).findFile('gros.bin')!;
 
     expect(
@@ -115,7 +115,7 @@ void main() {
   test('le plafond est exact : une entrée pile à la limite passe', () {
     final archive = Archive()
       ..addFile(ArchiveFile('pile.bin', 1000, Uint8List(1000)));
-    final zip = Uint8List.fromList(ZipEncoder().encode(archive)!);
+    final zip = Uint8List.fromList(ZipEncoder().encode(archive));
     final entry = ZipDecoder().decodeBytes(zip).findFile('pile.bin')!;
 
     expect(safeEntryBytes(entry, 'pile.bin', 1000).length, 1000);
@@ -123,7 +123,7 @@ void main() {
 
   test('une entrée vide est lue sans erreur', () {
     final archive = Archive()..addFile(ArchiveFile('vide.txt', 0, <int>[]));
-    final zip = Uint8List.fromList(ZipEncoder().encode(archive)!);
+    final zip = Uint8List.fromList(ZipEncoder().encode(archive));
     final entry = ZipDecoder().decodeBytes(zip).findFile('vide.txt')!;
 
     expect(safeEntryBytes(entry, 'vide.txt', 1000), isEmpty);
@@ -138,13 +138,13 @@ void main() {
     Uint8List storeZip({required String name, required int size}) {
       final archive = Archive()
         ..addFile(ArchiveFile.noCompress(name, size, Uint8List(size)));
-      return Uint8List.fromList(ZipEncoder().encode(archive)!);
+      return Uint8List.fromList(ZipEncoder().encode(archive));
     }
 
     test('une entree STORE honnete est lue integralement', () {
       final zip = storeZip(name: 'brut.bin', size: 200 * 1024);
       final entry = ZipDecoder().decodeBytes(zip).findFile('brut.bin')!;
-      expect(entry.compressionType, isNot(ArchiveFile.DEFLATE));
+      expect(entry.compression, isNot(CompressionType.deflate));
 
       final out = safeEntryBytes(entry, 'brut.bin', 1024 * 1024);
       expect(out.length, 200 * 1024);
@@ -164,6 +164,75 @@ void main() {
       final entry = ZipDecoder().decodeBytes(zip).findFile('pile.bin')!;
       final out = safeEntryBytes(entry, 'pile.bin', 128 * 1024);
       expect(out.length, 128 * 1024);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Le trou révélé par la migration archive 3 → 4, le 2026-08-10.
+  //
+  // Les neuf tests ci-dessus vérifient que l'entrée est **refusée**. Aucun ne
+  // vérifiait que la mémoire reste **bornée**. La différence n'est pas
+  // académique : c'est exactement l'ANR du Galaxy S9 du 2026-08-09, où le
+  // refus fonctionnait parfaitement — après avoir alloué 200 Mo.
+  //
+  // Preuve que le trou était réel : en remplaçant `Inflate.stream` par
+  // `rawContent.decompress(out)`, les neuf tests restaient verts.
+  //
+  // L'observable ne peut pas être la taille de notre propre tampon :
+  // l'accumulation a lieu DANS le sink de zlib, et notre tampon s'arrête au
+  // plafond dans les deux cas. C'est donc le temps qui tranche — même patron
+  // que les budgets temps de `text_extraction_service_test.dart`.
+  group('la borne tient, pas seulement le refus', () {
+    test('une bombe de 256 Mo est refusée sans être décompressée', () {
+      const bombeOctets = 256 << 20;
+      // En-tête menteur : sans cela le contrôle bon marché de l'étape 1
+      // refuserait l'entrée sur sa taille déclarée, et le chemin réellement
+      // testé ici — l'inflate borné — ne serait jamais atteint.
+      final zip = forgeZip(
+        name: 'bombe.bin',
+        realSize: bombeOctets,
+        liedSize: 1024,
+      );
+      final entry = ZipDecoder().decodeBytes(zip).findFile('bombe.bin')!;
+
+      // Le seuil est **auto-étalonné**, et il faut expliquer pourquoi.
+      //
+      // Un seuil absolu serait fragile : zlib natif décompresse 256 Mo de
+      // zéros en ~110 ms ici, contre 0 ms pour la version bornée. L'écart est
+      // net sur cette machine, mais 110 ms n'est pas une constante physique.
+      //
+      // La mémoire aurait été l'observable idéal — c'est la propriété même —
+      // mais `ProcessInfo.currentRss` ne reflète pas le tas Dart sous Windows :
+      // mesuré à -1 Mo pendant que 256 Mo étaient décompressés.
+      //
+      // On mesure donc d'abord, sur CETTE machine, ce que coûte une
+      // décompression complète ; puis on exige que le refus en coûte une
+      // fraction. Plus aucune constante de temps n'est codée en dur.
+      final etalon = Stopwatch()..start();
+      safeEntryBytes(
+        ZipDecoder().decodeBytes(zip).findFile('bombe.bin')!,
+        'bombe.bin',
+        bombeOctets * 2, // plafond assez haut pour laisser passer
+      );
+      etalon.stop();
+
+      final borne = Stopwatch()..start();
+      expect(
+        () => safeEntryBytes(entry, 'bombe.bin', 1 << 20),
+        throwsA(isA<ArchiveTooLargeException>()),
+      );
+      borne.stop();
+
+      expect(
+        borne.elapsedMicroseconds * 4,
+        lessThan(etalon.elapsedMicroseconds),
+        reason:
+            'Refuser 1 Mo a pris ${borne.elapsedMicroseconds} µs, alors que '
+            'décompresser les ${bombeOctets >> 20} Mo entiers en prend '
+            '${etalon.elapsedMicroseconds}. La garde a donc laissé la bombe '
+            'se décompresser avant de parler — refus correct, allocation non '
+            'bornée : c est l ANR du S9.',
+      );
     });
   });
 }
