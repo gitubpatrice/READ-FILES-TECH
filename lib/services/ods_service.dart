@@ -191,6 +191,12 @@ OdsReadResult readOdsBytes(List<int> bytes) {
     );
   }
 
+  if (archive.files.isEmpty && zipDeclaresEntries(bytes)) {
+    return const OdsReadResult(
+      error: "Le fichier n'est pas un .ods valide (archive corrompue).",
+    );
+  }
+
   final entry = archive.findFile('content.xml');
   if (entry == null) {
     return const OdsReadResult(

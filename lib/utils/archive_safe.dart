@@ -159,6 +159,27 @@ bool looksLikeZip(List<int> bytes) {
       (c == 0x07 && d == 0x08);
 }
 
+/// `true` si [bytes] commence par un **en-tête d'entrée locale**
+/// (`PK\x03\x04`), c'est-à-dire si le fichier déclare contenir au moins une
+/// entrée.
+///
+/// **À quoi ça sert.** [looksLikeZip] est nécessaire mais pas suffisant :
+/// `PK\x03\x04` suivi de n'importe quoi passe la signature et se décode, en
+/// `archive` 4, en une archive **vide** sans lever. C'est exactement le cas du
+/// fichier `02_archive_corrompue.zip` du corpus de test — quatre octets de
+/// signature et 4 096 octets aléatoires — qui s'affichait donc comme une
+/// archive valide ne contenant rien.
+///
+/// Croisé avec le nombre d'entrées réellement décodées, ce prédicat tranche :
+/// zéro entrée alors que le fichier en déclarait, c'est un fichier corrompu ;
+/// zéro entrée après un `PK\x05\x06`, c'est une archive légitimement vide.
+bool zipDeclaresEntries(List<int> bytes) =>
+    bytes.length >= 4 &&
+    bytes[0] == 0x50 &&
+    bytes[1] == 0x4B &&
+    bytes[2] == 0x03 &&
+    bytes[3] == 0x04;
+
 /// Renvoie le contenu décompressé de [entry], en refusant de dépasser
 /// [maxBytes] **octets réellement produits**.
 ///

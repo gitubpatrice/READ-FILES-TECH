@@ -72,6 +72,18 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       // n'arrivent donc pas après coup : à cet instant, rien n'a encore été
       // développé.
       final archive = ZipDecoder().decodeBytes(bytes);
+      // La signature ne suffit pas. `02_archive_corrompue.zip` du corpus est
+      // `PK\x03\x04` suivi de 4 096 octets aléatoires : il franchit
+      // `looksLikeZip` et se décode en zéro entrée. Il s'affichait donc comme
+      // une archive valide et vide — constaté sur les deux téléphones le
+      // 2026-08-10. Un fichier qui ouvre sur un en-tête d'entrée locale en
+      // déclare au moins une ; s'il ne s'en décode aucune, il est corrompu.
+      if (archive.files.isEmpty && zipDeclaresEntries(bytes)) {
+        throw const FormatException(
+          'archive corrompue — elle déclare des entrées mais aucune n\'est '
+          'lisible',
+        );
+      }
       _archive = archive;
       // On garde TOUS les fichiers (y compris ceux à 0 octet — .gitkeep,
       // __init__.py vide, etc.) et tous les dossiers.
@@ -243,6 +255,26 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
 
       if (mounted) setState(() => _isLoading = false);
       final where = PathUtils.fileName(r.outDirPath);
+
+      // Rien écrit et rien refusé : il n'y avait rien à extraire. Annoncer
+      // « Extrait dans : … (0 fichier(s)) » sur fond neutre présentait cet
+      // échec comme une réussite — constaté sur les deux téléphones le
+      // 2026-08-10 avec une archive corrompue. Le dossier créé pour rien est
+      // supprimé plutôt que laissé en litière dans les documents de l'app.
+      if (r.written == 0 && r.skipped == 0) {
+        final emptyDir = Directory(r.outDirPath);
+        if (emptyDir.existsSync()) {
+          try {
+            emptyDir.deleteSync();
+          } on FileSystemException {
+            // Le dossier n'était pas vide, ou le système l'a refusé : ce n'est
+            // pas une raison de masquer le message qui suit.
+          }
+        }
+        snack.error('Aucun fichier à extraire — l\'archive est vide.');
+        return;
+      }
+
       if (r.skipped > 0) {
         snack.error(
           'Extrait dans : $where — ${r.skipped} entrée(s) refusée(s)',

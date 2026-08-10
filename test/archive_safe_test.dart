@@ -281,6 +281,54 @@ void verifieSignature() {
       expect(looksLikeZip(ZipEncoder().encode(archive)), isTrue);
     });
 
+    test('la signature seule ne suffit pas : le cas du corpus', () {
+      // `02_archive_corrompue.zip` = `PK\x03\x04` + 4 096 octets aleatoires
+      // (`tools/make_corpus.py:41`). Il franchit `looksLikeZip`, se decode sans
+      // lever, et rend ZERO entree : la visionneuse l'affichait donc comme une
+      // archive parfaitement valide et vide. Constate sur les deux telephones
+      // le 2026-08-10, apres que le correctif `looksLikeZip` du meme jour a ete
+      // juge suffisant — il ne l'etait pas.
+      final corrompu = Uint8List.fromList([
+        0x50,
+        0x4B,
+        0x03,
+        0x04,
+        ...List<int>.generate(4096, (i) => (i * 37 + 11) & 0xFF),
+      ]);
+
+      expect(looksLikeZip(corrompu), isTrue, reason: 'la signature passe');
+      expect(
+        ZipDecoder().decodeBytes(corrompu).files,
+        isEmpty,
+        reason: 'et pourtant rien ne se decode',
+      );
+      expect(
+        zipDeclaresEntries(corrompu),
+        isTrue,
+        reason: 'c est ce croisement qui tranche : il DECLARAIT une entree',
+      );
+    });
+
+    test('une archive legitimement vide ne declare aucune entree', () {
+      final vide = Uint8List(22)
+        ..[0] = 0x50
+        ..[1] = 0x4B
+        ..[2] = 0x05
+        ..[3] = 0x06;
+      // Zero entree y est normal, et ne doit donc pas etre pris pour une
+      // corruption : sans cette distinction, un ZIP vide valide serait refuse.
+      expect(zipDeclaresEntries(vide), isFalse);
+      expect(looksLikeZip(vide), isTrue);
+    });
+
+    test('un vrai ZIP non vide declare bien des entrees', () {
+      final archive = Archive()
+        ..addFile(ArchiveFile('a.txt', 3, Uint8List.fromList([1, 2, 3])));
+      final bytes = ZipEncoder().encode(archive);
+      expect(zipDeclaresEntries(bytes), isTrue);
+      expect(ZipDecoder().decodeBytes(bytes).files, isNotEmpty);
+    });
+
     test('une archive legitimement VIDE reste reconnue', () {
       // `PK` : fin de repertoire central sans aucune entree. Un ZIP
       // vide est valide, et le confondre avec un fichier corrompu ferait

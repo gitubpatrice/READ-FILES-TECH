@@ -239,6 +239,12 @@ DocxExtractResult extractDocxText(Uint8List bytes) {
     );
   }
 
+  if (archive.files.isEmpty && zipDeclaresEntries(bytes)) {
+    return const DocxExtractResult(
+      error: "Le fichier n'est pas un .docx valide (archive corrompue).",
+    );
+  }
+
   final entry = archive.findFile('word/document.xml');
   if (entry == null) {
     return const DocxExtractResult(
@@ -322,6 +328,11 @@ DocxExtractResult extractOdtText(Uint8List bytes) {
   } catch (_) {
     return const DocxExtractResult(
       error: 'Le fichier n\'est pas un OpenDocument valide (ZIP illisible).',
+    );
+  }
+  if (archive.files.isEmpty && zipDeclaresEntries(bytes)) {
+    return const DocxExtractResult(
+      error: "Le fichier n'est pas un OpenDocument valide (archive corrompue).",
     );
   }
   final entry = archive.findFile('content.xml');

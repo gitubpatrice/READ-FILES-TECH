@@ -260,6 +260,24 @@ void main() {
       expect(r.error, contains('content.xml'));
     });
 
+    test('une archive corrompue est distinguee d un contenu manquant', () {
+      // `PK` + octets aleatoires : signature valide, zero entree
+      // decodee. Sans le croisement avec `zipDeclaresEntries`, le message
+      // aurait ete « content.xml introuvable » — qui accuse le contenu du
+      // fichier au lieu de dire qu il est illisible.
+      final corrompu = Uint8List.fromList([
+        0x50,
+        0x4B,
+        0x03,
+        0x04,
+        ...List<int>.generate(2048, (i) => (i * 53 + 7) & 0xFF),
+      ]);
+      final r = readOdsBytes(corrompu);
+      expect(r.sheets, isNull);
+      expect(r.error, contains('corrompue'));
+      expect(r.error, isNot(contains('content.xml')));
+    });
+
     test('un classeur sans feuille est signale, pas rendu vide', () {
       final r = readOdsBytes(odsZip(contentXml('')));
       expect(r.sheets, isNull);
