@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:excel_community/excel_community.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/ods_service.dart';
 import '../../utils/file_caps.dart';
 import '../../widgets/error_panel.dart';
 import '../explorer/file_type_helpers.dart';
@@ -67,23 +68,6 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
 
   Future<void> _load() async {
     try {
-      // `.ods` est routé ici depuis toujours (`file_viewer_router.dart`,
-      // `home_screen.dart`), mais aucune version du lecteur ne l'a jamais su
-      // lire : `excel` 4.0.6 refusait tout ce qui n'était pas `.xlsx`, et son
-      // fork ne fait pas mieux. L'utilisateur voyait « Fichier illisible » —
-      // un message qui accuse le fichier alors que c'est l'application qui ne
-      // sait pas. On le dit franchement, comme le fait déjà l'extraction de
-      // texte pour le `.doc` binaire (`text_extraction_service.dart:145`).
-      if (widget.path.toLowerCase().endsWith('.ods')) {
-        if (!mounted) return;
-        setState(() {
-          _error =
-              'Format .ods (OpenDocument) non supporté. Réenregistrez le '
-              'classeur en .xlsx depuis LibreOffice ou Excel.';
-          _isLoading = false;
-        });
-        return;
-      }
       // F3 : cap fichier source (anti XLSX-bomb).
       final capErr = await checkFileCap(
         File(widget.path),
@@ -97,7 +81,24 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
         });
         return;
       }
-      final data = await _decodeXlsx(widget.path);
+      // Deux formats, deux moteurs. `excel_community` ne lit que le `.xlsx` et
+      // le `.xls` ; l'ODF passe par `ods_service`, qui parcourt le
+      // `content.xml` du ZIP avec la même machinerie que le `.odt`.
+      final _XlsxData data;
+      if (widget.path.toLowerCase().endsWith('.ods')) {
+        final r = await readOdsFileIsolate(widget.path);
+        if (!mounted) return;
+        if (r.error != null) {
+          setState(() {
+            _error = r.error;
+            _isLoading = false;
+          });
+          return;
+        }
+        data = _XlsxData(r.sheets!);
+      } else {
+        data = await _decodeXlsx(widget.path);
+      }
       if (!mounted) return;
       setState(() {
         _data = data;

@@ -14,6 +14,8 @@ import 'package:read_files_tech/utils/archive_safe.dart';
 /// honnête resterait vert avec l'ancienne garde — c'est exactement ce qui s'est
 /// passé pendant trois versions.
 void main() {
+  verifieSignature();
+
   /// Construit un ZIP contenant une entrée de [realSize] octets compressibles,
   /// puis **réécrit** la taille décompressée annoncée dans les deux en-têtes
   /// (local file header et central directory) pour qu'elle vaille [liedSize].
@@ -233,6 +235,63 @@ void main() {
             'se décompresser avant de parler — refus correct, allocation non '
             'bornée : c est l ANR du S9.',
       );
+    });
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Constaté le 2026-08-10 en migrant vers `archive` 4.
+//
+// Jusqu'à la 3.x, `ZipDecoder().decodeBytes` levait sur des octets qui
+// n'étaient pas une archive, et les QUATRE sites qui décodent s'appuyaient tous
+// sur ce `throw` pour dire « fichier illisible ». La 4.x ne lève plus : elle
+// rend une archive VIDE.
+//
+// Conséquence avant correctif : un `.zip` corrompu s'affichait comme une
+// archive parfaitement valide ne contenant rien — l'utilisateur concluait que
+// son fichier était vide alors qu'il était illisible. Un `.docx` tronqué
+// disait « document.xml introuvable », qui accuse le contenu au lieu du format.
+void verifieSignature() {
+  group('signature ZIP — archive 4 ne leve plus', () {
+    test('archive 4 rend bien une archive VIDE au lieu de lever', () {
+      // Le fait qui justifie `looksLikeZip`. S'il cessait d'etre vrai — retour
+      // a une exception — ce test le dirait, et la garde deviendrait inutile.
+      final a = ZipDecoder().decodeBytes(
+        Uint8List.fromList('ceci n est pas une archive'.codeUnits),
+      );
+      expect(a.files, isEmpty);
+    });
+
+    test('du texte brut n est pas reconnu comme ZIP', () {
+      expect(looksLikeZip('ceci n est pas une archive'.codeUnits), isFalse);
+    });
+
+    test('un tampon vide ou trop court n est pas reconnu', () {
+      expect(looksLikeZip(const <int>[]), isFalse);
+      expect(looksLikeZip(const [0x50, 0x4B, 0x03]), isFalse);
+    });
+
+    test('une signature PK plausible mais fausse est refusee', () {
+      expect(looksLikeZip(const [0x50, 0x4B, 0x01, 0x02]), isFalse);
+    });
+
+    test('un vrai ZIP est reconnu', () {
+      final archive = Archive()
+        ..addFile(ArchiveFile('a.txt', 3, Uint8List.fromList([1, 2, 3])));
+      expect(looksLikeZip(ZipEncoder().encode(archive)), isTrue);
+    });
+
+    test('une archive legitimement VIDE reste reconnue', () {
+      // `PK` : fin de repertoire central sans aucune entree. Un ZIP
+      // vide est valide, et le confondre avec un fichier corrompu ferait
+      // refuser un fichier parfaitement correct.
+      final vide = Uint8List(22)
+        ..[0] = 0x50
+        ..[1] = 0x4B
+        ..[2] = 0x05
+        ..[3] = 0x06;
+      expect(looksLikeZip(vide), isTrue);
+      expect(ZipDecoder().decodeBytes(vide).files, isEmpty);
     });
   });
 }

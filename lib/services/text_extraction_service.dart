@@ -48,18 +48,91 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 /// position, il n'en existe pour aucune ouverture ultérieure — on s'arrête au
 /// lieu de re-balayer la fin du document à chaque tour.
 Iterable<String> tagContents(String source, List<String> tags) sync* {
+  for (final e in tagElements(source, tags)) {
+    yield e.inner;
+  }
+}
+
+/// Une balise rencontrée par [tagElements], avec ses attributs bruts.
+class XmlElement {
+  /// Nom de la balise, tel qu'il apparaît dans [tagElements].
+  final String tag;
+
+  /// Texte brut des attributs, sans le nom de balise ni les chevrons. Vide
+  /// s'il n'y en a pas. Interroger par [attribute] plutôt qu'à la main.
+  final String attributes;
+
+  /// Contenu entre l'ouverture et la fermeture. Toujours vide pour une balise
+  /// auto-fermante.
+  final String inner;
+
+  /// `true` pour `<balise/>`, qui n'a pas de fermeture séparée.
+  final bool selfClosing;
+
+  const XmlElement({
+    required this.tag,
+    required this.attributes,
+    required this.inner,
+    required this.selfClosing,
+  });
+
+  /// Valeur de [name], ou `null` s'il est absent. Gère les guillemets simples
+  /// comme doubles ; ne décode pas les entités, l'appelant s'en charge s'il en
+  /// a besoin.
+  String? attribute(String name) {
+    final m = RegExp(
+      '(?:^|\\s)${RegExp.escape(name)}\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')',
+    ).firstMatch(attributes);
+    if (m == null) return null;
+    return m.group(1) ?? m.group(2);
+  }
+}
+
+/// Même balayage linéaire que [tagContents], mais rend aussi les attributs et
+/// reconnaît les balises **auto-fermantes**.
+///
+/// **Pourquoi les auto-fermantes comptent.** [tagContents] ne les voyait pas :
+/// son motif d'ouverture exige un `>` là où `<balise/>` présente un `/`. Sans
+/// conséquence pour le texte — une balise vide n'apporte aucun mot — mais
+/// fatal dès qu'une position compte. Dans un `.ods`, une cellule vide s'écrit
+/// `<table:table-cell/>` : l'ignorer décale toutes les colonnes suivantes vers
+/// la gauche, et le tableau s'affiche faux sans que rien ne le signale.
+///
+/// La propriété anti-ANR de [tagContents] est conservée telle quelle : sortie
+/// anticipée dès qu'une ouverture n'a pas de fermeture, donc linéaire même sur
+/// entrée hostile. Voir la mesure ci-dessus.
+Iterable<XmlElement> tagElements(String source, List<String> tags) sync* {
   // `[^>]*` ne peut pas franchir un `>` : ce motif n'a pas de retour arrière.
-  final open = RegExp('<(${tags.join('|')})(?:\\s[^>]*)?>');
+  // Le `/?` final capture l'auto-fermeture, et `([^>]*)` les attributs.
+  final open = RegExp('<(${tags.join('|')})((?:\\s[^>]*)?)(/?)>');
   var cursor = 0;
   while (cursor < source.length) {
     final m =
         open.matchAsPrefix(source, cursor) ?? _firstFrom(open, source, cursor);
     if (m == null) return;
     final tag = m.group(1)!;
+    final attributes = m.group(2) ?? '';
+
+    if (m.group(3) == '/') {
+      yield XmlElement(
+        tag: tag,
+        attributes: attributes,
+        inner: '',
+        selfClosing: true,
+      );
+      cursor = m.end;
+      continue;
+    }
+
     final close = '</$tag>';
     final closeAt = source.indexOf(close, m.end);
     if (closeAt < 0) return;
-    yield source.substring(m.end, closeAt);
+    yield XmlElement(
+      tag: tag,
+      attributes: attributes,
+      inner: source.substring(m.end, closeAt),
+      selfClosing: false,
+    );
     cursor = closeAt + close.length;
   }
 }
@@ -147,6 +220,16 @@ DocxExtractResult extractDocxText(Uint8List bytes) {
     );
   }
 
+  // `archive` 4 ne lève plus sur des octets qui ne sont pas une archive : il
+  // rend une archive vide, et le `catch` ci-dessous ne se déclenche donc plus.
+  // Sans ce contrôle, un fichier corrompu produirait « document.xml
+  // introuvable », qui accuse le contenu au lieu du format.
+  if (!looksLikeZip(bytes)) {
+    return const DocxExtractResult(
+      error: 'Le fichier n\'est pas un .docx valide (archive ZIP illisible).',
+    );
+  }
+
   Archive archive;
   try {
     archive = ZipDecoder().decodeBytes(bytes);
@@ -226,6 +309,13 @@ String odtXmlToPlainText(String xml) {
 ///
 /// Même contrat que [extractDocxText] : exactement un de `text` / `error`.
 DocxExtractResult extractOdtText(Uint8List bytes) {
+  // Même raison que pour le `.docx` : archive 4 ne lève plus, voir [looksLikeZip].
+  if (!looksLikeZip(bytes)) {
+    return const DocxExtractResult(
+      error: 'Le fichier n\'est pas un OpenDocument valide (ZIP illisible).',
+    );
+  }
+
   Archive archive;
   try {
     archive = ZipDecoder().decodeBytes(bytes);

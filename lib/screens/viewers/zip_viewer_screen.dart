@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/archive_extract_service.dart';
+import '../../utils/archive_safe.dart';
 import '../../utils/file_caps.dart';
 import '../../utils/snack_utils.dart';
 import '../../widgets/error_panel.dart';
@@ -53,6 +54,17 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
         );
       }
       final bytes = await File(widget.path).readAsBytes();
+      // `archive` 4 ne lève plus sur des octets qui ne sont pas une archive :
+      // il rend une archive **vide**. Le `catch` en bas de cette méthode ne se
+      // déclenche donc plus, et un `.zip` corrompu s'affichait comme une
+      // archive parfaitement valide ne contenant rien — le pire des deux
+      // mondes, puisque l'utilisateur conclut que son fichier est vide alors
+      // qu'il est illisible. Constaté le 2026-08-10 en migrant vers archive 4.
+      if (!looksLikeZip(bytes)) {
+        throw const FormatException(
+          'ce fichier n\'est pas une archive ZIP (signature absente)',
+        );
+      }
       // `decodeBytes` ne décompresse RIEN ici : il lit le catalogue et garde
       // les entrées sous leur forme compressée (`ArchiveFile.rawContent`).
       // C'est l'accès à `.content` qui inflate, et sans borne — d'où

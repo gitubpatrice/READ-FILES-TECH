@@ -132,6 +132,33 @@ class _CappedOutput extends OutputStream {
   Uint8List getBytes() => _inner.getBytes();
 }
 
+/// `true` si [bytes] commence par une signature d'archive ZIP.
+///
+/// **Pourquoi ce contrôle est devenu nécessaire.** Jusqu'à `archive` 3,
+/// `ZipDecoder().decodeBytes` levait sur des octets qui n'étaient pas une
+/// archive, et les quatre sites qui décodent s'appuyaient tous sur ce `throw`
+/// pour dire « fichier illisible ». La 4.x ne lève plus : elle rend une
+/// **archive vide**. Vérifié le 2026-08-10 sur du texte brut, un tampon vide et
+/// un en-tête `PK` tronqué — aucune exception, zéro entrée à chaque fois.
+///
+/// Sans ce contrôle, un `.zip` corrompu s'afficherait comme une archive
+/// parfaitement valide et vide, un `.docx` renvoyé par le réseau dirait
+/// « `document.xml` introuvable » au lieu de « ce n'est pas un .docx », et la
+/// panne réelle serait masquée par un message qui accuse autre chose.
+///
+/// Reconnaît les trois signatures du format : entrée locale (`PK\x03\x04`),
+/// fin de répertoire central pour une archive légitimement vide
+/// (`PK\x05\x06`), et marqueur d'archive segmentée (`PK\x07\x08`).
+bool looksLikeZip(List<int> bytes) {
+  if (bytes.length < 4) return false;
+  if (bytes[0] != 0x50 || bytes[1] != 0x4B) return false;
+  final c = bytes[2];
+  final d = bytes[3];
+  return (c == 0x03 && d == 0x04) ||
+      (c == 0x05 && d == 0x06) ||
+      (c == 0x07 && d == 0x08);
+}
+
 /// Renvoie le contenu décompressé de [entry], en refusant de dépasser
 /// [maxBytes] **octets réellement produits**.
 ///
