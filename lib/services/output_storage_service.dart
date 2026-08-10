@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:files_tech_core/files_tech_core.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'storage_access.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -196,13 +197,30 @@ class OutputStorageService {
     if (primary != null) return primary;
 
     // 2. Fallback : dossier app-privé externe (toujours accessible).
-    final ext = await getExternalStorageDirectory();
-    if (ext != null) {
-      final fallbackDir = Directory(
-        '${ext.path}/Files Tech/${category.folderName}',
-      );
-      final fallback = await _tryCreateAndReserve(fallbackDir, fileName);
-      if (fallback != null) return fallback;
+    //
+    // `getExternalStorageDirectory()` n'existe QUE sur Android : ailleurs il
+    // **lève** `UnsupportedError` au lieu de rendre `null`. Une chaîne de repli
+    // dont un maillon peut lever n'est pas une chaîne de repli — elle
+    // interrompt tout au lieu de passer au suivant.
+    //
+    // Ce n'était visible ni sur la machine de développement, ou
+    // `/storage/emulated/0/...` se crée sans difficulté sous Windows et le
+    // repli n'est donc jamais atteint, ni dans aucun test local. C'est la CI,
+    // sous Linux, qui l'a dit : cinq tests du coffre en echec des que la
+    // sauvegarde est passée par ce service, le 2026-08-10.
+    try {
+      final ext = await getExternalStorageDirectory();
+      if (ext != null) {
+        final fallbackDir = Directory(
+          '${ext.path}/Files Tech/${category.folderName}',
+        );
+        final fallback = await _tryCreateAndReserve(fallbackDir, fileName);
+        if (fallback != null) return fallback;
+      }
+    } on UnsupportedError {
+      // Plateforme sans stockage externe : maillon suivant.
+    } on MissingPluginException {
+      // Canal indisponible (contexte de test) : maillon suivant.
     }
 
     // 3. Dernier recours : documents app (toujours en lecture/écriture).
