@@ -1,4 +1,4 @@
-# Reprise du chantier v2.15 — état au 2026-08-09, fin de journée
+# Reprise du chantier v2.15 — état au 2026-08-10, fin de journée
 
 > Document de reprise. Il existe pour qu'une session repartant sans le contexte
 > de la précédente sache où en est le travail, ce qui reste, et ce qui a déjà
@@ -10,14 +10,14 @@
 
 ## 1. État
 
-*État au 2026-08-10, après la bascule `excel` et les correctifs d'affichage.*
+*État au 2026-08-10 au soir, tout poussé et reconstaté sur les deux appareils.*
 
 | | |
 |---|---|
-| Branche | `main`, arbre **propre** |
-| Commits depuis `c89b820` (v2.14.0) | **43** |
+| Branche | `main`, arbre **propre**, 0/0 de divergence |
+| Commits depuis `c89b820` (v2.14.0) | **47** |
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **141 tests verts** (16 fichiers) |
+| `flutter test` | **167 tests verts** (15 fichiers) |
 | Build release | **passe** — 35,6 / 40,7 / 42,9 Mo |
 | Version `pubspec.yaml` | **2.14.0+21400** — non bumpée, volontairement |
 | Tag | aucun |
@@ -146,16 +146,14 @@ c'est-à-dire par exactement le même nœud que syncfusion 34.
    passé en **4.9.1** et `xml` en **7.0.1** sans qu'une ligne change : la
    contrainte `^4.1.3` les acceptait déjà, seul `archive` 3 les retenait.
    **Syncfusion reste en 33, sciemment** — voir ci-dessous.
-2. **A-P0a — éclater `vault_service.dart` (1451 l.)**, dans une session qui
-   *commence* par lui. Règle : les 25 tests du coffre ne doivent pas être
-   modifiés. S'ils doivent l'être, le comportement change — signal d'arrêt.
-3. **L'ODS n'est toujours pas lisible**, il est seulement refusé franchement.
-   La machinerie existe pourtant déjà : `text_extraction_service.dart` sait
-   parser du XML OpenDocument (`odtXmlToPlainText`) avec `archive` + `xml`, et
-   un `content.xml` d'ODS n'est qu'une suite de `table:table-row` /
-   `table:table-cell` / `text:p`. Aucune dépendance nouvelle ne serait requise.
-   À décider comme une fonctionnalité, pas comme un correctif.
-4. **Le doute du second appui** (§2 bis).
+2. ~~L'ODS~~ — **fait le 2026-08-10**, sans dépendance nouvelle. Voir §7.
+3. **A-P0a — éclater `vault_service.dart` (1451 l.).** **Le seul point qui
+   reste**, et il demande une session qui *commence* par lui. Règle : les 25
+   tests du coffre ne doivent pas être modifiés. S'ils doivent l'être, le
+   comportement change — signal d'arrêt.
+
+   Entamé le 2026-08-10 en fin de journée, à la demande explicite de Patrice,
+   avec relecture externe.
 4. `docxXmlToPlainText` écrit une ligne par paragraphe même vide (signalé par
    GPT). Comportement du service, aligné avec l'outil de conversion. Le changer
    modifierait aussi la sortie de l'outil — à décider à part.
@@ -227,3 +225,68 @@ c'est-à-dire par exactement le même nœud que syncfusion 34.
 - Ne jamais toucher au keystore ni à la signature.
 - Ne pas régénérer de baseline pour faire passer un contrôle.
 - Ne pas proposer d'ajouter une permission — la direction est le retrait.
+
+## 7. Le 2026-08-10 en fin de journée — ODS, et la régression d'archive 4
+
+### L'ODS est lisible
+
+Ajouté sans une dépendance de plus : un `.ods` est un ZIP contenant du XML ODF,
+comme le `.odt` que `text_extraction_service` parcourait déjà. Nouveau
+`lib/services/ods_service.dart`, top-level et isolate-safe.
+
+**Deux pièges du format, tous deux couverts par des tests :**
+
+- **Les cellules vides sont auto-fermantes** (`<table:table-cell/>`). Le
+  scanner du projet ne les voyait pas — son motif exige un `>` là où la balise
+  présente un `/`. Les ignorer aurait décalé toutes les colonnes suivantes vers
+  la gauche : le tableau se serait affiché **faux**, sans erreur ni message.
+  `tagContents` est désormais exprimé sur `tagElements`, qui rend aussi les
+  attributs et reconnaît l'auto-fermeture. Une seule implémentation, et les 24
+  tests d'extraction de texte restent verts sans modification.
+- **Les répétitions sont un vecteur de bombe.**
+  `table:number-columns-repeated="1000000000"` tient dans quelques centaines
+  d'octets. Trois gardes : plafond dur sur la valeur lue, bornes de sortie sur
+  les boucles, et non-dépliage des répétitions **vides** — le cas courant,
+  LibreOffice terminant ses feuilles par une ligne vide répétée 1 048 576 fois.
+
+Vérifié sur artefact réel : un `.ods` de **825 octets** déclarant un million de
+lignes et un milliard de colonnes est lu en **11 ms**, cellule vide à sa place
+et accents décodés.
+
+### ⚠️ La régression d'archive 4 — trois correctifs pour un seul défaut
+
+**Le fait, vérifié :** jusqu'à la 3.x, `ZipDecoder().decodeBytes` levait sur des
+octets qui n'étaient pas une archive. Les **quatre** sites qui décodent
+s'appuyaient tous sur ce `throw`. **La 4.x ne lève plus** : elle rend une
+archive vide.
+
+Le correctif a demandé trois passes, chacune jugée suffisante avant de ne pas
+l'être :
+
+1. **`looksLikeZip`** — contrôle de signature. Nécessaire, **insuffisant** : il
+   ne regarde que quatre octets.
+2. **`zipDeclaresEntries` croisé avec le nombre d'entrées décodées.**
+   `02_archive_corrompue.zip` du corpus vaut `PK\x03\x04` + 4 096 octets
+   aléatoires : il franchit la signature et rend zéro entrée. Un fichier qui
+   ouvre sur un en-tête d'entrée locale en **déclare** au moins une ; s'il ne
+   s'en décode aucune, il est corrompu. Seul `PK\x05\x06` autorise une archive
+   légitimement vide — les confondre ferait refuser un fichier correct.
+3. **Le message d'extraction**, faux indépendamment des deux autres :
+   « Extrait dans : … (0 fichier(s)) » sur fond neutre présentait un échec comme
+   une réussite, et laissait un dossier vide dans les documents de l'app.
+
+Les deux premières passes ont été trouvées **par les appareils**, pas par les
+tests. Les tests reproduisent maintenant le fichier du corpus **octet pour
+octet** plutôt qu'un cas plausible inventé.
+
+### Ce que la journée entière enseigne
+
+Le chemin des archives a demandé **cinq** correctifs en deux jours — ANR,
+capture d'isolate, borne non testée, signature, croisement — et à chaque fois
+`flutter analyze` était à zéro et toute la suite au vert avant que l'appareil ne
+contredise.
+
+La cause n'est pas la malchance : ce chemin a beaucoup d'états d'échec, et la
+tentation est de déclarer une garde suffisante dès qu'elle attrape le cas qu'on
+avait en tête. **Sur ce chemin, partir du fichier réel du corpus, et faire
+reconstater sur appareil après chaque correctif même quand il paraît évident.**
