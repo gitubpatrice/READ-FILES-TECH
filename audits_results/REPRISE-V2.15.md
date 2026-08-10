@@ -141,20 +141,66 @@ débloquer engage tout le portefeuille.
 `package_info_plus` 10 est bloqué en amont par `file_picker` 11 (`win32 ^5.9`) —
 c'est-à-dire par exactement le même nœud que syncfusion 34.
 
-## 5. Ce qui reste
+## 5. Ce qui reste — la liste de demain
 
-1. ~~`image` 4.9 et syncfusion 34~~ — **traité le 2026-08-10.** `image` est
-   passé en **4.9.1** et `xml` en **7.0.1** sans qu'une ligne change : la
-   contrainte `^4.1.3` les acceptait déjà, seul `archive` 3 les retenait.
-   **Syncfusion reste en 33, sciemment** — voir ci-dessous.
-2. ~~L'ODS~~ — **fait le 2026-08-10**, sans dépendance nouvelle. Voir §7.
-3. ~~A-P0a — éclater `vault_service.dart`~~ — **fait le 2026-08-10.** Voir §8.
-   Les 25 tests du coffre n'ont pas été modifiés.
-4. **Bump + tag**, quand vous le déciderez. Rien n'est bumpé, aucun tag posé.
-4. `docxXmlToPlainText` écrit une ligne par paragraphe même vide (signalé par
-   GPT). Comportement du service, aligné avec l'outil de conversion. Le changer
-   modifierait aussi la sortie de l'outil — à décider à part.
-5. Bump + tag, quand vous le déciderez.
+> Liste unique et autoritaire. Tout ce qui est barré a été fait le 2026-08-10 ;
+> gardé pour qu'on ne le rouvre pas.
+
+### À faire, par ordre conseillé
+
+1. **`reader_service` décompresse un EPUB sans la garde anti-bombe.**
+   `decodeBytes` y est appelé sans passer par `safeEntryBytes` — c'est **le
+   seul chemin de décompression de l'application** qui n'utilise pas la garde
+   commune, alors qu'elle existe précisément pour ne plus dépendre du fait
+   qu'on y pense. Un `.epub` piégé suffit. À traiter en premier : c'est court,
+   c'est le motif « garde recopiée à la main qui se re-oublie », et le corpus
+   de test sait déjà fabriquer une bombe.
+
+2. **`trash_service.list()` lit les métadonnées sans borne.** Un JSON énorme
+   déposé dans `.RFT_Corbeille/meta/` — dossier situé sur le stockage
+   **partagé**, donc accessible à toute application ayant la permission — ferait
+   geler l'ouverture de la corbeille. Et le mode panique l'appelle. Un plafond
+   sur la taille lue suffit.
+
+3. **E/S synchrones dans `list()` et `_existingTrashRoots()`** (`listSync`).
+   Gel perceptible sur stockage lent, sur un chemin appelé aussi par le mode
+   panique.
+
+4. **`duplicate_finder_service` : appels concurrents à `find()` non gérés.**
+   Deux lancements laissent des isolates orphelins qui continuent de consommer.
+
+5. **`docxXmlToPlainText` écrit une ligne par paragraphe même vide.** Signalé
+   par GPT le 2026-08-09. Comportement du service, aligné avec l'outil de
+   conversion : le changer modifierait aussi la sortie de l'outil. À décider
+   comme un choix produit, pas comme un correctif.
+
+6. **Syncfusion 34** — à rouvrir **quand `file_picker` 12 sera stable**. La
+   montée sera alors gratuite ; aujourd'hui elle coûte soit une bêta sur le
+   sélecteur de fichiers, soit un `dependency_overrides`. Voir §4.
+
+7. **Bump + tag.** Rien n'est bumpé, aucun tag posé. **Interdit sans demande
+   explicite de Patrice.**
+
+### Fait le 2026-08-10, ne pas rouvrir
+
+- ~~`image` 4.9~~ — passé en **4.9.1** et `xml` en **7.0.1** sans qu'une ligne
+  change : la contrainte `^4.1.3` les acceptait déjà, seul `archive` 3 les
+  retenait.
+- ~~L'ODS~~ — lisible, sans dépendance nouvelle. Voir §7.
+- ~~A-P0a, éclater `vault_service.dart`~~ — trois modules purs, les 25 tests du
+  coffre **non modifiés**. Voir §8.
+- ~~Audit externe des fichiers jamais relus~~ — quatre pertes de données
+  corrigées. Voir §9.
+
+### Avant de conclure quoi que ce soit demain
+
+Les deux téléphones sont le juge, pas la suite de tests. Le 2026-08-09 et le
+2026-08-10, **huit défauts** ont été trouvés par l'appareil alors que
+`flutter analyze` était à 0 et toute la suite au vert. Voir §6.
+
+Et après tout correctif de sécurité : **remettre le défaut et vérifier que le
+test rougit**. C'est ce geste qui a montré que les neuf tests de la garde
+anti-bombe ne testaient pas ce qu'on croyait.
 
 ## 6. Méthode — ce que cette journée a coûté et enseigné
 
