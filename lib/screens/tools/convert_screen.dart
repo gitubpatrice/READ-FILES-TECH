@@ -378,77 +378,83 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Conversion')),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          if (_busy) const LinearProgressIndicator(),
-          if (_lastPath != null)
-            Card(
-              color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.lightBlue.shade700,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Sauvegardé',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: Colors.lightBlue.shade900,
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            if (_busy) const LinearProgressIndicator(),
+            if (_lastPath != null)
+              Card(
+                color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(
+                    color: Colors.lightBlue.shade300,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.lightBlue.shade700,
+                            size: 18,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _lastPath!,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 11,
+                          const SizedBox(width: 6),
+                          Text(
+                            'Sauvegardé',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Colors.lightBlue.shade900,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutputActionsRow(path: _lastPath!),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        _lastPath!,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutputActionsRow(path: _lastPath!),
+                    ],
+                  ),
+                ),
+              )
+            else if (_status != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  _status!,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
-            )
-          else if (_status != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                _status!,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-          ...tiles.map(
-            (t) => Card(
-              child: ListTile(
-                leading: Icon(t.icon, color: t.color, size: 32),
-                title: Text(
-                  t.title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+            ...tiles.map(
+              (t) => Card(
+                child: ListTile(
+                  leading: Icon(t.icon, color: t.color, size: 32),
+                  title: Text(
+                    t.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(t.subtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _busy ? null : t.onTap,
                 ),
-                subtitle: Text(t.subtitle),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _busy ? null : t.onTap,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

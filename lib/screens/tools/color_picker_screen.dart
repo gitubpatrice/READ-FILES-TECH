@@ -36,88 +36,91 @@ class _ColorPickerScreenState extends State<ColorPickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Color Picker')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Aperçu
-            Container(
-              width: double.infinity,
-              height: 80,
-              decoration: BoxDecoration(
-                color: _color,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerColor),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Aperçu
+              Container(
+                width: double.infinity,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: _color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Picker
-            ColorPicker(
-              pickerColor: _color,
-              onColorChanged: (c) => setState(() => _color = c),
-              enableAlpha: false,
-              labelTypes: const [],
-              pickerAreaHeightPercent: 0.6,
-            ),
-            const SizedBox(height: 16),
+              // Picker
+              ColorPicker(
+                pickerColor: _color,
+                onColorChanged: (c) => setState(() => _color = c),
+                enableAlpha: false,
+                labelTypes: const [],
+                pickerAreaHeightPercent: 0.6,
+              ),
+              const SizedBox(height: 16),
 
-            // Codes couleurs
-            _codeRow('HEX', _hex),
-            const SizedBox(height: 8),
-            _codeRow('RGB', _rgb),
-            const SizedBox(height: 8),
-            _codeRow('HSL', _hsl),
+              // Codes couleurs
+              _codeRow('HEX', _hex),
+              const SizedBox(height: 8),
+              _codeRow('RGB', _rgb),
+              const SizedBox(height: 8),
+              _codeRow('HSL', _hsl),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Nuancier rapide
-            Text(
-              'Couleurs récentes',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  [
-                    '#FF0000',
-                    '#FF6600',
-                    '#FFCC00',
-                    '#33CC33',
-                    '#0066FF',
-                    '#9900CC',
-                    '#FF0099',
-                    '#000000',
-                    '#FFFFFF',
-                    '#666666',
-                    '#1565C0',
-                    '#C62828',
-                  ].map((hex) {
-                    final h = hex.replaceFirst('#', '');
-                    final v = int.tryParse('FF$h', radix: 16);
-                    final c = v != null ? Color(v) : Colors.grey;
-                    return GestureDetector(
-                      onTap: () => setState(() => _color = c),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: c,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _color == c
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.grey.withValues(alpha: 0.3),
-                            width: _color == c ? 2.5 : 1,
+              // Nuancier rapide
+              Text(
+                'Couleurs récentes',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    [
+                      '#FF0000',
+                      '#FF6600',
+                      '#FFCC00',
+                      '#33CC33',
+                      '#0066FF',
+                      '#9900CC',
+                      '#FF0099',
+                      '#000000',
+                      '#FFFFFF',
+                      '#666666',
+                      '#1565C0',
+                      '#C62828',
+                    ].map((hex) {
+                      final h = hex.replaceFirst('#', '');
+                      final v = int.tryParse('FF$h', radix: 16);
+                      final c = v != null ? Color(v) : Colors.grey;
+                      return GestureDetector(
+                        onTap: () => setState(() => _color = c),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: c,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _color == c
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey.withValues(alpha: 0.3),
+                              width: _color == c ? 2.5 : 1,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-            ),
-          ],
+                      );
+                    }).toList(),
+              ),
+            ],
+          ),
         ),
       ),
     );

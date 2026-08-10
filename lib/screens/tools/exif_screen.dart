@@ -105,161 +105,168 @@ class _ExifScreenState extends State<ExifScreen> {
     final hasGps = _metadata.containsKey('GPS');
     return Scaffold(
       appBar: AppBar(title: const Text('Effacer les métadonnées (EXIF)')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (_busy) const LinearProgressIndicator(),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.image_outlined),
-              title: Text(
-                _sourcePath == null
-                    ? 'Choisir une image'
-                    : PathUtils.fileName(_sourcePath!),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (_busy) const LinearProgressIndicator(),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.image_outlined),
+                title: Text(
+                  _sourcePath == null
+                      ? 'Choisir une image'
+                      : PathUtils.fileName(_sourcePath!),
+                ),
+                trailing: const Icon(Icons.folder_open),
+                onTap: _busy ? null : _pick,
               ),
-              trailing: const Icon(Icons.folder_open),
-              onTap: _busy ? null : _pick,
             ),
-          ),
-          if (_sourcePath != null) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Métadonnées détectées',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            if (_metadata.isEmpty)
+            if (_sourcePath != null) ...[
+              const SizedBox(height: 16),
               const Text(
-                'Aucune métadonnée notable',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              )
-            else
-              Card(
-                child: Column(
-                  children: _metadata.entries.map((e) {
-                    final isPrivacy = e.key == 'GPS' || e.key == 'Prise de vue';
-                    return ListTile(
-                      dense: true,
-                      leading: Icon(
-                        isPrivacy ? Icons.warning_amber : Icons.info_outline,
-                        size: 18,
-                        color: isPrivacy ? Colors.orange : Colors.grey,
-                      ),
-                      title: Text(e.key, style: const TextStyle(fontSize: 13)),
-                      trailing: Text(
-                        e.value,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                'Métadonnées détectées',
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
-            if (hasGps) ...[
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 18,
-                      color: Colors.orange,
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Cette image contient une localisation GPS — '
-                        'effacez avant tout partage public.',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _busy ? null : _strip,
-              icon: const Icon(Icons.cleaning_services_outlined),
-              label: const Text('Effacer et partager'),
-            ),
-            if (_outputPath != null) ...[
-              const SizedBox(height: 12),
-              Card(
-                color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: Colors.lightBlue.shade300,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
+              if (_metadata.isEmpty)
+                const Text(
+                  'Aucune métadonnée notable',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                )
+              else
+                Card(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.verified_outlined,
-                            color: Colors.lightBlue.shade700,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Image nettoyée et sauvegardée',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: Colors.lightBlue.shade900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _outputPath!,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 11,
+                    children: _metadata.entries.map((e) {
+                      final isPrivacy =
+                          e.key == 'GPS' || e.key == 'Prise de vue';
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(
+                          isPrivacy ? Icons.warning_amber : Icons.info_outline,
+                          size: 18,
+                          color: isPrivacy ? Colors.orange : Colors.grey,
                         ),
+                        title: Text(
+                          e.key,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        trailing: Text(
+                          e.value,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              if (hasGps) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 18,
+                        color: Colors.orange,
                       ),
-                      const SizedBox(height: 8),
-                      OutputActionsRow(
-                        path: _outputPath!,
-                        mime: _outputPath!.toLowerCase().endsWith('.png')
-                            ? 'image/png'
-                            : 'image/jpeg',
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Cette image contient une localisation GPS — '
+                          'effacez avant tout partage public.',
+                          style: TextStyle(fontSize: 11),
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ],
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _busy ? null : _strip,
+                icon: const Icon(Icons.cleaning_services_outlined),
+                label: const Text('Effacer et partager'),
+              ),
+              if (_outputPath != null) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: Colors.lightBlue.shade300,
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.verified_outlined,
+                              color: Colors.lightBlue.shade700,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Image nettoyée et sauvegardée',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Colors.lightBlue.shade900,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _outputPath!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        OutputActionsRow(
+                          path: _outputPath!,
+                          mime: _outputPath!.toLowerCase().endsWith('.png')
+                              ? 'image/png'
+                              : 'image/jpeg',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                // v2.13.2 (#2) — cs.error.
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
               ),
             ],
           ],
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              // v2.13.2 (#2) — cs.error.
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

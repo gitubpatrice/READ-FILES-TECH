@@ -101,113 +101,116 @@ class _CompressScreenState extends State<CompressScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Compresser image')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.image_outlined),
-              title: Text(
-                _sourcePath == null
-                    ? 'Choisir une image'
-                    : PathUtils.fileName(_sourcePath!),
-              ),
-              subtitle: _sourcePath == null
-                  ? null
-                  : Text('Taille : ${_fmt(_sourceSize)}'),
-              trailing: const Icon(Icons.folder_open),
-              onTap: _pick,
-            ),
-          ),
-          if (_sourcePath != null) ...[
-            const SizedBox(height: 16),
-            const Text('Qualité JPEG'),
-            Slider(
-              value: _quality.toDouble(),
-              min: 10,
-              max: 100,
-              divisions: 18,
-              label: '$_quality',
-              onChanged: (v) => setState(() => _quality = v.toInt()),
-            ),
-            Text(
-              'Qualité : $_quality / 100',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            const Text('Largeur maximum (px)'),
-            Slider(
-              value: _maxWidth.toDouble(),
-              min: 480,
-              max: 4096,
-              divisions: 18,
-              label: '$_maxWidth',
-              onChanged: (v) => setState(() => _maxWidth = v.toInt()),
-            ),
-            Text(
-              'Largeur max : $_maxWidth px',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _busy ? null : _compress,
-              icon: _busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.compress),
-              label: Text(_busy ? 'Compression…' : 'Compresser et partager'),
-            ),
-            if (_outputSize != null) ...[
-              const SizedBox(height: 20),
-              Card(
-                color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: Colors.lightBlue.shade300,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.image_outlined),
+                title: Text(
+                  _sourcePath == null
+                      ? 'Choisir une image'
+                      : PathUtils.fileName(_sourcePath!),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Avant : ${_fmt(_sourceSize)}'),
-                      Text('Après : ${_fmt(_outputSize!)}'),
-                      if (ratio != null)
-                        Text(
-                          'Réduction : -$ratio %',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.lightBlue.shade900,
+                subtitle: _sourcePath == null
+                    ? null
+                    : Text('Taille : ${_fmt(_sourceSize)}'),
+                trailing: const Icon(Icons.folder_open),
+                onTap: _pick,
+              ),
+            ),
+            if (_sourcePath != null) ...[
+              const SizedBox(height: 16),
+              const Text('Qualité JPEG'),
+              Slider(
+                value: _quality.toDouble(),
+                min: 10,
+                max: 100,
+                divisions: 18,
+                label: '$_quality',
+                onChanged: (v) => setState(() => _quality = v.toInt()),
+              ),
+              Text(
+                'Qualité : $_quality / 100',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              const Text('Largeur maximum (px)'),
+              Slider(
+                value: _maxWidth.toDouble(),
+                min: 480,
+                max: 4096,
+                divisions: 18,
+                label: '$_maxWidth',
+                onChanged: (v) => setState(() => _maxWidth = v.toInt()),
+              ),
+              Text(
+                'Largeur max : $_maxWidth px',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _busy ? null : _compress,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.compress),
+                label: Text(_busy ? 'Compression…' : 'Compresser et partager'),
+              ),
+              if (_outputSize != null) ...[
+                const SizedBox(height: 20),
+                Card(
+                  color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: Colors.lightBlue.shade300,
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Avant : ${_fmt(_sourceSize)}'),
+                        Text('Après : ${_fmt(_outputSize!)}'),
+                        if (ratio != null)
+                          Text(
+                            'Réduction : -$ratio %',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.lightBlue.shade900,
+                            ),
                           ),
-                        ),
-                      if (_outputPath != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          _outputPath!,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 11,
+                        if (_outputPath != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _outputPath!,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        OutputActionsRow(
-                          path: _outputPath!,
-                          mime: 'image/jpeg',
-                        ),
+                          const SizedBox(height: 8),
+                          OutputActionsRow(
+                            path: _outputPath!,
+                            mime: 'image/jpeg',
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -131,156 +131,162 @@ class _FormatScreenState extends State<FormatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Formater / Minifier')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Mode
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'json',
-                  label: Text('JSON'),
-                  icon: Icon(Icons.data_object, size: 16),
-                ),
-                ButtonSegment(
-                  value: 'css',
-                  label: Text('CSS'),
-                  icon: Icon(Icons.css_outlined, size: 16),
-                ),
-                ButtonSegment(
-                  value: 'js',
-                  label: Text('JS'),
-                  icon: Icon(Icons.javascript_outlined, size: 16),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (v) => setState(() {
-                _mode = v.first;
-                // CSS/JS n'ont qu'une action ; JSON garde format par défaut.
-                _action = _mode == 'json' ? 'format' : 'minify';
-                _outputCtrl.text = '';
-              }),
-            ),
-            const SizedBox(height: 12),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Mode
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'json',
+                    label: Text('JSON'),
+                    icon: Icon(Icons.data_object, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'css',
+                    label: Text('CSS'),
+                    icon: Icon(Icons.css_outlined, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'js',
+                    label: Text('JS'),
+                    icon: Icon(Icons.javascript_outlined, size: 16),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (v) => setState(() {
+                  _mode = v.first;
+                  // CSS/JS n'ont qu'une action ; JSON garde format par défaut.
+                  _action = _mode == 'json' ? 'format' : 'minify';
+                  _outputCtrl.text = '';
+                }),
+              ),
+              const SizedBox(height: 12),
 
-            // Actions selon mode
-            if (_mode == 'json')
+              // Actions selon mode
+              if (_mode == 'json')
+                Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Formater'),
+                      selected: _action == 'format',
+                      onSelected: (_) => setState(() {
+                        _action = 'format';
+                        _process();
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('Minifier'),
+                      selected: _action == 'minify',
+                      onSelected: (_) => setState(() {
+                        _action = 'minify';
+                        _process();
+                      }),
+                    ),
+                  ],
+                ),
+              if (_mode == 'css')
+                ChoiceChip(
+                  label: const Text('Minifier CSS'),
+                  selected: true,
+                  onSelected: (_) => _process(),
+                ),
+              if (_mode == 'js')
+                ChoiceChip(
+                  label: const Text('Minifier JS'),
+                  selected: true,
+                  onSelected: (_) => _process(),
+                ),
+              const SizedBox(height: 12),
+
+              // Input
               Row(
                 children: [
-                  ChoiceChip(
-                    label: const Text('Formater'),
-                    selected: _action == 'format',
-                    onSelected: (_) => setState(() {
-                      _action = 'format';
-                      _process();
-                    }),
-                  ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text('Minifier'),
-                    selected: _action == 'minify',
-                    onSelected: (_) => setState(() {
-                      _action = 'minify';
-                      _process();
-                    }),
+                  Text('Entrée', style: Theme.of(context).textTheme.titleSmall),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: _pickFile,
+                    icon: const Icon(Icons.folder_open, size: 16),
+                    label: const Text('Ouvrir fichier'),
                   ),
                 ],
               ),
-            if (_mode == 'css')
-              ChoiceChip(
-                label: const Text('Minifier CSS'),
-                selected: true,
-                onSelected: (_) => _process(),
-              ),
-            if (_mode == 'js')
-              ChoiceChip(
-                label: const Text('Minifier JS'),
-                selected: true,
-                onSelected: (_) => _process(),
-              ),
-            const SizedBox(height: 12),
-
-            // Input
-            Row(
-              children: [
-                Text('Entrée', style: Theme.of(context).textTheme.titleSmall),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _pickFile,
-                  icon: const Icon(Icons.folder_open, size: 16),
-                  label: const Text('Ouvrir fichier'),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _inputCtrl,
+                maxLines: 8,
+                onChanged: (_) => _process(),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Collez ou ouvrez un fichier…',
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _inputCtrl,
-              maxLines: 8,
-              onChanged: (_) => _process(),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Collez ou ouvrez un fichier…',
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-            FilledButton.icon(
-              onPressed: _isProcessing ? null : _process,
-              icon: const Icon(Icons.auto_fix_high, size: 18),
-              // Q-M6 (audit 2026-08-02) — le test portait sur `_mode`, qui
-              // vaut 'json', 'css' ou 'js' et ne contient donc JAMAIS
-              // 'minify' : le bouton affichait « Formater » même en mode
-              // minification, qui est pourtant l'action par défaut pour CSS
-              // et JS (voir :157). C'est `_action` qu'il faut lire.
-              label: Text(_action == 'minify' ? 'Minifier' : 'Formater'),
-            ),
-            const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _isProcessing ? null : _process,
+                icon: const Icon(Icons.auto_fix_high, size: 18),
+                // Q-M6 (audit 2026-08-02) — le test portait sur `_mode`, qui
+                // vaut 'json', 'css' ou 'js' et ne contient donc JAMAIS
+                // 'minify' : le bouton affichait « Formater » même en mode
+                // minification, qui est pourtant l'action par défaut pour CSS
+                // et JS (voir :157). C'est `_action` qu'il faut lire.
+                label: Text(_action == 'minify' ? 'Minifier' : 'Formater'),
+              ),
+              const SizedBox(height: 16),
 
-            // Output
-            Row(
-              children: [
-                Text('Résultat', style: Theme.of(context).textTheme.titleSmall),
-                const Spacer(),
-                if (_outputCtrl.text.isNotEmpty &&
-                    !_outputCtrl.text.startsWith('Erreur')) ...[
-                  IconButton(
-                    onPressed: _copy,
-                    icon: const Icon(Icons.copy, size: 18),
-                    tooltip: 'Copier',
+              // Output
+              Row(
+                children: [
+                  Text(
+                    'Résultat',
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  IconButton(
-                    onPressed: _saveAndShare,
-                    icon: const Icon(Icons.share, size: 18),
-                    tooltip: 'Partager',
-                  ),
+                  const Spacer(),
+                  if (_outputCtrl.text.isNotEmpty &&
+                      !_outputCtrl.text.startsWith('Erreur')) ...[
+                    IconButton(
+                      onPressed: _copy,
+                      icon: const Icon(Icons.copy, size: 18),
+                      tooltip: 'Copier',
+                    ),
+                    IconButton(
+                      onPressed: _saveAndShare,
+                      icon: const Icon(Icons.share, size: 18),
+                      tooltip: 'Partager',
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(minHeight: 80),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).dividerColor),
               ),
-              child: SelectableText(
-                _outputCtrl.text.isEmpty ? '—' : _outputCtrl.text,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  color: _outputCtrl.text.startsWith('Erreur')
-                      ? Colors.red
-                      : null,
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 80),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: SelectableText(
+                  _outputCtrl.text.isEmpty ? '—' : _outputCtrl.text,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: _outputCtrl.text.startsWith('Erreur')
+                        ? Colors.red
+                        : null,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

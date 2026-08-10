@@ -85,144 +85,147 @@ class _EncodeScreenState extends State<EncodeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Encodage / Décodage')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Mode selector
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'base64',
-                  label: Text('Base64'),
-                  icon: Icon(Icons.numbers, size: 16),
-                ),
-                ButtonSegment(
-                  value: 'url',
-                  label: Text('URL'),
-                  icon: Icon(Icons.link, size: 16),
-                ),
-                ButtonSegment(
-                  value: 'html',
-                  label: Text('HTML'),
-                  icon: Icon(Icons.html_outlined, size: 16),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (v) => setState(() {
-                _mode = v.first;
-                _process();
-              }),
-            ),
-            const SizedBox(height: 16),
-
-            // Encode / Decode toggle
-            Row(
-              children: [
-                ChoiceChip(
-                  label: const Text('Encoder'),
-                  selected: _encode,
-                  onSelected: (_) => setState(() {
-                    _encode = true;
-                    _process();
-                  }),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Décoder'),
-                  selected: !_encode,
-                  onSelected: (_) => setState(() {
-                    _encode = false;
-                    _process();
-                  }),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Input
-            Text(
-              _encode ? 'Texte source' : 'Texte encodé',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _inputCtrl,
-              maxLines: 6,
-              onChanged: (_) => _process(),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Entrez le texte ici…',
-              ),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-
-            // Action buttons
-            Row(
-              children: [
-                FilledButton.icon(
-                  onPressed: _process,
-                  icon: const Icon(Icons.play_arrow, size: 18),
-                  label: Text(_encode ? 'Encoder' : 'Décoder'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: _swap,
-                  icon: const Icon(Icons.swap_vert, size: 18),
-                  label: const Text('Inverser'),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () {
-                    _inputCtrl.clear();
-                    _outputCtrl.clear();
-                  },
-                  icon: const Icon(Icons.clear),
-                  tooltip: 'Effacer',
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Output
-            Row(
-              children: [
-                Text(
-                  _encode ? 'Résultat encodé' : 'Résultat décodé',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const Spacer(),
-                if (_outputCtrl.text.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: _copy,
-                    icon: const Icon(Icons.copy, size: 16),
-                    label: const Text('Copier'),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Mode selector
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'base64',
+                    label: Text('Base64'),
+                    icon: Icon(Icons.numbers, size: 16),
                   ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).dividerColor),
+                  ButtonSegment(
+                    value: 'url',
+                    label: Text('URL'),
+                    icon: Icon(Icons.link, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'html',
+                    label: Text('HTML'),
+                    icon: Icon(Icons.html_outlined, size: 16),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (v) => setState(() {
+                  _mode = v.first;
+                  _process();
+                }),
               ),
-              child: SelectableText(
-                _outputCtrl.text.isEmpty ? '—' : _outputCtrl.text,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  color: _outputCtrl.text.startsWith('Erreur')
-                      ? Colors.red
-                      : null,
+              const SizedBox(height: 16),
+
+              // Encode / Decode toggle
+              Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Encoder'),
+                    selected: _encode,
+                    onSelected: (_) => setState(() {
+                      _encode = true;
+                      _process();
+                    }),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('Décoder'),
+                    selected: !_encode,
+                    onSelected: (_) => setState(() {
+                      _encode = false;
+                      _process();
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Input
+              Text(
+                _encode ? 'Texte source' : 'Texte encodé',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _inputCtrl,
+                maxLines: 6,
+                onChanged: (_) => _process(),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Entrez le texte ici…',
+                ),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+
+              // Action buttons
+              Row(
+                children: [
+                  FilledButton.icon(
+                    onPressed: _process,
+                    icon: const Icon(Icons.play_arrow, size: 18),
+                    label: Text(_encode ? 'Encoder' : 'Décoder'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _swap,
+                    icon: const Icon(Icons.swap_vert, size: 18),
+                    label: const Text('Inverser'),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      _inputCtrl.clear();
+                      _outputCtrl.clear();
+                    },
+                    icon: const Icon(Icons.clear),
+                    tooltip: 'Effacer',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Output
+              Row(
+                children: [
+                  Text(
+                    _encode ? 'Résultat encodé' : 'Résultat décodé',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  if (_outputCtrl.text.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: _copy,
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text('Copier'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: SelectableText(
+                  _outputCtrl.text.isEmpty ? '—' : _outputCtrl.text,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    color: _outputCtrl.text.startsWith('Erreur')
+                        ? Colors.red
+                        : null,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -320,105 +320,120 @@ class _SetupScreenState extends State<_SetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Créer un coffre fort')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Icon(Icons.shield_outlined, size: 56),
-          const SizedBox(height: 12),
-          const Text(
-            'Le coffre chiffre vos fichiers avec AES-256-GCM. '
-            'Le mot de passe est dérivé localement (Argon2id, paramètres '
-            'auto-calibrés pour cet appareil — 1 à 3 secondes) et n\'est '
-            'jamais stocké.',
-            style: TextStyle(fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _pwd1,
-            obscureText: !_showPwd,
-            enableSuggestions: false,
-            autocorrect: false,
-            autofillHints: const <String>[],
-            keyboardType: TextInputType.visiblePassword,
-            // F15 v2.13.0 — block selection/copy quand masqué.
-            enableInteractiveSelection: _showPwd,
-            decoration: InputDecoration(
-              labelText: 'Mot de passe',
-              helperText: 'Minimum 8 caractères',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _showPwd ? Icons.visibility_off : Icons.visibility,
-                  size: 20,
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Icon(Icons.shield_outlined, size: 56),
+            const SizedBox(height: 12),
+            const Text(
+              'Le coffre chiffre vos fichiers avec AES-256-GCM. '
+              'Le mot de passe est dérivé localement (Argon2id, paramètres '
+              'auto-calibrés pour cet appareil — 1 à 3 secondes) et n\'est '
+              'jamais stocké.',
+              style: TextStyle(fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _pwd1,
+              obscureText: !_showPwd,
+              enableSuggestions: false,
+              autocorrect: false,
+              autofillHints: const <String>[],
+              keyboardType: TextInputType.visiblePassword,
+              // F15 v2.13.0 — block selection/copy quand masqué.
+              enableInteractiveSelection: _showPwd,
+              decoration: InputDecoration(
+                labelText: 'Mot de passe',
+                helperText: 'Minimum 8 caractères',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _showPwd ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
+                  ),
+                  tooltip: _showPwd ? 'Masquer' : 'Afficher',
+                  onPressed: () => setState(() => _showPwd = !_showPwd),
                 ),
-                tooltip: _showPwd ? 'Masquer' : 'Afficher',
-                onPressed: () => setState(() => _showPwd = !_showPwd),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _pwd2,
-            obscureText: !_showPwd,
-            enableSuggestions: false,
-            autocorrect: false,
-            autofillHints: const <String>[],
-            keyboardType: TextInputType.visiblePassword,
-            enableInteractiveSelection: _showPwd,
-            decoration: const InputDecoration(
-              labelText: 'Confirmer',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.lock_outline),
-            ),
-          ),
-          if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(
-              _error!,
-              // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
+            TextField(
+              controller: _pwd2,
+              obscureText: !_showPwd,
+              enableSuggestions: false,
+              autocorrect: false,
+              autofillHints: const <String>[],
+              keyboardType: TextInputType.visiblePassword,
+              enableInteractiveSelection: _showPwd,
+              decoration: InputDecoration(
+                labelText: 'Confirmer',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+                // Le premier champ avait son oeil, pas celui-ci : on demandait
+                // de confirmer A L'AVEUGLE un mot de passe dont l'oubli rend le
+                // contenu definitivement irrecuperable. Meme bascule que le
+                // premier champ, donc les deux se devoilent ensemble.
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _showPwd ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
+                  ),
+                  tooltip: _showPwd ? 'Masquer' : 'Afficher',
+                  onPressed: () => setState(() => _showPwd = !_showPwd),
+                ),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: _busy ? null : _create,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check),
+              label: Text(_busy ? 'Création…' : 'Créer le coffre'),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.amber, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Aucune récupération possible : si vous oubliez le mot de passe, '
+                      'les fichiers chiffrés seront irrécupérables.',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _busy ? null : _create,
-            icon: _busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check),
-            label: Text(_busy ? 'Création…' : 'Créer le coffre'),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.warning_amber, color: Colors.amber, size: 18),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Aucune récupération possible : si vous oubliez le mot de passe, '
-                    'les fichiers chiffrés seront irrécupérables.',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -482,73 +497,79 @@ class _UnlockScreenState extends State<_UnlockScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Coffre fort')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const SizedBox(height: 20),
-          const Icon(Icons.lock_outline, size: 56),
-          const SizedBox(height: 16),
-          const Text(
-            'Coffre verrouillé',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _pwd,
-            obscureText: !_showPwd,
-            autofocus: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            keyboardType: TextInputType.visiblePassword,
-            onSubmitted: (_) => _unlock(),
-            decoration: InputDecoration(
-              labelText: 'Mot de passe',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _showPwd ? Icons.visibility_off : Icons.visibility,
-                  size: 20,
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const SizedBox(height: 20),
+            const Icon(Icons.lock_outline, size: 56),
+            const SizedBox(height: 16),
+            const Text(
+              'Coffre verrouillé',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _pwd,
+              obscureText: !_showPwd,
+              autofocus: true,
+              enableSuggestions: false,
+              autocorrect: false,
+              keyboardType: TextInputType.visiblePassword,
+              onSubmitted: (_) => _unlock(),
+              decoration: InputDecoration(
+                labelText: 'Mot de passe',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _showPwd ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
+                  ),
+                  tooltip: _showPwd ? 'Masquer' : 'Afficher',
+                  onPressed: () => setState(() => _showPwd = !_showPwd),
                 ),
-                tooltip: _showPwd ? 'Masquer' : 'Afficher',
-                onPressed: () => setState(() => _showPwd = !_showPwd),
               ),
             ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
               ),
+            ],
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _busy ? null : _unlock,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.lock_open),
+              label: const Text('Déverrouiller'),
+            ),
+            const SizedBox(height: 32),
+            TextButton.icon(
+              icon: const Icon(
+                Icons.delete_forever_outlined,
+                color: Colors.red,
+              ),
+              label: const Text(
+                'Réinitialiser le coffre',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: widget.onReset,
             ),
           ],
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _busy ? null : _unlock,
-            icon: _busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.lock_open),
-            label: const Text('Déverrouiller'),
-          ),
-          const SizedBox(height: 32),
-          TextButton.icon(
-            icon: const Icon(Icons.delete_forever_outlined, color: Colors.red),
-            label: const Text(
-              'Réinitialiser le coffre',
-              style: TextStyle(color: Colors.red),
-            ),
-            onPressed: widget.onReset,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -791,7 +812,7 @@ class _VaultContentState extends State<_VaultContent> {
     }
   }
 
-  // ── Exporter le coffre (.rftvault) ────────────────────────────────────────
+  // ── Sauvegarder le coffre (.rftvault) ────────────────────────────────────────
 
   Future<void> _exportBackup() async {
     if (_files.isEmpty) {
@@ -1027,9 +1048,9 @@ class _VaultContentState extends State<_VaultContent> {
                 value: 'export',
                 child: ListTile(
                   leading: Icon(Icons.archive_outlined),
-                  title: Text('Exporter le coffre'),
+                  title: Text('Sauvegarder le coffre'),
                   subtitle: Text(
-                    'Sauvegarde .rftvault',
+                    'Fichier .rftvault chiffré',
                     style: TextStyle(fontSize: 11),
                   ),
                 ),
@@ -1038,9 +1059,9 @@ class _VaultContentState extends State<_VaultContent> {
                 value: 'restore',
                 child: ListTile(
                   leading: Icon(Icons.unarchive_outlined),
-                  title: Text('Restaurer un coffre'),
+                  title: Text('Restaurer une sauvegarde'),
                   subtitle: Text(
-                    'Depuis .rftvault',
+                    'Depuis un fichier .rftvault',
                     style: TextStyle(fontSize: 11),
                   ),
                 ),
@@ -1225,75 +1246,94 @@ class _PasswordDialogState extends State<_PasswordDialog> {
     final cs = Theme.of(context).colorScheme;
     return AlertDialog(
       title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            widget.info,
-            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _pwd1,
-            obscureText: !_show,
-            autofocus: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            autofillHints: const <String>[], // disable Android Autofill
-            keyboardType: TextInputType.visiblePassword,
-            // F15 v2.13.0 — Désactive la sélection / copie quand le password
-            // est masqué : empêche un long-press → "Tout sélectionner" →
-            // copier vers le presse-papier (qui sur Android 13- peut être
-            // capté par un clipboard manager tiers).
-            enableInteractiveSelection: _show,
-            onSubmitted: widget.confirm ? null : (_) => _submit(),
-            decoration: InputDecoration(
-              labelText: 'Mot de passe',
-              helperText: widget.confirm ? 'Minimum 8 caractères' : null,
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _show ? Icons.visibility_off : Icons.visibility,
-                  size: 20,
-                ),
-                tooltip: _show ? 'Masquer' : 'Afficher',
-                onPressed: () => setState(() => _show = !_show),
-              ),
+      // `content` ne defile PAS par defaut. Des que le clavier s'ouvre, la
+      // boite retrecit et le contenu deborde : le champ « Confirmer » passait
+      // sous les boutons « Annuler » et « Sauvegarder », qui le recouvraient.
+      // Il devenait alors impossible a saisir. Constate sur appareil le
+      // 2026-08-10 ; ni l'analyse ni les tests ne peuvent voir ce defaut.
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.info,
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
-          ),
-          if (widget.confirm) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
-              controller: _pwd2,
+              controller: _pwd1,
               obscureText: !_show,
+              autofocus: true,
               enableSuggestions: false,
               autocorrect: false,
               autofillHints: const <String>[], // disable Android Autofill
               keyboardType: TextInputType.visiblePassword,
-              // F15 v2.13.0 — cf TextField précédent.
+              // F15 v2.13.0 — Désactive la sélection / copie quand le password
+              // est masqué : empêche un long-press → "Tout sélectionner" →
+              // copier vers le presse-papier (qui sur Android 13- peut être
+              // capté par un clipboard manager tiers).
               enableInteractiveSelection: _show,
-              onSubmitted: (_) => _submit(),
-              decoration: const InputDecoration(
-                labelText: 'Confirmer',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock_outline),
+              onSubmitted: widget.confirm ? null : (_) => _submit(),
+              decoration: InputDecoration(
+                labelText: 'Mot de passe',
+                helperText: widget.confirm ? 'Minimum 8 caractères' : null,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _show ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
+                  ),
+                  tooltip: _show ? 'Masquer' : 'Afficher',
+                  onPressed: () => setState(() => _show = !_show),
+                ),
               ),
             ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: 10),
-            Text(
-              _error!,
-              // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
+            if (widget.confirm) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _pwd2,
+                obscureText: !_show,
+                enableSuggestions: false,
+                autocorrect: false,
+                autofillHints: const <String>[], // disable Android Autofill
+                keyboardType: TextInputType.visiblePassword,
+                // F15 v2.13.0 — cf TextField précédent.
+                enableInteractiveSelection: _show,
+                onSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  labelText: 'Confirmer',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  // Le premier champ avait son oeil, pas celui-ci : on demandait
+                  // de confirmer A L'AVEUGLE un mot de passe dont l'oubli rend le
+                  // contenu definitivement irrecuperable. Meme bascule que le
+                  // premier champ, donc les deux se devoilent ensemble.
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _show ? Icons.visibility_off : Icons.visibility,
+                      size: 20,
+                    ),
+                    tooltip: _show ? 'Masquer' : 'Afficher',
+                    onPressed: () => setState(() => _show = !_show),
+                  ),
+                ),
               ),
-            ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                // v2.13.2 (#2) — cs.error au lieu de Colors.red hardcodé.
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
       actions: [
         TextButton(

@@ -103,167 +103,179 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (_busy) const LinearProgressIndicator(),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.document_scanner, size: 32, color: cs.primary),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Scanner un document',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Détection des bords automatique, redressement perspective '
-                    'et export PDF. 100 % local — vos documents ne quittent '
-                    'jamais l\'appareil.',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Pages maximum : $_pageLimit',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          Slider(
-            value: _pageLimit.toDouble(),
-            min: 1,
-            max: 25,
-            divisions: 24,
-            label: '$_pageLimit',
-            onChanged: _busy
-                ? null
-                : (v) => setState(() => _pageLimit = v.toInt()),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _busy ? null : _scan,
-            icon: const Icon(Icons.photo_camera_outlined),
-            label: Text(_busy ? 'Scan en cours…' : 'Lancer le scan'),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                _error!,
-                // v2.13.2 (#2) — cs.error.
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-            ),
-          ],
-          if (_lastPdfPath != null) ...[
-            const SizedBox(height: 24),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (_busy) const LinearProgressIndicator(),
             Card(
-              color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.lightBlue.shade300, width: 1.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Icon(
-                          Icons.check_circle,
-                          color: Colors.lightBlue.shade700,
-                          size: 24,
+                          Icons.document_scanner,
+                          size: 32,
+                          color: cs.primary,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Scan sauvegardé sur votre téléphone',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Colors.lightBlue.shade900,
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Scanner un document',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _lastPdfPath!,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: () {
-                        final dir = _lastPdfPath!.substring(
-                          0,
-                          _lastPdfPath!.lastIndexOf(RegExp(r'[/\\]')),
-                        );
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                FileExplorerScreen(initialPath: dir),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.folder_open),
-                      label: const Text('Voir le fichier dans l\'explorateur'),
-                    ),
-                    const SizedBox(height: 10),
                     const Text(
-                      'Ou envoyer vers :',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 6),
-                    OutputActionsRow(
-                      path: _lastPdfPath!,
-                      mime: 'application/pdf',
+                      'Détection des bords automatique, redressement perspective '
+                      'et export PDF. 100 % local — vos documents ne quittent '
+                      'jamais l\'appareil.',
+                      style: TextStyle(fontSize: 13),
                     ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Pages maximum : $_pageLimit',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            Slider(
+              value: _pageLimit.toDouble(),
+              min: 1,
+              max: 25,
+              divisions: 24,
+              label: '$_pageLimit',
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(() => _pageLimit = v.toInt()),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _busy ? null : _scan,
+              icon: const Icon(Icons.photo_camera_outlined),
+              label: Text(_busy ? 'Scan en cours…' : 'Lancer le scan'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  _error!,
+                  // v2.13.2 (#2) — cs.error.
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+            if (_lastPdfPath != null) ...[
+              const SizedBox(height: 24),
+              Card(
+                color: Colors.lightBlue.shade50.withValues(alpha: 0.85),
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(
+                    color: Colors.lightBlue.shade300,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.lightBlue.shade700,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Scan sauvegardé sur votre téléphone',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.lightBlue.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _lastPdfPath!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: () {
+                          final dir = _lastPdfPath!.substring(
+                            0,
+                            _lastPdfPath!.lastIndexOf(RegExp(r'[/\\]')),
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  FileExplorerScreen(initialPath: dir),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.folder_open),
+                        label: const Text(
+                          'Voir le fichier dans l\'explorateur',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Ou envoyer vers :',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 6),
+                      OutputActionsRow(
+                        path: _lastPdfPath!,
+                        mime: 'application/pdf',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

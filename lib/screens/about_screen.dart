@@ -222,162 +222,165 @@ class _AboutScreenState extends State<AboutScreen> {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('À propos')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
-        children: [
-          // ── Header ──────────────────────────────────────────────────────────
-          Center(
-            child: Column(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/icon/app_icon.png',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Read Files Tech',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+          children: [
+            // ── Header ──────────────────────────────────────────────────────────
+            Center(
+              child: Column(
+                children: [
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'v$_version',
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                    child: Image.asset(
+                      'assets/icon/app_icon.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Lecteur, éditeur et explorateur de fichiers',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: _checkingUpdate ? null : _checkUpdate,
-                  icon: _checkingUpdate
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.system_update_outlined, size: 18),
-                  label: Text(
-                    _checkingUpdate
-                        ? 'Vérification…'
-                        : 'Vérifier les mises à jour',
+                  const SizedBox(height: 14),
+                  Text(
+                    'Read Files Tech',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'v$_version',
+                      style: TextStyle(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Lecteur, éditeur et explorateur de fichiers',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: _checkingUpdate ? null : _checkUpdate,
+                    icon: _checkingUpdate
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.system_update_outlined, size: 18),
+                    label: Text(
+                      _checkingUpdate
+                          ? 'Vérification…'
+                          : 'Vérifier les mises à jour',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // ── Confidentialité ─────────────────────────────────────────────────
+            _sectionTitle(context, 'Confidentialité'),
+            const SizedBox(height: 8),
+            const _PrivacyCard(),
+
+            const SizedBox(height: 24),
+
+            // ── Fonctionnalités ─────────────────────────────────────────────────
+            _sectionTitle(context, 'Fonctionnalités'),
+            const SizedBox(height: 8),
+            ..._features.map(
+              (f) => _FeatureRow(icon: f.icon, label: f.label, desc: f.desc),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Auteur ──────────────────────────────────────────────────────────
+            _sectionTitle(context, 'Auteur'),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: cs.primaryContainer,
+                  child: Icon(Icons.person_outline, color: cs.primary),
                 ),
+                title: const Text(_author),
+                subtitle: const Text('Développeur'),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Réglages ────────────────────────────────────────────────────────
+            _sectionTitle(context, 'Réglages'),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.settings_outlined, color: cs.primary),
+                title: const Text('Dossier de sortie & partage automatique'),
+                subtitle: const Text(
+                  'Choisir où sont sauvegardés scans, conversions, signatures…',
+                  style: TextStyle(fontSize: 11),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Aide ────────────────────────────────────────────────────────────
+            _sectionTitle(context, 'Aide rapide'),
+            const SizedBox(height: 8),
+            const _HelpCard(
+              title: 'Ouvrir un fichier',
+              steps: [
+                'Bouton "Ouvrir un fichier" en bas de l\'accueil',
+                'Ou navigue dans l\'Explorateur → tape sur le fichier',
+                'Ou appuie sur un raccourci dossier pour accéder directement',
               ],
             ),
-          ),
-
-          const SizedBox(height: 28),
-
-          // ── Confidentialité ─────────────────────────────────────────────────
-          _sectionTitle(context, 'Confidentialité'),
-          const SizedBox(height: 8),
-          const _PrivacyCard(),
-
-          const SizedBox(height: 24),
-
-          // ── Fonctionnalités ─────────────────────────────────────────────────
-          _sectionTitle(context, 'Fonctionnalités'),
-          const SizedBox(height: 8),
-          ..._features.map(
-            (f) => _FeatureRow(icon: f.icon, label: f.label, desc: f.desc),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Auteur ──────────────────────────────────────────────────────────
-          _sectionTitle(context, 'Auteur'),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: cs.primaryContainer,
-                child: Icon(Icons.person_outline, color: cs.primary),
-              ),
-              title: const Text(_author),
-              subtitle: const Text('Développeur'),
+            const _HelpCard(
+              title: 'Permissions stockage (si dossiers vides)',
+              steps: [
+                'Au premier lancement, accepte "Accès à tous les fichiers"',
+                'Sinon : Paramètres → Apps → Read Files Tech → Autorisations → Fichiers et médias → Autoriser tout',
+              ],
             ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Réglages ────────────────────────────────────────────────────────
-          _sectionTitle(context, 'Réglages'),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.settings_outlined, color: cs.primary),
-              title: const Text('Dossier de sortie & partage automatique'),
-              subtitle: const Text(
-                'Choisir où sont sauvegardés scans, conversions, signatures…',
-                style: TextStyle(fontSize: 11),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
+            const _HelpCard(
+              title: 'Mise à jour',
+              steps: [
+                'L\'app vérifie automatiquement les mises à jour au lancement',
+                'Ou appuie sur "Vérifier les mises à jour" ci-dessus',
+              ],
             ),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-          // ── Aide ────────────────────────────────────────────────────────────
-          _sectionTitle(context, 'Aide rapide'),
-          const SizedBox(height: 8),
-          const _HelpCard(
-            title: 'Ouvrir un fichier',
-            steps: [
-              'Bouton "Ouvrir un fichier" en bas de l\'accueil',
-              'Ou navigue dans l\'Explorateur → tape sur le fichier',
-              'Ou appuie sur un raccourci dossier pour accéder directement',
-            ],
-          ),
-          const _HelpCard(
-            title: 'Permissions stockage (si dossiers vides)',
-            steps: [
-              'Au premier lancement, accepte "Accès à tous les fichiers"',
-              'Sinon : Paramètres → Apps → Read Files Tech → Autorisations → Fichiers et médias → Autoriser tout',
-            ],
-          ),
-          const _HelpCard(
-            title: 'Mise à jour',
-            steps: [
-              'L\'app vérifie automatiquement les mises à jour au lancement',
-              'Ou appuie sur "Vérifier les mises à jour" ci-dessus',
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Sections "Aide & support" + "Mentions légales" partagées via
-          // files_tech_core (couvre support, site, bug report, privacy,
-          // terms, licence, copyright).
-          LegalSupportSections(appName: 'Read Files Tech', version: _version),
-        ],
+            // Sections "Aide & support" + "Mentions légales" partagées via
+            // files_tech_core (couvre support, site, bug report, privacy,
+            // terms, licence, copyright).
+            LegalSupportSections(appName: 'Read Files Tech', version: _version),
+          ],
+        ),
       ),
     );
   }
