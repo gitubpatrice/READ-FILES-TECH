@@ -10,14 +10,15 @@
 
 ## 1. État
 
-*État au 2026-08-10 au soir, tout poussé et reconstaté sur les deux appareils.*
+*État au 2026-08-10 au soir, tout poussé. Coffre éclaté, ODS lisible, et un
+audit externe des fichiers jamais relus — voir §8 et §9.*
 
 | | |
 |---|---|
 | Branche | `main`, arbre **propre**, 0/0 de divergence |
-| Commits depuis `c89b820` (v2.14.0) | **47** |
+| Commits depuis `c89b820` (v2.14.0) | **58** |
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **167 tests verts** (15 fichiers) |
+| `flutter test` | **204 tests verts** (18 fichiers) |
 | Build release | **passe** — 35,6 / 40,7 / 42,9 Mo |
 | Version `pubspec.yaml` | **2.14.0+21400** — non bumpée, volontairement |
 | Tag | aucun |
@@ -365,3 +366,76 @@ Le script a rendu « prompt de 15 507 caractères » puis **aucun rapport**, san
 message d'erreur. `gemini-3.5-flash` a répondu. Vérifier que le fichier de
 sortie existe avant de conclure qu'une relecture n'a rien trouvé — une relecture
 absente et une relecture vide se ressemblent beaucoup.
+
+## 9. Le 2026-08-10, fin de journée — audit externe des fichiers jamais relus
+
+Huit fichiers n'avaient **jamais** été relus par un tiers. Passés à GPT
+(`gpt-5.2`) avec une consigne ciblée sur la perte de données, les états d'échec
+silencieux, les ressources et la concurrence. Chaque constat a été vérifié dans
+le code avant d'agir.
+
+### Le motif qui revient partout : tester puis agir
+
+Quatre défauts distincts, une seule cause. Le code vérifiait qu'un chemin était
+libre, **puis** agissait — en laissant entre les deux une fenêtre où tout peut
+changer.
+
+| Où | Ce qui pouvait arriver |
+|---|---|
+| `atomic_write` | Temporaire au nom **fixe** `'$path.tmp'`. Deux écritures concurrentes vers le même chemin le partageaient : fichier final mélangé ou tronqué. C'est le point d'écriture du coffre, de la corbeille, des conversions et des sauvegardes. |
+| `trash_service._newId` | Identifiant choisi, dossier créé plus tard. Deux suppressions dans la même milliseconde obtenaient le **même** — et `deleteForever` fait un `delete(recursive: true)` dessus. Supprimer un élément en effaçait **deux**. |
+| `trash_service.restore` | Chemin libre choisi, déplacement plus tard. Un fichier apparu entre-temps était **écrasé** par `rename`. Il n'était même pas dans la corbeille. |
+| `output_storage_service` | `create()` sans exclusivité, et un timestamp à la **seconde** — alors qu'un commentaire affirmait qu'il incluait les millisecondes. Deux fichiers générés dans la même seconde s'écrasaient. |
+
+Partout, le correctif est le même : **réserver** au lieu de tester —
+`create(exclusive: true)`, ou création du dossier au moment où l'identifiant est
+choisi.
+
+### Le mode panique annonçait un succès non vérifié
+
+Trois drapeaux. `prefs.remove()` rend un booléen et ne lève pas ; sa valeur
+était jetée. Les échecs de suppression des temporaires étaient avalés.
+`recentsCleared` était posé inconditionnellement alors qu'il **dépend** de
+l'étape précédente.
+
+Sur un effacement d'**urgence**, un rapport qui rassure à tort est le pire
+résultat possible : l'utilisateur cesse de s'inquiéter. Vérification
+indépendante ajoutée — ce qui compte n'est pas que chaque appel ait réussi,
+c'est qu'il ne **reste** rien.
+
+### Deviner la version d'Android menait à une impasse
+
+`storage_access` posait `_sdk = 30` quand le canal échouait — alors que sa
+propre documentation annonçait `-1`. Supposer est un piège **symétrique** :
+supposer 30 sur Android ≤ 10 interroge une permission qui n'existe pas — c'est
+l'impasse exacte du S9 le 2026-08-09 — et supposer ≤ 10 sur Android 13+ demande
+une permission sans effet.
+
+Aucune valeur par défaut n'est bonne. Version inconnue, on interroge **les
+deux** modèles : celui qui existe répondra.
+
+### ⚠️ Le défaut que le correctif a introduit
+
+Le suffixe d'identifiant de corbeille était d'abord **hexadécimal**, alors que
+`_idPattern` n'accepte que des chiffres — l'identifiant alimentant des chemins
+de fichiers. `list()` rejetait donc **toutes** les entrées : la corbeille serait
+apparue vide, fichiers invisibles.
+
+Les tests l'ont dit immédiatement. Sans eux, le correctif d'une perte de
+données en aurait causé une pire.
+
+### Ce qui reste de cet audit, non traité
+
+1. `trash_service.list()` lit les métadonnées **sans borne** : un JSON énorme
+   déposé par un tiers dans `.RFT_Corbeille/meta/` ferait geler la liste — et le
+   mode panique, qui l'appelle.
+2. E/S **synchrones** dans `list()` et `_existingTrashRoots()` : gel perceptible
+   sur stockage lent.
+3. `duplicate_finder_service` : appels concurrents à `find()` non gérés →
+   isolates orphelins.
+4. `reader_service` : `decodeBytes` sur un EPUB sans passer par la garde
+   anti-bombe de `archive_safe`.
+
+Les quatre sont réels et moins graves que ce qui précède. Le 4 mérite d'être
+regardé en premier : c'est le seul chemin de décompression qui n'utilise pas la
+garde commune.
