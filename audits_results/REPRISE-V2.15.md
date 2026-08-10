@@ -147,13 +147,9 @@ c'est-à-dire par exactement le même nœud que syncfusion 34.
    contrainte `^4.1.3` les acceptait déjà, seul `archive` 3 les retenait.
    **Syncfusion reste en 33, sciemment** — voir ci-dessous.
 2. ~~L'ODS~~ — **fait le 2026-08-10**, sans dépendance nouvelle. Voir §7.
-3. **A-P0a — éclater `vault_service.dart` (1451 l.).** **Le seul point qui
-   reste**, et il demande une session qui *commence* par lui. Règle : les 25
-   tests du coffre ne doivent pas être modifiés. S'ils doivent l'être, le
-   comportement change — signal d'arrêt.
-
-   Entamé le 2026-08-10 en fin de journée, à la demande explicite de Patrice,
-   avec relecture externe.
+3. ~~A-P0a — éclater `vault_service.dart`~~ — **fait le 2026-08-10.** Voir §8.
+   Les 25 tests du coffre n'ont pas été modifiés.
+4. **Bump + tag**, quand vous le déciderez. Rien n'est bumpé, aucun tag posé.
 4. `docxXmlToPlainText` écrit une ligne par paragraphe même vide (signalé par
    GPT). Comportement du service, aligné avec l'outil de conversion. Le changer
    modifierait aussi la sortie de l'outil — à décider à part.
@@ -182,6 +178,12 @@ c'est-à-dire par exactement le même nœud que syncfusion 34.
   coffre » se contredisent ; j'ai appliqué la première sans voir la seconde.
 - **Vérifier qu'un patch est appliqué fait partie de l'appliquer.** L'octet NUL
   a résisté à cinq tentatives.
+- **Un refactor par délégation invite à déplacer le code sans le relire.** La
+  double allocation du mot de passe a été recopiée telle quelle depuis
+  `vault_service.dart`, et c'est une relecture externe qui l'a vue.
+- **Une relecture absente ressemble à une relecture qui n'a rien trouvé.**
+  `gemini-3.1-pro-preview` a rendu un rapport vide sans message d'erreur.
+  Vérifier que le fichier de sortie existe.
 - **Un test vert ne dit pas lequel des deux faits il vérifie.** Ceux de
   `archive_safe` prouvaient le *refus* et personne n'avait remarqué qu'ils ne
   prouvaient pas la *borne*. Saboter le correctif et constater que rien ne
@@ -290,3 +292,76 @@ La cause n'est pas la malchance : ce chemin a beaucoup d'états d'échec, et la
 tentation est de déclarer une garde suffisante dès qu'elle attrape le cas qu'on
 avait en tête. **Sur ce chemin, partir du fichier réel du corpus, et faire
 reconstater sur appareil après chaque correctif même quand il paraît évident.**
+
+## 8. A-P0a — le coffre éclaté, le 2026-08-10
+
+`vault_service.dart` passe de **1 451 à 1 304 lignes**. Trois modules purs dans
+`lib/services/vault/` : `vault_bytes.dart` (47 l.), `vault_blob.dart` (133 l.),
+`vault_kdf.dart` (199 l.).
+
+**Les 25 tests d'intégration du coffre n'ont pas été modifiés**, conformément à
+la règle. La façade `VaultService` garde une API publique identique : le
+refactor est une **délégation**, les méthodes privées conservent leur signature
+et leur corps appelle les fonctions top-level extraites.
+
+### Ce que l'extraction a rendu testable — la vraie raison de la faire
+
+Deux mécanismes de sécurité étaient inatteignables par un test :
+
+- **`calibrateArgon2Params`** décide des paramètres Argon2id du coffre **à
+  vie** : écrits au setup, jamais recalculés. Une sous-évaluation affaiblit le
+  coffre sans message, sans symptôme, et un attaquant qui en profite ne se
+  manifeste pas. **Zéro test** avant, onze après — dont la **monotonie** (un
+  appareil plus rapide ne doit jamais recevoir de paramètres plus faibles) et
+  un balayage de −100 à 5 000 ms qui exclut tout trou d'arrondi.
+- **Le refus du repli v1** sur un coffre v2-only protège contre la substitution
+  d'un `.enc` v2 par un blob v1 forgé, lequel contournerait la liaison de l'AAD
+  au nom de fichier. Il lisait un champ statique depuis une méthode privée :
+  l'atteindre demandait de monter un coffre complet. `v2Only` est désormais un
+  **paramètre**. Trois tests, dont celui qui prouve que le blob refusé est
+  **par ailleurs parfaitement valide** — sans quoi le test passerait pour la
+  mauvaise raison.
+
+Falsifié : en neutralisant le refus, deux tests virent au rouge.
+
+### Doublons supprimés
+
+- `_readU32be` et `_readInt32be` : **deux corps distincts, mot pour mot
+  identiques**. Rien ne le signalait, et rien n'empêchait qu'un correctif
+  appliqué à l'un manque à l'autre.
+- Le contrôle du magic `RFT2`, recopié **à la main quatre fois**, chacun avec
+  ses index.
+- La construction de l'AAD, **triplée**.
+
+### ⚠️ Le défaut trouvé par la relecture externe
+
+GPT (`gpt-5.2`) n'a rien trouvé et a confirmé l'équivalence sémantique point par
+point, y compris que l'arrondi flottant du calibrage est identique à l'original
+dans tous les cas.
+
+**Gemini a trouvé un défaut réel et préexistant** :
+
+```dart
+Uint8List.fromList(utf8.encode(password))
+```
+
+`utf8.encode` rend **déjà** un `Uint8List`, neuf et mutable à chaque appel —
+vérifié à l'exécution, l'analyseur le confirmant aussi statiquement
+(« Unnecessary type check »). L'envelopper allouait donc une **seconde** copie
+du mot de passe en clair, et le `finally` ne remettait à zéro que celle-là. La
+première restait en mémoire jusqu'au passage du ramasse-miettes.
+
+Corrigé aux deux sites de dérivation. Les autres usages du même motif
+construisent l'**AAD** — donnée publique, aucun secret à effacer — et sont
+laissés tels quels.
+
+**La leçon** : ce défaut a été recopié tel quel depuis l'original sans être vu,
+parce qu'un refactor par délégation invite à déplacer le code sans le relire.
+La relecture externe sert précisément à ça.
+
+### `gemini-3.1-pro-preview` a échoué en silence
+
+Le script a rendu « prompt de 15 507 caractères » puis **aucun rapport**, sans
+message d'erreur. `gemini-3.5-flash` a répondu. Vérifier que le fichier de
+sortie existe avant de conclure qu'une relecture n'a rien trouvé — une relecture
+absente et une relecture vide se ressemblent beaucoup.
