@@ -193,4 +193,99 @@ void main() {
       throwsA(isA<FileSystemException>()),
     );
   });
+  // ──────────────────────────────────────────────────────────────────────────
+  // Deux pertes de donnees signalees par la relecture GPT du 2026-08-10.
+  // Aucune n'etait couverte : les tests existants exercaient la corbeille en
+  // sequentiel, alors que les deux defauts n'apparaissent qu'en concurrence.
+
+  group('identifiants — concurrence', () {
+    test('dix mises a la corbeille simultanees ont dix identifiants '
+        'DISTINCTS', () async {
+      // `_newId` testait l'existence du dossier puis rendait l'identifiant ;
+      // c'est l'appelant qui le creait, plus tard. Deux suppressions dans la
+      // meme milliseconde obtenaient donc le MEME identifiant, et partageaient
+      // `items/<id>/`.
+      //
+      // La consequence n'est pas cosmetique : `deleteForever` finit par un
+      // `delete(recursive: true)` sur ce dossier. Supprimer definitivement UN
+      // element effacait les DEUX.
+      final fichiers = List.generate(
+        10,
+        (i) => makeFile('doc$i.txt', 'contenu $i'),
+      );
+      final entrees = await Future.wait(fichiers.map(trash.moveToTrash));
+
+      final ids = entrees.map((e) => e.id).toSet();
+      expect(
+        ids.length,
+        10,
+        reason: 'identifiants en collision : ${entrees.map((e) => e.id)}',
+      );
+
+      // Et le contenu de chacun doit avoir survecu, distinctement.
+      final listees = await trash.list();
+      expect(listees.length, 10);
+    });
+
+    test(
+      'supprimer definitivement une entree n en emporte pas une autre',
+      () async {
+        final a = makeFile('a.txt', 'AAA');
+        final b = makeFile('b.txt', 'BBB');
+        final entrees = await Future.wait([
+          trash.moveToTrash(a),
+          trash.moveToTrash(b),
+        ]);
+
+        await trash.deleteForever(entrees.first);
+
+        final restantes = await trash.list();
+        expect(
+          restantes.length,
+          1,
+          reason: 'la seconde entree a disparu aussi',
+        );
+        expect(
+          File(restantes.single.payloadPath).readAsStringSync(),
+          anyOf('AAA', 'BBB'),
+        );
+      },
+    );
+  });
+
+  group('restauration — le chemin de destination est reserve', () {
+    test('restaurer n ecrase pas un fichier apparu entre-temps', () async {
+      final f = makeFile('note.txt', 'ORIGINAL');
+      final entree = await trash.moveToTrash(f);
+
+      // Quelqu'un recree un fichier au meme endroit pendant que l'element est
+      // a la corbeille : une autre application, une synchronisation. Ce
+      // fichier-la n'a jamais ete supprime — le perdre serait entierement de
+      // notre fait.
+      File('${work.path}/note.txt').writeAsStringSync('NOUVEAU');
+
+      final dest = await trash.restore(entree);
+
+      expect(
+        File('${work.path}/note.txt').readAsStringSync(),
+        'NOUVEAU',
+        reason: 'le fichier present a ete ecrase par la restauration',
+      );
+      expect(dest, isNot('${work.path}/note.txt'));
+      expect(File(dest).readAsStringSync(), 'ORIGINAL');
+    });
+
+    test('deux restaurations simultanees ne se recouvrent pas', () async {
+      final a = makeFile('meme.txt', 'PREMIER');
+      final e1 = await trash.moveToTrash(a);
+      final b = makeFile('meme.txt', 'SECOND');
+      final e2 = await trash.moveToTrash(b);
+
+      final dests = await Future.wait([trash.restore(e1), trash.restore(e2)]);
+
+      expect(dests.toSet().length, 2, reason: 'meme destination pour les deux');
+      final contenus = dests.map((d) => File(d).readAsStringSync()).toSet();
+      expect(contenus, {'PREMIER', 'SECOND'});
+    });
+  });
 }

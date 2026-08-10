@@ -60,11 +60,29 @@ class PanicService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final keys = prefs.getKeys().toList();
+      // `remove()` rend un booleen et ne leve PAS quand il echoue. Sa valeur
+      // etait jetee, puis le drapeau pose inconditionnellement : le rapport
+      // annoncait « prefs effacees » alors que des cles pouvaient subsister.
+      // Sur un effacement d'URGENCE, un rapport qui rassure a tort est le pire
+      // resultat possible — l'utilisateur cesse de s'inquieter.
+      var toutesRetirees = true;
       for (final k in keys) {
         if (_preservedPrefs.contains(k)) continue;
-        await prefs.remove(k);
+        if (!await prefs.remove(k)) toutesRetirees = false;
       }
-      report.prefsCleared = true;
+      // Verification independante : ce qui compte n'est pas que chaque appel
+      // ait rendu true, c'est qu'il ne reste rien.
+      final restantes = prefs
+          .getKeys()
+          .where((k) => !_preservedPrefs.contains(k))
+          .toList();
+      if (restantes.isNotEmpty) {
+        toutesRetirees = false;
+        if (kDebugMode) {
+          debugPrint('panic prefs: ${restantes.length} cle(s) subsistent');
+        }
+      }
+      report.prefsCleared = toutesRetirees;
     } catch (e) {
       if (kDebugMode) debugPrint('panic prefs: $e');
     }
@@ -81,6 +99,7 @@ class PanicService {
     // d'annulation share). Ne supprime PAS les sous-dossiers d'autres
     // plugins (FontCache, etc.) — uniquement les fichiers à la racine et
     // les sous-dossiers connus.
+    var tempIntact = true;
     try {
       final tmpRoot = await getTemporaryDirectory();
       if (await tmpRoot.exists()) {
@@ -99,7 +118,9 @@ class PanicService {
               try {
                 await entry.delete();
               } catch (_) {
-                /* ignore */
+                // Un fichier qu'on n'a pas su supprimer est du plaintext qui
+                // RESTE : il doit invalider le drapeau, pas etre avale.
+                tempIntact = false;
               }
             }
           }
@@ -112,7 +133,7 @@ class PanicService {
       if (await history.exists()) {
         await history.delete(recursive: true);
       }
-      report.tempPurged = true;
+      report.tempPurged = tempIntact;
     } catch (e) {
       if (kDebugMode) debugPrint('panic temp: $e');
     }
@@ -138,9 +159,15 @@ class PanicService {
     } catch (e) {
       if (kDebugMode) debugPrint('panic trash: $e');
     }
-    // 7. Purge récents (la clé prefs `recent_files` est déjà effacée à l'étape
-    // 3 puisque non whitelistée — ce flag confirme la couverture du périmètre).
-    report.recentsCleared = true;
+    // 7. Purge des récents.
+    //
+    // La clé `recent_files` n'est pas whitelistée : elle est donc effacée à
+    // l'étape 3, et ce drapeau ne fait qu'en refléter la couverture. Il était
+    // posé **inconditionnellement**, y compris quand l'étape 3 avait échoué —
+    // le rapport affirmait alors que les récents étaient purgés alors que la
+    // clé était toujours là. Un drapeau qui ne mesure rien vaut moins que pas
+    // de drapeau du tout.
+    report.recentsCleared = report.prefsCleared;
     return report;
   }
 }

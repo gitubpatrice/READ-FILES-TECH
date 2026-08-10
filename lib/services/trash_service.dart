@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:path_provider/path_provider.dart';
@@ -55,7 +56,7 @@ class TrashEntry {
     'deletedAt': deletedAt.toIso8601String(),
   };
 
-  /// Format d'identifiant produit par `TrashService._newId` : uniquement des
+  /// Format d'identifiant produit par `TrashService._reserveId` : uniquement des
   /// chiffres, éventuellement suffixés `_n`. Tout écart est rejeté.
   static final RegExp _idPattern = RegExp(r'^\d+(_\d+)?$');
 
@@ -227,9 +228,11 @@ class TrashService {
     final isDir = type == FileSystemEntityType.directory;
 
     final root = await _trashRootFor(path);
-    final id = _newId(root);
+    // Réserve l'identifiant ET crée son dossier d'un seul geste : les deux
+    // étaient séparés, et la fenêtre entre eux permettait à deux suppressions
+    // simultanées de se donner le même identifiant.
+    final id = _reserveId(root);
     final itemDir = Directory('$root/$itemsDir/$id');
-    await itemDir.create(recursive: true);
 
     int size = -1;
     if (!isDir) {
@@ -334,7 +337,12 @@ class TrashService {
     }
     final parent = entry.originalPath.substring(0, cut);
     await Directory(parent).create(recursive: true);
-    final dest = _uniquePath(parent, entry.name);
+    // Le chemin est RESERVE, pas seulement teste : entre un test d'existence
+    // et le deplacement, un fichier peut apparaitre — autre application,
+    // synchronisation, seconde restauration — et `rename` l'ecraserait
+    // silencieusement. Ce fichier-la n'etait pas dans la corbeille : sa perte
+    // serait entierement de notre fait.
+    final dest = _reserveUniquePath(parent, entry.name, isDir: entry.isDir);
     await _move(entry.payloadPath, dest, isDir: entry.isDir);
     await _deleteQuietly(entry.metaPath);
     await _deleteQuietly(entry.itemDirPath);
@@ -370,14 +378,43 @@ class TrashService {
 
   // ---------- Primitives ----------
 
-  String _newId(String root) {
+  /// Réserve un identifiant d'élément **et le dossier qui va avec**.
+  ///
+  /// **Pourquoi ce n'est plus un simple compteur.** L'ancienne version testait
+  /// `existsSync()` puis rendait l'identifiant ; c'est l'appelant qui créait le
+  /// dossier, plus tard. Deux mises à la corbeille simultanées tombant dans la
+  /// même milliseconde voyaient donc toutes deux le dossier absent et
+  /// choisissaient le **même** identifiant — deux charges utiles dans
+  /// `items/<id>/`, une seule méta.
+  ///
+  /// La conséquence n'était pas cosmétique : `deleteForever` termine par un
+  /// `delete(recursive: true)` sur `items/<id>`. Supprimer définitivement UN
+  /// élément effaçait donc les DEUX. Perte de données silencieuse, signalée par
+  /// la relecture GPT du 2026-08-10.
+  ///
+  /// Deux verrous désormais : un suffixe aléatoire, qui rend la collision
+  /// improbable, et surtout la **création du dossier ici même**, qui fait de la
+  /// réservation et de la création un seul geste au lieu de deux.
+  static final _rand = Random.secure();
+
+  String _reserveId(String root) {
     final stamp = DateTime.now().millisecondsSinceEpoch;
-    var id = '$stamp';
-    var n = 1;
-    while (Directory('$root/$itemsDir/$id').existsSync()) {
-      id = '${stamp}_${n++}';
+    for (var essai = 0; essai < 64; essai++) {
+      // Suffixe DECIMAL, pas hexadecimal : `_idPattern` n'accepte que des
+      // chiffres, parce que l'identifiant alimente directement des chemins de
+      // fichiers. Une premiere version en hexadecimal faisait rejeter TOUTES
+      // les entrees par `list()` — la corbeille apparaissait vide et les
+      // fichiers devenaient invisibles. Les tests l'ont dit immediatement.
+      final suffixe = _rand.nextInt(1 << 32).toString();
+      final id = '${stamp}_$suffixe';
+      final dir = Directory('$root/$itemsDir/$id');
+      if (dir.existsSync()) continue;
+      dir.createSync(recursive: true);
+      return id;
     }
-    return id;
+    throw const FileSystemException(
+      'Impossible de réserver un emplacement dans la corbeille',
+    );
   }
 
   /// Déplacement : `rename()` d'abord (atomique, même volume), copie récursive
@@ -416,20 +453,48 @@ class TrashService {
     }
   }
 
-  String _uniquePath(String dir, String name) {
-    bool free(String p) =>
-        FileSystemEntity.typeSync(p, followLinks: false) ==
-        FileSystemEntityType.notFound;
-    var candidate = '$dir/$name';
-    if (free(candidate)) return candidate;
+  /// Reserve un chemin libre dans [dir] pour [name], en le CREANT.
+  ///
+  /// **Pourquoi reserver plutot que tester.** L'ancienne version rendait le
+  /// premier chemin libre, et l'appelant deplacait dessus un peu plus tard. Un
+  /// fichier apparu entre les deux — autre application, synchronisation, ou
+  /// simplement deux restaurations simultanees — se faisait ecraser par
+  /// `rename`, qui remplace sans prevenir sous POSIX. La victime n'etait meme
+  /// pas dans la corbeille.
+  ///
+  /// Pour un fichier, `create(exclusive: true)` echoue si le chemin existe :
+  /// la reservation est donc atomique, et le `rename` qui suit ecrase un
+  /// marqueur que NOUS avons pose. Pour un dossier, Dart n'offre pas
+  /// d'equivalent exclusif ; on retombe sur un test, en ayant au moins reduit
+  /// la fenetre au strict minimum.
+  String _reserveUniquePath(String dir, String name, {required bool isDir}) {
+    for (final candidat in _candidats(dir, name)) {
+      if (isDir) {
+        if (FileSystemEntity.typeSync(candidat, followLinks: false) ==
+            FileSystemEntityType.notFound) {
+          return candidat;
+        }
+        continue;
+      }
+      try {
+        File(candidat).createSync(exclusive: true);
+        return candidat;
+      } on FileSystemException {
+        // Deja pris entre-temps : candidat suivant.
+      }
+    }
+    throw FileSystemException('Aucun nom libre pour la restauration', dir);
+  }
+
+  /// Suite des noms tentes : `nom`, puis `nom (1)`, `nom (2)`…
+  Iterable<String> _candidats(String dir, String name) sync* {
+    yield '$dir/$name';
     final dot = name.lastIndexOf('.');
     final base = dot > 0 ? name.substring(0, dot) : name;
     final ext = dot > 0 ? name.substring(dot) : '';
     for (var i = 1; i < 1000; i++) {
-      candidate = '$dir/$base ($i)$ext';
-      if (free(candidate)) return candidate;
+      yield '$dir/$base ($i)$ext';
     }
-    throw FileSystemException('Impossible de restaurer', '$dir/$name');
   }
 
   Future<void> _deleteQuietly(String path) async {
