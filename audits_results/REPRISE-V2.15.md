@@ -37,14 +37,13 @@ sans boîte « ne répond pas ». Journaux vides des deux côtés.
 **Ce que la vérification a coûté en plus.** La migration vers `archive` 4 a
 révélé que ce chemin n'était toujours pas testé pour ce qui compte — voir §4.
 
-## 2 bis. Le point à faire en premier la prochaine fois
+## 2 bis. ✅ Le doute du « second appui » est levé
 
-Un doute non levé : le bandeau de refus n'est apparu **qu'au second appui** sur
-« Extraire tout ». L'explication probable est que le premier appui a eu lieu
-pendant le chargement, quand l'icône est désactivée et ne donne aucun retour —
-ni visuel, ni sonore. **Non confirmé.** Si le bandeau manque alors que la liste
-des entrées est déjà affichée, ce n'est plus une question d'ergonomie mais un
-défaut réel.
+Au premier essai, le bandeau de refus n'était apparu qu'au **second** appui sur
+« Extraire tout ». Reconstaté après le correctif d'affichage : **il arrive dès
+le premier appui**, sur les deux téléphones. L'hypothèse retenue — le premier
+appui portait sur l'icône encore désactivée pendant le chargement, qui ne donne
+aucun retour — n'a pas été prouvée, mais aucun défaut ne subsiste sur ce chemin.
 
 ## 3. Décisions prises, à ne pas rouvrir
 
@@ -108,15 +107,45 @@ notre propre tampon ne bouge pas (l'accumulation a lieu **dans** le sink de
 zlib), et `ProcessInfo.currentRss` ne reflète pas le tas Dart sous Windows —
 mesuré à −1 Mo pendant que 256 Mo étaient décompressés.
 
+### Syncfusion 34 — refusé le 2026-08-10, et pourquoi
+
+La bascule d'`excel` a bien levé le blocage `xml <7` qu'on lui attribuait. Un
+**second blocage, absent de toutes les cartes**, est apparu à l'essai :
+
+```
+syncfusion_flutter_pdfviewer >= 33.2.13+1  →  device_info_plus ^13.1.0
+                                           →  win32 ^6.0.1
+file_picker 11.0.3 (dernier stable)        →  win32 ^5.9.0
+```
+
+Le franchir demanderait soit un `dependency_overrides` sur `win32`, soit
+`file_picker` **12, encore en bêta** (12.0.0-beta.7). Une bêta sur le sélecteur
+de fichiers d'une application qui manipule le coffre chiffré n'est pas un
+compromis acceptable.
+
+**Et le gain est nul.** Le changelog de la 34 ne porte, pour notre usage, que la
+montée d'`xml` et un correctif d'horodatage sur la **signature PDF externe** —
+que l'application n'utilise pas. Payer un risque réel pour zéro bénéfice n'a pas
+de sens.
+
+À rouvrir quand `file_picker` 12 sera stable : la montée sera alors gratuite.
+
+**La leçon** : « ce paquet en bloque trois » était vrai, mais « donc le
+remplacer débloque les trois » ne l'était pas. Un blocage levé peut en révéler
+un autre qui était caché derrière.
+
 `share_plus` 13 est bloqué par **`files_tech_core`**, qui épingle `^10.0.3`. Le
 débloquer engage tout le portefeuille.
 
-`package_info_plus` 10 est bloqué en amont par `file_picker` 11 (`win32 ^5.9`).
+`package_info_plus` 10 est bloqué en amont par `file_picker` 11 (`win32 ^5.9`) —
+c'est-à-dire par exactement le même nœud que syncfusion 34.
 
 ## 5. Ce qui reste
 
-1. **`image` 4.9 et syncfusion 34**, débloqués par la bascule d'`excel`. À faire
-   dans un commit séparé, avec repassage sur les deux appareils.
+1. ~~`image` 4.9 et syncfusion 34~~ — **traité le 2026-08-10.** `image` est
+   passé en **4.9.1** et `xml` en **7.0.1** sans qu'une ligne change : la
+   contrainte `^4.1.3` les acceptait déjà, seul `archive` 3 les retenait.
+   **Syncfusion reste en 33, sciemment** — voir ci-dessous.
 2. **A-P0a — éclater `vault_service.dart` (1451 l.)**, dans une session qui
    *commence* par lui. Règle : les 25 tests du coffre ne doivent pas être
    modifiés. S'ils doivent l'être, le comportement change — signal d'arrêt.

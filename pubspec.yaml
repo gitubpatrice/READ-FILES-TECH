@@ -48,10 +48,17 @@ dependencies:
   #                        win32 ^5.9.0. Blocage réellement en amont, levé par
   #                        file_picker 12 — en bêta à ce jour, donc écarté.
   #
-  # `win32` ne concerne que la cible Windows, jamais construite ici. Un
-  # `dependency_overrides` lèverait donc le second blocage sans risque réel,
-  # au prix d'une résolution qui ne reflète plus ce que pub garantit. Pas fait :
-  # le gain ne vaut pas l'entorse tant que rien n'en dépend.
+  # `win32` ne concerne que la cible Windows, jamais construite ici : la CI ne
+  # sort qu'un APK (`runs-on: ubuntu-latest` pour les trois workflows), même si
+  # l'échafaudage `windows/` existe. Un `dependency_overrides` lèverait donc ce
+  # blocage sans risque réel, au prix d'une résolution qui ne reflète plus ce
+  # que pub garantit.
+  #
+  # Pas fait. La raison a changé le 2026-08-10 et mérite d'être écrite : il ne
+  # s'agit plus de « rien n'en dépend » — syncfusion 34 en dépend désormais
+  # (voir plus bas). Mais ce qu'on obtiendrait en franchissant l'entorse ne vaut
+  # rien pour cette application. Un override qu'on pose « puisqu'il est sans
+  # risque » finit par en couvrir un qui ne l'est pas.
   share_plus: ^10.0.3
   shared_preferences: ^2.3.2
 
@@ -85,6 +92,25 @@ dependencies:
   crypto: ^3.0.3
 
   # Export PDF + viewer
+  # Maintenus en 33 sciemment. La bascule d'`excel` vers `excel_community` a
+  # bien leve le blocage `xml <7` qu'on leur attribuait, mais un second est
+  # apparu en tentant la montee le 2026-08-10 — il n'etait dans aucune carte :
+  #
+  #   syncfusion_flutter_pdfviewer >= 33.2.13+1  ->  device_info_plus ^13.1.0
+  #                                              ->  win32 ^6.0.1
+  #   file_picker 11.0.3 (dernier stable)        ->  win32 ^5.9.0
+  #
+  # Le franchir demanderait soit un `dependency_overrides` sur win32, soit
+  # `file_picker` 12 — encore en beta (12.0.0-beta.7 au 2026-08-10). Une beta
+  # sur le selecteur de fichiers d'une application qui manipule le coffre
+  # chiffre n'est pas un compromis acceptable.
+  #
+  # Et le gain serait nul : le changelog de la 34 ne porte, pour notre usage,
+  # que la montee d'`xml` et un correctif d'horodatage sur la **signature PDF
+  # externe**, que l'application n'utilise pas. Payer un risque reel pour zero
+  # benefice n'a pas de sens.
+  #
+  # A rouvrir quand `file_picker` 12 sera stable — la, la montee sera gratuite.
   syncfusion_flutter_pdf: ^33.2.4
   syncfusion_flutter_pdfviewer: ^33.2.4
 
