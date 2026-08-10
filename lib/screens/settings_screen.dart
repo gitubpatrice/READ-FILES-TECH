@@ -335,6 +335,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return Icons.cleaning_services_outlined;
       case OutputCategory.ocr:
         return Icons.text_snippet_outlined;
+      case OutputCategory.backups:
+        return Icons.shield_outlined;
     }
   }
 

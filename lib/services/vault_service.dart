@@ -12,6 +12,7 @@ import 'package:pointycastle/export.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/atomic_write.dart';
+import 'output_storage_service.dart';
 import '../utils/file_caps.dart';
 import '../utils/monotonic_clock.dart';
 import 'vault/vault_blob.dart';
@@ -634,19 +635,27 @@ class VaultService {
         ..add(headerForAad)
         ..add(ct);
 
-      // F1 v2.13.0 — Écriture dans `cache/exports/` dédié (purgé par
-      // `purgeTempDecrypted` et `PanicService`). Auparavant `cache/` racine,
-      // donc orphelins persistants après annulation de la share-sheet.
-      final tmpDir = await getTemporaryDirectory();
-      final exportsDir = Directory('${tmpDir.path}/exports');
-      if (!await exportsDir.exists()) {
-        await exportsDir.create(recursive: true);
-      }
-      final ts = DateTime.now()
-          .toIso8601String()
-          .substring(0, 19)
-          .replaceAll(':', '-');
-      final outFile = File('${exportsDir.path}/coffre_$ts.rftvault');
+      // Écriture dans `Files Tech/Sauvegardes coffre/`, comme tout ce que
+      // l'application produit.
+      //
+      // Le fichier partait auparavant dans `cache/exports/`, et la feuille de
+      // partage s'ouvrait dans la foulée. Fermer cette feuille sans choisir de
+      // destination laissait donc l'unique copie dans un dossier qu'Android
+      // purge quand il veut, que « Vider le cache » supprime, et que
+      // `purgeTempDecrypted` efface lui-même. Autrement dit : l'artefact dont
+      // le seul but est de DURER était écrit à l'endroit le moins durable du
+      // téléphone, et l'utilisateur n'avait aucun moyen de savoir où il était.
+      // Constaté le 2026-08-10 — la question « je vois pas où va la
+      // sauvegarde ? » n'avait pas de bonne réponse.
+      //
+      // Le `.rftvault` est chiffré par un mot de passe distinct du principal :
+      // le poser dans un dossier visible n'expose rien, et c'est précisément
+      // ce qu'on attend d'une sauvegarde.
+      final outFile = await OutputStorageService().reserveFile(
+        category: OutputCategory.backups,
+        suggestedName: 'coffre',
+        extension: 'rftvault',
+      );
       await atomicWriteBytes(outFile.path, out.toBytes());
       onProgress?.call(1.0);
       return outFile;

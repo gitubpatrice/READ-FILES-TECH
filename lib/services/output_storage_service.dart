@@ -14,6 +14,16 @@ enum OutputCategory {
   signatures,
   exifClean,
   ocr,
+
+  /// Sauvegardes chiffrees du coffre (`.rftvault`).
+  ///
+  /// Ajoutee le 2026-08-10. Le fichier partait jusque-la dans le dossier CACHE
+  /// (`getTemporaryDirectory()/exports/`), puis la feuille de partage
+  /// s'ouvrait. Fermer cette feuille sans choisir de destination laissait donc
+  /// l'unique copie dans un dossier qu'Android purge quand il veut, et que
+  /// « Vider le cache » supprime. L'artefact dont le seul but est de durer
+  /// etait ecrit a l'endroit le moins durable du telephone.
+  backups,
 }
 
 extension OutputCategoryX on OutputCategory {
@@ -31,6 +41,8 @@ extension OutputCategoryX on OutputCategory {
         return 'Sans-EXIF';
       case OutputCategory.ocr:
         return 'OCR';
+      case OutputCategory.backups:
+        return 'Sauvegardes coffre';
     }
   }
 }

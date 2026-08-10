@@ -816,25 +816,26 @@ class _VaultContentState extends State<_VaultContent> {
 
   Future<void> _exportBackup() async {
     if (_files.isEmpty) {
-      showFloatingSnack(context, 'Coffre vide — rien à exporter.');
+      showFloatingSnack(context, 'Coffre vide — rien à sauvegarder.');
       return;
     }
     final pwd = await _askPassword(
-      title: 'Exporter le coffre',
+      title: 'Sauvegarder le coffre',
       info:
           'Choisissez un mot de passe pour la sauvegarde. '
           'Il sera nécessaire pour la restaurer.\n\n'
           '⚠ Distinct du mot de passe principal — choisissez-le bien : '
-          'sans lui, la sauvegarde est irrécupérable.',
+          'sans lui, la sauvegarde est irrécupérable.\n\n'
+          'Le fichier sera écrit dans Files Tech/Sauvegardes coffre/.',
       confirm: true,
-      submitLabel: 'Exporter',
+      submitLabel: 'Sauvegarder',
     );
     if (pwd == null || !mounted) return;
 
     final snack = SnackTarget.of(context, stillWanted: () => mounted);
     double progress = 0;
     final progressDialog = _showProgressDialog(
-      title: 'Export en cours…',
+      title: 'Sauvegarde en cours…',
       progressOf: () => progress,
     );
 
@@ -848,10 +849,25 @@ class _VaultContentState extends State<_VaultContent> {
       );
       if (!mounted) return;
       progressDialog.close();
-      // Partage du fichier produit (l'utilisateur choisit où le sauver).
-      await Share.shareXFiles([
-        XFile(out.path, mimeType: 'application/octet-stream'),
-      ], subject: 'Sauvegarde Read Files Tech');
+
+      // Dire OU le fichier est alle, et proposer le partage SANS l'imposer.
+      //
+      // L'ecran ouvrait directement la feuille de partage, sans jamais afficher
+      // de chemin : la fermer laissait l'utilisateur sans la moindre idee de
+      // l'endroit ou se trouvait sa sauvegarde — et, avant ce commit, elle
+      // etait de surcroit dans le cache. Elle existe desormais a un endroit
+      // visible avant meme qu'on propose d'en faire quelque chose.
+      snack.info(
+        'Sauvegarde : Files Tech/Sauvegardes coffre/'
+        '${PathSafe.basename(out.path)}',
+        duration: kSnackLong,
+        action: SnackBarAction(
+          label: 'Partager',
+          onPressed: () => Share.shareXFiles([
+            XFile(out.path, mimeType: 'application/octet-stream'),
+          ], subject: 'Sauvegarde Read Files Tech'),
+        ),
+      );
     } catch (e) {
       if (mounted) progressDialog.close();
       snack.error('Erreur : $e');
@@ -894,9 +910,9 @@ class _VaultContentState extends State<_VaultContent> {
     }
 
     final pwd = await _askPassword(
-      title: 'Restaurer un coffre',
+      title: 'Restaurer une sauvegarde',
       info:
-          'Entrez le mot de passe utilisé lors de l\'export.\n'
+          'Entrez le mot de passe choisi lors de la sauvegarde.\n'
           'Les fichiers déjà présents dans le coffre actuel '
           'seront ignorés (pas écrasés).',
       confirm: false,
