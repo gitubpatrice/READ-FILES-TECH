@@ -66,4 +66,100 @@ void main() {
       expect(ImageBounds.assertSafeBounds(Uint8List(100)), isNull);
     });
   });
+  group('trous de couverture combles le 2026-08-11', () {
+    Uint8List gif(int w, int h, {int taille = 10}) {
+      final b = Uint8List(10);
+      b[0] = 0x47; // G
+      b[1] = 0x49; // I
+      b[2] = 0x46; // F
+      b[3] = 0x38;
+      b[4] = 0x39;
+      b[5] = 0x61; // 9a
+      b[6] = w & 0xFF;
+      b[7] = (w >> 8) & 0xFF;
+      b[8] = h & 0xFF;
+      b[9] = (h >> 8) & 0xFF;
+      // `taille` permet de tronquer APRES ecriture, pour simuler un fichier
+      // incomplet sans sortir des bornes du tampon en le construisant.
+      return taille >= 10 ? b : Uint8List.sublistView(b, 0, taille);
+    }
+
+    test('un GIF de 10 octets annoncant 65535x65535 est REFUSE', () {
+      // LE trou. Le seuil `bytes.length < 24` etait global, alors qu un GIF
+      // declare ses dimensions des l octet 10 : un fichier de 10 octets
+      // annoncant 4,3 gigapixels n etait jamais inspecte. Le seuil cense
+      // proteger servait a contourner la protection.
+      expect(ImageBounds.probeDimensions(gif(65535, 65535)), (65535, 65535));
+      expect(ImageBounds.assertSafeBounds(gif(65535, 65535)), isNotNull);
+    });
+
+    test('un GIF de 10 octets aux dimensions normales passe', () {
+      expect(ImageBounds.assertSafeBounds(gif(800, 600)), isNull);
+    });
+
+    test('un GIF tronque a 9 octets ne peut pas etre lu, donc pas juge', () {
+      // En dessous de 10 octets les dimensions ne sont pas encore ecrites :
+      // les inventer serait pire que de laisser passer.
+      expect(ImageBounds.probeDimensions(gif(1, 1, taille: 9)), isNull);
+    });
+
+    Uint8List bmp(int w, int h) {
+      final b = Uint8List(26);
+      b[0] = 0x42; // B
+      b[1] = 0x4D; // M
+      void i32(int off, int v) {
+        b[off] = v & 0xFF;
+        b[off + 1] = (v >> 8) & 0xFF;
+        b[off + 2] = (v >> 16) & 0xFF;
+        b[off + 3] = (v >> 24) & 0xFF;
+      }
+
+      i32(18, w);
+      i32(22, h);
+      return b;
+    }
+
+    test('un BMP aux dimensions absurdes est refuse', () {
+      // `img.decodeImage` sait lire le BMP, mais aucune borne ne l inspectait :
+      // la garde se contournait en changeant de format.
+      expect(ImageBounds.assertSafeBounds(bmp(50000, 50000)), isNotNull);
+    });
+
+    test('un BMP normal passe, hauteur negative comprise', () {
+      expect(ImageBounds.assertSafeBounds(bmp(1024, 768)), isNull);
+      // Une hauteur negative indique l ordre des lignes, pas une anomalie.
+      expect(ImageBounds.assertSafeBounds(bmp(1024, -768)), isNull);
+    });
+
+    Uint8List webpVp8(int w, int h) {
+      final b = Uint8List(30);
+      const entete = [0x52, 0x49, 0x46, 0x46];
+      for (var i = 0; i < 4; i++) {
+        b[i] = entete[i];
+      }
+      const webp = [0x57, 0x45, 0x42, 0x50];
+      for (var i = 0; i < 4; i++) {
+        b[8 + i] = webp[i];
+      }
+      const vp8 = [0x56, 0x50, 0x38, 0x20];
+      for (var i = 0; i < 4; i++) {
+        b[12 + i] = vp8[i];
+      }
+      b[26] = w & 0xFF;
+      b[27] = (w >> 8) & 0x3F;
+      b[28] = h & 0xFF;
+      b[29] = (h >> 8) & 0x3F;
+      return b;
+    }
+
+    test('un WebP aux dimensions absurdes est refuse', () {
+      // 16383 est le maximum codable sur 14 bits ; 16383x16383 = 268 Mpx,
+      // au-dela du plafond de 144 Mpx.
+      expect(ImageBounds.assertSafeBounds(webpVp8(16383, 16383)), isNotNull);
+    });
+
+    test('un WebP normal passe', () {
+      expect(ImageBounds.assertSafeBounds(webpVp8(1920, 1080)), isNull);
+    });
+  });
 }

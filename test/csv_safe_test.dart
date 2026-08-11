@@ -56,4 +56,42 @@ void main() {
       expect(out.split('\n').length, greaterThanOrEqualTo(2));
     });
   });
+  group('blancs de tete — contournement comble le 2026-08-11', () {
+    // Le controle ne portait que sur `cell[0]`. Une simple espace devant la
+    // formule suffisait a y echapper, alors que plusieurs tableurs elaguent
+    // les blancs de tete a l import et retrouvent la formule.
+    test('une formule precedee d une espace est neutralisee', () {
+      expect(CsvSafe.sanitizeCell(' =HYPERLINK("http://x")'), startsWith("'"));
+    });
+
+    test('une formule precedee d un saut de ligne est neutralisee', () {
+      expect(CsvSafe.sanitizeCell('\n=cmd|calc'), startsWith("'"));
+    });
+
+    test(
+      'une formule precedee de plusieurs blancs melanges est neutralisee',
+      () {
+        expect(CsvSafe.sanitizeCell('  \t\n @SUM(A1)'), startsWith("'"));
+      },
+    );
+
+    test('une espace insecable ne protege pas davantage', () {
+      expect(CsvSafe.sanitizeCell('\u00A0+1+1'), startsWith("'"));
+    });
+
+    test('la cellule est rendue INTACTE, blancs compris', () {
+      // On neutralise la donnee, on ne la reecrit pas : le tableur masque
+      // l apostrophe et l utilisateur retrouve exactement ce qu il avait.
+      expect(CsvSafe.sanitizeCell(' =A1'), "' =A1");
+    });
+
+    test('du texte ordinaire precede de blancs reste inchange', () {
+      expect(CsvSafe.sanitizeCell('  bonjour'), '  bonjour');
+    });
+
+    test('une cellule faite uniquement de blancs reste inchangee', () {
+      expect(CsvSafe.sanitizeCell('   '), '   ');
+      expect(CsvSafe.sanitizeCell('\n'), '\n');
+    });
+  });
 }
