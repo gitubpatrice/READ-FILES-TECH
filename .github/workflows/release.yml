@@ -112,8 +112,12 @@ jobs:
           set -euo pipefail
           V=${{ steps.version.outputs.VERSION }}
           OUT=read_files_tech/build/app/outputs/flutter-apk
+          # Convention Files Tech : `<app>-<abi>-<version>.apk` pour les splits,
+          # `<app>-universel-<version>.apk` pour l'universel. Nom en kebab-case,
+          # version en DERNIER, sans prefixe `v`. Identique a PDF Tech et
+          # Notes Tech.
           for ABI in arm64-v8a armeabi-v7a x86_64; do
-            cp "$OUT/app-$ABI-release.apk" "read_files_tech-v$V-$ABI.apk"
+            cp "$OUT/app-$ABI-release.apk" "read-files-tech-$ABI-$V.apk"
           done
 
       - name: Build APK release (signed, universel)
@@ -124,7 +128,7 @@ jobs:
         run: |
           set -euo pipefail
           V=${{ steps.version.outputs.VERSION }}
-          cp read_files_tech/build/app/outputs/flutter-apk/app-release.apk              "read_files_tech-v$V-universel.apk"
+          cp read_files_tech/build/app/outputs/flutter-apk/app-release.apk              "read-files-tech-universel-$V.apk"
 
       - name: SHA-256 des 4 APK
         id: sha
@@ -134,7 +138,7 @@ jobs:
           {
             echo "SHA_TABLE<<SHA_EOF"
             for VARIANT in arm64-v8a armeabi-v7a x86_64 universel; do
-              F="read_files_tech-v$V-$VARIANT.apk"
+              F="read-files-tech-$VARIANT-$V.apk"
               H=$(sha256sum "$F" | awk '{print $1}')
               echo "- **$VARIANT** : \`$H\`"
             done
@@ -168,10 +172,10 @@ jobs:
 
             🤖 Build automatique via GitHub Actions (commit `${{ github.sha }}`)
           files: |
-            read_files_tech-v${{ steps.version.outputs.VERSION }}-arm64-v8a.apk
-            read_files_tech-v${{ steps.version.outputs.VERSION }}-armeabi-v7a.apk
-            read_files_tech-v${{ steps.version.outputs.VERSION }}-x86_64.apk
-            read_files_tech-v${{ steps.version.outputs.VERSION }}-universel.apk
+            read-files-tech-arm64-v8a-${{ steps.version.outputs.VERSION }}.apk
+            read-files-tech-armeabi-v7a-${{ steps.version.outputs.VERSION }}.apk
+            read-files-tech-x86_64-${{ steps.version.outputs.VERSION }}.apk
+            read-files-tech-universel-${{ steps.version.outputs.VERSION }}.apk
 
       - name: Cleanup
         if: always()
