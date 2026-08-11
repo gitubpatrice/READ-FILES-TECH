@@ -1,11 +1,11 @@
-Explorateur utilisable sur Android 7 à 10 : l'app n'y demandait qu'une permission propre à Android 11.
+Recherche par contenu : elle rendait TOUS les fichiers, pas seulement ceux contenant le mot cherché.
 
-Archives : la garde anti-bombe se fiait à la taille annoncée par l'archive. Elle mesure désormais.
+Classeurs .ods enfin lisibles.
 
-Visionneuse HTML : deux contournements de la politique de sécurité corrigés.
+Sauvegarde du coffre : elle partait dans le cache, effaçable à tout moment. Elle va dans Files Tech/Sauvegardes coffre/.
 
-Éditeurs : « Ignorer » quitte vraiment sans enregistrer.
+Visionneuse HTML : un document piégé pouvait émettre une requête sortante.
 
-Coffre : compteurs de blocage remis à zéro à la réinitialisation.
+Images : le refus dit enfin pourquoi.
 
-Déplacement par lot : plus de suppression de la source sans vérification.
+Mise à jour : une version antérieure pouvait être proposée comme plus récente.

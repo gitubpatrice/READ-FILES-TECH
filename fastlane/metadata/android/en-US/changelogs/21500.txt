@@ -1,11 +1,11 @@
-File explorer finally usable on Android 7 to 10: the app only asked for a permission that exists from Android 11 onwards.
+Content search: it returned EVERY file, not only those containing the search term.
 
-Archives: the decompression-bomb guard trusted the size the archive declared. It now measures.
+.ods spreadsheets are readable at last.
 
-HTML viewer: two bypasses of the security policy fixed.
+Vault backup: it was written to the cache, which can be cleared at any time. It now goes to Files Tech/Sauvegardes coffre/.
 
-Editors: "Discard" really does leave without saving.
+HTML viewer: a booby-trapped document could still fire an outgoing request.
 
-Vault: lockout counters cleared on reset.
+Images: the refusal now says why.
 
-Batch move: the source is no longer deleted without verification.
+Update check: an older version could be offered as if it were newer.
