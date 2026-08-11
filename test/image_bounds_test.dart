@@ -162,4 +162,74 @@ void main() {
       expect(ImageBounds.assertSafeBounds(webpVp8(1920, 1080)), isNull);
     });
   });
+  group('WebP tronque — le seuil qui desarmait la garde', () {
+    /// WebP VP8L de [taille] octets declarant [w] x [h].
+    ///
+    /// VP8L empaquette les deux dimensions sur 14 bits chacune, moins un, a
+    /// l offset 21. Vingt-cinq octets suffisent donc a les LIRE, et suffisent
+    /// donc a les REFUSER.
+    Uint8List webpVp8l({required int taille, required int w, required int h}) {
+      final b = Uint8List(taille);
+      b.setAll(0, 'RIFF'.codeUnits);
+      b.setAll(8, 'WEBP'.codeUnits);
+      b.setAll(12, 'VP8L'.codeUnits);
+      final bits = ((w - 1) & 0x3FFF) | (((h - 1) & 0x3FFF) << 14);
+      if (taille > 21) b[21] = bits & 0xFF;
+      if (taille > 22) b[22] = (bits >> 8) & 0xFF;
+      if (taille > 23) b[23] = (bits >> 16) & 0xFF;
+      if (taille > 24) b[24] = (bits >> 24) & 0xFF;
+      return b;
+    }
+
+    test('un VP8L de 25 octets aux dimensions maximales est REFUSE', () {
+      // Le defaut : la branche WebP exigeait `bytes.length >= 30` alors que le
+      // lecteur VP8L n a besoin que de 25. Un fichier de 25 a 29 octets n etait
+      // donc JAMAIS inspecte et passait la garde sans le moindre controle.
+      //
+      // 16384 x 16384 est le maximum encodable en VP8L : 268 megapixels, soit
+      // environ un gigaoctet une fois decode en RGBA.
+      final piege = webpVp8l(taille: 25, w: 16384, h: 16384);
+      expect(
+        ImageBounds.probeDimensions(piege),
+        isNotNull,
+        reason: 'un fichier de 25 octets doit etre inspecte, pas ignore',
+      );
+      expect(
+        ImageBounds.assertSafeBounds(piege),
+        isNotNull,
+        reason: '16384x16384 depasse le plafond et doit etre refuse',
+      );
+    });
+
+    test('toutes les tailles de 25 a 30 octets sont couvertes', () {
+      // Le trou etait une PLAGE, pas une valeur isolee. Le balayer evite qu un
+      // seuil corrige de travers laisse un octet de marge.
+      for (var taille = 25; taille <= 30; taille++) {
+        final piege = webpVp8l(taille: taille, w: 16384, h: 16384);
+        expect(
+          ImageBounds.assertSafeBounds(piege),
+          isNotNull,
+          reason: 'taille $taille : dimensions absurdes non refusees',
+        );
+      }
+    });
+
+    test('un VP8L legitime de petite taille reste accepte', () {
+      // Le controle inverse : si la garde refusait TOUT WebP court, le test
+      // precedent passerait pour la mauvaise raison.
+      final sain = webpVp8l(taille: 25, w: 800, h: 600);
+      expect(ImageBounds.probeDimensions(sain), (800, 600));
+      expect(ImageBounds.assertSafeBounds(sain), isNull);
+    });
+
+    test('un WebP trop court pour porter sa variante est ignore', () {
+      // En dessous de 16 octets, l identifiant de variante n est pas lisible :
+      // rendre `null` est correct, il n y a rien a affirmer.
+      for (var taille = 4; taille < 16; taille++) {
+        final court = Uint8List(taille)
+          ..setAll(0, 'RIFF'.codeUnits.take(taille));
+        expect(ImageBounds.probeDimensions(court), isNull, reason: '$taille');
+      }
+    });
+  });
 }

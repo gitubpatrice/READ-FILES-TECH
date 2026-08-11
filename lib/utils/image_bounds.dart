@@ -60,7 +60,19 @@ abstract final class ImageBounds {
     }
     // WebP : 'RIFF' .... 'WEBP'. Trois variantes de bloc, dimensions codees
     // differemment dans chacune.
-    if (bytes.length >= 30 &&
+    //
+    // Seuil a 16 — de quoi lire l'identifiant de variante en b[12..15] — et
+    // NON a 30. Chaque variante impose ensuite son propre minimum dans
+    // `_probeWebp`, qui sait lire un VP8L des 25 octets.
+    //
+    // Le seuil a 30 etait le MEME defaut que celui corrige plus haut pour le
+    // GIF, laisse en place sur cette branche : un VP8L de 25 a 29 octets
+    // n'etait jamais inspecte et passait la garde sans controle. Or ses
+    // dimensions tiennent sur 14 bits chacune, soit jusqu'a 16384x16384 —
+    // 268 megapixels, environ un gigaoctet en RGBA — tres au-dessus du plafond
+    // de 12000. Corrige le 2026-08-11 : il ne suffit pas de reparer le site
+    // signale, il faut reparer TOUS ses jumeaux.
+    if (bytes.length >= 16 &&
         bytes[0] == 0x52 &&
         bytes[1] == 0x49 &&
         bytes[2] == 0x46 &&
