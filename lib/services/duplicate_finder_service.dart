@@ -56,41 +56,135 @@ class DuplicateFinderService {
   Isolate? _iso;
   ReceivePort? _recv;
 
+  /// Identité de la recherche en cours.
+  ///
+  /// Même mécanisme que `global_search_service`, et pour la même raison — il
+  /// y manquait ici. `Isolate.spawn` rend une `Future` : l'isolate peut avoir
+  /// déjà répondu, et donc `cancel()` avoir déjà tourné, avant que cette
+  /// `Future` ne se résolve. Sur un dossier vide, c'est même le cas courant.
+  ///
+  /// Sans jeton, le `await` affectait alors à `_iso` un isolate **vivant que
+  /// plus personne ne tuerait** : un scan fantôme parcourant le stockage et
+  /// calculant des empreintes jusqu'à la mort du process.
+  ///
+  /// Le défaut avait été corrigé dans le service jumeau le 2026-08-02, et
+  /// jamais reporté ici.
+  Object? _runToken;
+
+  /// Résultat de la recherche en cours, tant qu'elle n'a pas abouti.
+  ///
+  /// Retenu pour pouvoir le **conclure** si la recherche est annulée ou
+  /// supplantée. Sans cela, `cancel()` tuait bien l'isolate mais laissait le
+  /// `Completer` en suspens : l'appelant attendait indéfiniment un résultat
+  /// qui ne viendrait jamais. Le symptôme côté écran est le pire qui soit —
+  /// un indicateur de progression qui tourne sans fin, sans erreur.
+  Completer<FinderResult>? _pending;
+
+  /// Rend une `Future` qui se conclut **toujours** : resultat, erreur, ou
+  /// annulation. Jamais suspendue.
+  ///
+  /// Volontairement NON `async`. Une version `async` restait bloquee sur
+  /// `await Isolate.spawn(...)` et ne rendait donc `completer.future` qu'apres
+  /// coup : si la recherche etait annulee entre-temps, l'erreur etait posee sur
+  /// une future que PERSONNE n'ecoutait encore, et Dart la signalait comme
+  /// erreur non traitee — un plantage, la ou on voulait eviter une attente
+  /// infinie. Ici la future part immediatement a l'appelant.
   Future<FinderResult> find({
     required String root,
     int topN = 50,
     int minSize = 4096,
-  }) async {
-    _recv = ReceivePort();
+  }) {
+    // Une recherche déjà en vol est arrêtée avant d'en lancer une autre.
+    //
+    // Sans cela, un second appel écrasait `_iso` et `_recv` : le premier
+    // isolate perdait sa référence et continuait de hacher des fichiers, son
+    // port restait ouvert, et son `Completer` ne se complétait **jamais** —
+    // l'appelant attendait indéfiniment.
+    if (_runToken != null) cancel();
+
+    final token = Object();
+    _runToken = token;
+
+    final recv = ReceivePort();
+    _recv = recv;
     final completer = Completer<FinderResult>();
-    _recv!.listen((msg) {
+    _pending = completer;
+
+    void terminer(void Function() action) {
+      // Un message tardif d'un run précédent ne doit ni compléter ce
+      // `Completer`, ni déclencher un `cancel()` qui tuerait le run courant.
+      if (_runToken != token) return;
+      // Detache le `Completer` avant de completer : sinon `cancel()`, appele
+      // juste apres, tenterait de le conclure une SECONDE fois — en erreur,
+      // par-dessus un resultat pourtant valide.
+      _pending = null;
+      action();
+      cancel();
+    }
+
+    recv.listen((msg) {
+      if (completer.isCompleted) return;
       if (msg is FinderResult) {
-        completer.complete(msg);
-        cancel();
+        terminer(() => completer.complete(msg));
       } else if (msg is String) {
-        completer.completeError(msg);
-        cancel();
+        terminer(() => completer.completeError(msg));
       } else {
         // Garde-fou : tout autre type signale un bug logique côté isolate.
         // Ne pas laisser le Completer pendre indéfiniment.
-        completer.completeError(
-          StateError('Message Isolate inattendu : ${msg.runtimeType}'),
+        terminer(
+          () => completer.completeError(
+            StateError('Message Isolate inattendu : ${msg.runtimeType}'),
+          ),
         );
-        cancel();
       }
     });
-    _iso = await Isolate.spawn(
-      _entry,
-      _Args(_recv!.sendPort, root, topN, minSize),
-    );
+
+    Isolate.spawn(_entry, _Args(recv.sendPort, root, topN, minSize))
+        .then((iso) {
+          if (_runToken != token) {
+            // Termine ou annule pendant le `spawn` : cet isolate n'a plus de
+            // proprietaire, personne ne le tuera. On s'en charge ici.
+            iso.kill(priority: Isolate.immediate);
+          } else {
+            _iso = iso;
+          }
+        })
+        .catchError((Object e) {
+          // Echec du spawn lui-meme (memoire, limite systeme). Sans ceci, la
+          // future restait suspendue pour toujours.
+          if (_runToken != token) return;
+          _pending = null;
+          if (!completer.isCompleted) completer.completeError(e);
+          cancel();
+        });
+
     return completer.future;
   }
 
   void cancel() {
+    _runToken = null;
     _iso?.kill(priority: Isolate.immediate);
     _iso = null;
     _recv?.close();
     _recv = null;
+    // Conclure une recherche encore en attente. Une recherche annulée n'a pas
+    // de résultat, mais elle doit **finir** : un `Completer` abandonné laisse
+    // son appelant suspendu pour toujours.
+    final pending = _pending;
+    _pending = null;
+    if (pending != null && !pending.isCompleted) {
+      // Differe d'une microtache, et ce n'est pas un detail. `cancel()` est
+      // appele SYNCHRONEMENT au debut de `find()` : completer l'erreur sur le
+      // champ la delivrerait avant que l'appelant du premier `find()` ait eu
+      // l'occasion d'attacher son `catchError`. Dart la classerait alors en
+      // erreur NON TRAITEE — un plantage, la ou on voulait justement eviter
+      // une attente infinie.
+      scheduleMicrotask(() {
+        if (!pending.isCompleted) {
+          pending.completeError(StateError('Recherche de doublons annulée'));
+        }
+      });
+    }
   }
 
   static Future<void> _entry(_Args a) async {
