@@ -232,4 +232,48 @@ void main() {
       }
     });
   });
+  group('plafond en PIXELS — le controle par cote ne suffit pas', () {
+    Uint8List png(int w, int h) {
+      final b = Uint8List(24);
+      b.setAll(0, [0x89, 0x50, 0x4E, 0x47]);
+      void u32(int off, int v) {
+        b[off] = (v >> 24) & 0xFF;
+        b[off + 1] = (v >> 16) & 0xFF;
+        b[off + 2] = (v >> 8) & 0xFF;
+        b[off + 3] = v & 0xFF;
+      }
+
+      u32(16, w);
+      u32(20, h);
+      return b;
+    }
+
+    test('12000x12000 franchit les deux bornes de cote et doit etre REFUSE', () {
+      // Le defaut : chaque cote valait exactement le maximum autorise, donc
+      // aucune borne n etait depassee. Cela fait pourtant 144 megapixels, soit
+      // 576 Mo de tampon RGBA — pour un PNG compressible de quelques centaines
+      // de kilo-octets, que le cap sur la TAILLE DU FICHIER ne voit pas non
+      // plus.
+      final piege = png(12000, 12000);
+      expect(ImageBounds.probeDimensions(piege), (12000, 12000));
+      final refus = ImageBounds.assertSafeBounds(piege);
+      expect(refus, isNotNull);
+      expect(refus, contains('Mpx'));
+    });
+
+    test('une photo 48 Mpx reste acceptee', () {
+      // Le controle inverse, sans lequel le test precedent passerait aussi si
+      // le plafond etait absurdement bas et rejetait toute vraie photo.
+      expect(ImageBounds.assertSafeBounds(png(8000, 6000)), isNull);
+    });
+
+    test('la limite est franche, des deux cotes', () {
+      const max = 64 * 1000 * 1000;
+      expect(ImageBounds.assertSafeBounds(png(8000, max ~/ 8000)), isNull);
+      expect(
+        ImageBounds.assertSafeBounds(png(8000, (max ~/ 8000) + 1)),
+        isNotNull,
+      );
+    });
+  });
 }

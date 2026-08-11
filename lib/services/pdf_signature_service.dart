@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../utils/atomic_write.dart';
+import '../utils/file_caps.dart';
+import '../utils/image_bounds.dart';
 
 /// Insère une image (signature PNG transparente) dans un PDF à une position
 /// donnée, exprimée en coordonnées **normalisées** (0..1) de la page cible.
@@ -45,6 +47,22 @@ class PdfSignatureService {
         rectNorm.bottom > 1 + 1e-6) {
       throw ArgumentError('Zone de signature hors page (doit être dans [0,1])');
     }
+    // Le PDF est lu INTEGRALEMENT en memoire, Syncfusion en construit ensuite
+    // sa propre representation, et `save()` rematerialise le resultat : jusqu'a
+    // trois copies simultanement. Sans plafond, un PDF de plusieurs centaines
+    // de megaoctets faisait tomber l'application.
+    final capErr = await checkFileCap(
+      File(sourcePath),
+      FileCaps.pdfSignatureSource,
+    );
+    if (capErr != null) throw FormatException(capErr);
+
+    // La signature elle-meme n'etait bornee par rien. Un PNG de 20000x20000
+    // passe par `PdfBitmap` avant tout controle : le PDF source pouvait etre
+    // minuscule et l'application tomber quand meme.
+    final dimErr = ImageBounds.assertSafeBounds(signaturePng);
+    if (dimErr != null) throw FormatException('Signature : $dimErr');
+
     final bytes = await File(sourcePath).readAsBytes();
     final doc = PdfDocument(inputBytes: bytes);
     try {
@@ -66,9 +84,15 @@ class PdfSignatureService {
           .split(RegExp(r'[/\\]'))
           .last
           .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
-      final out = File('${tmp.path}/${base}_signe.pdf');
-      await atomicWriteBytes(out.path, await doc.save());
-      return out;
+      // Nom RESERVE : signer deux `contrat.pdf` venant de dossiers differents
+      // ecrivait au meme chemin, et le second ecrasait le premier — l'appelant
+      // partageait alors le mauvais document signe.
+      return writeReservedTempFile(
+        dir: tmp.path,
+        base: '${base}_signe',
+        extension: 'pdf',
+        ecrire: (cible) async => atomicWriteBytes(cible.path, await doc.save()),
+      );
     } finally {
       doc.dispose();
     }

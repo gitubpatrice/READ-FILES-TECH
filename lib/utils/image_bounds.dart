@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'file_caps.dart';
 
 /// Garde-fou anti "image-bomb" : décodeur PNG/JPEG/GIF qui inspecte UNIQUEMENT
 /// les en-têtes pour rejeter des dimensions absurdes (PNG IHDR affirmant
@@ -127,6 +128,18 @@ abstract final class ImageBounds {
     final (w, h) = dims;
     if (w <= 0 || h <= 0 || w > maxWidth || h > maxHeight) {
       return 'Dimensions image suspectes ($w×$h, max $maxWidth×$maxHeight).';
+    }
+    // Le controle par cote ne suffit pas : 12000x12000 franchit les deux
+    // bornes sans les depasser, et represente pourtant 144 megapixels — 576 Mo
+    // de tampon RGBA — pour un PNG de quelques centaines de kilo-octets. Ni le
+    // cap sur la taille du fichier ni celui sur les dimensions ne le voient.
+    //
+    // Signale par la relecture GPT du 2026-08-11, confirme par le calcul.
+    final pixels = w * h;
+    if (pixels > FileCaps.imagePixels) {
+      final mpx = (pixels / 1000000).round();
+      const max = FileCaps.imagePixels ~/ 1000000;
+      return 'Image trop lourde a decoder ($w×$h, $mpx Mpx, max $max Mpx).';
     }
     return null;
   }

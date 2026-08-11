@@ -63,6 +63,88 @@ Future<void> _atomically(
 }
 
 /// Écrit [bytes] dans [path], atomiquement.
+/// Reserve un fichier au nom UNIQUE dans [dir], et le rend deja cree.
+///
+/// **Pourquoi reserver plutot que composer un nom.** Les sorties temporaires
+/// etaient nommees a partir du seul nom du fichier source :
+/// `contrat_signe.pdf`, `IMG_0001_no_exif.jpg`. Signer deux `contrat.pdf`
+/// venant de dossiers differents, ou nettoyer deux `IMG_0001.jpg`, ecrivait
+/// donc au MEME chemin : le second ecrasait le premier, et l'appelant qui
+/// partageait ensuite « son » resultat partageait celui de l'autre.
+///
+/// La creation est EXCLUSIVE : entre le moment ou l'on choisit un nom libre et
+/// celui ou l'on ecrit, rien ne peut s'intercaler. Tester puis agir laisserait
+/// precisement cette fenetre — le motif corrige partout ailleurs le
+/// 2026-08-11.
+Future<File> reserveTempFile({
+  required String dir,
+  required String base,
+  required String extension,
+}) async {
+  String assainir(String s) => s
+      .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_')
+      .replaceAll(RegExp(r'^\.+'), '');
+
+  final propre = assainir(base);
+  final racine = propre.isEmpty ? 'fichier' : propre;
+  // L'EXTENSION est assainie elle aussi. Elle ne vient aujourd'hui que de
+  // constantes internes (`pdf`, `jpg`, `png`), mais une fonction qui compose un
+  // chemin ne doit pas dependre de la prudence de ses appelants : un
+  // `extension` porteur de separateurs ou de `..` fabriquerait un chemin hors
+  // du dossier vise. Signale par la relecture GPT du 2026-08-11.
+  final ext = assainir(extension);
+  final suffixeExt = ext.isEmpty ? 'bin' : ext;
+
+  for (var i = 0; i < 10000; i++) {
+    final suffixe = i == 0 ? '' : '_$i';
+    final f = File('$dir/$racine$suffixe.$suffixeExt');
+    try {
+      await f.create(exclusive: true);
+      return f;
+    } on FileSystemException catch (e) {
+      // Seule une COLLISION justifie d'essayer le nom suivant. Traiter toute
+      // erreur comme une collision faisait enchainer dix mille tentatives sur
+      // un dossier absent ou en lecture seule, avant de lever un message qui
+      // ne parlait pas de la vraie cause.
+      if (await f.exists()) continue;
+      throw FileSystemException(
+        'Impossible de creer un fichier temporaire : ${e.message}',
+        f.path,
+        e.osError,
+      );
+    }
+  }
+  throw FileSystemException('Impossible de reserver un nom libre', dir);
+}
+
+/// Ecrit dans un fichier temporaire RESERVE, en le supprimant si l'ecriture
+/// echoue.
+///
+/// [reserveTempFile] cree le fichier immediatement — c'est ce qui rend la
+/// reservation exclusive. Mais si l'ecriture qui suit echoue (disque plein,
+/// encodage impossible, annulation), le fichier VIDE restait sur le disque et
+/// s'accumulait a chaque tentative ratee. Signale par la relecture GPT du
+/// 2026-08-11.
+Future<File> writeReservedTempFile({
+  required String dir,
+  required String base,
+  required String extension,
+  required Future<void> Function(File cible) ecrire,
+}) async {
+  final f = await reserveTempFile(dir: dir, base: base, extension: extension);
+  try {
+    await ecrire(f);
+    return f;
+  } catch (_) {
+    // Nettoyage au mieux : si la suppression echoue elle aussi, on ne masque
+    // surtout pas l'erreur d'origine, qui est celle qui interesse l'appelant.
+    try {
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
+    rethrow;
+  }
+}
+
 Future<void> atomicWriteBytes(String path, List<int> bytes) =>
     _atomically(path, (tmp) => tmp.writeAsBytes(bytes, flush: true));
 

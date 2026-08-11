@@ -41,15 +41,19 @@ class ExifService {
     }
 
     final tmp = await getTemporaryDirectory();
-    var base = source.path
+    final base = source.path
         .split(RegExp(r'[/\\]'))
         .last
-        .replaceAll(RegExp(r'\.[^.]+$'), '')
-        .replaceAll(RegExp(r'[\x00-\x1f/\\:*?"<>|]'), '_');
-    if (base.isEmpty || base == '.' || base == '..') base = 'image';
-    final dest = File('${tmp.path}/${base}_no_exif.${result.$2}');
-    await atomicWriteUint8(dest.path, result.$1);
-    return dest;
+        .replaceAll(RegExp(r'\.[^.]+$'), '');
+    // Nom RESERVE, et non compose : nettoyer deux `IMG_0001.jpg` venant de
+    // dossiers differents ecrivait au meme chemin, et le second ecrasait le
+    // premier. L'utilisateur partageait alors la mauvaise image.
+    return writeReservedTempFile(
+      dir: tmp.path,
+      base: '${base}_no_exif',
+      extension: result.$2,
+      ecrire: (cible) => atomicWriteUint8(cible.path, result.$1),
+    );
   }
 
   /// Worker Isolate : retourne (bytes, extension de sortie) ou null si KO.
@@ -89,14 +93,31 @@ class ExifService {
   /// + probe IHDR/SOF avant `decodeImage`. Auparavant `inspect` (souvent
   /// appelé en preview) chargeait sans cap → vecteur OOM identique à F5
   /// v2.12.0 sur le chemin écriture.
+  /// Une map VIDE signifie « aucune metadonnee », et rien d'autre.
+  ///
+  /// Cette methode enveloppait tout dans un `catch (_) { return {}; }` : une
+  /// permission refusee, un fichier efface en cours de lecture ou une image
+  /// piegee rendaient la meme reponse qu'une photo parfaitement propre.
+  /// L'utilisateur en concluait que son image ne portait aucune metadonnee,
+  /// alors que rien n'avait pu etre lu.
+  ///
+  /// L'ecran appelant possede DEJA un chemin d'erreur (`exif_screen.dart:56`),
+  /// que ce `catch` rendait inatteignable. Les echecs remontent desormais.
   Future<Map<String, String>> inspect(File source) async {
-    try {
-      final size = await source.length();
-      if (size > FileCaps.imageFile) return {};
-      final bytes = await source.readAsBytes();
-      if (ImageBounds.assertSafeBounds(bytes) != null) return {};
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) return {};
+    final size = await source.length();
+    if (size > FileCaps.imageFile) {
+      throw const FormatException(
+        'Image trop volumineuse (max ${FileCaps.imageFile ~/ (1024 * 1024)} Mo).',
+      );
+    }
+    final bytes = await source.readAsBytes();
+    final dimErr = ImageBounds.assertSafeBounds(bytes);
+    if (dimErr != null) throw FormatException(dimErr);
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw const FormatException('Image illisible — format non reconnu.');
+    }
+    {
       final exif = decoded.exif;
       final out = <String, String>{};
       // GPS
@@ -114,8 +135,6 @@ class ExifService {
       if (software != null && software.isNotEmpty) out['Logiciel'] = software;
       out['Dimensions'] = '${decoded.width} × ${decoded.height}';
       return out;
-    } catch (_) {
-      return {};
     }
   }
 }

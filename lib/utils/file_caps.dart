@@ -70,6 +70,27 @@ abstract final class FileCaps {
   /// qui appelle `list()` avant d'effacer.
   static const int trashMeta = 256 * 1024;
 
+  /// PDF ouvert pour y apposer une signature.
+  ///
+  /// Le fichier est lu INTEGRALEMENT en memoire, puis Syncfusion en construit
+  /// sa propre representation, puis `save()` rematerialise le resultat : on
+  /// detient donc jusqu'a trois copies simultanement. Sans plafond, un PDF de
+  /// plusieurs centaines de megaoctets faisait tomber l'application.
+  static const int pdfSignatureSource = 100 * 1024 * 1024;
+
+  /// Nombre de pixels d'une image, une fois DECODEE.
+  ///
+  /// **Pourquoi ce plafond s'ajoute a celui des dimensions.** `ImageBounds`
+  /// bornait chaque cote a 12 000, ce qui laisse passer un 12000x12000 : 144
+  /// megapixels, soit **576 Mo** rien qu'en tampon RGBA, pour un fichier PNG
+  /// tres compressible de quelques centaines de kilo-octets. Le cap sur la
+  /// taille du FICHIER ne voit rien, et le cap sur les DIMENSIONS non plus,
+  /// puisque aucun cote n'est franchi.
+  ///
+  /// 64 megapixels couvrent tout capteur grand public — une photo 48 Mpx fait
+  /// 8000x6000 — tout en bornant le tampon a 256 Mo.
+  static const int imagePixels = 64 * 1000 * 1000;
+
   /// v2.15 — total décompressé autorisé pour « Tout extraire » sur une
   /// archive. Reprend la valeur qui était codée en dur dans
   /// `zip_viewer_screen.dart` (`_maxTotalExtractBytes`).
