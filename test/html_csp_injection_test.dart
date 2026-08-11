@@ -129,4 +129,106 @@ void main() {
   test('un document vide reçoit quand même la CSP', () {
     expect(cspAt(injectCsp('')), greaterThanOrEqualTo(0));
   });
+  group('tentatives de mise en echec de l injection — 2026-08-11', () {
+    test('un document portant DEJA sa propre CSP permissive reste bride', () {
+      // Plusieurs CSP se CUMULENT : le navigateur applique l intersection, pas
+      // la derniere lue. Un document qui declare sa propre politique large ne
+      // peut donc pas desserrer la notre — mais encore faut-il que la notre
+      // soit bien presente ET premiere.
+      const piege =
+          '<!doctype html><html><head>'
+          '<meta http-equiv="Content-Security-Policy" '
+          'content="default-src * \'unsafe-inline\'">'
+          '<img src="https://attaquant.example/p.png">'
+          '</head></html>';
+      final doc = injectCsp(piege);
+
+      final notre = doc.indexOf("connect-src 'none'");
+      expect(notre, greaterThanOrEqualTo(0), reason: 'notre CSP doit y etre');
+      expect(
+        notre,
+        lessThan(doc.indexOf('default-src *')),
+        reason: 'la notre doit preceder celle du document',
+      );
+      expect(notre, lessThan(doc.indexOf('attaquant.example')));
+    });
+
+    test('un DOCTYPE jamais referme ne fait pas perdre la CSP', () {
+      // `_doctypeEnd` rend -1 : la balise doit alors etre posee AVANT tout le
+      // document, plutot que de ne pas etre posee du tout.
+      const piege =
+          '<!doctype html <img src="https://attaquant.example/p.png">';
+      final doc = injectCsp(piege);
+      expect(
+        doc.startsWith('<meta http-equiv='),
+        isTrue,
+        reason: 'la CSP doit ouvrir le document',
+      );
+      expect(cspAt(doc), lessThan(doc.indexOf('attaquant.example')));
+    });
+
+    test('la casse du DOCTYPE ne change rien', () {
+      for (final variante in <String>['<!DOCTYPE html>', '<!DoCtYpE html>']) {
+        final doc = injectCsp(
+          '$variante<img src="https://attaquant.example/p.png">',
+        );
+        expect(cspAt(doc), greaterThanOrEqualTo(0), reason: variante);
+        expect(
+          cspAt(doc),
+          lessThan(doc.indexOf('attaquant.example')),
+          reason: variante,
+        );
+      }
+    });
+
+    test('des blancs et sauts de ligne avant le DOCTYPE ne genent pas', () {
+      final doc = injectCsp(
+        '\n\n   \t<!doctype html>'
+        '<img src="https://attaquant.example/p.png">',
+      );
+      expect(cspAt(doc), greaterThanOrEqualTo(0));
+      expect(cspAt(doc), lessThan(doc.indexOf('attaquant.example')));
+      expect(cspInsideComment(doc), isFalse);
+    });
+
+    test('une ressource distante placee avant le DOCTYPE reste couverte', () {
+      // Cas tordu mais legal pour un parseur permissif : du contenu avant la
+      // declaration. La CSP doit rester en tete du document.
+      const piege =
+          '<img src="https://attaquant.example/p.png"><!doctype html>';
+      final doc = injectCsp(piege);
+      expect(cspAt(doc), lessThan(doc.indexOf('attaquant.example')));
+    });
+
+    test('la politique n autorise aucun hote distant, nulle part', () {
+      // Le fait qui rend le risque residuel supportable : une page piegee peut
+      // AFFICHER un fichier local hors perimetre (`img-src file:` n a pas de
+      // granularite de chemin), mais elle ne peut RIEN faire sortir. Si une
+      // directive venait a autoriser `http:` ou `https:`, ce test rougirait.
+      for (final directive in <String>[
+        'default-src',
+        'img-src',
+        'media-src',
+        'style-src',
+        'font-src',
+        'script-src',
+        'frame-src',
+        'form-action',
+        'connect-src',
+        'base-uri',
+      ]) {
+        final at = kHtmlViewerCsp.indexOf('$directive ');
+        expect(at, greaterThanOrEqualTo(0), reason: '$directive absente');
+        final fin = kHtmlViewerCsp.indexOf(';', at);
+        final valeur = fin < 0
+            ? kHtmlViewerCsp.substring(at)
+            : kHtmlViewerCsp.substring(at, fin);
+        expect(
+          valeur,
+          isNot(anyOf(contains('http'), contains('*'), contains('ws'))),
+          reason: '$directive ouvre une porte sortante : $valeur',
+        );
+      }
+    });
+  });
 }

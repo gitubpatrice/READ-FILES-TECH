@@ -79,6 +79,21 @@ int _doctypeEnd(String html, int start) {
       if (c == quote) quote = null;
     } else if (c == '"' || c == "'") {
       quote = c;
+    } else if (c == '<' && i > start) {
+      // Un DOCTYPE ne peut pas contenir `<` — hormis le sien, en tete, d'ou
+      // le `i > start`. En rencontrer un autre signifie que la declaration n'a
+      // JAMAIS ete refermee et qu'on est deja dans le balisage suivant.
+      //
+      // Sans ce garde-fou, le balayage continuait jusqu'au premier `>`
+      // rencontre — celui de la balise suivante. Sur
+      // `<!doctype html <img src="https://attaquant.example/p.png">`, la CSP
+      // etait donc inseree APRES l'image distante : elle arrivait trop tard
+      // pour la bloquer, et la requete sortante partait.
+      //
+      // Rendre -1 fait retomber `injectCsp` sur son cas general, qui pose la
+      // balise en TETE du document. Trouve le 2026-08-11 en ecrivant un test
+      // hostile, pas par relecture.
+      return -1;
     } else if (c == '>') {
       return i;
     }
