@@ -19,32 +19,19 @@
 
 ---
 
-## 0. ⚠️ VÉRIFIER QUE LA CI EST VERTE — avant tout le reste
+## 0. ✅ CLOS le 2026-08-11 — la CI est verte
 
-La CI a échoué le 2026-08-10 au soir sur le commit `0eca8cc`, et le correctif
-(`b7e…`, dernier commit) **n'a pas pu être vérifié localement**.
+Le correctif du repli (`b7f0ce3`) tient : **204 tests verts sous Linux**, là où
+cinq tombaient. `getExternalStorageDirectory()` **lève** hors Android au lieu de
+rendre `null` ; une chaîne de repli dont un maillon peut lever n'est pas une
+chaîne de repli.
 
-**La cause.** La sauvegarde du coffre passe désormais par
-`OutputStorageService.reserveFile`, dont le deuxième repli appelle
-`getExternalStorageDirectory()`. Cette fonction n'existe **que sur Android** :
-ailleurs elle **lève** au lieu de rendre `null`. Cinq tests du coffre sont
-tombés.
-
-**Pourquoi c'est invisible en local.** Sous Windows,
-`/storage/emulated/0/Files Tech/...` se crée sans difficulté : le chemin
-principal réussit, le repli n'est jamais emprunté, et les 204 tests passent.
-Sous Linux, le chemin principal échoue et le repli est atteint. **Le correctif
-ne peut pas davantage être validé localement, pour la même raison.**
-
-```
-gh run list --limit 3
-```
-
-Si elle est encore rouge, lire le journal avant toute autre chose : c'est le
-seul environnement qui exerce ce chemin.
-
-**La leçon à retenir** : une suite verte sur une seule plateforme ne dit rien
-des replis spécifiques à une autre.
+**Ce qu'il faut garder de l'épisode.** Le défaut était invisible en local et le
+correctif l'était tout autant : sous Windows, `/storage/emulated/0/…` se crée
+sans difficulté, donc le chemin principal réussit et le repli n'est jamais
+emprunté. Une suite verte sur une seule plateforme ne dit rien des replis
+propres à une autre. **La CI est ici le seul juge, comme l'appareil l'est pour
+l'interface.**
 
 ---
 

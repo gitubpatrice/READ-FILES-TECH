@@ -288,4 +288,64 @@ void main() {
       expect(contenus, {'PREMIER', 'SECOND'});
     });
   });
+  group('metadonnee hostile — plafond de lecture', () {
+    // `.RFT_Corbeille/meta/` vit sur le stockage PARTAGE : toute application
+    // disposant de la permission peut y deposer un fichier. Avant le
+    // 2026-08-11, `list()` faisait `readAsString()` sans borne — un JSON de
+    // plusieurs gigaoctets figeait l ouverture de la corbeille, et le mode
+    // panique avec elle, puisqu il appelle `list()` avant d effacer.
+    //
+    // ATTENTION AU PIEGE. Une premiere version de ce test deposait un JSON
+    // enorme mais SANS FORME (`{"x":"AAAA…"}`). Il passait — et il passait
+    // aussi apres avoir retire la borne, parce que l entree etait ecartee par
+    // la validation de schema, pas par le plafond. Il ne prouvait rien.
+    //
+    // Le fichier ci-dessous est donc une metadonnee PARFAITEMENT VALIDE : meme
+    // identifiant que son nom de fichier, charge utile presente sur le disque,
+    // tous les champs au bon type. Seule la borne peut la refuser.
+
+    /// Depose une metadonnee valide de [padding] octets, avec sa charge utile.
+    Future<String> deposeMetaValide(int padding) async {
+      final modele = await trash.moveToTrash(makeFile('gros.txt', 'x'));
+      final meta = File(modele.metaPath);
+      final json =
+          jsonDecode(await meta.readAsString()) as Map<String, dynamic>;
+      // Champ inconnu, ignore par `fromJson`, qui ne sert qu a gonfler le
+      // fichier sans le rendre invalide.
+      json['bourrage'] = 'A' * padding;
+      await meta.writeAsString(jsonEncode(json));
+      return modele.name;
+    }
+
+    test('une metadonnee VALIDE mais enorme est ignoree', () async {
+      await trash.moveToTrash(makeFile('vrai.txt', 'ok'));
+      await deposeMetaValide(2 * 1024 * 1024);
+
+      final noms = (await trash.list()).map((e) => e.name).toList();
+
+      expect(
+        noms,
+        ['vrai.txt'],
+        reason:
+            'la metadonnee de 2 Mo doit etre ecartee par le plafond, et '
+            'l entree legitime doit survivre a son voisinage',
+      );
+    });
+
+    test('la meme metadonnee, sous le plafond, est bien lue', () async {
+      // Le controle qui empeche le test precedent de passer pour la mauvaise
+      // raison : avec un bourrage modeste, l entree DOIT apparaitre. Sans lui,
+      // une borne absurdement basse — ou une validation qui rejette tout —
+      // donnerait le meme vert.
+      final nom = await deposeMetaValide(1024);
+      final noms = (await trash.list()).map((e) => e.name).toList();
+      expect(noms, contains(nom));
+    });
+
+    test('une metadonnee normale reste lue', () async {
+      await trash.moveToTrash(makeFile('petit.txt', 'x'));
+      final entries = await trash.list();
+      expect(entries.map((e) => e.name), ['petit.txt']);
+    });
+  });
 }

@@ -6,6 +6,7 @@ import 'package:files_tech_core/files_tech_core.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../utils/atomic_write.dart';
+import '../utils/file_caps.dart';
 
 /// Une entrée de la corbeille : la charge utile déplacée + ses métadonnées.
 class TrashEntry {
@@ -168,7 +169,12 @@ class TrashService {
     if (Platform.isAndroid) {
       bases.addAll(['/storage/emulated/0', '/sdcard']);
       try {
-        for (final e in Directory('/storage').listSync(followLinks: false)) {
+        // Asynchrone : `/storage` peut contenir des volumes amovibles dont
+        // l'enumeration est lente, et ce chemin sert au mode panique.
+        final volumes = await Directory(
+          '/storage',
+        ).list(followLinks: false).toList();
+        for (final e in volumes) {
           final name = e.path.split('/').last;
           if (name == 'self' || name == 'emulated') continue;
           bases.add(e.path);
@@ -283,7 +289,11 @@ class TrashService {
       final metas = Directory('$root/$metaDir');
       List<FileSystemEntity> files;
       try {
-        files = metas.listSync(followLinks: false);
+        // `list()` et non `listSync()` : ce dossier vit sur le stockage
+        // partage, dont la latence n'est pas maitrisee. Bloquer le thread de
+        // l'interface pour l'enumerer se voit sur un stockage lent — et
+        // `list()` est aussi appele par le mode panique.
+        files = await metas.list(followLinks: false).toList();
       } catch (_) {
         continue;
       }
@@ -291,6 +301,15 @@ class TrashService {
         if (f is! File || !f.path.endsWith('.json')) continue;
         TrashEntry? entry;
         try {
+          // Plafond AVANT lecture. `.RFT_Corbeille/meta/` est sur le stockage
+          // partage : toute application ayant la permission peut y deposer un
+          // fichier. Sans cette borne, un JSON de plusieurs gigaoctets figeait
+          // l'ouverture de la corbeille — et le mode panique avec elle.
+          //
+          // Une entree legitime pese quelques centaines d'octets ; depasser
+          // 256 Ko signale un fichier qui n'a pas ete ecrit par cette
+          // application. On l'ignore au lieu de le lire.
+          if (await f.length() > FileCaps.trashMeta) continue;
           final raw = jsonDecode(await f.readAsString());
           if (raw is Map<String, dynamic>) {
             entry = TrashEntry.fromJson(raw, root);

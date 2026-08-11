@@ -58,6 +58,18 @@ abstract final class FileCaps {
   /// dump piégé). WebView Android cale au-delà sur low-end.
   static const int htmlViewer = 20 * 1024 * 1024;
 
+  /// Métadonnée d'une entrée de corbeille (`meta/<id>.json`).
+  ///
+  /// Une entrée légitime pèse quelques centaines d'octets : un nom, un chemin
+  /// d'origine, une date. 256 Ko laissent une marge considérable.
+  ///
+  /// **Ce plafond n'est pas une optimisation.** `.RFT_Corbeille/meta/` vit sur
+  /// le stockage **partagé** : toute application disposant de la permission
+  /// peut y déposer un fichier. Sans borne, un JSON de plusieurs gigaoctets
+  /// suffisait à figer l'ouverture de la corbeille — et le **mode panique**,
+  /// qui appelle `list()` avant d'effacer.
+  static const int trashMeta = 256 * 1024;
+
   /// v2.15 — total décompressé autorisé pour « Tout extraire » sur une
   /// archive. Reprend la valeur qui était codée en dur dans
   /// `zip_viewer_screen.dart` (`_maxTotalExtractBytes`).
