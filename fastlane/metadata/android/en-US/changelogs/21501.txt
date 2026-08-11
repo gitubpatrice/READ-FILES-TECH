@@ -1,0 +1,3 @@
+Update check: the timeout no longer covered reading the response. A server that answered and then went silent could leave the app waiting indefinitely.
+
+An abnormally large response is now refused before being loaded into memory, and an empty redirect is no longer followed.

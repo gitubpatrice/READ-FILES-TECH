@@ -1,0 +1,3 @@
+Vérification de mise à jour : le délai d'attente ne couvrait plus la lecture de la réponse. Un serveur qui répondait puis se taisait pouvait faire attendre l'application sans fin.
+
+Une réponse anormalement volumineuse est désormais refusée avant d'être chargée en mémoire, et une redirection vide n'est plus suivie.
