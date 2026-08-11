@@ -1,7 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../utils/image_bounds.dart';
+import '../../widgets/error_panel.dart';
 import '../explorer/file_type_helpers.dart';
 
 class ImageViewerScreen extends StatefulWidget {
@@ -176,23 +180,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                   fit: BoxFit.contain,
                   cacheWidth: maxPx,
                   filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, e, _) => const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.broken_image_outlined,
-                          color: Colors.grey,
-                          size: 64,
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Impossible d\'afficher cette image',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
+                  errorBuilder: (_, e, _) => _ImageErrorPanel(path: _images[i]),
                 ),
               ),
             );
@@ -201,4 +189,78 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       ),
     );
   }
+}
+
+/// Ce qui s'affiche quand une image refuse de se decoder.
+///
+/// **Pourquoi ce n'est pas qu'une question d'esthetique.** L'ecran montrait une
+/// icone grise et « Impossible d'afficher cette image » sur fond noir. Le
+/// message etait le meme pour un fichier tronque, un format non supporte et une
+/// image piegee annoncant 60000x60000 : rien ne permettait de distinguer un
+/// fichier abime d'une tentative deliberee.
+///
+/// Or le diagnostic precis EXISTE deja — `ImageBounds.assertSafeBounds` rend
+/// « Dimensions image suspectes (LxH, max ...) » — mais il n'etait cable que
+/// dans la compression, la conversion et l'EXIF. Jamais dans la visionneuse,
+/// c'est-a-dire a l'endroit ou l'utilisateur ouvre le fichier. Constate sur
+/// appareil le 2026-08-11.
+class _ImageErrorPanel extends StatefulWidget {
+  final String path;
+  const _ImageErrorPanel({required this.path});
+
+  @override
+  State<_ImageErrorPanel> createState() => _ImageErrorPanelState();
+}
+
+class _ImageErrorPanelState extends State<_ImageErrorPanel> {
+  /// Message affiche. Part d'un generique honnete, puis se precise si l'en-tete
+  /// du fichier permet d'en dire plus.
+  String _message = 'Impossible d\'afficher cette image.';
+
+  @override
+  void initState() {
+    super.initState();
+    _diagnostiquer();
+  }
+
+  Future<void> _diagnostiquer() async {
+    try {
+      // Seuls les tout premiers octets portent les dimensions. On ne relit
+      // donc PAS le fichier entier : il vient d'echouer au decodage, rien ne
+      // dit qu'il soit d'une taille raisonnable.
+      final handle = await File(widget.path).open();
+      Uint8List entete;
+      try {
+        entete = await handle.read(64 * 1024);
+      } finally {
+        await handle.close();
+      }
+
+      if (entete.isEmpty) {
+        _poser('Ce fichier est vide.');
+        return;
+      }
+      final refus = ImageBounds.assertSafeBounds(entete);
+      if (refus != null) {
+        _poser('$refus\n\nL\'image n\'a pas ete decodee.');
+        return;
+      }
+      _poser(
+        'Impossible d\'afficher cette image : le fichier est incomplet ou '
+        'son format n\'est pas reconnu.',
+      );
+    } catch (_) {
+      // Le diagnostic est un CONFORT : s'il echoue, le message generique
+      // reste. Ne jamais laisser l'ecran vide pour autant.
+      _poser('Impossible de lire ce fichier.');
+    }
+  }
+
+  void _poser(String message) {
+    if (!mounted) return;
+    setState(() => _message = message);
+  }
+
+  @override
+  Widget build(BuildContext context) => ErrorPanel(message: _message);
 }
