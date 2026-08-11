@@ -1,133 +1,109 @@
-# À faire demain — Read Files Tech
+# Reprise — Read Files Tech
 
-*Écrit le 2026-08-10 en fin de journée. Liste courte et autoritaire.*
+*Mis à jour le 2026-08-11 en fin de journée. Liste courte et autoritaire.*
 *Le contexte complet est dans `REPRISE-V2.15.md` ; ici, seulement la suite.*
 
 ---
 
-## État au moment de couper
+## État
 
 | | |
 |---|---|
 | Branche | `main`, arbre **propre**, **tout poussé** |
-| Commits depuis `c89b820` (v2.14.0) | **59** |
+| Commits depuis `c89b820` (v2.14.0) | **68** |
 | `flutter analyze` | **0 issue** |
-| `flutter test` | **204 tests verts** (18 fichiers) |
+| `flutter test` | **241 tests verts** (20 fichiers) |
+| CI GitHub | **verte** |
 | Build release | **passe** — 35,6 / 40,7 / 42,9 Mo |
 | Version | **2.14.0+21400** — non bumpée, **aucun tag** |
-| Appareils | APK installé sur le S9 ; le S24 a l'avant-dernière version |
+| Appareils | APK à jour sur le **S9 (API 29)** et le **S24 (API 36)** |
+
+**Tout ce qui a été livré le 2026-08-11 a été reconstaté sur les deux
+téléphones**, corpus `Téléchargements/rft_test_v216/` (10 fichiers piégés).
 
 ---
 
-## 0. ✅ CLOS le 2026-08-11 — la CI est verte
+## 1. Ce qui reste à faire
 
-Le correctif du repli (`b7f0ce3`) tient : **204 tests verts sous Linux**, là où
-cinq tombaient. `getExternalStorageDirectory()` **lève** hors Android au lieu de
-rendre `null` ; une chaîne de repli dont un maillon peut lever n'est pas une
-chaîne de repli.
+### 1.1 — Fichiers jamais relus par un tiers
 
-**Ce qu'il faut garder de l'épisode.** Le défaut était invisible en local et le
-correctif l'était tout autant : sous Windows, `/storage/emulated/0/…` se crée
-sans difficulté, donc le chemin principal réussit et le repli n'est jamais
-emprunté. Une suite verte sur une seule plateforme ne dit rien des replis
-propres à une autre. **La CI est ici le seul juge, comme l'appareil l'est pour
-l'interface.**
+Il en reste quatre, tous de taille modeste :
 
----
+- `pdf_signature_service.dart`
+- `exif_service.dart`
+- `image_bounds.dart`
+- `csv_safe.dart`
 
-## 1. Reconstater sur appareil ce qui a été livré en fin de journée
+`app_update.dart` a été soumis : **rien à en tirer**, il ne fait que construire
+un `UpdateService` de `files_tech_core`. Le code réseau réel — validation de la
+réponse, redirections, bornage de taille, comparaison de versions — vit dans le
+paquet partagé et **n'a jamais été relu**. C'est le seul code de l'application
+qui sort sur le réseau ; le relire suppose d'ouvrir `files_tech_core`, ce qui
+engage tout le portefeuille.
 
-**À faire en premier.** Ces correctifs touchent le coffre, la corbeille et
-l'écriture de fichiers. Ils sont couverts par des tests, mais la journée a
-montré huit fois qu'un test vert ne dit pas ce qui se passe sur le téléphone.
-
-1. **Coffre** — déverrouiller, importer un fichier, le lire, l'exporter.
-2. **Sauvegarde du coffre** — ⋮ → « Sauvegarder le coffre ». Vérifier le chemin
-   annoncé dans le bandeau, puis que le fichier est bien dans
-   `Files Tech/Sauvegardes coffre/`.
-3. **Restaurer une sauvegarde** — sur un coffre qui contient déjà le fichier :
-   attendu « Rien restauré : 1 fichier déjà présent » avec un bouton
-   **Remplacer** qui tient **7 secondes**. L'actionner, confirmer, obtenir
-   « 1 restauré ».
-4. **Corbeille** — supprimer plusieurs fichiers d'un coup, en restaurer un,
-   en supprimer un définitivement. Vérifier que les autres sont intacts.
-5. **EPUB** — en ouvrir un vrai. Puis renommer n'importe quel fichier en
-   `.epub` et l'ouvrir : le message doit dire que ce n'est pas une archive,
-   pas que `container.xml` manque.
-
----
-
-## 2. Les quatre points restants de l'audit externe
-
-Réels, vérifiés, moins graves que ce qui a été corrigé. Ordre conseillé :
-
-1. **`trash_service.list()` lit les métadonnées sans borne.** Un JSON énorme
-   déposé dans `.RFT_Corbeille/meta/` — sur le stockage **partagé**, donc
-   accessible à toute application ayant la permission — ferait geler
-   l'ouverture de la corbeille. Et le **mode panique** l'appelle. Un plafond de
-   lecture suffit.
-
-2. **E/S synchrones** dans `trash_service.list()` et `_existingTrashRoots()`
-   (`listSync`). Gel perceptible sur stockage lent, sur un chemin appelé lui
-   aussi par le mode panique.
-
-3. **`duplicate_finder_service` : appels concurrents à `find()` non gérés.**
-   Deux lancements laissent des isolates orphelins qui continuent à consommer.
-
-4. **`docxXmlToPlainText` écrit une ligne par paragraphe même vide.** Signalé le
-   2026-08-09. C'est le comportement du service, aligné avec l'outil de
-   conversion : le changer modifierait aussi la sortie de l'outil. **Décision
-   produit**, pas correctif.
-
----
-
-## 3. Décisions en attente de Patrice
-
-- **Bump + tag.** Rien n'est bumpé, aucun tag posé. **Interdit sans demande
-  explicite.** 59 commits attendent une version.
-- **Syncfusion 34** — à rouvrir **quand `file_picker` 12 sera stable**. La
-  montée sera alors gratuite ; aujourd'hui elle coûterait soit une bêta sur le
-  sélecteur de fichiers, soit un `dependency_overrides`. Voir `REPRISE` §4.
-
----
-
-## 4. Ce qui n'a pas encore été relu par un tiers
-
-Huit fichiers l'ont été le 2026-08-10. Il en reste, dont deux qui portent du
-risque :
-
-- `html_viewer_screen.dart` (452 l.) — **WebView + CSP injectée**, et
-  `setAllowFileAccess` activé. C'est la plus grosse surface non relue.
-- `app_update.dart` — le **seul** code qui sort sur le réseau.
-- `global_search_service.dart` (305 l.), `pdf_signature_service.dart`,
-  `exif_service.dart`, `image_bounds.dart`, `csv_safe.dart`.
-
-Commande utilisée, à réutiliser telle quelle :
+Commande, à réutiliser telle quelle :
 
 ```
 python /c/Users/Pat/.claude/tools/audit-ia.py --provider gpt --model gpt-5.2 \
-  --prompt <scratchpad>/prompt_audit.txt --out <sortie>.md <fichiers…>
+  --prompt <scratchpad>/prompt_audit2.txt --out <sortie>.md <fichiers…>
 ```
 
 ⚠️ **Vérifier que le fichier de sortie existe.** `gemini-3.1-pro-preview` a
 rendu un rapport **vide sans message d'erreur** : une relecture absente
 ressemble beaucoup à une relecture qui n'a rien trouvé.
 
+### 1.2 — Décision produit en attente
+
+`docxXmlToPlainText` écrit une ligne par paragraphe **même vide**. Signalé le
+2026-08-09. C'est le comportement du service, aligné avec l'outil de
+conversion : le changer modifierait aussi la sortie de l'outil. **À trancher
+comme un choix produit, pas comme un correctif.**
+
+### 1.3 — Décisions en attente de Patrice
+
+- **Bump + tag.** Rien n'est bumpé, aucun tag posé. **Interdit sans demande
+  explicite.** 68 commits attendent une version.
+- **Syncfusion 34** — à rouvrir **quand `file_picker` 12 sera stable**. La
+  montée sera alors gratuite ; aujourd'hui elle coûterait soit une bêta sur le
+  sélecteur de fichiers, soit un `dependency_overrides`. Voir `REPRISE` §4.
+
 ---
 
-## 5. Deux règles que la journée a payées cher
+## 2. ✅ Fait le 2026-08-11 — ne pas rouvrir
 
-**L'appareil décide.** Huit défauts trouvés en deux jours par le téléphone,
-chaque fois avec `analyze` à 0 et toute la suite au vert. Aucun n'a été vu par
-une relecture de code.
+| Sujet | Ce qui a été corrigé |
+|---|---|
+| **CI** | Le repli de `reserveFile` **levait** hors Android au lieu de rendre `null`. Vert depuis. |
+| **Recherche par contenu** | Rendait **tous les fichiers du téléphone**. Un critère absent était traité comme un critère satisfait. |
+| **Recherche — dossiers cachés** | `.thumbnails/` remontait une vignette par photo. |
+| **Recherche — dossier illisible** | `Android/data` **interrompait toute la recherche** sur Android 11+. |
+| **Recherche — annulation** | Câblée à l'envers : `cancel()` envoyait dans le vide. Deux fuites corrigées. |
+| **Corbeille** | Métadonnées lues **sans borne** depuis le stockage partagé ; deux `listSync` bloquants. |
+| **Visionneuse HTML** | Un DOCTYPE non fermé faisait poser la CSP **après** la requête sortante. |
+| **Visionneuse d'images** | Le diagnostic précis existait mais **n'était pas câblé** sur l'écran d'ouverture. |
 
-**Saboter le correctif pour valider le test.** Remettre le défaut et vérifier
-que le test rougit. C'est ce geste qui a montré que les neuf tests de la garde
-anti-bombe ne testaient pas ce qu'on croyait — ils vérifiaient que l'entrée
-était *refusée*, jamais que la mémoire restait *bornée*.
+Chacun de ces correctifs a été **falsifié** : défaut remis, test vérifié rouge.
 
-**Et vérifier les constats externes avant d'agir.** Sur l'audit d'aujourd'hui,
-un constat était **faux** : GPT affirmait que `reader_service` décompressait
-sans garde anti-bombe, alors que `safeEntryBytes` y est appelé partout. Mais
-c'est en allant le vérifier qu'est apparu un vrai défaut, que personne n'avait
-signalé — la garde ZIP manquante sur ce cinquième site.
+---
+
+## 3. Trois règles que ces deux jours ont payées cher
+
+**L'appareil décide.** Les défauts trouvés par le téléphone l'ont été avec
+`analyze` à 0 et toute la suite au vert.
+
+**Saboter le correctif pour valider le test.** Le 2026-08-11, un test de
+plafond de corbeille est resté **vert après suppression de la borne** : il
+passait pour une autre raison que celle qu'on croyait, et ne prouvait rien. Sans
+ce geste, il aurait été commité tel quel.
+
+**Vérifier les constats externes avant d'agir.** Sur les deux audits, deux
+constats étaient **faux** — `reader_service` prétendument sans garde
+anti-bombe, `app_update` prétendument porteur du code réseau. Mais c'est en
+allant les vérifier qu'ont été trouvés deux vrais défauts que personne n'avait
+signalés. **Le meilleur usage d'une relecture externe n'est pas sa liste : c'est
+l'endroit où elle fait regarder.**
+
+**Et le corollaire, appris le 2026-08-11 :** les deux défauts les plus graves de
+la journée — la recherche par contenu et le DOCTYPE non fermé — n'ont été
+trouvés ni par relecture externe, ni par relecture humaine, mais **en écrivant
+des tests hostiles**. Aucun n'était dans une liste d'audit.
