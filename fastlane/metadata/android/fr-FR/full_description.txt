@@ -1,0 +1,32 @@
+Read Files Tech est le couteau suisse des fichiers de votre téléphone Android : explorateur, lecteur universel, scanner de documents, OCR, coffre-fort chiffré, outils de conversion et nettoyeur EXIF. Vos fichiers sont traités sur l'appareil et ne sont jamais envoyés ailleurs.
+
+<b>Fonctionnalités</b>
+
+<ul>
+<li>Explorateur de fichiers — navigation, recherche, multi-sélection, copie / déplacement / renommage en masse, et un sélecteur avec filtre intelligent</li>
+<li>Lecteur universel — PDF, CSV, XLSX, DOCX, JSON, MD, TXT, HTML, ZIP, images, EPUB, ainsi que ODT, ODS, JS, CSS, PHP, XML</li>
+<li>Scanner de documents — capture par la caméra avec détection des bords et correction de perspective, exportée en PDF</li>
+<li>OCR latin sur les images, entièrement sur l'appareil</li>
+<li>Coffre-fort chiffré — dérivation de clé Argon2id, AES-256-GCM, données authentifiées liées au nom du fichier, blocage des captures d'écran, limitation anti-force brute et chiffrement d'un dossier entier</li>
+<li>Signature de PDF au doigt</li>
+<li>Conversion — images vers PDF, CSV vers et depuis XLSX, JPG vers et depuis PNG, TXT et MD vers PDF, entre autres</li>
+<li>Nettoyage EXIF — retire les coordonnées GPS, la date et le modèle d'appareil avant de partager une photo</li>
+<li>Recherche globale par nom de fichier et par contenu</li>
+<li>Détecteur de doublons par SHA-256, en trois passes, pour libérer du stockage</li>
+<li>Tuiles de réglages rapides pour le scanner, l'OCR et le coffre-fort</li>
+<li>Installation d'APK depuis la liste des fichiers, confiée à l'installateur du système</li>
+</ul>
+
+<b>Confidentialité, dite franchement</b>
+
+<ul>
+<li>Vos fichiers ne quittent pas le téléphone. Aucun compte, aucun stockage en ligne, aucune analytics, aucun SDK de pistage</li>
+<li>L'application déclare bien un accès réseau, et s'en sert pour une seule chose : vérifier sur GitHub qu'une nouvelle version existe, une fois au lancement avec un cache de 12 heures, et à la demande depuis l'écran « À propos ». L'application étant distribuée hors magasin, cette vérification est le seul moyen d'apprendre qu'un correctif de sécurité est sorti. Rien d'autre ne sort : aucun fichier, aucun contenu de document, aucune donnée du coffre</li>
+<li>Google ML Kit, qui fait tourner l'OCR sur l'appareil, embarque aussi son propre transport de télémétrie. C'est pourquoi des permissions réseau apparaissent dans l'APK, et c'est dit ici plutôt que caché</li>
+<li>Le scanner de documents dépend des services Google Play et n'est pas disponible sans eux. Toutes les autres fonctions le sont</li>
+<li>L'accès à tous les fichiers est demandé parce qu'un explorateur généraliste en a besoin : le Storage Access Framework ne sait ni lister un dossier quelconque ni déplacer des fichiers de l'un à l'autre. Rien n'est lu ni écrit en arrière-plan — vous restez aux commandes de chaque opération</li>
+<li>Le partage vers une application cloud est une action explicite via le sélecteur de partage Android, jamais une synchronisation automatique</li>
+<li>Licence Apache 2.0 — code source sur https://github.com/gitubpatrice/READ-FILES-TECH</li>
+</ul>
+
+Site officiel : https://files-tech.com/read-files-tech.php

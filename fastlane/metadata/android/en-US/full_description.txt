@@ -1,0 +1,32 @@
+Read Files Tech is a Swiss army knife for the files on your Android phone: a file manager, a universal reader, a document scanner, OCR, an encrypted vault, conversion tools and an EXIF stripper. Your files are processed on the device and are never uploaded anywhere.
+
+<b>Features</b>
+
+<ul>
+<li>File manager — browse, search, multi-select, bulk copy / move / rename, and a picker with smart filtering</li>
+<li>Universal reader — PDF, CSV, XLSX, DOCX, JSON, MD, TXT, HTML, ZIP, images, EPUB, and also ODT, ODS, JS, CSS, PHP, XML</li>
+<li>Document scanner — camera capture with edge detection and perspective correction, exported as PDF</li>
+<li>Latin OCR on images, running entirely on the device</li>
+<li>Encrypted vault — Argon2id key derivation, AES-256-GCM, authenticated data bound to the file name, screenshot blocking, brute-force rate limiting, and whole-folder batch encryption</li>
+<li>PDF signing with your finger</li>
+<li>Conversion — images to PDF, CSV to and from XLSX, JPG to and from PNG, TXT and MD to PDF, and more</li>
+<li>EXIF stripping — remove GPS coordinates, dates and device model before sharing a photo</li>
+<li>Global search by file name and by content</li>
+<li>Duplicate finder using SHA-256, in three passes, to reclaim storage</li>
+<li>Quick Settings tiles for the scanner, OCR and the vault</li>
+<li>APK installation from the file list, handed to the system package installer</li>
+</ul>
+
+<b>Privacy, stated plainly</b>
+
+<ul>
+<li>Your files never leave the phone. No account, no cloud storage, no analytics, no tracking SDK</li>
+<li>The app does declare internet access, and uses it for exactly one thing: checking GitHub for a new release, once at launch with a 12-hour cache and on demand from the About screen. Since the app is distributed by sideloading, that check is the only way you would learn a security fix exists. Nothing else is sent — no file, no document content, no vault data</li>
+<li>Google ML Kit, which powers the on-device OCR, also ships a telemetry transport of its own. That is why network permissions appear in the APK, and it is stated here rather than hidden</li>
+<li>The document scanner relies on Google Play Services and is unavailable without them. Every other feature works without</li>
+<li>All-files access is requested because a general-purpose file manager needs it: the Storage Access Framework cannot list arbitrary folders or move files across them. Nothing is read or written in the background — you stay in control of every operation</li>
+<li>Sharing to a cloud app is an explicit action through Android's share sheet, never an automatic sync</li>
+<li>Apache License 2.0 — source code at https://github.com/gitubpatrice/READ-FILES-TECH</li>
+</ul>
+
+Project home: https://files-tech.com/read-files-tech.php
