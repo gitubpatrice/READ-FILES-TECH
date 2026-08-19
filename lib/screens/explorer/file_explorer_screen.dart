@@ -205,7 +205,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       final raw = await _listDirChannel.invokeMethod<List<dynamic>>('listDir', {
         'path': dir.path,
       });
-      if (raw == null) return dir.list().toList();
+      if (raw == null) return await dir.list().toList();
       final out = <FileSystemEntity>[];
       for (final item in raw) {
         final m = Map<String, dynamic>.from(item as Map);

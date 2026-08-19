@@ -87,7 +87,7 @@ class PdfSignatureService {
       // Nom RESERVE : signer deux `contrat.pdf` venant de dossiers differents
       // ecrivait au meme chemin, et le second ecrasait le premier — l'appelant
       // partageait alors le mauvais document signe.
-      return writeReservedTempFile(
+      return await writeReservedTempFile(
         dir: tmp.path,
         base: '${base}_signe',
         extension: 'pdf',
