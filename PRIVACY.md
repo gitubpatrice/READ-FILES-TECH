@@ -110,7 +110,7 @@ time by a dependency and appear nowhere in the application's own code.
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Display and preview media files chosen by the user (Android 13+).                                  |
 | `CAMERA`                            | Document scanner and OCR (optional, runtime-granted on demand).                                          |
 | `REQUEST_INSTALL_PACKAGES`          | Install an APK tapped in the explorer. The installation itself is performed by the system package installer, which asks for its own confirmation. |
-| `INTERNET`, `ACCESS_NETWORK_STATE`  | Update check via the public GitHub Releases API (§6 bis). They **also** serve Google's telemetry transport (`com.google.android.datatransport:transport-backend-cct`), bundled with Google ML Kit — see §9 bis. |
+| `INTERNET`, `ACCESS_NETWORK_STATE`  | Update check via the public GitHub Releases API (§6 bis). That is their **only** use: the Google telemetry transport bundled with ML Kit can no longer start as of v2.15 — see §9 bis. |
 
 ### 9 bis. What "100% local" covers exactly
 
@@ -121,13 +121,18 @@ the model is bundled inside the APK (`assets/mlkit-google-ocr-models`,
 
 Two caveats, stated here because they are verifiable on the APK:
 
-1. **Google ML Kit bundles a telemetry transport.** The
+1. **Google ML Kit bundles a telemetry transport, and it is neutralised.** The
    `TransportBackendDiscovery`, `JobInfoSchedulerService` and
-   `AlarmManagerSchedulerBroadcastReceiver` components are present in the APK.
-   They use `INTERNET` and `ACCESS_NETWORK_STATE` — which they did in fact
-   contribute to the merged manifest until v2.15 declared them there explicitly.
-   They may report library usage metrics to Google. They do not transmit document
-   contents.
+   `AlarmManagerSchedulerBroadcastReceiver` components could report library usage
+   metrics to Google — never document contents. Since **v2.15** their three
+   declarations are stripped from the final manifest with `tools:node="remove"`:
+   with no declared entry point, Android can neither bind the service nor deliver
+   the broadcast, so the transport never starts. **Measured on the published
+   v2.15.1 APK**, not only on the source file: `aapt2 dump xmltree` finds **no**
+   `datatransport` component in it (positive control: seven `com.google.mlkit`
+   entries are found). What this does not do: the transport's **code** remains in
+   the APK — the string appears twice in `classes.dex` — and `INTERNET` stays
+   declared, because the app itself uses it for the update check (§6 bis).
 2. **The document scanner relies on Google Play services.**
    `play-services-mlkit-document-scanner` is a thin client: the scanning UI and
    its model live in Play services and are downloaded on demand. On a device

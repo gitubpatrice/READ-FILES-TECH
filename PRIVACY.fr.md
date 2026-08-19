@@ -113,7 +113,7 @@ code de l'application.
 | `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Affichage et aperçu des fichiers médias choisis par l'utilisateur (Android 13+).                  |
 | `CAMERA`                            | Scanner de documents et OCR (optionnel, accordée à la demande au runtime).                              |
 | `REQUEST_INSTALL_PACKAGES`          | Installer une APK tapée dans l'explorateur. L'installation elle-même est faite par l'installeur du système, qui demande sa propre confirmation. |
-| `INTERNET`, `ACCESS_NETWORK_STATE`  | Vérification de mise à jour via l'API publique GitHub Releases (§6 bis). Elles servent **aussi** au transport de télémétrie de Google (`com.google.android.datatransport:transport-backend-cct`), embarqué avec Google ML Kit — voir §9 bis. |
+| `INTERNET`, `ACCESS_NETWORK_STATE`  | Vérification de mise à jour via l'API publique GitHub Releases (§6 bis). C'est leur **seul** usage : le transport de télémétrie de Google embarqué avec ML Kit ne peut plus démarrer depuis la v2.15 — voir §9 bis. |
 
 ### 9 bis. Ce que « 100 % local » recouvre exactement
 
@@ -125,13 +125,19 @@ modèle est embarqué dans l'APK (`assets/mlkit-google-ocr-models`,
 
 Deux réserves, énoncées ici parce qu'elles sont vérifiables sur l'APK :
 
-1. **Google ML Kit embarque un transport de télémétrie.** Les composants
-   `TransportBackendDiscovery`, `JobInfoSchedulerService` et
-   `AlarmManagerSchedulerBroadcastReceiver` sont présents dans l'APK. Ils
-   utilisent `INTERNET` et `ACCESS_NETWORK_STATE` — qu'ils apportaient d'ailleurs
-   au manifeste fusionné jusqu'à ce que la v2.15 les y déclare explicitement. Ils
-   peuvent transmettre à Google des métriques d'usage de la bibliothèque. Ils ne
-   transmettent pas le contenu des documents.
+1. **Google ML Kit embarque un transport de télémétrie, et il est neutralisé.**
+   Les composants `TransportBackendDiscovery`, `JobInfoSchedulerService` et
+   `AlarmManagerSchedulerBroadcastReceiver` pouvaient transmettre à Google des
+   métriques d'usage de la bibliothèque — jamais le contenu des documents. Depuis
+   la **v2.15**, leurs trois déclarations sont retirées du manifeste final par
+   `tools:node="remove"` : sans point d'entrée déclaré, Android ne peut ni lier le
+   service ni délivrer la diffusion, donc le transport ne démarre pas.
+   **Mesuré sur l'APK publié** de la v2.15.1, pas seulement sur le fichier source :
+   `aapt2 dump xmltree` n'y trouve **aucun** composant `datatransport` (contrôle
+   positif : sept entrées `com.google.mlkit` bien présentes). Ce que cela ne fait
+   pas : le **code** du transport reste dans l'APK — la chaîne apparaît deux fois
+   dans `classes.dex` — et `INTERNET` reste déclarée, parce que l'application s'en
+   sert elle-même pour la vérification de mise à jour (§6 bis).
 2. **Le scanner de documents s'appuie sur les services Google Play.**
    `play-services-mlkit-document-scanner` est un client léger : l'interface de
    numérisation et son modèle vivent dans les services Play et sont téléchargés
