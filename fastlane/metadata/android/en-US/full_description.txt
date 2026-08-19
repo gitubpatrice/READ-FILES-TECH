@@ -22,7 +22,7 @@ Read Files Tech is a Swiss army knife for the files on your Android phone: a fil
 <ul>
 <li>Your files never leave the phone. No account, no cloud storage, no analytics, no tracking SDK</li>
 <li>The app does declare internet access, and uses it for exactly one thing: checking GitHub for a new release, once at launch with a 12-hour cache and on demand from the About screen. Since the app is distributed by sideloading, that check is the only way you would learn a security fix exists. Nothing else is sent — no file, no document content, no vault data</li>
-<li>Google ML Kit, which powers the on-device OCR, also ships a telemetry transport of its own. That is why network permissions appear in the APK, and it is stated here rather than hidden</li>
+<li>Google ML Kit, which powers the on-device OCR, ships a telemetry transport of its own. Its three entry points — the backend registration service, the scheduler service and its alarm fallback receiver — are removed from the app's final manifest, so Android cannot start it: the code sits in the APK, inert. Verified on the merged manifest and on the built APK, not only on the source file</li>
 <li>The document scanner relies on Google Play Services and is unavailable without them. Every other feature works without</li>
 <li>All-files access is requested because a general-purpose file manager needs it: the Storage Access Framework cannot list arbitrary folders or move files across them. Nothing is read or written in the background — you stay in control of every operation</li>
 <li>Sharing to a cloud app is an explicit action through Android's share sheet, never an automatic sync</li>
