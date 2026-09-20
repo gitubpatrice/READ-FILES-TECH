@@ -1,0 +1,3 @@
+PDF signing: the signed file was saved from an already-released document, which could produce a corrupted export.
+
+PDF text extraction: some pages came out empty with nothing reported, and some documents froze the app. Both are fixed.

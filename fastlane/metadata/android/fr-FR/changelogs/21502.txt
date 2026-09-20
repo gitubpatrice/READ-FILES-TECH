@@ -1,0 +1,3 @@
+Signature de PDF : le fichier signé était enregistré depuis un document déjà libéré, ce qui pouvait produire un export corrompu.
+
+Extraction du texte d'un PDF : certaines pages ressortaient vides sans rien signaler, et certains documents figeaient l'application. Les deux sont corrigés.
