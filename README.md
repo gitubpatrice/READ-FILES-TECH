@@ -5,115 +5,116 @@
 [![Latest Release](https://img.shields.io/github/v/release/gitubpatrice/READ-FILES-TECH)](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B?logo=flutter)](https://flutter.dev)
 
-**Le couteau suisse Android pour vos fichiers — version 2.15.1.**
+**The Android swiss-army knife for your files — version 2.15.2.**
 
-Explorateur de fichiers, lecteur universel, scanner de documents, OCR, coffre-fort, corbeille,
-conversion, anti-EXIF — vos fichiers ne quittent jamais l'appareil, sans cloud, sans compte.
+File explorer, universal reader, document scanner, OCR, encrypted vault, trash,
+conversion, EXIF stripping — your files never leave the device. No cloud, no account.
 
-> Deux points, détaillés dans [PRIVACY.fr.md](./PRIVACY.fr.md) §9 bis. Google ML Kit embarque
-> un transport de télémétrie : ses trois points d'entrée sont retirés du manifeste final depuis
-> la v2.15, donc il ne démarre pas — vérifié sur l'APK publié, où `aapt2` ne trouve aucun
-> composant `datatransport`. Les permissions `INTERNET` et `ACCESS_NETWORK_STATE` sont bien
-> déclarées par l'application, et lui servent à une seule chose : vérifier sur GitHub qu'une
-> mise à jour existe. Enfin, le scanner de documents dépend des services Google Play ; tout le
-> reste, OCR compris, fonctionne sans eux.
+🇫🇷 Version française : [README.fr.md](./README.fr.md)
 
-## Fonctionnalités
+## Privacy in one paragraph
 
-- **Explorateur de fichiers** : navigation, recherche, multi-sélection, copier/déplacer/renommer en masse, picker avec filtre intelligent.
-- **Lecteur universel** : PDF, CSV, XLSX, DOCX, JSON, MD, TXT, HTML, ZIP, images, EPUB (et ODT, ODS, JS, CSS, PHP, XML).
-- **Scanner de document** (caméra, détection des bords, perspective, export PDF).
-- **OCR Latin** sur images, 100 % local (ML Kit on-device).
-- **Coffre-fort `.rftvault v2 AAD`** : Argon2id + AES-256-GCM + AAD bindée au nom de fichier, FLAG_SECURE, rate-limit anti brute-force, chiffrement batch dossier.
-- **Signature PDF** au doigt.
-- **Conversion** : Images → PDF, CSV ↔ XLSX, JPG ↔ PNG, TXT/MD → PDF, etc.
-- **Anti-EXIF** : suppression GPS, date, modèle d'appareil avant partage.
-- **Recherche globale** par nom et contenu (Isolate Dart).
-- **Anti-doublons SHA-256** : trois passes pour libérer du stockage.
-- **Partage cloud** : envoi explicite vers les apps cloud installées (kDrive, Google Drive, Proton Drive — action utilisateur via le sélecteur de partage Android).
-- **Quick Tiles** Android : scanner, OCR, coffre depuis le volet de notification.
-- **Installation d'APK** depuis l'explorateur — tap sur un `.apk` → PackageInstaller système (icône Android dédiée + couleur teal dans la liste).
+Everything runs locally: reading, editing, conversion, OCR, the vault. Nothing is
+collected, nothing is profiled, there is no account. Two qualifications, stated
+here because they are verifiable on the published APK and hiding them would be
+dishonest:
 
-## Nouveautés v2.12.3
+- **The app does reach the network, once.** It queries the public GitHub Releases
+  API at launch to tell you a new version exists — the only channel that can warn
+  a sideloaded install about a security fix. No identifier is sent.
+- **The document scanner needs Google Play Services.** Everything else, OCR
+  included, works without them.
 
-- **Installation d'APK restaurée** depuis l'explorateur (tap `.apk` → PackageInstaller système, avec dialog si l'autorisation "Apps installant des applis inconnues" n'est pas encore accordée).
-- **Icône Android** dédiée + couleur teal pour les `.apk` dans la liste.
-- Icône d'app alignée sur la suite Files Tech (`assets/icon/app_icon.png` régénéré).
+**The app carries no telemetry.** Google ML Kit, which provides offline OCR, ships
+its own telemetry transport as a transitive dependency. Its three entry points —
+`TransportBackendDiscovery`, `JobInfoSchedulerService` and
+`AlarmManagerSchedulerBroadcastReceiver` — are stripped from the final manifest
+with `tools:node="remove"` as of v2.15. Without a declared entry point, Android
+can neither bind the service nor deliver the broadcast, so the transport never
+starts.
 
-> ℹ️ **Play Protect** : le binaire est soumis à Google + VirusTotal pour traitement du faux positif "dropper" déclenché par la combinaison `MANAGE_EXTERNAL_STORAGE` + `REQUEST_INSTALL_PACKAGES`. Read Files Tech n'installe jamais en silence : le PackageInstaller système exige toujours un consentement utilisateur explicite.
+This is measured on each release rather than assumed, because a dependency bump
+can undo it silently. On the 2.15.2 build: **zero `datatransport` components** in
+the merged manifest and in the APK, against a positive control of seven
+`com.google.mlkit` entries — the check would be worthless if it passed on an APK
+that had lost ML Kit too.
 
-## Nouveautés v2.12.1
+Full detail in [PRIVACY.md](PRIVACY.md) §6 bis and §9 bis, and [TERMS.md](TERMS.md).
 
-- Anti CSV-injection à l'export (préfixe `'` automatique sur cellules `= + - @ \t \r`).
-- Cap source + cap cumulatif sur `Outils CSV` (anti-OOM).
-- `SecureWindow` à refcount : plus de vignette Recents qui leak un coffre quand un écran sensible se chevauche.
-- Vault : déchiffrement v2 zéro-copie (`sublistView`), check `_v2OnlyCache` lu avant la sentinelle.
-- HTML viewer : navigation `file://` cantonnée au dossier source avec whitelist d'extensions document/média.
-- Atomic write étendu aux éditeurs CSV et code source (plus de fichier tronqué si kill OS pendant le save).
-- Restore `.rftvault` : wipe plaintext per-entry (au lieu d'un wipe global tardif).
-- Restauration de l'installation d'APK + icône Android dédiée dans la liste.
-- Icône d'app alignée sur la suite Files Tech.
-- Nettoyage : `run_busy` mort retiré, règles ProGuard orphelines retirées, dédup `_autoLockDelay` via `AppConstants`.
+## Features
 
-## Sécurité
+- **File explorer** — browsing, search, multi-selection, bulk copy/move/rename, picker with smart filtering.
+- **Universal reader** — PDF, CSV, XLSX, DOCX, JSON, MD, TXT, HTML, ZIP, images, EPUB (plus ODT, ODS, JS, CSS, PHP, XML).
+- **Document scanner** — camera, edge detection, perspective correction, PDF export.
+- **Latin OCR** on images, fully on-device (ML Kit).
+- **Encrypted vault** (`.rftvault v2 AAD`) — Argon2id + AES-256-GCM, authenticated data bound to the file name, `FLAG_SECURE`, brute-force rate limiting, whole-folder encryption.
+- **PDF signing** with your finger.
+- **Conversion** — images → PDF, CSV ↔ XLSX, JPG ↔ PNG, TXT/MD → PDF, and more.
+- **EXIF stripping** — removes GPS, timestamp and device model before sharing.
+- **Global search** by name and by content, off the UI thread.
+- **SHA-256 duplicate finder** — three passes, to reclaim storage.
+- **Cloud sharing** — explicit hand-off to installed cloud apps (kDrive, Google Drive, Proton Drive) through the Android share sheet, on your action.
+- **Quick Settings tiles** — scanner, OCR and vault from the notification shade.
+- **APK installation** from the explorer — tapping a `.apk` hands it to the system PackageInstaller.
 
-- Coffre-fort : **Argon2id + AES-256-GCM + AAD bindée au filename**, dérivation auto-tuned, métadonnées scellées.
-- **`safeCanonical` + roots whitelist côté Kotlin** : path traversal et accès hors sandbox bloqués sur tous les MethodChannels natifs.
-- **HTML viewer scoping `file://`** : isolation stricte du contexte WebView, JavaScript désactivé par défaut.
-- **Network Security Config** strict : pas de cleartext HTTP, pas d'autorités utilisateur.
-- **FileProvider** restrictif : exposition contrôlée des chemins partagés.
-- Protection anti zip-slip sur les extractions d'archives.
+## What changed, and where to read it
 
-Voir [SECURITY.md](SECURITY.md) pour la politique de signalement.
+Release notes are **not duplicated here**, deliberately: this file used to carry
+its own "what's new" sections and they were still describing v2.12 while the app
+shipped 2.15. One source, kept current:
 
-## Permissions Android
+- [Releases](https://github.com/gitubpatrice/READ-FILES-TECH/releases) — every version, with its four signed APKs and their SHA-256 digests
+- [`fastlane/metadata/android/en-US/changelogs/`](fastlane/metadata/android/en-US/changelogs/) — the same notes, per versionCode, in English and French
 
-| Permission                  | Justification                                                                          |
-| --------------------------- | -------------------------------------------------------------------------------------- |
-| `MANAGE_EXTERNAL_STORAGE`   | Fonction explorateur universel : parcourir, lire, éditer tout fichier choisi.          |
-| `REQUEST_INSTALL_PACKAGES`  | Installer un APK signé depuis l'explorateur (notamment sync avec PDF Tech).            |
-| `CAMERA`                    | Scanner de documents et OCR (optionnel, accordée à la demande).                        |
-| `INTERNET`                  | Vérification des mises à jour via API GitHub Releases (anonyme, sans cookie).          |
+## Security
 
-Détail complet et raison d'être : [PRIVACY.fr.md §9](PRIVACY.fr.md).
+- **Vault** — Argon2id + AES-256-GCM with authenticated data bound to the file name, auto-tuned derivation, sealed metadata.
+- **`safeCanonical` + root whitelist on the Kotlin side** — path traversal and out-of-sandbox access are blocked on every native MethodChannel.
+- **HTML viewer `file://` scoping** — strict WebView context isolation, JavaScript off by default.
+- **Strict Network Security Config** — no cleartext HTTP, no user-installed certificate authorities.
+- **Restrictive FileProvider** — shared paths are exposed deliberately, never wholesale.
+- **Zip-slip protection** on archive extraction.
 
-## Installation
+See [SECURITY.md](SECURITY.md) for the reporting policy and the per-version history.
 
-[GitHub Releases — dernière version](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest) — APK signé, distribué hors Play Store.
+## Android permissions
 
-Site officiel : [files-tech.com/read-files-tech](https://www.files-tech.com/read-files-tech.php)
+| Permission | Why it is needed |
+| --- | --- |
+| `MANAGE_EXTERNAL_STORAGE` | The point of a universal explorer: browse, read and edit any file you pick. |
+| `REQUEST_INSTALL_PACKAGES` | Install a signed APK from the explorer. Installation is never silent — the system PackageInstaller always asks. |
+| `CAMERA` | Document scanner and OCR. Optional, requested when first used. |
+| `INTERNET` | Update check against the GitHub Releases API. Anonymous, no cookie. |
+| `ACCESS_NETWORK_STATE` | Companion to the update check. |
 
-## Build local
+Full rationale: [PRIVACY.md](PRIVACY.md) §9.
+
+## Install
+
+[GitHub Releases — latest](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest) —
+signed APK, distributed outside the Play Store.
+
+Each release carries four assets: three ABI splits and one universal APK, named
+`read-files-tech-<abi>-<version>.apk`, with their SHA-256 digests in the release
+body. The signing certificate is stable across versions, so updates install over
+an existing copy.
+
+Official site: [files-tech.com/read-files-tech](https://www.files-tech.com/read-files-tech.php)
+
+## Build from source
 
 ```bash
 git clone https://github.com/gitubpatrice/READ-FILES-TECH.git read_files_tech
-git clone https://github.com/gitubpatrice/files_tech_core.git
 cd read_files_tech
 flutter pub get
 flutter build apk --release
 ```
 
-Nécessite Flutter stable + Android SDK + JDK 17.
-
-## Confidentialité
-
-**Vos fichiers ne quittent jamais l'appareil.** Lecture, édition, conversion,
-OCR, coffre : tout s'exécute localement. Aucune collecte, aucun profilage, aucun
-compte.
-
-Deux nuances, parce qu'elles sont vérifiables sur l'APK et qu'il serait malhonnête
-de les taire :
-
-- L'application interroge l'API publique GitHub Releases au lancement, pour
-  signaler les mises à jour — c'est le seul canal qui prévienne d'un correctif de
-  sécurité en distribution par sideload. Aucun identifiant n'est transmis.
-- Google ML Kit, qui fournit l'OCR hors ligne, embarque son propre transport de
-  télémétrie. Il peut remonter à Google des métriques d'usage de la bibliothèque,
-  jamais le contenu des documents.
-
-Détail complet dans [PRIVACY.fr.md](PRIVACY.fr.md) §6 bis et §9 bis, et
-[TERMS.fr.md](TERMS.fr.md).
+`files_tech_core` is pinned to a commit in `pubspec.yaml` and fetched by
+`flutter pub get`; it does not need to be cloned alongside. Requires Flutter
+stable, the Android SDK and JDK 17.
 
 ## Licence
 
-Apache License 2.0 — voir [LICENSE](LICENSE) et [NOTICE](NOTICE).
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Copyright 2026 Patrice Haltaya.
