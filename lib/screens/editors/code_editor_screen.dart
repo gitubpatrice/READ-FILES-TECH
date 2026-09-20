@@ -364,7 +364,9 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
             if (_resolvedPath.isNotEmpty)
               IconButton(
                 icon: const Icon(Icons.share),
-                onPressed: () => Share.shareXFiles([XFile(_resolvedPath)]),
+                onPressed: () => SharePlus.instance.share(
+                  ShareParams(files: [XFile(_resolvedPath)]),
+                ),
               ),
             PopupMenuButton<double>(
               icon: const Icon(Icons.text_fields),

@@ -90,7 +90,9 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           IconButton(
             tooltip: 'Partager',
             icon: const Icon(Icons.share),
-            onPressed: () => Share.shareXFiles([XFile(widget.path)]),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(files: [XFile(widget.path)]),
+            ),
           ),
           PopupMenuButton<double>(
             icon: const Icon(Icons.text_fields),

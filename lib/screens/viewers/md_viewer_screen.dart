@@ -159,7 +159,9 @@ class _MdViewerScreenState extends State<MdViewerScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () => Share.shareXFiles([XFile(widget.path)]),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(files: [XFile(widget.path)]),
+            ),
           ),
           if (_showSource)
             PopupMenuButton<double>(

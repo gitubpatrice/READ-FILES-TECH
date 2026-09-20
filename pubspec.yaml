@@ -29,37 +29,50 @@ dependencies:
   files_tech_core:
     git:
       url: https://github.com/gitubpatrice/files_tech_core.git
-      ref: 9d6734474aaa7dfa2c1dd726d0dab1a349ebdd0e
+      ref: ef100ddda7f841361839a0e30578113db22cd599
 
   # Fichiers
-  file_picker: ^11.0.0
+  # 13.x depuis le 2026-09-20. Maillon de la meme transaction que `share_plus`
+  # et `package_info_plus` : la 11.x exige win32 ^5.9.0, la 13.x win32 ^6.3.0,
+  # et le solveur refuse tout etat intermediaire. Les trois montent ensemble.
+  #
+  # La 13 eclate le paquet par plateforme (file_picker_darwin / _linux / _web /
+  # windows_file_picker) et change deux choses cote appel :
+  #
+  #   - `pickFiles` rend une `List<PlatformFile>` non nullable, plus un
+  #     `FilePickerResult?` : `res.files` et le test `res == null` disparaissent ;
+  #   - `allowMultiple` n'existe plus, car `pickFiles` envoie TOUJOURS
+  #     `allowMultiple: true` au natif (android_file_picker 2.0.0, ligne 76).
+  #
+  # Cette seconde regle est un piege : les quatre ecrans mono-fichier lisaient
+  # `res.files.single`, et `.single` LEVE des que la liste en contient deux.
+  # Migres vers `FilePicker.pickFile()` (singulier, ajoute en 13), qui rend un
+  # `PlatformFile?` et envoie `allowMultiple: false` — donc comportement
+  # identique a la 11, sans changement d'UX ni risque de StateError.
+  # `getDirectoryPath()` est inchange.
+  file_picker: ^13.1.0
   path_provider: ^2.1.4
   permission_handler: ^13.0.0
-  # Les deux paquets suivants sont bloqués, mais PAS pour la même raison — le
-  # commentaire précédent les attribuait tous deux à win32, ce qui n'était vrai
-  # que pour l'un. Vérifié au solveur le 2026-08-09, pas déduit :
+  # Débloqué le 2026-09-20. Le commentaire précédent tenait ce blocage pour une
+  # fatalité amont attribuée à `file_picker` ; mesuré au solveur, la racine
+  # était dans un fichier que nous possédons — `files_tech_core` épinglait
+  # `share_plus: ^10.0.3`, et toute la chaîne en découlait :
   #
-  #   share_plus 13        bloqué par `files_tech_core`, qui épingle ^10.0.3.
-  #                        Le déblocage se fait DANS files_tech_core, puis ici.
-  #                        Il est partagé par tout le portefeuille : le bump y
-  #                        engage les autres applications.
+  #   share_plus ^10  ->  win32 ^5.5.3
+  #                   ->  bloque package_info_plus 10 (exige win32 ^6.0.1)
+  #                   ->  bloque file_picker 13        (exige win32 ^6.3.0)
+  #                   ->  bloque syncfusion 34
   #
-  #   package_info_plus 10 exige win32 ^6.0.0 ; file_picker 11 déclare encore
-  #                        win32 ^5.9.0. Blocage réellement en amont, levé par
-  #                        file_picker 12 — en bêta à ce jour, donc écarté.
+  # Aucun `dependency_overrides` n'a été posé, et le refus de principe écrit
+  # ici auparavant reste valable : un override qu'on pose « puisqu'il est sans
+  # risque » finit par en couvrir un qui ne l'est pas. Le verrou a été levé à
+  # sa source, pas contourné.
   #
-  # `win32` ne concerne que la cible Windows, jamais construite ici : la CI ne
-  # sort qu'un APK (`runs-on: ubuntu-latest` pour les trois workflows), même si
-  # l'échafaudage `windows/` existe. Un `dependency_overrides` lèverait donc ce
-  # blocage sans risque réel, au prix d'une résolution qui ne reflète plus ce
-  # que pub garantit.
-  #
-  # Pas fait. La raison a changé le 2026-08-10 et mérite d'être écrite : il ne
-  # s'agit plus de « rien n'en dépend » — syncfusion 34 en dépend désormais
-  # (voir plus bas). Mais ce qu'on obtiendrait en franchissant l'entorse ne vaut
-  # rien pour cette application. Un override qu'on pose « puisqu'il est sans
-  # risque » finit par en couvrir un qui ne l'est pas.
-  share_plus: ^10.0.3
+  # La classe `Share` existe toujours en 13.3.0 mais y est @Deprecated dans son
+  # ensemble : les 28 sites d'appel de cette application sont passés à
+  # `SharePlus.instance.share(ShareParams(...))` dans le même commit, pour ne
+  # pas laisser une API condamnée derrière un avertissement.
+  share_plus: ^13.3.0
   shared_preferences: ^2.3.2
 
   # Formats documents
@@ -92,27 +105,24 @@ dependencies:
   crypto: ^3.0.3
 
   # Export PDF + viewer
-  # Maintenus en 33 sciemment. La bascule d'`excel` vers `excel_community` a
-  # bien leve le blocage `xml <7` qu'on leur attribuait, mais un second est
-  # apparu en tentant la montee le 2026-08-10 — il n'etait dans aucune carte :
   #
-  #   syncfusion_flutter_pdfviewer >= 33.2.13+1  ->  device_info_plus ^13.1.0
-  #                                              ->  win32 ^6.0.1
-  #   file_picker 11.0.3 (dernier stable)        ->  win32 ^5.9.0
+  # 34.x depuis le 2026-09-20. Le blocage qui les tenait en 33 est leve : il
+  # venait de `win32 ^5` impose par `file_picker` 11, lui-meme maintenu par la
+  # chaine `share_plus ^10` decrite plus haut. `file_picker` 13 etant stable et
+  # la chaine debloquee a sa source, la montee ne coute plus ni override ni
+  # version beta.
   #
-  # Le franchir demanderait soit un `dependency_overrides` sur win32, soit
-  # `file_picker` 12 — encore en beta (12.0.0-beta.7 au 2026-08-10). Une beta
-  # sur le selecteur de fichiers d'une application qui manipule le coffre
-  # chiffre n'est pas un compromis acceptable.
+  # Ce que la 34 apporte reellement pour cette application reste mince — la
+  # montee d'`xml` et un correctif d'horodatage sur la signature PDF EXTERNE,
+  # que l'application n'utilise pas. Elle est prise parce qu'elle est devenue
+  # gratuite, pas parce qu'elle etait attendue : rester en 33 aurait laisse une
+  # dette documentee derriere un blocage qui n'existe plus.
   #
-  # Et le gain serait nul : le changelog de la 34 ne porte, pour notre usage,
-  # que la montee d'`xml` et un correctif d'horodatage sur la **signature PDF
-  # externe**, que l'application n'utilise pas. Payer un risque reel pour zero
-  # benefice n'a pas de sens.
-  #
-  # A rouvrir quand `file_picker` 12 sera stable — la, la montee sera gratuite.
-  syncfusion_flutter_pdf: ^33.2.4
-  syncfusion_flutter_pdfviewer: ^33.2.4
+  # Surface touchee, a verifier sur appareil et non seulement a la compilation :
+  # visionneuse PDF, images -> PDF, texte -> PDF, PDF -> TXT, et la pose de
+  # signature (`pdf_signature_service.dart`, `signature_place_screen.dart`).
+  syncfusion_flutter_pdf: ^34.2.8
+  syncfusion_flutter_pdfviewer: ^34.2.8
 
   # HTTP (utilisé par UpdateService pour GitHub Releases API)
   http: ^1.2.0
@@ -124,10 +134,10 @@ dependencies:
   url_launcher: ^6.3.1
 
   # OCR on-device (texte depuis images)
-  google_mlkit_text_recognition: ^0.16.0
+  google_mlkit_text_recognition: ^0.17.1
 
   # Scanner de documents (caméra + détection bords + perspective + PDF)
-  google_mlkit_document_scanner: ^0.5.0
+  google_mlkit_document_scanner: ^0.6.1
 
   # EPUB : extraction de texte / chapitres
   html: ^0.15.4
@@ -140,8 +150,41 @@ dependencies:
   pointycastle: ^4.0.0
   path: ^1.9.0
 
-  # Version de l'app — source unique depuis pubspec
-  package_info_plus: ^9.0.0
+  # Version de l'app — source unique depuis pubspec.
+  #
+  # 10.x depuis le 2026-09-20. Ce bump n'est pas separable de celui de
+  # `share_plus` : la 9.x depend de win32 ^5.5.3 et la 13.x de win32 ^6.0.1,
+  # donc le solveur refuse tout etat intermediaire. Les deux montent ensemble
+  # ou aucune ne monte.
+  #
+  # API inchangee pour notre usage : `PackageInfo.fromPlatform()`, appele en
+  # `about_screen.dart:23` et `services/app_update.dart:15`.
+  #
+  # PLAFOND < 10.1.0, et ce n'est pas de la prudence : a partir de la 10.1.0 le
+  # plugin passe a un `android/build.gradle.kts` ecrit pour AGP 9, dont le repli
+  # `if (agpMajor < 9)` ne fonctionne PAS ici. Mesure sur build propre : les
+  # classes Kotlin sont bien compilees dans `tmp/kotlin-classes/`, mais le
+  # `classes.jar` livre a l'application ne contient que `R.class`, et javac
+  # echoue sur `GeneratedPluginRegistrant.java` avec
+  # « cannot find symbol: class PackageInfoPlugin ».
+  #
+  # Ni `flutter clean`, ni l'arret du demon Gradle n'y changent rien — l'echec
+  # est reproductible. Le plafond tombe le jour ou le projet passe a AGP 9
+  # (il est en 8.11.1, settings.gradle:22), pas avant.
+  package_info_plus: ">=10.0.0 <10.1.0"
+
+  # Jamais importe par cette application : dependance TRANSITIVE de
+  # `syncfusion_flutter_pdfviewer`, declaree ici uniquement pour poser un
+  # plafond que le solveur ne devinerait pas.
+  #
+  # Meme defaut que `package_info_plus` ci-dessus : la 13.2.0 adopte la recette
+  # AGP 9 et son `classes.jar` sort vide de sa classe de plugin, d'ou un
+  # « cannot find symbol: class DeviceInfoPlusPlugin ». La 13.1.0 utilise encore
+  # l'ancien `build.gradle`, satisfait le `^13.1.0` exige par syncfusion, et
+  # compile. Plancher 13.0.0 : en deca, win32 ^5 rouvre tout le verrou.
+  #
+  # A retirer entierement lors du passage a AGP 9.
+  device_info_plus: ">=13.0.0 <13.2.0"
 
 dev_dependencies:
   flutter_test:

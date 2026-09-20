@@ -111,7 +111,8 @@ class _ZipCreatorScreenState extends State<ZipCreatorScreen> {
         'ZIP créé : $count fichier${count > 1 ? 's' : ''}',
         action: SnackBarAction(
           label: 'Partager',
-          onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          onPressed: () =>
+              SharePlus.instance.share(ShareParams(files: [XFile(outPath)])),
         ),
       );
     } catch (e) {

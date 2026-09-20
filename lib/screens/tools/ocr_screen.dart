@@ -56,9 +56,11 @@ class _OcrScreenState extends State<OcrScreen> {
   }
 
   Future<void> _pickImage() async {
-    final res = await FilePicker.pickFiles(type: FileType.image);
-    if (res == null || res.files.single.path == null) return;
-    await _process(res.files.single.path!);
+    // Singulier : l'OCR traite une image a la fois, `.single` aurait leve sur
+    // une selection multiple (cf. compress_screen).
+    final res = await FilePicker.pickFile(type: FileType.image);
+    if (res == null || res.path == null) return;
+    await _process(res.path!);
   }
 
   Future<void> _capture() async {
@@ -95,7 +97,7 @@ class _OcrScreenState extends State<OcrScreen> {
     // ce que le retrait du `if (!mounted) return;` avait cassé ici — le garde
     // ne protégeait pas que le bandeau.
     if (autoShare && mounted) {
-      await Share.shareXFiles([XFile(out.path)]);
+      await SharePlus.instance.share(ShareParams(files: [XFile(out.path)]));
     }
   }
 

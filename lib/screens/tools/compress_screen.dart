@@ -30,9 +30,13 @@ class _CompressScreenState extends State<CompressScreen> {
   bool _busy = false;
 
   Future<void> _pick() async {
-    final res = await FilePicker.pickFiles(type: FileType.image);
-    if (res == null || res.files.single.path == null) return;
-    final file = File(res.files.single.path!);
+    // `pickFile` (singulier), et non `pickFiles` : en file_picker 13 le pluriel
+    // active toujours la selection multiple, et `.single` levait alors une
+    // StateError des que l'utilisateur en choisissait deux. Le singulier envoie
+    // `allowMultiple: false` au natif — comportement identique a la 11.
+    final res = await FilePicker.pickFile(type: FileType.image);
+    if (res == null || res.path == null) return;
+    final file = File(res.path!);
     setState(() {
       _sourcePath = file.path;
       _sourceSize = file.lengthSync();
@@ -81,7 +85,7 @@ class _CompressScreenState extends State<CompressScreen> {
         _outputPath = out.path;
       });
       if (autoShare) {
-        await Share.shareXFiles([XFile(out.path)]);
+        await SharePlus.instance.share(ShareParams(files: [XFile(out.path)]));
       }
     } catch (e) {
       if (!mounted) return;

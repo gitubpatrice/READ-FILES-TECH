@@ -108,7 +108,8 @@ class _TxtToolsScreenState extends State<TxtToolsScreen> {
         'PDF créé : ${PathUtils.fileName(outPath)}',
         action: SnackBarAction(
           label: 'Partager',
-          onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          onPressed: () =>
+              SharePlus.instance.share(ShareParams(files: [XFile(outPath)])),
         ),
       );
     } catch (e) {

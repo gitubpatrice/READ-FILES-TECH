@@ -690,7 +690,7 @@ class _VaultContentState extends State<_VaultContent> {
       // `zip_viewer_screen` ; celui-ci avait été manqué, et c'était le pire
       // des trois.
       if (!mounted) return;
-      await Share.shareXFiles([XFile(tmp.path)]);
+      await SharePlus.instance.share(ShareParams(files: [XFile(tmp.path)]));
     } catch (e) {
       snack.error('Erreur : $e');
     }
@@ -863,9 +863,12 @@ class _VaultContentState extends State<_VaultContent> {
 
         action: SnackBarAction(
           label: 'Partager',
-          onPressed: () => Share.shareXFiles([
-            XFile(out.path, mimeType: 'application/octet-stream'),
-          ], subject: 'Sauvegarde Read Files Tech'),
+          onPressed: () => SharePlus.instance.share(
+            ShareParams(
+              files: [XFile(out.path, mimeType: 'application/octet-stream')],
+              subject: 'Sauvegarde Read Files Tech',
+            ),
+          ),
         ),
       );
     } catch (e) {

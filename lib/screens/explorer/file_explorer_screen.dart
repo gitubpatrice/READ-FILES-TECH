@@ -717,7 +717,7 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
       showFloatingSnack(context, 'Aucun fichier à partager (dossiers ignorés)');
       return;
     }
-    await Share.shareXFiles(files);
+    await SharePlus.instance.share(ShareParams(files: files));
   }
 
   Future<void> _bulkRenameSelected() async {
@@ -964,8 +964,9 @@ class _FileExplorerScreenState extends State<FileExplorerScreen>
         onEdit: _editFile,
         onEditPdfTech: _editInPdfTech,
         onStripExif: _stripExif,
-        onShare: (p, ext) =>
-            Share.shareXFiles([XFile(p, mimeType: mimeOf(ext))]),
+        onShare: (p, ext) => SharePlus.instance.share(
+          ShareParams(files: [XFile(p, mimeType: mimeOf(ext))]),
+        ),
         kDriveInstalled: _kDriveInstalled,
         protonInstalled: _protonInstalled,
         onSendKDrive: (p) => _sendToCloud(p, _kDrivePackage, 'kDrive'),

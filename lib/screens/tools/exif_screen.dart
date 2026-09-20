@@ -34,9 +34,11 @@ class _ExifScreenState extends State<ExifScreen> {
   }
 
   Future<void> _pick() async {
-    final res = await FilePicker.pickFiles(type: FileType.image);
-    if (res == null || res.files.single.path == null) return;
-    await _load(res.files.single.path!);
+    // Singulier : un seul fichier est analyse, `.single` aurait leve sur une
+    // selection multiple (cf. compress_screen).
+    final res = await FilePicker.pickFile(type: FileType.image);
+    if (res == null || res.path == null) return;
+    await _load(res.path!);
   }
 
   Future<void> _load(String path) async {
