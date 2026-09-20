@@ -121,7 +121,7 @@ class _FormatScreenState extends State<FormatScreen> {
     // `ocr_screen`, `zip_viewer_screen` et `_share` du coffre.
     if (!mounted) return;
     if (autoShare) {
-      await Share.shareXFiles([XFile(out.path)]);
+      await SharePlus.instance.share(ShareParams(files: [XFile(out.path)]));
     } else {
       showFloatingSnack(context, 'Sauvegardé : ${out.path}');
     }

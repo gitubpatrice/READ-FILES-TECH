@@ -122,7 +122,9 @@ class _XlsxViewerScreenState extends State<XlsxViewerScreen> {
           IconButton(
             tooltip: 'Partager',
             icon: const Icon(Icons.share),
-            onPressed: () => Share.shareXFiles([XFile(widget.path)]),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(files: [XFile(widget.path)]),
+            ),
           ),
         ],
       ),

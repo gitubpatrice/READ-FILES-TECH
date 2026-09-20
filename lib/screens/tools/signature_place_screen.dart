@@ -88,7 +88,7 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
       // Auto-share centralisé (alignement avec Convert / Compress / Scanner).
       final autoShare = await storage.getAutoShare();
       if (autoShare && mounted) {
-        await Share.shareXFiles([XFile(dest.path)]);
+        await SharePlus.instance.share(ShareParams(files: [XFile(dest.path)]));
       }
       // Bottom sheet de résultat avec partage / cloud direct (kDrive, Google
       // Drive, Proton Drive). Cohérent avec Scanner / Convert / Compress / EXIF.

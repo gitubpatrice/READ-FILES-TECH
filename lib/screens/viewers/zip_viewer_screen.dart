@@ -225,7 +225,7 @@ class _ZipViewerScreenState extends State<ZipViewerScreen> {
       // une feuille de partage qui surgit alors que l'utilisateur a navigué
       // ailleurs interrompt et ressemble à une action fantôme.
       if (!mounted) return;
-      await Share.shareXFiles([XFile(outPath)]);
+      await SharePlus.instance.share(ShareParams(files: [XFile(outPath)]));
     } catch (e) {
       snack.error('Erreur : $e');
     }

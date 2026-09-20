@@ -707,7 +707,9 @@ class _HomeTabState extends State<_HomeTab> {
         trailing: PopupMenuButton<String>(
           onSelected: (v) {
             if (v == 'favorite') widget.onToggleFavorite(file);
-            if (v == 'share') Share.shareXFiles([XFile(file.path)]);
+            if (v == 'share') {
+              SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+            }
             if (v == 'remove') widget.onRemove(file);
           },
           itemBuilder: (_) => [

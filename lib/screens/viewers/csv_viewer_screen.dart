@@ -141,7 +141,9 @@ class _CsvViewerScreenState extends State<CsvViewerScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () => Share.shareXFiles([XFile(widget.path)]),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(files: [XFile(widget.path)]),
+            ),
           ),
         ],
         bottom: PreferredSize(

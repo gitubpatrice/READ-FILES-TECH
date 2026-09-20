@@ -66,7 +66,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
         _status = 'Sauvegardé : ${PathUtils.fileName(out.path)}';
       });
       if (autoShare) {
-        await Share.shareXFiles([XFile(out.path)]);
+        await SharePlus.instance.share(ShareParams(files: [XFile(out.path)]));
       }
     } catch (e) {
       if (!mounted) return;
@@ -79,15 +79,15 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   // ── Images → PDF ────────────────────────────────────────────────────────────
   Future<File?> _imagesToPdf() async {
-    final res = await FilePicker.pickFiles(
-      type: FileType.image,
-      allowMultiple: true,
-    );
-    if (res == null || res.files.isEmpty) return null;
+    // `allowMultiple: true` a disparu en file_picker 13 : le pluriel active
+    // desormais toujours la selection multiple, donc le drapeau n'a plus lieu
+    // d'etre. Comportement inchange pour cet ecran.
+    final res = await FilePicker.pickFiles(type: FileType.image);
+    if (res.isEmpty) return null;
     final pdf = PdfDocument();
     int totalBytes = 0;
     try {
-      for (final f in res.files) {
+      for (final f in res) {
         if (f.path == null) continue;
         final src = File(f.path!);
         // F5 : cap par image + cumul anti-OOM (Redmi 9C 3GB).
@@ -287,9 +287,11 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   // ── Image conversion (any → JPG/PNG/WebP) ──────────────────────────────────
   Future<File?> _convertImage(String targetExt) async {
-    final res = await FilePicker.pickFiles(type: FileType.image);
-    if (res == null || res.files.single.path == null) return null;
-    final src = File(res.files.single.path!);
+    // Singulier : cet ecran convertit UNE image, `.single` aurait leve des que
+    // l'utilisateur en aurait choisi deux (cf. compress_screen).
+    final res = await FilePicker.pickFile(type: FileType.image);
+    if (res == null || res.path == null) return null;
+    final src = File(res.path!);
     // F5 : cap fichier + dimensions IHDR.
     final capErr = await checkFileCap(src, FileCaps.imageFile);
     if (capErr != null) throw capErr;
@@ -312,7 +314,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       default:
         throw 'Format inconnu';
     }
-    final base = res.files.single.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final base = res.name.replaceAll(RegExp(r'\.[^.]+$'), '');
     final out = await _reserve(base, targetExt);
     await atomicWriteBytes(out.path, encoded);
     return out;

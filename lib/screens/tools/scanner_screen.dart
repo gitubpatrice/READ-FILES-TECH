@@ -72,7 +72,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         _lastPdfPath = dest.path;
       });
       if (autoShare) {
-        await Share.shareXFiles([XFile(dest.path)]);
+        await SharePlus.instance.share(ShareParams(files: [XFile(dest.path)]));
       }
     } catch (e) {
       if (!mounted) return;
@@ -99,7 +99,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
             IconButton(
               icon: const Icon(Icons.share),
               tooltip: 'Partager le PDF',
-              onPressed: () => Share.shareXFiles([XFile(_lastPdfPath!)]),
+              onPressed: () => SharePlus.instance.share(
+                ShareParams(files: [XFile(_lastPdfPath!)]),
+              ),
             ),
         ],
       ),

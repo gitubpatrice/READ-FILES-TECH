@@ -721,7 +721,7 @@ class _RftPickerScreenState extends State<RftPickerScreen>
         try {
           final resolved = await File(path).resolveSymbolicLinks();
           if (!mounted) return;
-          await Share.shareXFiles([XFile(resolved)]);
+          await SharePlus.instance.share(ShareParams(files: [XFile(resolved)]));
         } catch (_) {
           if (!mounted) return;
           showFloatingSnack(context, 'Fichier introuvable');

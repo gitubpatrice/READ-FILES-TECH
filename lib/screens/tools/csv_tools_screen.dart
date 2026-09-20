@@ -142,7 +142,8 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         'PDF créé : ${PathUtils.fileName(outPath)}',
         action: SnackBarAction(
           label: 'Partager',
-          onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          onPressed: () =>
+              SharePlus.instance.share(ShareParams(files: [XFile(outPath)])),
         ),
       );
     } catch (e) {
@@ -210,7 +211,8 @@ class _CsvToolsScreenState extends State<CsvToolsScreen> {
         '$merged ligne${merged > 1 ? 's' : ''} fusionnée${merged > 1 ? 's' : ''}',
         action: SnackBarAction(
           label: 'Partager',
-          onPressed: () => Share.shareXFiles([XFile(outPath)]),
+          onPressed: () =>
+              SharePlus.instance.share(ShareParams(files: [XFile(outPath)])),
         ),
       );
     } catch (e) {

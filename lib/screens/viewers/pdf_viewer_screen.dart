@@ -64,7 +64,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           IconButton(
             tooltip: 'Partager',
             icon: const Icon(Icons.share),
-            onPressed: () => Share.shareXFiles([XFile(widget.path)]),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(files: [XFile(widget.path)]),
+            ),
           ),
           PopupMenuButton<String>(
             onSelected: (v) {

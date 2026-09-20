@@ -151,7 +151,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.share),
-                  onPressed: () => Share.shareXFiles([XFile(_currentPath)]),
+                  onPressed: () => SharePlus.instance.share(
+                    ShareParams(files: [XFile(_currentPath)]),
+                  ),
                 ),
               ],
             )
