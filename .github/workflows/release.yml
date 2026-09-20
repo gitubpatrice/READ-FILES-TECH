@@ -28,7 +28,15 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Version FIGEE, et non `channel: stable` — voir le meme bloc dans
+          # `ci.yml`. C'est ici que ca compte le plus : ce workflow construit,
+          # signe et PUBLIE les quatre APK. Avec le canal, l'APK publie sous un
+          # tag donne dependait de la date du build, pas du contenu du tag, et
+          # personne ne pouvait reconstruire ce qui avait ete distribue.
+          #
+          # Doit rester identique a la valeur de `ci.yml` : sinon ce qui est
+          # teste n'est pas ce qui est publie.
+          flutter-version: 3.47.2
           cache: true
 
       - name: Extract version from tag

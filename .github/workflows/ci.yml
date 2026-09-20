@@ -30,7 +30,21 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Version FIGEE, et non `channel: stable`. Avec le canal, chaque sortie
+          # de Flutter changeait en silence ce qui construisait et testait
+          # l'application : rien dans ce depot ne bougeait, et le resultat si.
+          #
+          # Ce n'est pas une precaution theorique, notes_tech s'est fait prendre :
+          # sa v2.0.5 est sortie en 3.47.2 alors que son `pubspec.lock` avait ete
+          # genere en 3.44.9, donc le lock commite ne decrivait pas ce qui etait
+          # livre. Le correctif y est en place depuis ; celui-ci le recopie.
+          #
+          # Consequence directe : reconstruire un tag ancien redonne le meme
+          # binaire. Avec `channel: stable`, ce n'etait vrai que par chance.
+          #
+          # 3.47.2 = la version qui a genere le `pubspec.lock` commite. Les deux
+          # se deplacent ensemble, ici et dans `release.yml`.
+          flutter-version: 3.47.2
           cache: true
 
       - name: Flutter version
