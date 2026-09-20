@@ -25,7 +25,7 @@ La présente Politique de confidentialité explique comment l'application **Read
 
 ## 3. Responsable / développeur
 
-- **Développeur** : Files Tech / Patrice
+- **Développeur** : Patrice Haltaya (Files Tech)
 - **Site internet** : https://www.files-tech.com
 - **Contact confidentialité** : contact@files-tech.com
 - **Dépôt source** : https://github.com/gitubpatrice/READ-FILES-TECH

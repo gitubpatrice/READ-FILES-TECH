@@ -38,8 +38,24 @@ APK : les autres étaient téléchargeables **sans empreinte publiée**.
 Les huit assets surnuméraires ont été supprimés. Chaque release porte
 désormais quatre fichiers, et **chaque empreinte correspond à sa table**.
 
-Nom canonique :
-`read_files_tech-v<version>-{arm64-v8a,armeabi-v7a,x86_64,universel}.apk`.
+Nom canonique — **il a changé, et la bascule tombe entre deux releases** :
+
+| Releases | Forme | Produit par |
+|---|---|---|
+| jusqu'à **v2.15.1** incluse | `read_files_tech-v<version>-<abi>.apk` | ancien `release.yml` |
+| à partir du **prochain tag** | `read-files-tech-<abi>-<version>.apk` | `release.yml` depuis `f97ce9c` |
+
+Trois différences, pas une : tiret au lieu du souligné, plus de préfixe `v`, et
+l'ABI passe **avant** la version. `<abi>` vaut `arm64-v8a`, `armeabi-v7a`,
+`x86_64` ou `universel`.
+
+Cette ligne documentait la forme ancienne alors que `f97ce9c` l'avait déjà
+changée **19 minutes** après la rédaction de ce fichier. Vérifié le 2026-09-20
+contre les deux sources qui font foi : `.github/workflows/release.yml:120,131,141,175-178`
+pour la forme future, et les quatre assets réellement publiés sur la release
+`v2.15.1` pour la forme ancienne. C'est exactement le piège que la section
+suivante met en garde de commettre — s'en remettre à ce qu'on croit avoir
+publié plutôt qu'à la release elle-même.
 
 **Pour vérifier après un tag** — interroger la release, jamais se fier à ce
 qu'on croit avoir publié :
