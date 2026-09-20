@@ -105,27 +105,24 @@ dependencies:
   crypto: ^3.0.3
 
   # Export PDF + viewer
-  # Maintenus en 33 sciemment. La bascule d'`excel` vers `excel_community` a
-  # bien leve le blocage `xml <7` qu'on leur attribuait, mais un second est
-  # apparu en tentant la montee le 2026-08-10 — il n'etait dans aucune carte :
   #
-  #   syncfusion_flutter_pdfviewer >= 33.2.13+1  ->  device_info_plus ^13.1.0
-  #                                              ->  win32 ^6.0.1
-  #   file_picker 11.0.3 (dernier stable)        ->  win32 ^5.9.0
+  # 34.x depuis le 2026-09-20. Le blocage qui les tenait en 33 est leve : il
+  # venait de `win32 ^5` impose par `file_picker` 11, lui-meme maintenu par la
+  # chaine `share_plus ^10` decrite plus haut. `file_picker` 13 etant stable et
+  # la chaine debloquee a sa source, la montee ne coute plus ni override ni
+  # version beta.
   #
-  # Le franchir demanderait soit un `dependency_overrides` sur win32, soit
-  # `file_picker` 12 — encore en beta (12.0.0-beta.7 au 2026-08-10). Une beta
-  # sur le selecteur de fichiers d'une application qui manipule le coffre
-  # chiffre n'est pas un compromis acceptable.
+  # Ce que la 34 apporte reellement pour cette application reste mince — la
+  # montee d'`xml` et un correctif d'horodatage sur la signature PDF EXTERNE,
+  # que l'application n'utilise pas. Elle est prise parce qu'elle est devenue
+  # gratuite, pas parce qu'elle etait attendue : rester en 33 aurait laisse une
+  # dette documentee derriere un blocage qui n'existe plus.
   #
-  # Et le gain serait nul : le changelog de la 34 ne porte, pour notre usage,
-  # que la montee d'`xml` et un correctif d'horodatage sur la **signature PDF
-  # externe**, que l'application n'utilise pas. Payer un risque reel pour zero
-  # benefice n'a pas de sens.
-  #
-  # A rouvrir quand `file_picker` 12 sera stable — la, la montee sera gratuite.
-  syncfusion_flutter_pdf: ^33.2.4
-  syncfusion_flutter_pdfviewer: ^33.2.4
+  # Surface touchee, a verifier sur appareil et non seulement a la compilation :
+  # visionneuse PDF, images -> PDF, texte -> PDF, PDF -> TXT, et la pose de
+  # signature (`pdf_signature_service.dart`, `signature_place_screen.dart`).
+  syncfusion_flutter_pdf: ^34.2.8
+  syncfusion_flutter_pdfviewer: ^34.2.8
 
   # HTTP (utilisé par UpdateService pour GitHub Releases API)
   http: ^1.2.0
