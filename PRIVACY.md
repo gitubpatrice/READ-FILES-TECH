@@ -25,7 +25,7 @@ This Privacy Policy explains how the **Read Files Tech** application handles use
 
 ## 3. Data controller / developer
 
-- **Developer** : Files Tech / Patrice
+- **Developer** : Patrice Haltaya (Files Tech)
 - **Website** : https://www.files-tech.com
 - **Privacy contact** : contact@files-tech.com
 - **Source repository** : https://github.com/gitubpatrice/READ-FILES-TECH
