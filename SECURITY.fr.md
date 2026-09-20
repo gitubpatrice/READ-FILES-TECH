@@ -1,0 +1,350 @@
+# Politique de sécurité — Read Files Tech
+
+🇬🇧 English version, and the reference one : [SECURITY.md](./SECURITY.md)
+
+## Historique des durcissements
+
+- **v2.15.2** (2026-09-20) — Chaîne de dépendances débloquée à sa source dans
+  `files_tech_core` : `share_plus` 13, `package_info_plus` 10, `file_picker` 13,
+  Syncfusion 34.2.8, ML Kit 0.17.1. Deux plafonds de version documentés contre un
+  défaut d'empaquetage AGP 8 mesuré sur build propre. La signature PDF
+  n'enregistre plus depuis un document déjà libéré. Mesuré sur le build : zéro
+  composant `datatransport`, sept entrées `com.google.mlkit`.
+
+- **v2.15.1** (2026-08-11) — Vérification de mise à jour : le délai d'attente ne
+  couvrait pas la lecture de la réponse, donc un serveur qui répondait puis se
+  taisait pouvait faire attendre l'application sans fin. Une réponse anormalement
+  volumineuse est refusée avant d'être chargée en mémoire, et une redirection
+  vide n'est plus suivie.
+
+- **v2.15.0** (2026-08-09) — Consolidation
+  menée sur les 23 points du plan d'audit du 2026-08-02 : 21 confirmés, 1 réfuté,
+  1 partiellement. Rapport complet dans
+  `audits_results/consolidation_v2_15_20260809.md`.
+  - **Archives** — La garde anti-zip-bomb reposait sur `ArchiveFile.size`,
+    c'est-à-dire sur la taille **déclarée dans l'en-tête** de l'entrée. Un ZIP
+    de 80 Ko annonçant 1 Ko et décompressant 80 Mo passait la garde sans la
+    déclencher, sur les **4** sites qui l'utilisaient, et ce depuis la v2.12.0.
+    Nouveau `lib/utils/archive_safe.dart` : la décompression passe par un flux
+    plafonné qui interrompt l'inflation dès le cap atteint, quoi qu'annonce
+    l'en-tête. La taille déclarée n'est plus qu'un rejet précoce.
+  - **Coffre** — `reset()` ne purgeait pas les compteurs de lockout : un coffre
+    réinitialisé repartait avec le backoff de l'ancien. `decryptToTemp` écrivait
+    dans un dossier partagé, deux déchiffrements concurrents pouvant se marcher
+    dessus. `exportFile` écrasait sans le dire.
+  - **Visionneuse HTML** — L'injection de CSP était contournable de deux façons
+    distinctes : par un faux `<head>` en commentaire, et par un `<!DOCTYPE>`
+    portant un attribut entre guillemets contenant `>`. La construction du CSP
+    est désormais une fonction pure couverte par 8 tests, `frame-src 'none'` et
+    `connect-src 'none'` inclus.
+  - **Android 7 → 10** — L'explorateur était **inutilisable** sur toute la plage
+    que `minSdk 24` annonce supporter : l'application n'interrogeait que
+    `MANAGE_EXTERNAL_STORAGE`, qui n'existe qu'à partir d'Android 11. Le bandeau
+    « autorisez tous les fichiers » ne disparaissait jamais et son bouton menait
+    à un écran sans option correspondante. Constaté en exécutant l'APK sur
+    Galaxy S9 — ni l'audit ni trois relectures externes ne l'avaient vu.
+    Nouveau `lib/services/storage_access.dart`, source unique de la décision.
+  - **Éditeurs** — Le bouton « Ignorer » de la boîte « quitter sans
+    enregistrer ? » renvoyait la mauvaise valeur : quitter sans enregistrer ne
+    quittait pas. Garde de réentrance sur la sauvegarde.
+  - **Déplacement par lot** — La suppression de la source n'était pas
+    conditionnée à la vérification de la copie. Taille comparée avant `delete()`,
+    et destination rendue unique au lieu d'écraser.
+  - **Kotlin** — `safeCanonical` refuse désormais l'ensemble des dossiers de
+    cache porteurs de clair (`vault_decrypt`, `share_plus`, `share`, `exports`).
+  - **Permissions** — `INTERNET` et `ACCESS_NETWORK_STATE` étaient dans l'APK
+    sans être dans le manifeste source, injectées par la télémétrie ML Kit,
+    pendant que l'application s'en servait pour la vérification de mise à jour.
+    Déclarées explicitement, avec leur motif. `PRIVACY.fr.md` §6 bis.
+  - **Tests** — 101 tests (13 fichiers), dont 25 sur le coffre et 6 sur la garde
+    d'archive, chacun validé par falsification. Campagne de 8 contrôles passée
+    sur appareil réel. `flutter analyze` : 0 issue.
+
+- **v2.14.0** (2026-07-19) — Corbeille et fiabilité des bandeaux.
+  - **Corbeille** — La suppression depuis l'explorateur devient réversible.
+    `TrashService` déplace vers `<volume>/.RFT_Corbeille` par `rename()`
+    atomique (repli copie + suppression si volumes distincts). Aucune purge
+    automatique.
+  - **Sécurité** — Les métadonnées de corbeille vivent **en clair sur le
+    stockage partagé** et peuvent donc être réécrites par un tiers. `id`, `name`
+    et `originalPath` sont validés à la lecture : `id` contraint au format
+    généré, `name` réduit à un segment sûr, `originalPath` absolu et sans `..`.
+    `list()` exige que le nom du fichier de métadonnées corresponde à l'`id`
+    déclaré — sans quoi un `meta/*.json` déposé de l'extérieur remonterait comme
+    entrée légitime et ferait porter « Restaurer » ou « Supprimer » sur un
+    fichier arbitraire. `restore()` revalide en défense en profondeur. `_copyDir`
+    ignore les liens symboliques.
+  - **Fix SnackBar permanent** — `SnackBar.persist` vaut par défaut
+    `action != null` : **tout** bandeau porteur d'une action restait affiché
+    indéfiniment, sa `duration` étant silencieusement ignorée. `persist: false`
+    posé dans les helpers `snack_utils` et sur les 4 bandeaux « Partager »
+    inline.
+  - **Contraste** — `confirmDelete()` passe de `cs.errorContainer` à un rouge
+    plein (5.6:1, AA) : sur une action irréversible, le bouton pâle se
+    distinguait mal de l'annulation.
+
+- **v2.13.2** (2026-05-20) — Audit expert post-v2.13.1 (3 axes en parallèle
+  + audit cohérence transversal) : 17 corrections (4 Haute + 9 Moyenne +
+  2 Basse + 2 Info).
+  - **Build** : retrait du flag `splits.abi {}` redondant (déjà fait en
+    v2.13.1 hotfix CI). Documentation : retour intentionnel de
+    `REQUEST_INSTALL_PACKAGES` en v2.13.0 (tap APK direct depuis
+    l'explorateur, trade-off Play Protect explicite — cf. commentaire
+    AndroidManifest.xml).
+  - **Sécurité** : (S1) garde explicite `uri.scheme != 'https'` côté UI
+    avant `launchUrl` de l'apkUrl (defense in depth doublant la validation
+    de `UpdateService`). (S3) `confirmDelete()` aligné sur le pattern
+    destructif Files Tech : autofocus Cancel + `FilledButton` avec
+    `cs.errorContainer`. (S4/S5) Anti-ReDoS : cap 200 chars sur les regex
+    utilisateur avant compilation (content search + bulk rename mode
+    regex), refus silencieux des patterns trop longs.
+  - **UI / a11y** : (U1/P1) `snackBarTheme: SnackBarBehavior.floating`
+    déclaré dans les 2 ThemeData globaux. (U2) `Semantics(liveRegion)` +
+    label dynamique sur `LinearProgressIndicator` OCR (TalkBack annonce
+    le démarrage/fin). (U3) tokens M3 sur `Colors.orange/blue` editors +
+    settings. (U4) `HapticFeedback.selectionClick` sur les 8 sites
+    `Clipboard.setData` (copy OCR/hash/color/encode/format/path).
+    (Q2) `Colors.red` → `cs.error` dans `reader_viewer_screen`.
+  - **Cohérence** : 30+ snackbars inline migrés vers
+    `showFloatingSnack`/`showErrorSnack` helpers canoniques (12 fichiers).
+    20+ `Colors.red` hardcodés sémantiques → `cs.error`/`cs.errorContainer`.
+    Caps `_maxZipBytes`/`_maxHtmlBytes` migrés dans `FileCaps`.
+  - **Tests** : nouveau `test/audit_v2_13_2_test.dart` (garde-régression
+    sur cap regex utilisateur, dual-clock lockout, FileCaps zipViewer/
+    htmlViewer).
+
+- **v2.13.1** (2026-05-19) — Hotfix CI : retrait du bloc `splits.abi {}`
+  redondant dans `android/app/build.gradle.kts` (conflit avec
+  `ndk.abiFilters` posé par Flutter 3.41+ : `Conflicting configuration
+  ... in ndk abiFilters cannot be present when splits abi filters are
+  set`). Aucun impact sécurité — purement build CI.
+
+- **v2.13.0** (2026-05-13) — Audit expert post-v2.12.3 : 24 corrections
+  (F1-F9 sécu + F12 + F15 + U3-U8 + P1.3-P2.4 perf/UX + tests garde).
+  **Note REQUEST_INSTALL_PACKAGES** : permission ré-introduite après
+  retrait v2.12.2 pour restaurer la fonctionnalité "tap APK direct
+  depuis l'explorateur Read Files Tech" (UX file manager complet).
+  Trade-off Play Protect documenté dans `AndroidManifest.xml`. Public
+  cible Files Tech = sideload par GitHub Releases, risque accepté.
+
+  **Sécurité** :
+  - **F1** — Les sauvegardes `.rftvault` exportées étaient écrites à la
+    racine de `cache/` ; si l'utilisateur annulait la share-sheet, le
+    fichier (coffre entier re-chiffré sous `exportPassword`) restait
+    indéfiniment. Désormais écrit dans `cache/exports/` dédié, purgé par
+    `VaultService.purgeTempDecrypted()` (boot + paused) et par le mode
+    panique.
+  - **F2** — `restoreFromBackup` n'avait aucun lockout brute-force ; un
+    `.rftvault` volé pouvait être attaqué sans friction côté app (Argon2id
+    ~2.5 s/essai dans l'app, mais offline 100-1000× plus rapide).
+    Désormais : compteur `vault_backup_fails` + backoff exponentiel
+    symétrique au unlock principal (1, 2, 4, 8, 16, 30 min après 5 échecs).
+  - **F3** — Le lockout brute-force utilisait `DateTime.now()` wall-clock,
+    contournable par Réglages → Date/heure (ou `adb shell date -s`).
+    Passage à **dual-clock** : `max(wall, elapsedRealtime)` via channel
+    Kotlin `SystemClock.elapsedRealtime`. La deadline monotone est
+    incassable sans reboot complet ; appliqué à l'unlock principal **et**
+    au restore backup.
+  - **F4** — `importFileSafe` chargeait la source via `readAsBytes()` sans
+    cap → un utilisateur tentant d'importer une vidéo 4 Go crashait l'app
+    (OOM, Redmi 9C 3 Go). Cap `FileCaps.vaultBackup` (100 Mo) ajouté.
+  - **F5** — `MainActivity.safeCanonical` autorisait `cacheDir.canonicalFile`
+    sans distinction. Or `cache/vault_decrypt/` et `cache/share/`
+    contiennent du plaintext déchiffré du coffre. Un code Dart compromis
+    aurait pu demander à Kotlin d'envoyer ces fichiers via FileProvider
+    à n'importe quelle app tierce (`sendToPackage` / `openFile` chooser).
+    **Blocklist explicite** ajoutée côté Kotlin.
+  - **F6** — `PanicService` ne purgeait pas les artefacts dérivés laissés
+    à la racine de `cache/` (signatures `_signe.pdf`, EXIF `_no_exif.jpg`,
+    extractions OCR, `.rftvault` orphelins) ni le dossier
+    `<docs>/history/` (auto-sauvegardes de l'éditeur de code, potentielles
+    PII). Étape 5 ajoutée avec patterns connus de l'app + suppression
+    `history/`. Le `PanicReport.tempPurged` rend la couverture explicite.
+  - **F7** — L'écran de création du coffre affichait *« PBKDF2 600 000
+    itérations »* alors qu'Argon2id auto-calibré est utilisé depuis
+    v2.7.1. Texte corrigé pour cohérence avec SECURITY.md et le code.
+  - **F8** — `ExifService.inspect()` (preview "métadonnées avant") faisait
+    `decodeImage` sans cap, alors que `stripExif` était protégé depuis
+    v2.12.0. Vecteur image-bomb identique sur le chemin preview.
+    `FileCaps.imageFile` + `ImageBounds.assertSafeBounds` ajoutés.
+  - **F9** — `OutputStorageService.setBasePath` acceptait n'importe quel
+    `/Android/data/<autre-pkg>/` via le test `path.contains('/Android/data/')`.
+    Désormais : refus explicite des paths `/Android/data/` ne ciblant pas
+    notre package, et whitelist serrée des dossiers app privés.
+  - **F12** — `PdfSignatureService` ne documentait pas que la signature
+    est purement graphique. Docstring légal eIDAS ajouté + bandeau info
+    visible dans `signature_capture_screen.dart`.
+  - **F15** — Les `TextField` password (setup et dialog passphrase)
+    permettaient la sélection / copie en clair quand l'utilisateur
+    activait l'œil "Afficher". Désormais `enableInteractiveSelection`
+    suit `obscureText` : pas de copie tant que masqué.
+
+  **UX / a11y** :
+  - **U3** — `rft_picker_screen` utilisait `ScaffoldMessenger.showSnackBar`
+    direct (legacy non floating) → migration vers `showFloatingSnack`.
+  - **U4** — `showErrorSnack` accepte un paramètre `action`
+    (`SnackBarAction`) pour standardiser les patterns "Réessayer" /
+    "Annuler" sur erreurs récupérables. Couleur de texte explicite
+    `onErrorContainer` (contraste WCAG AA même en thème clair).
+  - **U7** — `LinearProgressIndicator` (vault export/import folder) sans
+    `Semantics(value: …)` → TalkBack annonçait juste "en cours" sans
+    pourcentage. Wrap ajouté.
+  - **U8** — Le dialog "Mode panique" et la ListTile utilisaient
+    `Colors.red.shade700/900` codés en dur → cassait le thème dark
+    et privait le daltonien d'alternative. Passage en `cs.error` /
+    `cs.errorContainer` / `cs.onErrorContainer` (forme distincte
+    préservée via `Icons.warning_amber` / `Icons.local_fire_department`).
+
+  **Performance** :
+  - **P1.3** — `global_search_screen` faisait un `setState` par
+    `SearchHit` — sur un scan SD (50 k fichiers) cela pouvait dépasser
+    1 000 rebuilds/s, geler le scroll et exploser la frame budget.
+    Buffer + flush 100 ms ajouté → ListView fluide même sur résultats
+    massifs (S9 / Redmi 9C 3 Go).
+  - **P1.4** — Règles ProGuard `com.syncfusion.**` et `com.google.mlkit.**`
+    étaient trop larges (couvraient 300+ classes inutilisées :
+    barcode/face/pose/digital-ink pour ML Kit, tout le SDK Excel/Word
+    pour Syncfusion). Narrow vers les sous-packages réellement utilisés
+    (PDF + vision.text). **Gain APK estimé ~3-5 Mo** après R8.
+  - **P1.5** — `isUniversalApk = true` produisait un APK universel de
+    ~100 Mo gaspillé dans `build/outputs/apk/release/` (pas de Play
+    Store côté Files Tech, distribution directe via splits ABI). Passé
+    à `false` → build ~25 % plus rapide.
+  - **P2.3** — `DateFormat('dd/MM/yyyy')` recréé à chaque appel
+    `_formatDate` dans `home_screen` → hissé en `static final _dfDMY`.
+  - **P2.4** — `MediaQuery.of(context)` restant sur 3 sites
+    (`image_viewer_screen`, `signature_capture_screen`) → migration vers
+    `MediaQuery.sizeOf` / `devicePixelRatioOf` (pas de rebuild sur
+    changement d'inset clavier).
+
+  **Tests garde** : `test/csv_safe_test.dart` (6 tests CSV-injection),
+  `test/image_bounds_test.dart` (7 tests anti image-bomb PNG/GIF/JPEG),
+  `test/file_caps_test.dart` (3 tests caps + helper). +16 tests, total 31.
+
+  `dart analyze` 0 issue, 31/31 tests verts. Aucun changement de format
+  vault `.enc` ni `.rftvault` (v1 et v2 toujours acceptés en lecture).
+
+- **v2.12.2** (2026-05-13) — Hotfix Google Play Protect : retrait de
+  `REQUEST_INSTALL_PACKAGES` de l'AndroidManifest. La combinaison de
+  cette permission avec `MANAGE_EXTERNAL_STORAGE` était classée par
+  Play Protect comme signature potentielle de "dropper" (faux positif
+  "application dangereuse" sur installation sideload). Le tap sur un
+  fichier `.apk` dans l'explorateur reste possible via le gestionnaire
+  de Fichiers système Android, qui prend le relais avec sa propre
+  permission. Branche Kotlin spéciale `package-archive` retirée dans
+  `MainActivity.kt`. Aucun changement de format.
+- **v2.12.1** (2026-05-12) — Audit expert zéro-vuln/zéro-faille G1-G16 +
+  H1-H8 :
+  - **Vault** : wipe per-entry pendant restore `.rftvault` (G2, anti
+    fenêtre RAM plaintext étendue), `sublistView` zéro-copie sur
+    `_decryptAuto` (G6), ordre `_v2OnlyCache` lu AVANT déchiffrement
+    sentinelle (G7, défense en profondeur substitution v1).
+  - **Anti-screenshot** : `SecureWindow` passe d'un bool à un refcount (G4)
+    pour gérer les écrans sensibles imbriqués (vignette Recents fuite
+    évitée).
+  - **HTML viewer** : whitelist d'extensions sur navigation `file://`
+    cantonnée au dossier d'origine (G8).
+  - **CSV** : nouveau helper `CsvSafe` anti CSV-injection (`= + - @ \t \r`
+    préfixés `'`, H1) adopté dans csv_editor + merge ; cap source + cap
+    cumulatif merge (H2, anti OOM).
+  - **Atomic write** : étendu aux éditeurs csv/code (G1, plus de
+    troncature sur kill OS pendant save).
+  - Dead code retiré : `vault.importFile` non-Safe (zéro caller),
+    `lib/utils/run_busy.dart` (H4), règles ProGuard orphelines
+    `flutter_secure_storage` + `local_auth`/`biometric` (H8),
+    `_ColorInfo` dupliqué dans html_viewer (factorisé via `color_extract`).
+  - Déduplication : `AppConstants.autoLockDelay` partagé main.dart /
+    vault_screen.dart.
+  - `dart analyze` 0 issue, 15/15 tests.
+- **v2.12.0** (2026-05-09) — F1-F19 : caps viewers (txt/docx/xlsx/epub/
+  csv), ImageBounds anti-bomb, purge cache au boot + paused, race guards
+  Argon2id, atomic write 13 sites, vault v2-only flag, auto-lock GLOBAL
+  Stopwatch monotonique, PanicService Settings, SecureWindow signatures,
+  splits ABI + resourceConfigs FR/EN.
+
+## Versions supportées
+
+Seule la dernière version publiée sur GitHub Releases est activement maintenue côté sécurité.
+
+| Version       | Supportée  |
+| ------------- | ---------- |
+| 2.15.x        | ✅          |
+| < 2.15.0      | ❌          |
+
+## Signaler une vulnérabilité
+
+Si vous découvrez une vulnérabilité de sécurité dans Read Files Tech, **merci de ne PAS ouvrir d'issue publique sur GitHub**. À la place :
+
+📧 **Envoyez un email à : contact@files-tech.com**
+
+Indiquez dans le sujet : `[SECURITY] Read Files Tech — <description courte>`.
+
+Merci d'inclure :
+
+- Une description claire de la vulnérabilité
+- Les étapes pour la reproduire
+- L'impact potentiel
+- La version affectée (visible dans l'écran « À propos » de l'app)
+- Si possible, une suggestion de correctif
+
+## Délai de réponse
+
+- Accusé de réception : sous 7 jours
+- Évaluation initiale : sous 30 jours
+- Correctif : selon la criticité (critique → patch sous 30 jours, majeur → version mineure suivante, mineur → backlog)
+
+## Divulgation responsable
+
+Merci de ne pas divulguer publiquement la vulnérabilité avant qu'un correctif ne soit publié et qu'un délai raisonnable de mise à jour ait été laissé aux utilisateurs (typiquement 30 jours après la publication du correctif).
+
+## Vérification de l'intégrité d'un APK
+
+Chaque release publiée sur GitHub porte **quatre** assets signés — trois splits
+ABI et un APK universel — avec leurs empreintes SHA-256 dans le corps de la
+release :
+
+```
+read-files-tech-arm64-v8a-<version>.apk
+read-files-tech-armeabi-v7a-<version>.apk
+read-files-tech-x86_64-<version>.apk
+read-files-tech-universel-<version>.apk
+```
+
+Vérifiez le fichier téléchargé contre l'empreinte publiée pour lui :
+
+```bash
+sha256sum read-files-tech-arm64-v8a-2.15.2.apk
+```
+
+Le résultat doit correspondre exactement. Sinon, ne pas installer l'APK.
+
+Vous pouvez aussi contrôler que le certificat de signature n'a pas changé — c'est
+lui qui rattache réellement un téléchargement à ce projet :
+
+```bash
+apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.2.apk
+```
+
+Le SHA-256 du certificat est stable d'une version à l'autre : un binaire qui en
+présente un autre ne vient pas d'ici, quel que soit son nom de fichier.
+
+> Note : jusqu'à la v2.15.1 incluse, les assets suivaient l'ancien nommage
+> `read_files_tech-v<version>-<abi>.apk`. Les noms ci-dessus valent à partir de
+> la v2.15.2.
+
+## Périmètre
+
+Vulnérabilités acceptées :
+
+- Élévation de privilèges, contournement d'autorisations
+- Path traversal, zip-slip, injection via WebView ou MethodChannels
+- Crash exploitable (DoS persistant)
+- Lecture/écriture arbitraire hors du sandbox de l'app
+- Fuite de données utilisateur
+
+Hors périmètre :
+
+- Bugs UX sans impact sécurité
+- Vulnérabilités dans des dépendances tierces déjà reportées en amont
+- Attaques nécessitant un appareil rooté/compromis
+- Attaques physiques sur l'appareil déverrouillé
