@@ -864,4 +864,68 @@ void main() {
       );
     },
   );
+
+  // ── D2 : blocage et redémarrage (calcul : test/vault_lockout_test.dart) ──
+
+  const thirteenDays = 13 * 24 * 3600 * 1000; // uptime du S9 le 2026-10-10
+
+  test(
+    'après un redémarrage, le bon mot de passe n\'est plus refusé des jours durant',
+    () async {
+      await VaultService.instance.setupWithPassword('reboot');
+      VaultService.instance.lock();
+      fakeElapsed = thirteenDays;
+      for (var i = 0; i < 5; i++) {
+        expect(await VaultService.instance.unlockWithPassword('faux'), isFalse);
+      }
+      // Redémarrage : `elapsedRealtime` repart de zéro ; au mur, l'échéance est passée.
+      fakeElapsed = 30000;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'vault_lockout_until_ms',
+        DateTime.now().millisecondsSinceEpoch - 60000,
+      );
+      expect(await VaultService.instance.unlockWithPassword('reboot'), isTrue);
+    },
+  );
+
+  test('le blocage des restaurations suit la même règle (jumeau)', () async {
+    await VaultService.instance.setupWithPassword('reboot restore');
+    await VaultService.instance.importFileSafe(
+      sourceFile('x.txt', utf8.encode('x')),
+    );
+    final backup = await VaultService.instance.exportToBackup(
+      exportPassword: 'bon',
+    );
+    fakeElapsed = thirteenDays;
+    for (var i = 0; i < 5; i++) {
+      await expectLater(
+        VaultService.instance.restoreFromBackup(
+          backupFile: backup,
+          exportPassword: 'faux',
+        ),
+        throwsA(anything),
+      );
+    }
+    // Armé : une 6e tentative est refusée avant même de dériver la clé.
+    await expectLater(
+      VaultService.instance.restoreFromBackup(
+        backupFile: backup,
+        exportPassword: 'bon',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    fakeElapsed = 30000;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      'vault_backup_lockout_until_ms',
+      DateTime.now().millisecondsSinceEpoch - 60000,
+    );
+    final res = await VaultService.instance.restoreFromBackup(
+      backupFile: backup,
+      exportPassword: 'bon',
+      overwriteExisting: true,
+    );
+    expect(res.total, 1);
+  });
 }

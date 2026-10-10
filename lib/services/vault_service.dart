@@ -18,6 +18,7 @@ import '../utils/monotonic_clock.dart';
 import 'vault/vault_blob.dart';
 import 'vault/vault_bytes.dart';
 import 'vault/vault_kdf.dart';
+import 'vault/vault_lockout.dart';
 
 /// Coffre fort local : fichiers chiffrés AES-256-GCM.
 ///
@@ -61,6 +62,13 @@ class VaultService {
   static const _kBackupLockoutUntil = 'vault_backup_lockout_until_ms';
   static const _kBackupLockoutUntilElapsed =
       'vault_backup_lockout_until_elapsed';
+
+  /// `elapsedRealtime` au moment où chaque blocage a été armé. Sert à reconnaître une échéance
+  /// monotone posée lors d'un AUTRE démarrage (D2, cf. `vault/vault_lockout.dart`). Toute clé
+  /// ajoutée ici doit l'être aussi à [_clearLockout] / [_clearBackupLockout] (leçon V-L5).
+  static const _kLockoutArmedElapsed = 'vault_lockout_armed_elapsed';
+  static const _kBackupLockoutArmedElapsed =
+      'vault_backup_lockout_armed_elapsed';
 
   /// True quand le coffre n'a JAMAIS contenu de fichiers v1 → on refuse le
   /// fallback v1 (anti-confusion d'oracle de format si un attaquant ayant
@@ -177,8 +185,10 @@ class VaultService {
     await prefs.setString(_kKdfVersion, _kdfArgon2id);
     await prefs.setInt(_kArgon2MemoryKB, memKB);
     await prefs.setInt(_kArgon2Iterations, iter);
-    await prefs.remove(_kFails);
-    await prefs.remove(_kLockoutUntil);
+    // Source unique, comme `reset()` : effacer ici le compteur et l'échéance murale SANS
+    // l'échéance monotone laissait un coffre neuf hériter du blocage de l'ancien (même
+    // oubli que V-L5, sur ce troisième chemin).
+    await _clearLockout(prefs);
     // 2. Sentinelle disque (preuve crypto)
     final dir = await _vaultDir();
     final encrypted = _encryptV2(utf8.encode(_checkPlain), key, _checkFile);
@@ -199,15 +209,18 @@ class VaultService {
     final prefs = await SharedPreferences.getInstance();
     // F3 v2.13.0 — Lockout = max(wall, monotonic). Empêche bypass via
     // rembobinage Réglages → Date/heure (DateTime.now seul = contournable).
-    final lockoutWall = prefs.getInt(_kLockoutUntil) ?? 0;
-    final lockoutMono = prefs.getInt(_kLockoutUntilElapsed) ?? 0;
+    // D2 — calcul commun avec la restauration, qui écarte une échéance monotone
+    // d'un autre démarrage et ne dépasse jamais le délai (`vault/vault_lockout.dart`).
     final now = DateTime.now().millisecondsSinceEpoch;
     final nowMono = await MonotonicClock.elapsedRealtimeMs();
-    final wallRemainingMs = lockoutWall - now;
-    final monoRemainingMs = lockoutMono - nowMono;
-    final remainingMs = wallRemainingMs > monoRemainingMs
-        ? wallRemainingMs
-        : monoRemainingMs;
+    final remainingMs = lockoutRemainingMs(
+      fails: prefs.getInt(_kFails) ?? 0,
+      wallNow: now,
+      monoNow: nowMono,
+      wallDeadline: prefs.getInt(_kLockoutUntil) ?? 0,
+      monoDeadline: prefs.getInt(_kLockoutUntilElapsed) ?? 0,
+      monoArmedAt: prefs.getInt(_kLockoutArmedElapsed),
+    );
     if (remainingMs > 0) {
       final remaining = (remainingMs / 1000).ceil();
       throw StateError('Trop d\'essais. Réessayez dans $remaining s.');
@@ -298,16 +311,17 @@ class VaultService {
     // Échec : incrémente compteur + applique backoff exponentiel.
     final fails = (prefs.getInt(_kFails) ?? 0) + 1;
     await prefs.setInt(_kFails, fails);
-    if (fails >= 5) {
-      // Backoff : 1, 2, 4, 8, 16, 30 min (cappé). Sec : tentative GPU offline
-      // reste possible mais ralentie.
-      final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
-      final delayMs = minutes * 60 * 1000;
+    // Backoff : 1, 2, 4, 8, 16, 30 min (cappé) dès le 5ᵉ échec. Sec : tentative
+    // GPU offline reste possible mais ralentie.
+    final delayMs = lockoutDelayMs(fails);
+    if (delayMs > 0) {
       // F3 v2.13.0 — Persiste les deux deadlines en parallèle. Un attaquant
-      // qui rembobine la wall-clock voit la deadline monotone (incassable
-      // sans reboot complet), et inversement.
+      // qui rembobine la wall-clock voit la deadline monotone, et inversement.
+      // D2 — l'instant d'armement dit à quel démarrage la deadline monotone
+      // appartient.
       await prefs.setInt(_kLockoutUntil, now + delayMs);
       await prefs.setInt(_kLockoutUntilElapsed, nowMono + delayMs);
+      await prefs.setInt(_kLockoutArmedElapsed, nowMono);
     }
     // Zeroize la clé dérivée (mauvaise) avant retour.
     _zeroize(key);
@@ -320,6 +334,16 @@ class VaultService {
     await prefs.remove(_kFails);
     await prefs.remove(_kLockoutUntil);
     await prefs.remove(_kLockoutUntilElapsed);
+    await prefs.remove(_kLockoutArmedElapsed);
+  }
+
+  /// Jumeau de [_clearLockout] pour la restauration : source unique, appelée après une
+  /// restauration réussie et par [reset].
+  Future<void> _clearBackupLockout(SharedPreferences prefs) async {
+    await prefs.remove(_kBackupFails);
+    await prefs.remove(_kBackupLockoutUntil);
+    await prefs.remove(_kBackupLockoutUntilElapsed);
+    await prefs.remove(_kBackupLockoutArmedElapsed);
   }
 
   /// F2 v2.13.0 — Incrémente le compteur de tentatives `restoreFromBackup`
@@ -331,11 +355,11 @@ class VaultService {
   ) async {
     final fails = (prefs.getInt(_kBackupFails) ?? 0) + 1;
     await prefs.setInt(_kBackupFails, fails);
-    if (fails >= 5) {
-      final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
-      final delayMs = minutes * 60 * 1000;
+    final delayMs = lockoutDelayMs(fails);
+    if (delayMs > 0) {
       await prefs.setInt(_kBackupLockoutUntil, wallNow + delayMs);
       await prefs.setInt(_kBackupLockoutUntilElapsed, monoNow + delayMs);
+      await prefs.setInt(_kBackupLockoutArmedElapsed, monoNow);
     }
   }
 
@@ -758,13 +782,17 @@ class VaultService {
     // l'app, mais offline c'est 100-1000× plus rapide). Friction symétrique
     // au unlock principal.
     final prefs = await SharedPreferences.getInstance();
-    final blockoutWall = prefs.getInt(_kBackupLockoutUntil) ?? 0;
-    final blockoutMono = prefs.getInt(_kBackupLockoutUntilElapsed) ?? 0;
+    // D2 — même calcul que le déverrouillage principal (`vault/vault_lockout.dart`).
     final bnow = DateTime.now().millisecondsSinceEpoch;
     final bnowMono = await MonotonicClock.elapsedRealtimeMs();
-    final brem = (blockoutWall - bnow) > (blockoutMono - bnowMono)
-        ? blockoutWall - bnow
-        : blockoutMono - bnowMono;
+    final brem = lockoutRemainingMs(
+      fails: prefs.getInt(_kBackupFails) ?? 0,
+      wallNow: bnow,
+      monoNow: bnowMono,
+      wallDeadline: prefs.getInt(_kBackupLockoutUntil) ?? 0,
+      monoDeadline: prefs.getInt(_kBackupLockoutUntilElapsed) ?? 0,
+      monoArmedAt: prefs.getInt(_kBackupLockoutArmedElapsed),
+    );
     if (brem > 0) {
       final remaining = (brem / 1000).ceil();
       throw StateError(
@@ -876,9 +904,7 @@ class VaultService {
       _zeroize(exportKey);
     }
     // Succès : reset compteur backup.
-    await prefs.remove(_kBackupFails);
-    await prefs.remove(_kBackupLockoutUntil);
-    await prefs.remove(_kBackupLockoutUntilElapsed);
+    await _clearBackupLockout(prefs);
     onProgress?.call(0.55);
 
     // Parse + ré-importation dans le coffre actuel (re-chiffré sous master key).
@@ -1108,9 +1134,7 @@ class VaultService {
     await prefs.remove(_kArgon2MemoryKB);
     await prefs.remove(_kArgon2Iterations);
     await _clearLockout(prefs);
-    await prefs.remove(_kBackupFails);
-    await prefs.remove(_kBackupLockoutUntil);
-    await prefs.remove(_kBackupLockoutUntilElapsed);
+    await _clearBackupLockout(prefs);
     // Le flag v2-only appartient au coffre détruit. Le laisser en place ferait
     // hériter au coffre suivant une propriété qu'il n'a pas encore déclarée ;
     // `setupWithPassword` le repositionne de toute façon.
