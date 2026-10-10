@@ -104,9 +104,13 @@ in [SECURITY.fr.md](./SECURITY.fr.md).
   without any error using a key of 32 zero bytes: the file could not be opened
   with the real password, could be decrypted by anyone, and a folder import could
   then delete the original. Each operation now works on its own copy of the key
-  and fails if the vault was locked in the meantime: an interrupted import writes
-  nothing (so a folder import no longer deletes the original), an interrupted
-  restore stops, and nothing is encrypted under a zeroed key.
+  and stops before writing if the vault was locked in the meantime: an
+  interrupted import writes nothing (so a folder import does not delete the
+  original), an interrupted restore stops, and nothing is encrypted under a
+  zeroed key. A write already under way when the lock lands completes, with a
+  valid key, so its file stays readable; a decryption to the cache, which writes
+  plaintext, checks again and erases it. Resetting the vault now locks it before
+  anything else, so an import in flight cannot land in the new vault.
   (D2) After the phone rebooted, the brute-force lockout (5 failures) could last
   about as long as the previous uptime — days — correct password included,
   because the "monotonic" deadline came from the previous boot. A deadline that

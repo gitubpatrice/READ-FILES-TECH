@@ -822,6 +822,30 @@ void main() {
     },
   );
 
+  // Relecture GPT 5.6 du 2026-10-10 : `reset()` n'incrémentait l'époque qu'à la fin, après la
+  // suppression du dossier. Un import en cours écrivait sous l'ancienne clé dans le coffre neuf
+  // et se disait réussi ; l'import de dossier supprimait alors l'original.
+  test('une réinitialisation pendant un import le fait échouer', () async {
+    await VaultService.instance.setupWithPassword('d1 reset');
+    final src = sourceFile('d1-reset.bin', List<int>.generate(4096, (i) => i));
+
+    final pending = VaultService.instance.importFileSafe(src);
+    final resetting = VaultService.instance.reset();
+    await expectLater(pending, throwsA(isA<StateError>()));
+    await resetting;
+
+    expect(src.existsSync(), isTrue);
+    expect(await VaultService.instance.isSetup(), isFalse);
+    final left = vaultDir().existsSync()
+        ? vaultDir().listSync().whereType<File>().toList()
+        : <File>[];
+    expect(
+      left,
+      isEmpty,
+      reason: 'rien ne doit survivre dans le coffre réinitialisé',
+    );
+  });
+
   test(
     'un verrouillage pendant une restauration l\'arrête, sans fichier chiffré par une clé nulle',
     () async {

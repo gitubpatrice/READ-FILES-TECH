@@ -130,13 +130,16 @@ def check(manifest_path: str, quiet: bool = False) -> int:
             "A permission that arrives transitively must be a deliberate act: add it to ALLOWED "
             "in this script AND to PRIVACY.md / PRIVACY.fr.md, or remove the dependency.",
         )
+    # An error, not a note (unlike Agenda Tech's model): PRIVACY.md states the APK carries
+    # EXACTLY these permissions, and a vanished CAMERA would also break the scanner and OCR.
     missing = sorted(ALLOWED - found)
-    if missing and not quiet:
-        print()
-        print("Note — expected but absent from the merged manifest:")
-        for name in missing:
-            print(f"  {name}")
-        print("  Remove them from ALLOWED and from PRIVACY.md if the removal is intended.")
+    if missing:
+        problems.append("Expected permission(s) absent from the merged manifest:")
+        problems += [f"  {name}" for name in missing]
+        problems.append(
+            "If the removal is intended, remove them from ALLOWED and from PRIVACY.md / "
+            "PRIVACY.fr.md, which state the exact list.",
+        )
 
     if problems:
         if not quiet:
@@ -169,6 +172,10 @@ def negative_control() -> int:
         ),
         "permission hors liste": (
             allowed + '  <uses-permission android:name="android.permission.READ_CONTACTS" />\n', 1,
+        ),
+        "CAMERA manquante": (
+            allowed.replace('  <uses-permission android:name="android.permission.CAMERA" />\n', ""),
+            1,
         ),
         "aucune permission": ("", 1),
     }

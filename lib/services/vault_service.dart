@@ -937,8 +937,13 @@ class VaultService {
             masterKey,
             destName,
           );
+          // Au plus près de l'écriture : un verrouillage pendant le chiffrement
+          // (isolate, canal natif) arrête aussi la restauration.
+          _ensureNotLockedSince(op.epoch);
           await atomicWriteBytes(dest.path, encrypted);
           restored++;
+        } on _LockedDuringOperation {
+          rethrow; // pas un échec d'entrée : toute la restauration s'arrête
         } catch (_) {
           failed++;
         } finally {
@@ -1127,6 +1132,11 @@ class VaultService {
   /// source unique pour le lockout principal, afin que le prochain ajout se
   /// propage ici sans qu'on ait à y penser.
   Future<void> reset() async {
+    // Verrouiller AVANT le premier `await` (relecture GPT 5.6, 2026-10-10) : l'époque n'était
+    // incrémentée qu'à la fin, après la suppression du dossier. Un import en cours passait sa
+    // vérification, écrivait sous l'ANCIENNE clé dans le coffre neuf, se disait réussi — et
+    // l'import de dossier supprimait l'original. Verrouillé, plus aucune opération ne s'ouvre.
+    lock();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kSalt);
     await prefs.remove(_kSetup);
@@ -1145,11 +1155,6 @@ class VaultService {
       await dir.delete(recursive: true);
       await dir.create(recursive: true);
     }
-    _lockEpoch++;
-    final k = _cachedKey;
-    if (k != null) _zeroize(k);
-    _cachedKey = null;
-    _publishUnlocked();
   }
 
   // ── Crypto helpers ──────────────────────────────────────────────────────────
@@ -1173,9 +1178,13 @@ class VaultService {
   ///
   /// À appeler juste AVANT d'écrire une sortie : une opération que le verrouillage a
   /// interrompue échoue, plutôt que de terminer comme si de rien n'était.
+  ///
+  /// Fenêtre résiduelle, assumée : un verrouillage survenu PENDANT une écriture déjà lancée la
+  /// laisse se terminer. Le fichier écrit l'est avec la copie de la clé, donc valide et lisible ;
+  /// seul `decryptToTemp`, qui écrit du clair, revérifie après l'écriture et efface.
   void _ensureNotLockedSince(int epoch) {
     if (epoch != _lockEpoch || _cachedKey == null) {
-      throw StateError('Coffre verrouillé pendant l\'opération');
+      throw _LockedDuringOperation();
     }
   }
 
@@ -1436,4 +1445,13 @@ class _BackupEntry {
   final String name;
   final Uint8List plain;
   const _BackupEntry(this.name, this.plain);
+}
+
+/// Un verrouillage est survenu pendant une opération sur le coffre (cf. `_openOp`).
+///
+/// Sous-type de [StateError], comme les autres erreurs « coffre verrouillé » : les appelants
+/// n'ont rien à changer. Un type à part permet à la restauration de le laisser traverser le
+/// `catch` de chaque entrée, qui compterait sinon un simple échec et continuerait.
+class _LockedDuringOperation extends StateError {
+  _LockedDuringOperation() : super('Coffre verrouillé pendant l\'opération');
 }

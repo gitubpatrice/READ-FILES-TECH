@@ -15,10 +15,14 @@
     l'import de dossier pouvait ensuite supprimer l'original. Une restauration
     interrompue de la même façon écrivait les entrées restantes sous la clé
     nulle. Chaque opération travaille désormais sur sa propre copie de la clé, et
-    échoue si le coffre a été verrouillé entre-temps : un import interrompu
-    n'écrit rien (l'import de dossier ne supprime donc plus l'original), une
-    restauration interrompue s'arrête, et rien n'est plus chiffré sous une clé
-    nulle.
+    s'arrête avant d'écrire si le coffre a été verrouillé entre-temps : un import
+    interrompu n'écrit rien (l'import de dossier ne supprime donc pas
+    l'original), une restauration interrompue s'arrête, et rien n'est plus
+    chiffré sous une clé nulle. Une écriture déjà lancée quand le verrouillage
+    survient se termine, avec une clé valide : son fichier reste lisible ; un
+    déchiffrement vers le cache, qui écrit du clair, revérifie et l'efface. La
+    réinitialisation du coffre le verrouille désormais avant toute autre chose :
+    un import en cours ne peut plus atterrir dans le coffre neuf.
   - **Coffre, D2 — blocage après redémarrage** — Après un redémarrage du
     téléphone, le blocage anti force brute (5 échecs) pouvait durer de l'ordre du
     temps de fonctionnement précédent — des jours —, bon mot de passe compris :
