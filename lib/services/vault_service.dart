@@ -219,10 +219,10 @@ class VaultService {
     // du 2026-10-10, défaut antérieur à la 2.15.3).
     final epoch = _lockEpoch;
     final prefs = await SharedPreferences.getInstance();
-    // F3 v2.13.0 — Lockout = max(wall, monotonic). Empêche bypass via
-    // rembobinage Réglages → Date/heure (DateTime.now seul = contournable).
-    // D2 — calcul commun avec la restauration, qui écarte une échéance monotone
-    // d'un autre démarrage et ne dépasse jamais le délai (`vault/vault_lockout.dart`).
+    // F3 v2.13.0 — deux échéances, murale et monotone, pour qu'avancer l'heure
+    // (Réglages → Date/heure) ne lève pas le blocage. D2 (2.15.3) — la règle qui les
+    // combine écarte une échéance qui ne peut pas appartenir au démarrage en cours ;
+    // calcul commun avec la restauration : `vault/vault_lockout.dart`.
     final now = DateTime.now().millisecondsSinceEpoch;
     final nowMono = await MonotonicClock.elapsedRealtimeMs();
     final remainingMs = lockoutRemainingMs(
@@ -287,7 +287,10 @@ class VaultService {
       if (utf8.decode(plain) == _checkPlain) {
         // Bon mot de passe, mais le coffre a été verrouillé pendant la dérivation : on n'installe
         // rien, et ce n'est pas un échec (le `on StateError` ci-dessous efface la clé et relance).
-        if (epoch != _lockEpoch) throw _LockedDuringOperation();
+        if (epoch != _lockEpoch) {
+          await _clearLockout(prefs); // le mot de passe était bon
+          throw _LockedDuringOperation();
+        }
         // Zeroize l'ancienne clé cache (cas double unlock) avant remplacement.
         final old = _cachedKey;
         if (old != null) _zeroize(old);
@@ -658,6 +661,10 @@ class VaultService {
       final builder = BytesBuilder();
       builder.add(_int32be(files.length));
       for (var i = 0; i < files.length; i++) {
+        // À chaque fichier, pas seulement avant l'écriture : sans cela, un verrouillage
+        // laissait tout le coffre se déchiffrer en mémoire pour un travail jeté (relecture
+        // Claude du 2026-10-10).
+        _ensureNotLockedSince(op.epoch);
         final f = files[i];
         final encName = PathSafe.basename(f.path);
         final plainName = _stripEnc(encName);
@@ -683,6 +690,7 @@ class VaultService {
       // peut être restauré sur n'importe quel device, on cible donc la
       // sécurité maximale plutôt que la vitesse. Cohérent avec les
       // anciens coffres v2.6.0–v2.7.0.
+      _ensureNotLockedSince(op.epoch); // avant les secondes d'Argon2
       final salt = _randomBytes(kVaultSaltLen);
       final exportKeyLocal = await Isolate.run(
         () => _deriveKeyArgon2id(
@@ -931,6 +939,9 @@ class VaultService {
     // Zeroize garanti du payload + des plaintexts individuels en finally.
     List<_BackupEntry>? entries;
     try {
+      // Verrouillé pendant la dérivation ou le déchiffrement de l'enveloppe : on s'arrête
+      // avant de découper le clair en entrées (le `finally` efface le payload).
+      _ensureNotLockedSince(op.epoch);
       entries = _parseBackupPayload(payload);
       final dir = await _vaultDir();
       int restored = 0;
@@ -1172,7 +1183,13 @@ class VaultService {
     _v2OnlyCache = null;
     final dir = await _vaultDir();
     if (await dir.exists()) {
-      await dir.delete(recursive: true);
+      try {
+        await dir.delete(recursive: true);
+      } on FileSystemException {
+        // Une écriture lancée AVANT le verrouillage a pu créer un fichier pendant la
+        // suppression (ENOTEMPTY) : elle est terminée maintenant, une seconde passe suffit.
+        await dir.delete(recursive: true);
+      }
       await dir.create(recursive: true);
     }
   }
