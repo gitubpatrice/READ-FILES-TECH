@@ -1,6 +1,6 @@
 # Terms of Use — Read Files Tech
 
-**Document version** : 28 April 2026
+**Document version** : 10 October 2026 (v2.15.3)
 **App** : Read Files Tech
 **Website** : https://www.files-tech.com
 **Contact** : contact@files-tech.com
@@ -45,7 +45,7 @@ Source code published under **Apache License 2.0**, subject to the presence and 
 
 - The user is responsible for files they open, analyse, convert, export or share.
 - HTML/WebView rendering may display content chosen by the user. The user must remain cautious with files from untrusted sources. JavaScript is disabled by default in the HTML viewer.
-- The update check via GitHub Releases, when used, has no advertising, commercial or analytics purpose.
+- The application performs no update check of its own and holds no network permission (since v2.15.3). The "Vérifier les mises à jour" button on the "About" screen opens the GitHub releases page in the browser.
 
 ## 8. Warranty disclaimer
 

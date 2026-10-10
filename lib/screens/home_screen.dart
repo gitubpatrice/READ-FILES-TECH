@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:files_tech_core/files_tech_core.dart';
-import '../services/app_update.dart';
 import 'viewers/txt_viewer_screen.dart';
 import 'viewers/md_viewer_screen.dart';
 import 'viewers/json_viewer_screen.dart';
@@ -81,7 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadRecents();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
+    // Plus de vérification de mise à jour au lancement depuis la 2.15.3 : l'application n'a
+    // plus aucune permission Internet. « À propos » ouvre la page des versions dans le
+    // navigateur.
   }
 
   Future<void> _loadRecents() async {
@@ -92,52 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _checkUpdate() async {
-    final info = await AppUpdate.checkForUpdate();
-    if (info == null) return;
-    if (!mounted) return;
-    final apkUrl = info.apkUrl;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Mise à jour v${info.version} disponible'),
-        content: Text(
-          info.body.isNotEmpty
-              ? info.body
-              : 'Une nouvelle version de Read Files Tech est disponible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Plus tard'),
-          ),
-          // P0 branchements — ouvre la release GitHub si apkUrl présent.
-          // v2.13.2 (S1) — defense in depth : re-valide le scheme HTTPS côté
-          // UI avant launchUrl. UpdateService whitelist déjà github.com +
-          // objects.githubusercontent.com + scheme=https ; cette garde
-          // doublée protège contre une régression future qui assouplirait
-          // la validation amont (ex. URL intent://, android-app://, etc.).
-          if (apkUrl != null)
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.pop(ctx);
-                final uri = Uri.parse(apkUrl);
-                if (uri.scheme != 'https') return;
-                launchUrl(uri, mode: LaunchMode.externalApplication);
-              },
-              icon: const Icon(Icons.download),
-              label: const Text('Télécharger'),
-            )
-          else
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK'),
-            ),
-        ],
-      ),
-    );
   }
 
   Future<void> _pickAndOpen() async {

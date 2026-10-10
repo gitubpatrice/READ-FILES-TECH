@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data' show BytesBuilder;
+import 'dart:typed_data' show BytesBuilder, Uint8List;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pointycastle/export.dart';
+import 'package:read_files_tech/services/vault/vault_blob.dart';
 import 'package:read_files_tech/services/vault_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -733,5 +734,466 @@ void main() {
       () => VaultService.instance.exportToBackup(exportPassword: 'x'),
       throwsA(isA<StateError>()),
     );
+  });
+
+  // ── D1 : un verrouillage PENDANT une opération ───────────────────────────
+  //
+  // Reproduit le 2026-10-10 sur émulateur avec la 2.15.2 : `lock()` remplissait de zéros le
+  // tampon de clé que l'opération avait déjà capturé. L'import se terminait sans erreur, le
+  // fichier était illisible avec le vrai mot de passe et déchiffrable avec 32 zéros. Ici, le
+  // verrouillage est appelé juste après le lancement de l'opération, qui s'exécute jusqu'à son
+  // premier `await` : c'est ce que provoquent la sortie de l'écran du coffre, 30 s en
+  // arrière-plan ou 3 min d'inactivité.
+
+  // Précis, pas « une StateError quelconque » (audit 3 axes du 2026-10-10) : l'erreur attendue
+  // est celle d'une opération interrompue par un verrouillage, pas « coffre verrouillé » au départ.
+  final lockedDuringOp = throwsA(
+    isA<StateError>().having(
+      (e) => e.message,
+      'message',
+      contains('pendant l'),
+    ),
+  );
+
+  bool decryptsWithZeroKey(File enc) {
+    try {
+      decryptAuto(
+        blob: enc.readAsBytesSync(),
+        key: Uint8List(32),
+        filename: enc.uri.pathSegments.last,
+        v2Only: true,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  test(
+    'un verrouillage pendant un import le fait échouer sans rien écrire',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 import');
+      final payload = List<int>.generate(200000, (i) => (i * 13) & 0xFF);
+      final src = sourceFile('d1.bin', payload);
+
+      final pending = VaultService.instance.importFileSafe(src);
+      VaultService.instance.lock();
+      await expectLater(pending, lockedDuringOp);
+
+      expect(
+        File('${vaultDir().path}/d1.bin.enc').existsSync(),
+        isFalse,
+        reason: 'un import interrompu ne doit rien laisser dans le coffre',
+      );
+      expect(src.existsSync(), isTrue);
+
+      // Rouvert, le coffre importe normalement, et rien n'y est chiffré par une clé nulle.
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 import'),
+        isTrue,
+      );
+      final enc = File(await VaultService.instance.importFileSafe(src));
+      expect(
+        (await VaultService.instance.exportFile(
+          enc,
+          outDir(),
+        )).readAsBytesSync(),
+        equals(payload),
+      );
+      for (final f in await VaultService.instance.listFiles()) {
+        expect(decryptsWithZeroKey(f), isFalse, reason: f.path);
+      }
+    },
+  );
+
+  test(
+    'un verrouillage pendant un déchiffrement ne laisse aucun clair',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 cache');
+      final enc = File(
+        await VaultService.instance.importFileSafe(
+          sourceFile('d1-cache.txt', utf8.encode('clair à ne pas laisser')),
+        ),
+      );
+
+      final pending = VaultService.instance.decryptToTemp(enc);
+      VaultService.instance.lock();
+      await expectLater(pending, lockedDuringOp);
+
+      final staging = Directory('${tmp.path}/cache/vault_decrypt');
+      final left = staging.existsSync()
+          ? staging.listSync(recursive: true).whereType<File>().toList()
+          : <File>[];
+      expect(
+        left,
+        isEmpty,
+        reason: 'le clair ne doit pas survivre au verrouillage',
+      );
+    },
+  );
+
+  // Relecture Claude du 2026-10-10 (défaut antérieur à la 2.15.3) : un verrouillage pendant la
+  // dérivation d'Argon2 était suivi de l'installation de la clé.
+  test(
+    'un verrouillage pendant un déverrouillage n\'installe pas la clé',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 unlock');
+      VaultService.instance.lock();
+
+      final pending = VaultService.instance.unlockWithPassword('d1 unlock');
+      VaultService.instance.lock();
+      await expectLater(pending, lockedDuringOp);
+
+      expect(VaultService.instance.isUnlocked, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getInt('vault_unlock_fails'),
+        isNull,
+        reason: 'pas un échec',
+      );
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 unlock'),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'jumeau : un verrouillage pendant la création laisse le coffre verrouillé',
+    () async {
+      final pending = VaultService.instance.setupWithPassword('d1 setup');
+      VaultService.instance.lock();
+      await pending;
+
+      expect(VaultService.instance.isUnlocked, isFalse);
+      expect(await VaultService.instance.isSetup(), isTrue);
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 setup'),
+        isTrue,
+      );
+    },
+  );
+
+  // Relecture GPT 5.6 du 2026-10-10 : `reset()` n'incrémentait l'époque qu'à la fin, après la
+  // suppression du dossier. Un import en cours écrivait sous l'ancienne clé dans le coffre neuf
+  // et se disait réussi ; l'import de dossier supprimait alors l'original.
+  test('une réinitialisation pendant un import le fait échouer', () async {
+    await VaultService.instance.setupWithPassword('d1 reset');
+    final src = sourceFile('d1-reset.bin', List<int>.generate(4096, (i) => i));
+
+    final pending = VaultService.instance.importFileSafe(src);
+    final resetting = VaultService.instance.reset();
+    await expectLater(pending, lockedDuringOp);
+    await resetting;
+
+    expect(src.existsSync(), isTrue);
+    expect(await VaultService.instance.isSetup(), isFalse);
+    final left = vaultDir().existsSync()
+        ? vaultDir().listSync().whereType<File>().toList()
+        : <File>[];
+    expect(
+      left,
+      isEmpty,
+      reason: 'rien ne doit survivre dans le coffre réinitialisé',
+    );
+  });
+
+  test(
+    'un verrouillage pendant une restauration l\'arrête, sans fichier chiffré par une clé nulle',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 restore');
+      await VaultService.instance.importFileSafe(
+        sourceFile('r1.txt', utf8.encode('un')),
+      );
+      await VaultService.instance.importFileSafe(
+        sourceFile('r2.txt', utf8.encode('deux')),
+      );
+      final backup = await VaultService.instance.exportToBackup(
+        exportPassword: 'exp',
+      );
+
+      // Coffre neuf, même mot de passe, puis restauration interrompue.
+      await VaultService.instance.reset();
+      await VaultService.instance.setupWithPassword('d1 restore');
+      final pending = VaultService.instance.restoreFromBackup(
+        backupFile: backup,
+        exportPassword: 'exp',
+      );
+      VaultService.instance.lock();
+      await expectLater(pending, lockedDuringOp);
+
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 restore'),
+        isTrue,
+      );
+      final files = await VaultService.instance.listFiles();
+      for (final f in files) {
+        expect(decryptsWithZeroKey(f), isFalse, reason: f.path);
+        await VaultService.instance.decryptToTemp(
+          f,
+        ); // lisible avec la vraie clé
+      }
+      expect(
+        files,
+        isEmpty,
+        reason: 'verrouillé avant la 1re entrée : rien de restauré',
+      );
+    },
+  );
+
+  // ── D2 : blocage et redémarrage (calcul : test/vault_lockout_test.dart) ──
+
+  const thirteenDays = 13 * 24 * 3600 * 1000; // uptime du S9 le 2026-10-10
+
+  test(
+    'après un redémarrage, le bon mot de passe n\'est plus refusé des jours durant',
+    () async {
+      await VaultService.instance.setupWithPassword('reboot');
+      VaultService.instance.lock();
+      fakeElapsed = thirteenDays;
+      for (var i = 0; i < 5; i++) {
+        expect(await VaultService.instance.unlockWithPassword('faux'), isFalse);
+      }
+      // Redémarrage : `elapsedRealtime` repart de zéro ; au mur, l'échéance est passée.
+      fakeElapsed = 30000;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'vault_lockout_until_ms',
+        DateTime.now().millisecondsSinceEpoch - 60000,
+      );
+      expect(await VaultService.instance.unlockWithPassword('reboot'), isTrue);
+    },
+  );
+
+  test('le blocage des restaurations suit la même règle (jumeau)', () async {
+    await VaultService.instance.setupWithPassword('reboot restore');
+    await VaultService.instance.importFileSafe(
+      sourceFile('x.txt', utf8.encode('x')),
+    );
+    final backup = await VaultService.instance.exportToBackup(
+      exportPassword: 'bon',
+    );
+    fakeElapsed = thirteenDays;
+    for (var i = 0; i < 5; i++) {
+      await expectLater(
+        VaultService.instance.restoreFromBackup(
+          backupFile: backup,
+          exportPassword: 'faux',
+        ),
+        throwsA(anything),
+      );
+    }
+    // Armé : une 6e tentative est refusée avant même de dériver la clé.
+    await expectLater(
+      VaultService.instance.restoreFromBackup(
+        backupFile: backup,
+        exportPassword: 'bon',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    fakeElapsed = 30000;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      'vault_backup_lockout_until_ms',
+      DateTime.now().millisecondsSinceEpoch - 60000,
+    );
+    final res = await VaultService.instance.restoreFromBackup(
+      backupFile: backup,
+      exportPassword: 'bon',
+      overwriteExisting: true,
+    );
+    expect(res.total, 1);
+  });
+
+  // ── Réparation unique des fichiers chiffrés par une clé nulle (D1, 2.15.2) ──
+
+  /// Ce que la 2.15.2 écrivait sous D1 : un blob v2 valide, chiffré avec 32 octets nuls.
+  File plantZeroKeyFile(String encName, List<int> plain) {
+    final f = File('${vaultDir().path}/$encName');
+    f.writeAsBytesSync(
+      encryptV2(
+        plain: plain,
+        key: Uint8List(32),
+        nonce: Uint8List.fromList(List.generate(12, (i) => i + 1)),
+        filename: encName,
+      ),
+    );
+    return f;
+  }
+
+  test(
+    'la réparation rechiffre un fichier que la 2.15.2 avait chiffré avec une clé nulle',
+    () async {
+      await VaultService.instance.setupWithPassword('reparation');
+      // Coffre « venu de la 2.15.2 » : le drapeau posé à la création est retiré.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('vault_zero_key_repair_v1');
+
+      final sain = File(
+        await VaultService.instance.importFileSafe(
+          sourceFile('sain.txt', utf8.encode('sain')),
+        ),
+      );
+      final payload = List<int>.generate(3000, (i) => (i * 7) & 0xFF);
+      final abime = plantZeroKeyFile('abime.bin.enc', payload);
+      // Corrompu pour une autre raison (magic v2, contenu quelconque) : à laisser tel quel.
+      final casse = File('${vaultDir().path}/casse.bin.enc')
+        ..writeAsBytesSync([0x52, 0x46, 0x54, 0x32, ...List.filled(64, 7)]);
+      final avantSain = sain.readAsBytesSync();
+      final avantCasse = casse.readAsBytesSync();
+      expect(decryptsWithZeroKey(abime), isTrue);
+
+      final res = await VaultService.instance.repairZeroKeyFilesOnce();
+      expect(res, isNotNull);
+      expect(res!.repaired, ['abime.bin']);
+      expect(res.scanned, 3);
+
+      expect(
+        decryptsWithZeroKey(abime),
+        isFalse,
+        reason: 'plus de chiffré à clé nulle',
+      );
+      expect(
+        (await VaultService.instance.exportFile(
+          abime,
+          outDir(),
+        )).readAsBytesSync(),
+        equals(payload),
+      );
+      expect(
+        sain.readAsBytesSync(),
+        equals(avantSain),
+        reason: 'fichier sain intact',
+      );
+      expect(
+        casse.readAsBytesSync(),
+        equals(avantCasse),
+        reason: 'fichier cassé intact',
+      );
+
+      expect(
+        await VaultService.instance.repairZeroKeyFilesOnce(),
+        isNull,
+        reason: 'une seule fois',
+      );
+    },
+  );
+
+  test(
+    'un coffre créé par la 2.15.3 n\'accepte jamais de fichier à clé nulle',
+    () async {
+      await VaultService.instance.setupWithPassword('neuf');
+      final planted = plantZeroKeyFile(
+        'depose.bin.enc',
+        utf8.encode('injecté'),
+      );
+
+      expect(await VaultService.instance.repairZeroKeyFilesOnce(), isNull);
+      expect(decryptsWithZeroKey(planted), isTrue, reason: 'pas rechiffré');
+      await expectLater(
+        VaultService.instance.exportFile(planted, outDir()),
+        throwsA(anything),
+        reason: 'toujours refusé par la vraie clé',
+      );
+    },
+  );
+
+  // Relecture Claude du 2026-10-10 : une mort du processus (mémoire) sur un fichier n'était pas
+  // comptée — rejeu, voire plantage, à chaque déverrouillage — et l'abandon était silencieux.
+  test(
+    'un fichier sur lequel le processus est mort est écarté, puis signalé au 3e balayage',
+    () async {
+      await VaultService.instance.setupWithPassword('reparation mort');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('vault_zero_key_repair_v1');
+      final tueur = plantZeroKeyFile('tueur.bin.enc', utf8.encode('t'));
+      final autre = plantZeroKeyFile('autre.bin.enc', utf8.encode('a'));
+      // Ce que laisse un processus tué en plein travail sur `tueur`.
+      await prefs.setString('vault_zero_key_repair_current', 'tueur.bin.enc');
+
+      final r1 = await VaultService.instance.repairZeroKeyFilesOnce();
+      expect(r1!.repaired, [
+        'autre.bin',
+      ], reason: 'les autres fichiers avancent');
+      expect(decryptsWithZeroKey(autre), isFalse);
+      expect(decryptsWithZeroKey(tueur), isTrue, reason: 'jamais rouvert');
+      expect(prefs.getString('vault_zero_key_repair_current'), isNull);
+      expect(prefs.getBool('vault_zero_key_repair_v1'), isNot(true));
+
+      await VaultService.instance.repairZeroKeyFilesOnce(); // 2e balayage
+      final r3 = await VaultService.instance.repairZeroKeyFilesOnce(); // 3e
+      expect(r3!.unexamined, ['tueur.bin']);
+      expect(
+        prefs.getBool('vault_zero_key_repair_v1'),
+        isTrue,
+        reason: 'achevé',
+      );
+      expect(
+        decryptsWithZeroKey(tueur),
+        isTrue,
+        reason: 'non vérifié : pas touché',
+      );
+
+      final report = await VaultService.instance.pendingZeroKeyRepairReport();
+      expect(report!.repaired, ['autre.bin']);
+      expect(report.unexamined, ['tueur.bin']);
+      await VaultService.instance.clearZeroKeyRepairReport();
+      expect(await VaultService.instance.pendingZeroKeyRepairReport(), isNull);
+    },
+  );
+
+  test('un coffre ancien (repli v1 autorisé) est réparé aussi', () async {
+    await VaultService.instance.setupWithPassword('reparation legacy');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('vault_zero_key_repair_v1');
+    await prefs.setBool('vault_v2_only', false); // coffre d'avant la v2.12.0
+    VaultService.instance.lock();
+    expect(
+      await VaultService.instance.unlockWithPassword('reparation legacy'),
+      isTrue,
+    );
+    final abime = plantZeroKeyFile('l.bin.enc', utf8.encode('legacy'));
+
+    final res = await VaultService.instance.repairZeroKeyFilesOnce();
+    expect(res!.repaired, ['l.bin']);
+    expect(decryptsWithZeroKey(abime), isFalse);
+  });
+
+  test(
+    'deux appels pendant le même déverrouillage partagent un balayage',
+    () async {
+      await VaultService.instance.setupWithPassword('reparation partage');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('vault_zero_key_repair_v1');
+      plantZeroKeyFile('p.bin.enc', utf8.encode('p'));
+
+      final a = VaultService.instance.repairZeroKeyFilesOnce();
+      final b = VaultService.instance.repairZeroKeyFilesOnce();
+      expect(identical(a, b), isTrue);
+      expect((await a)!.repaired, ['p.bin']);
+    },
+  );
+
+  test('un verrouillage pendant la réparation la laisse à refaire', () async {
+    await VaultService.instance.setupWithPassword('reparation verrou');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('vault_zero_key_repair_v1');
+    final abime = plantZeroKeyFile('v.bin.enc', utf8.encode('v'));
+
+    final pending = VaultService.instance.repairZeroKeyFilesOnce();
+    VaultService.instance.lock();
+    // Atteint DANS la boucle (`_openOp` passe avant le premier await) : l'erreur précise d'une
+    // opération interrompue, pas « coffre verrouillé » au départ — et ce n'est pas un échec.
+    await expectLater(pending, lockedDuringOp);
+    expect(prefs.getBool('vault_zero_key_repair_v1'), isNot(true));
+    expect(prefs.getInt('vault_zero_key_repair_attempts'), isNull);
+    expect(decryptsWithZeroKey(abime), isTrue);
+
+    expect(
+      await VaultService.instance.unlockWithPassword('reparation verrou'),
+      isTrue,
+    );
+    final res = await VaultService.instance.repairZeroKeyFilesOnce();
+    expect(res!.repaired, ['v.bin']);
   });
 }

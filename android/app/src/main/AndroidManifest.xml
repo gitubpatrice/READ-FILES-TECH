@@ -41,34 +41,31 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
     <!--
-        INTERNET / ACCESS_NETWORK_STATE.
+        AUCUNE PERMISSION RÉSEAU, depuis la v2.15.3 — comme Notes Tech, Agenda Tech,
+        App Manager Tech et SMS Tech. Décision de Patrice du 2026-10-10.
 
-        Déclarées ici depuis la v2.15 parce qu'elles étaient DÉJÀ dans l'APK
-        sans y figurer : le fusionneur de manifeste les ajoutait via
-        `com.google.android.datatransport:transport-backend-cct`, embarqué par
-        Google ML Kit. Vérifiable à l'`aapt dump permissions` sur l'APK publié
-        de la v2.14.0. Un relecteur qui ne lisait que ce fichier en concluait
-        que l'application n'avait aucun accès réseau — conclusion fausse.
+        Jusqu'à la v2.15.2, l'application déclarait INTERNET pour une seule requête
+        sortante : la vérification de mise à jour (API GitHub, au lancement et depuis
+        « À propos »). Elle a été retirée AVANT ces lignes, comme l'exigeait
+        l'avertissement qui figurait ici (sans quoi l'échec réseau aurait été avalé
+        en silence) : « À propos » ouvre désormais la page des versions dans le
+        navigateur, qui est le seul à se connecter.
 
-        Elles ne sont pas seulement subies. L'application émet elle-même une
-        requête sortante, et il faut le dire :
+        Le retrait est explicite (`tools:node="remove"`), parce que ces deux
+        permissions ne viennent pas que d'ici : le fusionneur les AJOUTAIT déjà avant
+        la v2.15, via `com.google.android.datatransport:transport-backend-cct`
+        qu'embarque Google ML Kit (vérifiable à l'`aapt dump permissions` de l'APK
+        v2.14.0). Supprimer seulement les lignes `uses-permission` les laisserait
+        revenir dans l'APK. Le contrôle de la CI (`tools/check-manifest-permissions.py`)
+        lit le manifeste FUSIONNÉ de la variante release, pas ce fichier — à chaque
+        push, et dans `release.yml` sur la build même qui est publiée.
 
-          `AppUpdate.checkForUpdate()` (lib/services/app_update.dart) interroge
-          https://api.github.com/repos/gitubpatrice/read-files-tech/releases/latest
-          au lancement (home_screen.dart, postFrameCallback ; cache 12 h) et à
-          la demande depuis « À propos ».
-
-        Rien d'autre ne sort : aucun fichier de l'utilisateur, aucun contenu de
-        document, aucune donnée du coffre. Cf. PRIVACY.fr.md §9 et §9 bis.
-
-        NE PAS retirer par `tools:node="remove"` sans retirer d'abord l'appel :
-        `UpdateService` avale la SocketException et retourne null. La
-        vérification de mise à jour disparaîtrait sans le moindre message —
-        et c'est, en distribution par sideload, le seul canal par lequel un
-        utilisateur apprend qu'un correctif de sécurité est sorti.
+        Ce qui reste et ne dépend pas de nous : le scanner de documents de ML Kit
+        s'exécute dans les services Google Play, un autre processus, avec ses
+        propres permissions. L'OCR utilise le modèle embarqué dans l'APK.
     -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!--
@@ -185,10 +182,11 @@
             d'entrée déclaré, Android ne peut ni lier le service ni délivrer la
             diffusion : le transport ne démarre pas.
 
-            Ce que ça ne fait PAS : le code du transport reste dans l'APK, et
-            `INTERNET` reste déclarée — l'application s'en sert elle-même pour
-            la vérification de mise à jour (§6 bis de PRIVACY.fr.md). Retirer
-            ces composants coupe l'émission, pas la présence du code.
+            Ce que ça ne fait PAS : le code du transport reste dans l'APK.
+            Retirer ces composants coupe l'émission, pas la présence du code.
+            Depuis la v2.15.3, l'application n'a de toute façon plus aucune
+            permission réseau (cf. plus haut) : même démarré, le transport ne
+            pourrait rien envoyer.
 
             À VÉRIFIER SUR APPAREIL, et pas seulement sur le manifeste :
             l'OCR et le scanner doivent continuer de fonctionner. Un composant

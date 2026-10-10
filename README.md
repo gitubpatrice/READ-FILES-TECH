@@ -5,7 +5,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/gitubpatrice/READ-FILES-TECH)](https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B?logo=flutter)](https://flutter.dev)
 
-**The Android swiss-army knife for your files — version 2.15.2.**
+**The Android swiss-army knife for your files — version 2.15.3.**
 
 File explorer, universal reader, document scanner, OCR, encrypted vault, trash,
 conversion, EXIF stripping — your files never leave the device. No cloud, no account.
@@ -15,26 +15,40 @@ conversion, EXIF stripping — your files never leave the device. No cloud, no a
 ## Privacy in one paragraph
 
 Everything runs locally: reading, editing, conversion, OCR, the vault. Nothing is
-collected, nothing is profiled, there is no account. Two qualifications, stated
-here because they are verifiable on the published APK and hiding them would be
-dishonest:
+collected, nothing is profiled, there is no account.
 
-- **The app does reach the network, once.** It queries the public GitHub Releases
-  API at launch to tell you a new version exists — the only channel that can warn
-  a sideloaded install about a security fix. No identifier is sent.
-- **The document scanner needs Google Play Services.** Everything else, OCR
-  included, works without them.
+**No internet permission**, since v2.15.3 — like the other Files Tech apps. The
+app connects to nothing. `INTERNET` and `ACCESS_NETWORK_STATE`, which Google ML
+Kit adds when the manifests are merged, are removed with `tools:node="remove"`.
+The CI verifies it: it reads the merged release manifest on every run and in the
+release workflow, before anything is published, and fails if a
+network permission — or any permission outside the reviewed list — appears
+(`tools/check-manifest-permissions.py`, with a negative control).
 
-**The app carries no telemetry.** Google ML Kit, which provides offline OCR, ships
-its own telemetry transport as a transitive dependency. Its three entry points —
-`TransportBackendDiscovery`, `JobInfoSchedulerService` and
+Two consequences, stated here because hiding them would be dishonest:
+
+- **The app no longer checks for updates on its own.** Up to v2.15.2 it queried
+  the GitHub Releases API at launch; that request is gone. The "Vérifier les mises
+  à jour" button on the About screen now opens the releases page in your browser
+  — the browser connects, not the app. To learn about a security fix, check from
+  there or on [files-tech.com](https://www.files-tech.com/read-files-tech.php).
+- **The document scanner needs Google Play services.** It runs inside them — a
+  separate process, with its own permissions, outside the app's control.
+  Everything else, OCR included, works without them: the OCR model is bundled in
+  the APK.
+
+**The app itself sends no telemetry.** Google ML Kit, which provides offline OCR,
+ships its own telemetry transport as a transitive dependency. Its three entry
+points — `TransportBackendDiscovery`, `JobInfoSchedulerService` and
 `AlarmManagerSchedulerBroadcastReceiver` — are stripped from the final manifest
 with `tools:node="remove"` as of v2.15. Without a declared entry point, Android
 can neither bind the service nor deliver the broadcast, so the transport never
-starts.
+starts; its code stays in the APK, and without a network permission it could send
+nothing anyway. This does not extend to Google Play services, which run the
+document scanner under their own rules.
 
 This is measured on each release rather than assumed, because a dependency bump
-can undo it silently. On the 2.15.2 build: **zero `datatransport` components** in
+can undo it silently. On the 2.15.3 build: **zero `datatransport` components** in
 the merged manifest and in the APK, against a positive control of seven
 `com.google.mlkit` entries — the check would be worthless if it passed on an APK
 that had lost ML Kit too.
@@ -81,11 +95,20 @@ See [SECURITY.md](SECURITY.md) for the reporting policy and the per-version hist
 
 | Permission | Why it is needed |
 | --- | --- |
+The published APK carries exactly nine permissions, measured with `aapt2 dump
+permissions` on the 2.15.3 release build:
+
+| Permission | Why it is needed |
+| --- | --- |
 | `MANAGE_EXTERNAL_STORAGE` | The point of a universal explorer: browse, read and edit any file you pick. |
+| `READ_EXTERNAL_STORAGE` (≤ Android 12) / `WRITE_EXTERNAL_STORAGE` (≤ Android 10) | The same, on Android versions that predate `MANAGE_EXTERNAL_STORAGE`. |
+| `READ_MEDIA_IMAGES` / `_VIDEO` / `_AUDIO` | Display and preview the media files you pick (Android 13+). |
 | `REQUEST_INSTALL_PACKAGES` | Install a signed APK from the explorer. Installation is never silent — the system PackageInstaller always asks. |
 | `CAMERA` | Document scanner and OCR. Optional, requested when first used. |
-| `INTERNET` | Update check against the GitHub Releases API. Anonymous, no cookie. |
-| `ACCESS_NETWORK_STATE` | Companion to the update check. |
+| `com.readfilestech.read_files_tech.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | Internal, added by AndroidX: `signature` level, keeps the app's own broadcast receivers private. |
+
+**Not in the APK:** `INTERNET` and `ACCESS_NETWORK_STATE`, removed since v2.15.3
+(see above).
 
 Full rationale: [PRIVACY.md](PRIVACY.md) §9.
 
@@ -98,6 +121,10 @@ Each release carries four assets: three ABI splits and one universal APK, named
 `read-files-tech-<abi>-<version>.apk`, with their SHA-256 digests in the release
 body. The signing certificate is stable across versions, so updates install over
 an existing copy.
+
+The app does not look for updates itself, since it has no network permission.
+Watch the releases page, or use the "Vérifier les mises à jour" button on the
+About screen, which opens that page in your browser.
 
 Official site: [files-tech.com/read-files-tech](https://www.files-tech.com/read-files-tech.php)
 

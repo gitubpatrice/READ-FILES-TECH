@@ -9,8 +9,10 @@ import 'package:flutter/services.dart';
 /// contourner instantanément le backoff exponentiel.
 ///
 /// `elapsedRealtime()` repart de zéro à chaque boot et n'est PAS modifiable
-/// par l'utilisateur. Une combinaison `max(wall, monotonic)` côté lockout
-/// rend la fenêtre incassable sans reboot complet.
+/// par l'utilisateur. Combinée à l'horloge murale côté lockout, elle empêche
+/// d'avancer l'heure pour lever le blocage dans le démarrage en cours. Comme
+/// elle repart de zéro au redémarrage, une échéance d'un autre démarrage est
+/// écartée (`services/vault/vault_lockout.dart`, défaut D2 corrigé en 2.15.3).
 ///
 /// Fallback : si le channel échoue (debug, hot-reload), on retombe sur
 /// `DateTime.now()` — la dégradation revient au comportement v2.12.x.

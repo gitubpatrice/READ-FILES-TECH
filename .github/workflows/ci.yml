@@ -66,6 +66,24 @@ jobs:
         working-directory: read_files_tech
         run: flutter test
 
+      # No network permission since 2.15.3, like the other Files Tech apps. The check reads the
+      # MERGED manifest of the RELEASE variant: the source manifest removes INTERNET with
+      # tools:node="remove" (Google ML Kit adds it at merge time), and the debug variant of a
+      # Flutter app adds it on purpose for the development tools. Only the manifest merge runs
+      # here, not a full release build. The negative control runs first: a check that cannot
+      # fail protects nothing.
+      - name: Merged release manifest
+        working-directory: read_files_tech
+        run: |
+          flutter build apk --config-only
+          cd android && ./gradlew --no-daemon :app:processReleaseMainManifest
+
+      - name: No network permission (reviewed allowlist)
+        working-directory: read_files_tech
+        run: |
+          python3 tools/check-manifest-permissions.py --controle-negatif
+          python3 tools/check-manifest-permissions.py
+
       - name: Build APK (debug, unsigned)
         working-directory: read_files_tech
         run: flutter build apk --debug

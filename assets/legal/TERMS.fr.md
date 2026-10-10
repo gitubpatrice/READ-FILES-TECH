@@ -1,6 +1,6 @@
 # Conditions d'utilisation — Read Files Tech
 
-**Version du document** : 9 mai 2026 (v2.12.0)
+**Version du document** : 10 octobre 2026 (v2.15.3)
 **App** : Read Files Tech
 **Site officiel** : https://www.files-tech.com
 **Contact** : contact@files-tech.com
@@ -45,7 +45,7 @@ Code source publié sous **Apache License 2.0**, sous réserve du contenu du fic
 
 - L'utilisateur est responsable des fichiers qu'il ouvre, analyse, convertit, exporte ou partage.
 - Les rendus HTML/WebView peuvent afficher des contenus choisis par l'utilisateur. JavaScript est désactivé par défaut dans le visualiseur HTML.
-- La vérification de mises à jour via GitHub Releases n'a pas de finalité publicitaire, commerciale ou analytique.
+- L'application ne vérifie pas elle-même les mises à jour et ne détient aucune permission réseau (depuis la v2.15.3). Le bouton « Vérifier les mises à jour » de l'écran « À propos » ouvre la page des versions sur GitHub dans le navigateur.
 
 ## 8. Limites de garantie
 
@@ -65,7 +65,7 @@ Le nom, les contenus, textes, icônes, visuels et ressources propres au projet r
 
 ## 12. Sécurité
 
-L'utilisateur ne doit pas ouvrir de fichiers douteux ou provenant de sources inconnues sans précaution. Voir [SECURITY.md](./SECURITY.md).
+L'utilisateur ne doit pas ouvrir de fichiers douteux ou provenant de sources inconnues sans précaution. Voir [SECURITY.fr.md](https://github.com/gitubpatrice/READ-FILES-TECH/blob/main/SECURITY.fr.md).
 
 ## 13. Modification des conditions
 

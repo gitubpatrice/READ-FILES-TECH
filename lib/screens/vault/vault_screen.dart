@@ -159,7 +159,10 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         onCreated: () async {
           setState(() {
             _setup = true;
-            _unlocked = true;
+            // Lu, pas supposé (audit 3 axes du 2026-10-10) : un verrouillage pendant la
+            // création (inactivité, panique) laisse le coffre créé mais VERROUILLÉ, et
+            // l'écran d'ouverture doit alors s'afficher, pas un coffre vide sans clé.
+            _unlocked = _service.isUnlocked;
           });
         },
       );
@@ -168,6 +171,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
       return _UnlockScreen(
         onUnlocked: () {
           setState(() => _unlocked = true);
+          _repairZeroKeyFiles();
         },
         onReset: () async {
           final ok = await _confirmReset(context);
@@ -190,6 +194,86 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         setState(() => _unlocked = false);
       },
     );
+  }
+
+  /// Réparation des fichiers que les versions 2.5.5 à 2.15.2 ont chiffrés avec une clé nulle
+  /// (défaut D1), au déverrouillage qui suit la mise à jour. Silencieuse s'il n'y a rien à montrer.
+  /// Le compte rendu est conservé par le service jusqu'à ce que l'utilisateur l'ait VU : un
+  /// balayage interrompu, un écran quitté ou un verrouillage ne le font pas perdre.
+  Future<void> _repairZeroKeyFiles() async {
+    try {
+      await _service.repairZeroKeyFilesOnce();
+    } catch (_) {
+      // Interrompu (verrouillage) : reprise au déverrouillage suivant. Le compte rendu de ce qui
+      // a déjà été réparé est montré quand même.
+    }
+    final report = await _service.pendingZeroKeyRepairReport();
+    if (report == null || !mounted) return;
+    // Les noms des fichiers sont une métadonnée sensible : jamais au-dessus d'un coffre
+    // reverrouillé entre-temps.
+    if (!_unlocked || !_service.isUnlocked) return;
+    final repaired = report.repaired;
+    final unexamined = report.unexamined;
+    final buffer = StringBuffer(
+      'Les versions 2.5.5 à 2.15.2 pouvaient enregistrer un fichier du coffre avec '
+      'une clé nulle, lorsque le coffre se verrouillait pendant un import ou une '
+      'restauration.',
+    );
+    if (repaired.isNotEmpty) {
+      buffer
+        ..write(
+          '\n\nRéparés, ils s\'ouvrent à nouveau avec votre mot de passe :\n',
+        )
+        ..write(repaired.map((name) => '• $name').join('\n'))
+        ..write(
+          '\n\nCes fichiers ne s\'ouvraient plus depuis cet incident. Si l\'un '
+          'd\'eux s\'ouvrait normalement juste avant la mise à jour, ne vous fiez '
+          'pas à son contenu.',
+        );
+    }
+    if (unexamined.isNotEmpty) {
+      buffer
+        ..write('\n\nNon vérifiés (trop gros, ou erreur de lecture) :\n')
+        ..write(unexamined.map((name) => '• $name').join('\n'))
+        ..write(
+          '\n\nS\'ils ne s\'ouvrent pas, importez à nouveau l\'original s\'il '
+          'existe encore, ou relancez la restauration depuis votre sauvegarde '
+          '.rftvault.',
+        );
+    }
+    // Fermé si le coffre se verrouille pendant l'affichage : le compte rendu, non confirmé,
+    // reviendra au prochain déverrouillage.
+    BuildContext? dialogCtx;
+    void closeOnLock() {
+      final ctx = dialogCtx;
+      if (!VaultService.unlockedNotifier.value && ctx != null && ctx.mounted) {
+        Navigator.of(ctx).pop(false);
+      }
+    }
+
+    VaultService.unlockedNotifier.addListener(closeOnLock);
+    try {
+      final seen = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          dialogCtx = ctx;
+          return AlertDialog(
+            title: const Text('Réparation du coffre'),
+            content: SingleChildScrollView(child: Text(buffer.toString())),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      if (seen == true) await _service.clearZeroKeyRepairReport();
+    } finally {
+      dialogCtx = null;
+      VaultService.unlockedNotifier.removeListener(closeOnLock);
+    }
   }
 
   Future<bool> _confirmReset(BuildContext context) async {

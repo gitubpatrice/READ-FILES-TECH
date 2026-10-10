@@ -18,6 +18,7 @@ import '../utils/monotonic_clock.dart';
 import 'vault/vault_blob.dart';
 import 'vault/vault_bytes.dart';
 import 'vault/vault_kdf.dart';
+import 'vault/vault_lockout.dart';
 
 /// Coffre fort local : fichiers chiffrés AES-256-GCM.
 ///
@@ -62,12 +63,35 @@ class VaultService {
   static const _kBackupLockoutUntilElapsed =
       'vault_backup_lockout_until_elapsed';
 
+  /// `elapsedRealtime` au moment où chaque blocage a été armé. Sert à reconnaître une échéance
+  /// monotone posée lors d'un AUTRE démarrage (D2, cf. `vault/vault_lockout.dart`). Toute clé
+  /// ajoutée ici doit l'être aussi à [_clearLockout] / [_clearBackupLockout] (leçon V-L5).
+  static const _kLockoutArmedElapsed = 'vault_lockout_armed_elapsed';
+  static const _kBackupLockoutArmedElapsed =
+      'vault_backup_lockout_armed_elapsed';
+
   /// True quand le coffre n'a JAMAIS contenu de fichiers v1 → on refuse le
   /// fallback v1 (anti-confusion d'oracle de format si un attaquant ayant
   /// écriture remplace un .enc v2 par un v1 forgé). Set à true au setup d'un
   /// coffre neuf (v2.12.0+). Coffres pré-v2.12.0 (legacy) gardent le
   /// fallback v1 pour rétro-compat.
   static const _kV2Only = 'vault_v2_only';
+
+  /// Posé une fois la réparation unique des fichiers chiffrés par une clé nulle faite
+  /// ([repairZeroKeyFilesOnce]), ou dès la création d'un coffre neuf, qui n'en a pas.
+  static const _kZeroKeyRepairDone = 'vault_zero_key_repair_v1';
+
+  /// Échecs du balayage de réparation (hors verrouillage), pour renoncer après quelques-uns.
+  static const _kZeroKeyRepairAttempts = 'vault_zero_key_repair_attempts';
+
+  /// Fichier en cours de réparation : présent au démarrage d'un balayage, il désigne celui sur
+  /// lequel le processus est mort (mémoire) — il est alors écarté (cf. [_kZeroKeyRepairSkipped]).
+  static const _kZeroKeyRepairCurrent = 'vault_zero_key_repair_current';
+  static const _kZeroKeyRepairSkipped = 'vault_zero_key_repair_skipped';
+
+  /// Compte rendu à montrer jusqu'à confirmation : noms réparés, noms non vérifiés.
+  static const _kZeroKeyRepairReport = 'vault_zero_key_repair_report';
+  static const _kZeroKeyRepairUnexamined = 'vault_zero_key_repair_unexamined';
 
   /// KDF utilisé pour dériver la clé maître depuis le password.
   /// - Absent (null) ou `'pbkdf2'` : PBKDF2-HMAC-SHA256 600 000 itérations
@@ -127,6 +151,10 @@ class VaultService {
 
   static Uint8List? _cachedKey;
 
+  /// Incrémentée à chaque verrouillage ou réinitialisation. Une opération commencée avant voit
+  /// que l'époque a changé et s'arrête avant d'écrire (cf. [_openOp]).
+  static int _lockEpoch = 0;
+
   /// Cache du flag `_kV2Only` lu au unlock pour éviter un await dans le
   /// chemin chaud `_decryptAuto`. `null` = inconnu (legacy avant lookup).
   static bool? _v2OnlyCache;
@@ -150,6 +178,10 @@ class VaultService {
   /// Le calibrage tourne en Isolate (~1-3s) avant la dérivation effective
   /// (~2.5s ciblés). Cible UX globale ~3-5s à la création.
   Future<void> setupWithPassword(String password) async {
+    // Relecture Claude du 2026-10-10 : un verrouillage (sortie de l'écran, panique) pendant les
+    // secondes d'Argon2 était suivi de l'installation de la clé. Le coffre reste créé, mais
+    // verrouillé — même règle que le déverrouillage, son jumeau.
+    final epoch = _lockEpoch;
     final salt = _randomBytes(kVaultSaltLen);
     // Auto-tuning : mesure le device puis choisit des params Argon2id
     // optimaux dans les bornes [4-32 Mo] × [2-4 iter] pour cibler ~2.5s
@@ -173,17 +205,29 @@ class VaultService {
     await prefs.setString(_kKdfVersion, _kdfArgon2id);
     await prefs.setInt(_kArgon2MemoryKB, memKB);
     await prefs.setInt(_kArgon2Iterations, iter);
-    await prefs.remove(_kFails);
-    await prefs.remove(_kLockoutUntil);
+    // Source unique, comme `reset()` : effacer ici le compteur et l'échéance murale SANS
+    // l'échéance monotone laissait un coffre neuf hériter du blocage de l'ancien (même
+    // oubli que V-L5, sur ce troisième chemin).
+    await _clearLockout(prefs);
     // 2. Sentinelle disque (preuve crypto)
     final dir = await _vaultDir();
     final encrypted = _encryptV2(utf8.encode(_checkPlain), key, _checkFile);
     await atomicWriteBytes('${dir.path}/$_checkFile', encrypted);
-    // 3. Flag final SEULEMENT si tout précède a réussi
-    await prefs.setBool(_kSetup, true);
+    // Propriétés du coffre neuf, AVANT le marqueur final (relecture GPT du 2026-10-10) : posées
+    // après lui, un arrêt brutal entre les deux laissait un coffre « créé » sans elles — donc
+    // acceptant le repli v1 et éligible à la réparation « clé nulle ».
     // Coffre neuf (v2.12.0+) → refuse le fallback v1 (anti-format-confusion).
     await prefs.setBool(_kV2Only, true);
+    // Coffre neuf : aucun fichier n'a pu y être écrit par la 2.15.2 — pas de réparation
+    // « clé nulle », donc jamais de chiffré « clé nulle » accepté (cf. repairZeroKeyFilesOnce).
+    await prefs.setBool(_kZeroKeyRepairDone, true);
+    // 3. Flag final SEULEMENT si tout précède a réussi
+    await prefs.setBool(_kSetup, true);
     _v2OnlyCache = true;
+    if (epoch != _lockEpoch) {
+      _zeroize(key);
+      return;
+    }
     _cachedKey = key;
     _publishUnlocked();
   }
@@ -192,18 +236,25 @@ class VaultService {
   /// Lève [StateError] si le coffre est temporairement verrouillé après trop
   /// d'échecs ; le message contient le nombre de secondes restantes.
   Future<bool> unlockWithPassword(String password) async {
+    // Un verrouillage pendant la dérivation (~2,5 s) ne doit pas être suivi de l'installation de
+    // la clé : le coffre se rouvrirait hors de son écran, ou après une panique (relecture Claude
+    // du 2026-10-10, défaut antérieur à la 2.15.3).
+    final epoch = _lockEpoch;
     final prefs = await SharedPreferences.getInstance();
-    // F3 v2.13.0 — Lockout = max(wall, monotonic). Empêche bypass via
-    // rembobinage Réglages → Date/heure (DateTime.now seul = contournable).
-    final lockoutWall = prefs.getInt(_kLockoutUntil) ?? 0;
-    final lockoutMono = prefs.getInt(_kLockoutUntilElapsed) ?? 0;
+    // F3 v2.13.0 — deux échéances, murale et monotone, pour qu'avancer l'heure
+    // (Réglages → Date/heure) ne lève pas le blocage. D2 (2.15.3) — la règle qui les
+    // combine écarte une échéance qui ne peut pas appartenir au démarrage en cours ;
+    // calcul commun avec la restauration : `vault/vault_lockout.dart`.
     final now = DateTime.now().millisecondsSinceEpoch;
     final nowMono = await MonotonicClock.elapsedRealtimeMs();
-    final wallRemainingMs = lockoutWall - now;
-    final monoRemainingMs = lockoutMono - nowMono;
-    final remainingMs = wallRemainingMs > monoRemainingMs
-        ? wallRemainingMs
-        : monoRemainingMs;
+    final remainingMs = lockoutRemainingMs(
+      fails: prefs.getInt(_kFails) ?? 0,
+      wallNow: now,
+      monoNow: nowMono,
+      wallDeadline: prefs.getInt(_kLockoutUntil) ?? 0,
+      monoDeadline: prefs.getInt(_kLockoutUntilElapsed) ?? 0,
+      monoArmedAt: prefs.getInt(_kLockoutArmedElapsed),
+    );
     if (remainingMs > 0) {
       final remaining = (remainingMs / 1000).ceil();
       throw StateError('Trop d\'essais. Réessayez dans $remaining s.');
@@ -256,6 +307,12 @@ class VaultService {
       final blob = await check.readAsBytes();
       final plain = _decryptAuto(blob, key, _checkFile);
       if (utf8.decode(plain) == _checkPlain) {
+        // Bon mot de passe, mais le coffre a été verrouillé pendant la dérivation : on n'installe
+        // rien, et ce n'est pas un échec (le `on StateError` ci-dessous efface la clé et relance).
+        if (epoch != _lockEpoch) {
+          await _clearLockout(prefs); // le mot de passe était bon
+          throw _LockedDuringOperation();
+        }
         // Zeroize l'ancienne clé cache (cas double unlock) avant remplacement.
         final old = _cachedKey;
         if (old != null) _zeroize(old);
@@ -294,14 +351,17 @@ class VaultService {
     // Échec : incrémente compteur + applique backoff exponentiel.
     final fails = (prefs.getInt(_kFails) ?? 0) + 1;
     await prefs.setInt(_kFails, fails);
-    if (fails >= 5) {
-      // Backoff : 1, 2, 4, 8, 16, 30 min (cappé). Sec : tentative GPU offline
-      // reste possible mais ralentie.
-      final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
-      final delayMs = minutes * 60 * 1000;
+    // Backoff : 1, 2, 4, 8, 16, 30 min (cappé) dès le 5ᵉ échec. Sec : tentative
+    // GPU offline reste possible mais ralentie.
+    final delayMs = lockoutDelayMs(fails);
+    if (delayMs > 0) {
       // F3 v2.13.0 — Persiste les deux deadlines en parallèle. Un attaquant
-      // qui rembobine la wall-clock voit la deadline monotone (incassable
-      // sans reboot complet), et inversement.
+      // qui rembobine la wall-clock voit la deadline monotone, et inversement.
+      // D2 — l'instant d'armement dit à quel démarrage la deadline monotone
+      // appartient.
+      // L'instant d'armement d'ABORD : un arrêt brutal entre deux écritures laisse alors au pire
+      // une échéance ancienne, que l'invariant borne (relecture Claude du 2026-10-10).
+      await prefs.setInt(_kLockoutArmedElapsed, nowMono);
       await prefs.setInt(_kLockoutUntil, now + delayMs);
       await prefs.setInt(_kLockoutUntilElapsed, nowMono + delayMs);
     }
@@ -316,6 +376,16 @@ class VaultService {
     await prefs.remove(_kFails);
     await prefs.remove(_kLockoutUntil);
     await prefs.remove(_kLockoutUntilElapsed);
+    await prefs.remove(_kLockoutArmedElapsed);
+  }
+
+  /// Jumeau de [_clearLockout] pour la restauration : source unique, appelée après une
+  /// restauration réussie et par [reset].
+  Future<void> _clearBackupLockout(SharedPreferences prefs) async {
+    await prefs.remove(_kBackupFails);
+    await prefs.remove(_kBackupLockoutUntil);
+    await prefs.remove(_kBackupLockoutUntilElapsed);
+    await prefs.remove(_kBackupLockoutArmedElapsed);
   }
 
   /// F2 v2.13.0 — Incrémente le compteur de tentatives `restoreFromBackup`
@@ -327,9 +397,12 @@ class VaultService {
   ) async {
     final fails = (prefs.getInt(_kBackupFails) ?? 0) + 1;
     await prefs.setInt(_kBackupFails, fails);
-    if (fails >= 5) {
-      final minutes = [1, 2, 4, 8, 16, 30][((fails - 5).clamp(0, 5)).toInt()];
-      final delayMs = minutes * 60 * 1000;
+    final delayMs = lockoutDelayMs(fails);
+    if (delayMs > 0) {
+      await prefs.setInt(
+        _kBackupLockoutArmedElapsed,
+        monoNow,
+      ); // d'abord, cf. le jumeau
       await prefs.setInt(_kBackupLockoutUntil, wallNow + delayMs);
       await prefs.setInt(_kBackupLockoutUntilElapsed, monoNow + delayMs);
     }
@@ -355,6 +428,7 @@ class VaultService {
   }
 
   void lock() {
+    _lockEpoch++;
     final k = _cachedKey;
     if (k != null) _zeroize(k);
     _cachedKey = null;
@@ -372,26 +446,33 @@ class VaultService {
   /// avant `readAsBytes`. Sans ça, un utilisateur tentant d'importer une
   /// vidéo 4 Go crashait l'app par OOM sur low-end (Redmi 9C 3 Go).
   Future<String> importFileSafe(File source, {bool overwrite = false}) async {
-    final key = _requireKey();
-    final dir = await _vaultDir();
-    // Cap source : on borne à 100 Mo pour rester compatible Redmi 9C 3GB.
-    final capErr = await checkFileCap(source, FileCaps.vaultBackup);
-    if (capErr != null) {
-      throw FormatException(capErr);
+    final op = _openOp();
+    try {
+      final dir = await _vaultDir();
+      // Cap source : on borne à 100 Mo pour rester compatible Redmi 9C 3GB.
+      final capErr = await checkFileCap(source, FileCaps.vaultBackup);
+      if (capErr != null) {
+        throw FormatException(capErr);
+      }
+      final name = PathSafe.basename(source.path);
+      final destName = '$name.enc';
+      final dest = File('${dir.path}/$destName');
+      if (await dest.exists() && !overwrite) {
+        throw FileSystemException(
+          'Fichier homonyme déjà dans le coffre',
+          dest.path,
+        );
+      }
+      final plain = await source.readAsBytes();
+      final ct = await _encryptMaybeIsolate(plain, op.key, destName);
+      // Verrouillé pendant l'import : on n'écrit rien. L'import échoue, donc l'appelant ne
+      // supprime pas l'original (`vault_import_folder_screen` ne le fait qu'après succès).
+      _ensureNotLockedSince(op.epoch);
+      await atomicWriteBytes(dest.path, ct);
+      return dest.path;
+    } finally {
+      _zeroize(op.key);
     }
-    final name = PathSafe.basename(source.path);
-    final destName = '$name.enc';
-    final dest = File('${dir.path}/$destName');
-    if (await dest.exists() && !overwrite) {
-      throw FileSystemException(
-        'Fichier homonyme déjà dans le coffre',
-        dest.path,
-      );
-    }
-    final plain = await source.readAsBytes();
-    final ct = await _encryptMaybeIsolate(plain, key, destName);
-    await atomicWriteBytes(dest.path, ct);
-    return dest.path;
   }
 
   /// Liste les fichiers chiffrés dans le coffre (sans le sentinelle).
@@ -404,6 +485,256 @@ class VaultService {
         .toList();
   }
 
+  /// Répare les fichiers que les versions 2.5.5 à 2.15.2 ont chiffrés avec une clé de 32
+  /// octets nuls (défaut D1 : un verrouillage pendant un import ou une restauration ; né en
+  /// v2.5.5 avec l'effacement en place dans `lock()`, en même temps que le format v2 — il n'existe
+  /// donc pas de fichier v1 à clé nulle).
+  ///
+  /// À appeler juste après un déverrouillage réussi. Chaque fichier `.enc` v2 est essayé avec la
+  /// clé NULLE seulement : si elle l'ouvre, la vraie clé le refuserait forcément, et un fichier sain
+  /// n'est jamais déchiffré en clair. Un fichier ouvert par la clé nulle est rechiffré sous la vraie
+  /// clé, au même nom (AAD inchangée), vérifié par aller-retour, puis remplacé atomiquement — à
+  /// condition qu'il n'ait pas changé depuis sa lecture. Un fichier illisible pour une autre raison
+  /// n'est pas touché.
+  ///
+  /// **Fenêtre unique, et ce qu'elle ne garantit pas.** Accepter un chiffré « clé nulle » élargit
+  /// ce que le coffre accepte. Le balayage n'a donc lieu qu'une fois, au déverrouillage qui suit
+  /// la mise à jour (drapeau [_kZeroKeyRepairDone]) ; un coffre créé par la 2.15.3 en est
+  /// dispensé dès sa création. Le drapeau est une préférence ordinaire : un acteur capable
+  /// d'ÉCRIRE dans le stockage privé de l'application (téléphone rooté, en pratique) pourrait
+  /// l'effacer et rejouer le balayage pour faire accepter un fichier déposé ou SUBSTITUÉ —
+  /// injection de contenu, pas lecture. La sauvegarde Android est coupée (`allowBackup=false`,
+  /// règles d'extraction qui excluent tout) ; rien d'autre que l'application maîtrise ne peut
+  /// empêcher ce retour en arrière. C'est dit dans SECURITY.md, et l'écran le rappelle.
+  ///
+  /// **Robustesse.** Une erreur sur un fichier (lecture, mémoire, canal natif) ne bloque que lui :
+  /// il est noté « non vérifié ». Le fichier en cours est mémorisé avant d'être traité : si le
+  /// processus meurt dessus (mémoire), il est écarté au balayage suivant au lieu de faire tomber
+  /// l'application à chaque déverrouillage. Tant que des fichiers restent non vérifiés, le balayage
+  /// est retenté, [_repairMaxAttempts] fois au plus ; ensuite il s'achève et les liste. Les noms
+  /// réparés et non vérifiés sont conservés ([pendingZeroKeyRepairReport]) jusqu'à ce que
+  /// l'utilisateur les ait vus ([clearZeroKeyRepairReport]). Un verrouillage interrompt le
+  /// balayage sans compter d'échec.
+  ///
+  /// Deux appels pendant le même déverrouillage partagent un balayage ; un balayage d'un
+  /// déverrouillage précédent (condamné par le verrouillage) est suivi d'un nouveau.
+  Future<ZeroKeyRepairResult?> repairZeroKeyFilesOnce() {
+    final inFlight = _repairInFlight;
+    if (inFlight != null && _repairInFlightEpoch == _lockEpoch) return inFlight;
+    _repairInFlightEpoch = _lockEpoch;
+    // Sans balayage précédent, démarrage IMMÉDIAT : `_openOp` doit passer avant tout `await`
+    // (un `.then` le reporterait après un verrouillage survenu juste après l'appel). Derrière un
+    // balayage d'un déverrouillage précédent, on attend qu'il se termine (il est condamné).
+    final Future<ZeroKeyRepairResult?> started = inFlight == null
+        ? _repairZeroKeyFiles()
+        : inFlight
+              .then<void>((_) {}, onError: (Object _) {})
+              .then((_) => _repairZeroKeyFiles());
+    late final Future<ZeroKeyRepairResult?> run;
+    run = started.whenComplete(() {
+      if (identical(_repairInFlight, run)) _repairInFlight = null;
+    });
+    _repairInFlight = run;
+    return run;
+  }
+
+  static Future<ZeroKeyRepairResult?>? _repairInFlight;
+  static int _repairInFlightEpoch = -1;
+
+  /// Balayages laissant des fichiers non vérifiés après lesquels la réparation s'achève quand même.
+  static const _repairMaxAttempts = 3;
+
+  /// Plus gros fichier examiné : une restauration `.rftvault` (aussi touchée par D1) peut écrire
+  /// une entrée jusqu'à la taille de la sauvegarde. Au-delà, le fichier est noté non vérifié.
+  static const _repairMaxBytes = _backupMaxBytes + 64;
+
+  /// Ce que la réparation laisse à montrer : noms réparés (conservés au fil du balayage, même
+  /// interrompu) et noms non vérifiés (quand le balayage s'est achevé sans eux). `null` si rien.
+  Future<ZeroKeyRepairResult?> pendingZeroKeyRepairReport() async {
+    final prefs = await SharedPreferences.getInstance();
+    final repaired =
+        prefs.getStringList(_kZeroKeyRepairReport) ?? const <String>[];
+    final unexamined =
+        prefs.getStringList(_kZeroKeyRepairUnexamined) ?? const <String>[];
+    if (repaired.isEmpty && unexamined.isEmpty) return null;
+    return ZeroKeyRepairResult(repaired: repaired, unexamined: unexamined);
+  }
+
+  /// L'utilisateur a vu le compte rendu : il n'est plus montré.
+  Future<void> clearZeroKeyRepairReport() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kZeroKeyRepairReport);
+    await prefs.remove(_kZeroKeyRepairUnexamined);
+  }
+
+  /// Toutes les clés de la réparation — source unique pour `reset()` (leçon V-L5).
+  Future<void> _clearZeroKeyRepairState(SharedPreferences prefs) async {
+    await prefs.remove(_kZeroKeyRepairDone);
+    await prefs.remove(_kZeroKeyRepairAttempts);
+    await prefs.remove(_kZeroKeyRepairCurrent);
+    await prefs.remove(_kZeroKeyRepairSkipped);
+    await prefs.remove(_kZeroKeyRepairReport);
+    await prefs.remove(_kZeroKeyRepairUnexamined);
+  }
+
+  Future<ZeroKeyRepairResult?> _repairZeroKeyFiles() async {
+    // Avant tout `await` : un verrouillage juste après l'appel atteint le contrôle de la boucle.
+    final op = _openOp();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_kZeroKeyRepairDone) == true) return null;
+      final attempts = prefs.getInt(_kZeroKeyRepairAttempts) ?? 0;
+      final skipped = {...?prefs.getStringList(_kZeroKeyRepairSkipped)};
+      final crashed = prefs.getString(_kZeroKeyRepairCurrent);
+      if (crashed != null) {
+        // Le processus est mort sur ce fichier au balayage précédent : on ne le rouvre plus.
+        skipped.add(crashed);
+        await prefs.setStringList(_kZeroKeyRepairSkipped, skipped.toList());
+        await prefs.remove(_kZeroKeyRepairCurrent);
+      }
+      final report = [...?prefs.getStringList(_kZeroKeyRepairReport)];
+      final unexamined = <String>[];
+      final repaired = <String>[];
+      var scanned = 0;
+      for (final f in await listFiles()) {
+        _ensureNotLockedSince(op.epoch);
+        final name = f.path.split(RegExp(r'[\\/]')).last;
+        // Résidus d'une écriture interrompue (`X.enc.<n>-<hex>.tmp`) : pas des fichiers du coffre.
+        if (!name.endsWith('.enc')) continue;
+        final label = _stripEnc(name);
+        if (skipped.contains(name)) {
+          unexamined.add(label);
+          continue;
+        }
+        scanned++;
+        await prefs.setString(_kZeroKeyRepairCurrent, name);
+        try {
+          if (await _repairOne(f, name, op)) {
+            repaired.add(label);
+            report.add(label);
+            await prefs.setStringList(_kZeroKeyRepairReport, report);
+          }
+        } on _LockedDuringOperation {
+          rethrow; // pas un échec : reprise au prochain déverrouillage
+        } catch (_) {
+          unexamined.add(label);
+        } finally {
+          await prefs.remove(_kZeroKeyRepairCurrent);
+        }
+      }
+      final finished = unexamined.isEmpty || attempts + 1 >= _repairMaxAttempts;
+      if (finished) {
+        await prefs.setStringList(_kZeroKeyRepairUnexamined, unexamined);
+        await prefs.setBool(_kZeroKeyRepairDone, true);
+        await prefs.remove(_kZeroKeyRepairAttempts);
+        await prefs.remove(_kZeroKeyRepairSkipped);
+      } else {
+        await prefs.setInt(_kZeroKeyRepairAttempts, attempts + 1);
+      }
+      return ZeroKeyRepairResult(
+        scanned: scanned,
+        repaired: repaired,
+        unexamined: finished ? unexamined : const <String>[],
+      );
+    } finally {
+      _zeroize(op.key);
+    }
+  }
+
+  /// Répare [f] s'il est chiffré par une clé nulle. Vrai si le fichier a été réécrit, faux s'il
+  /// est sain, illisible pour une autre raison, ou a changé pendant le travail. Lève sur une
+  /// erreur qui empêche de conclure (taille, lecture, mémoire, canal natif, vérification).
+  Future<bool> _repairOne(
+    File f,
+    String name,
+    ({Uint8List key, int epoch}) op,
+  ) async {
+    final before = await f.stat();
+    if (before.size > _repairMaxBytes) {
+      throw StateError('fichier trop gros pour la réparation');
+    }
+    final blob = await f.readAsBytes();
+    _ensureNotLockedSince(op.epoch);
+    if (!_isV2Format(blob)) return false; // D1 n'a écrit que du v2
+    final plain = await _openWithZeroKeyOrNull(blob, name);
+    if (plain == null) return false; // sain, ou illisible pour une autre raison
+    try {
+      final ct = await _encryptMaybeIsolate(plain, op.key, name);
+      // Aller-retour avant de remplacer l'UNIQUE copie : un défaut de chiffrement ne doit pas
+      // la remplacer par un fichier illisible.
+      final check = await _openOrNull(ct, op.key, name);
+      if (check == null) {
+        throw StateError('rechiffrement non vérifié');
+      }
+      try {
+        if (!_sameBytes(check, plain)) {
+          throw StateError('rechiffrement non conforme');
+        }
+      } finally {
+        _zeroize(check);
+      }
+      // Mise à jour perdue : un import, une restauration ou une suppression a pu changer ce
+      // fichier depuis sa lecture. On ne remplace que ce qu'on a lu.
+      final now = await f.stat();
+      if (now.type != FileSystemEntityType.file ||
+          now.size != before.size ||
+          now.modified != before.modified) {
+        return false;
+      }
+      _ensureNotLockedSince(op.epoch); // juste avant l'écriture
+      await atomicWriteBytes(f.path, ct);
+      return true;
+    } finally {
+      _zeroize(plain);
+    }
+  }
+
+  /// Le clair si la clé NULLE ouvre [blob], `null` sur un refus cryptographique. Toujours hors
+  /// du fil de l'interface : canal natif au-delà du seuil, isolate en deçà (un balayage de
+  /// milliers de petits fichiers ne doit pas saccader l'écran).
+  Future<Uint8List?> _openWithZeroKeyOrNull(Uint8List blob, String name) async {
+    if (blob.length >= _nativeThreshold) {
+      return _openOrNull(blob, Uint8List(kVaultKeyLen), name);
+    }
+    try {
+      return await Isolate.run(
+        () => decryptAuto(
+          blob: blob,
+          key: Uint8List(kVaultKeyLen),
+          filename: name,
+          v2Only: true,
+        ),
+      );
+    } on InvalidCipherTextException {
+      return null;
+    }
+  }
+
+  static bool _sameBytes(Uint8List a, Uint8List b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// Le clair si [key] authentifie [blob], `null` sur un refus cryptographique (tag GCM) ; toute
+  /// autre erreur (mémoire, isolate, canal natif) est propagée — elle ne dit rien de la clé.
+  Future<Uint8List?> _openOrNull(
+    Uint8List blob,
+    Uint8List key,
+    String name,
+  ) async {
+    try {
+      return await _decryptMaybeIsolate(blob, key, name);
+    } on InvalidCipherTextException {
+      return null;
+    } on PlatformException catch (e) {
+      if (e.code == 'DECRYPT_ERROR') return null;
+      rethrow;
+    }
+  }
+
   /// Déchiffre un fichier du coffre vers un emplacement temporaire (pour viewer/share).
   ///
   /// V-M12 (audit 2026-08-02) — le chemin de sortie était `vault_decrypt/<nom>`,
@@ -414,20 +745,39 @@ class VaultService {
   /// fichier, lui, ne change pas — c'est celui que verra l'utilisateur dans
   /// l'app cible.
   Future<File> decryptToTemp(File encrypted) async {
-    final key = _requireKey();
-    final tmpRoot = await getTemporaryDirectory();
-    final slot = base64Url
-        .encode(SecretBytes.randomBytes(9))
-        .replaceAll('=', '');
-    final tmp = Directory('${tmpRoot.path}/vault_decrypt/$slot');
-    if (!await tmp.exists()) await tmp.create(recursive: true);
-    final encName = PathSafe.basename(encrypted.path);
-    final originalName = _stripEnc(encName);
-    final out = File('${tmp.path}/$originalName');
-    final blob = await encrypted.readAsBytes();
-    final plain = await _decryptMaybeIsolate(blob, key, encName);
-    await atomicWriteBytes(out.path, plain);
-    return out;
+    final op = _openOp();
+    try {
+      final tmpRoot = await getTemporaryDirectory();
+      final slot = base64Url
+          .encode(SecretBytes.randomBytes(9))
+          .replaceAll('=', '');
+      final tmp = Directory('${tmpRoot.path}/vault_decrypt/$slot');
+      if (!await tmp.exists()) await tmp.create(recursive: true);
+      final encName = PathSafe.basename(encrypted.path);
+      final originalName = _stripEnc(encName);
+      final out = File('${tmp.path}/$originalName');
+      final blob = await encrypted.readAsBytes();
+      final plain = await _decryptMaybeIsolate(blob, op.key, encName);
+      try {
+        _ensureNotLockedSince(op.epoch);
+        await atomicWriteBytes(out.path, plain);
+        // Verrouillé PENDANT l'écriture : la purge de `lock()` a pu passer avant que le clair
+        // n'atterrisse dans le cache. On le retire nous-mêmes.
+        _ensureNotLockedSince(op.epoch);
+      } catch (_) {
+        try {
+          if (await tmp.exists()) await tmp.delete(recursive: true);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('decryptToTemp: purge du clair interrompu: $e');
+          }
+        }
+        rethrow;
+      }
+      return out;
+    } finally {
+      _zeroize(op.key);
+    }
   }
 
   /// Supprime tous les fichiers déchiffrés laissés dans le cache :
@@ -492,22 +842,29 @@ class VaultService {
     String destDir, {
     bool overwrite = false,
   }) async {
-    final key = _requireKey();
-    final encName = PathSafe.basename(encrypted.path);
-    final originalName = _stripEnc(encName);
-    final out = File('$destDir/$originalName');
-    if (!overwrite &&
-        FileSystemEntity.typeSync(out.path, followLinks: false) !=
-            FileSystemEntityType.notFound) {
-      throw FileSystemException(
-        'Un fichier de ce nom existe déjà dans le dossier de destination',
-        out.path,
-      );
+    final op = _openOp();
+    try {
+      final encName = PathSafe.basename(encrypted.path);
+      final originalName = _stripEnc(encName);
+      final out = File('$destDir/$originalName');
+      if (!overwrite &&
+          FileSystemEntity.typeSync(out.path, followLinks: false) !=
+              FileSystemEntityType.notFound) {
+        throw FileSystemException(
+          'Un fichier de ce nom existe déjà dans le dossier de destination',
+          out.path,
+        );
+      }
+      final blob = await encrypted.readAsBytes();
+      final plain = await _decryptMaybeIsolate(blob, op.key, encName);
+      // Un export vers un dossier choisi est voulu par l'utilisateur : seul un verrouillage
+      // survenu AVANT l'écriture l'annule.
+      _ensureNotLockedSince(op.epoch);
+      await atomicWriteBytes(out.path, plain);
+      return out;
+    } finally {
+      _zeroize(op.key);
     }
-    final blob = await encrypted.readAsBytes();
-    final plain = await _decryptMaybeIsolate(blob, key, encName);
-    await atomicWriteBytes(out.path, plain);
-    return out;
   }
 
   Future<void> deleteFile(File encrypted) async {
@@ -549,32 +906,37 @@ class VaultService {
     required String exportPassword,
     void Function(double)? onProgress,
   }) async {
-    final masterKey = _requireKey();
-    final files = await listFiles();
-
-    // Garde-fou taille.
-    int total = 0;
-    for (final f in files) {
-      total += await f.length();
-    }
-    if (total > _backupMaxBytes) {
-      throw StateError(
-        'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
-        'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.',
-      );
-    }
-
-    onProgress?.call(0.0);
-
+    final op = _openOp();
+    final masterKey = op.key;
     // Liste des plaintext alloués pour zeroize garanti en finally.
     final plains = <Uint8List>[];
     Uint8List? payload;
     Uint8List? exportKey;
     try {
+      final files = await listFiles();
+
+      // Garde-fou taille.
+      int total = 0;
+      for (final f in files) {
+        total += await f.length();
+      }
+      if (total > _backupMaxBytes) {
+        throw StateError(
+          'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
+          'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.',
+        );
+      }
+
+      onProgress?.call(0.0);
+
       // Construction du payload en clair (déchiffre chaque fichier avec master).
       final builder = BytesBuilder();
       builder.add(_int32be(files.length));
       for (var i = 0; i < files.length; i++) {
+        // À chaque fichier, pas seulement avant l'écriture : sans cela, un verrouillage
+        // laissait tout le coffre se déchiffrer en mémoire pour un travail jeté (relecture
+        // Claude du 2026-10-10).
+        _ensureNotLockedSince(op.epoch);
         final f = files[i];
         final encName = PathSafe.basename(f.path);
         final plainName = _stripEnc(encName);
@@ -600,6 +962,7 @@ class VaultService {
       // peut être restauré sur n'importe quel device, on cible donc la
       // sécurité maximale plutôt que la vitesse. Cohérent avec les
       // anciens coffres v2.6.0–v2.7.0.
+      _ensureNotLockedSince(op.epoch); // avant les secondes d'Argon2
       final salt = _randomBytes(kVaultSaltLen);
       final exportKeyLocal = await Isolate.run(
         () => _deriveKeyArgon2id(
@@ -651,6 +1014,10 @@ class VaultService {
       // Le `.rftvault` est chiffré par un mot de passe distinct du principal :
       // le poser dans un dossier visible n'expose rien, et c'est précisément
       // ce qu'on attend d'une sauvegarde.
+      //
+      // Verrouillé pendant l'export : on s'arrête AVANT de réserver le fichier, qui serait
+      // sinon laissé vide dans `Files Tech/`.
+      _ensureNotLockedSince(op.epoch);
       final outFile = await OutputStorageService().reserveFile(
         category: OutputCategory.backups,
         suggestedName: 'coffre',
@@ -666,6 +1033,7 @@ class VaultService {
       }
       if (payload != null) _zeroize(payload);
       if (exportKey != null) _zeroize(exportKey);
+      _zeroize(op.key);
     }
   }
 
@@ -685,7 +1053,28 @@ class VaultService {
     bool overwriteExisting = false,
     void Function(double)? onProgress,
   }) async {
-    final masterKey = _requireKey();
+    final op = _openOp();
+    try {
+      return await _restoreFromBackup(
+        op,
+        backupFile: backupFile,
+        exportPassword: exportPassword,
+        overwriteExisting: overwriteExisting,
+        onProgress: onProgress,
+      );
+    } finally {
+      _zeroize(op.key);
+    }
+  }
+
+  Future<RestoreResult> _restoreFromBackup(
+    ({Uint8List key, int epoch}) op, {
+    required File backupFile,
+    required String exportPassword,
+    required bool overwriteExisting,
+    void Function(double)? onProgress,
+  }) async {
+    final masterKey = op.key;
 
     // F2 v2.13.0 — Lockout brute-force séparé du master password. Sans ça,
     // un attaquant ayant volé le `.rftvault` pouvait tester des passwords
@@ -693,13 +1082,17 @@ class VaultService {
     // l'app, mais offline c'est 100-1000× plus rapide). Friction symétrique
     // au unlock principal.
     final prefs = await SharedPreferences.getInstance();
-    final blockoutWall = prefs.getInt(_kBackupLockoutUntil) ?? 0;
-    final blockoutMono = prefs.getInt(_kBackupLockoutUntilElapsed) ?? 0;
+    // D2 — même calcul que le déverrouillage principal (`vault/vault_lockout.dart`).
     final bnow = DateTime.now().millisecondsSinceEpoch;
     final bnowMono = await MonotonicClock.elapsedRealtimeMs();
-    final brem = (blockoutWall - bnow) > (blockoutMono - bnowMono)
-        ? blockoutWall - bnow
-        : blockoutMono - bnowMono;
+    final brem = lockoutRemainingMs(
+      fails: prefs.getInt(_kBackupFails) ?? 0,
+      wallNow: bnow,
+      monoNow: bnowMono,
+      wallDeadline: prefs.getInt(_kBackupLockoutUntil) ?? 0,
+      monoDeadline: prefs.getInt(_kBackupLockoutUntilElapsed) ?? 0,
+      monoArmedAt: prefs.getInt(_kBackupLockoutArmedElapsed),
+    );
     if (brem > 0) {
       final remaining = (brem / 1000).ceil();
       throw StateError(
@@ -811,15 +1204,16 @@ class VaultService {
       _zeroize(exportKey);
     }
     // Succès : reset compteur backup.
-    await prefs.remove(_kBackupFails);
-    await prefs.remove(_kBackupLockoutUntil);
-    await prefs.remove(_kBackupLockoutUntilElapsed);
+    await _clearBackupLockout(prefs);
     onProgress?.call(0.55);
 
     // Parse + ré-importation dans le coffre actuel (re-chiffré sous master key).
     // Zeroize garanti du payload + des plaintexts individuels en finally.
     List<_BackupEntry>? entries;
     try {
+      // Verrouillé pendant la dérivation ou le déchiffrement de l'enveloppe : on s'arrête
+      // avant de découper le clair en entrées (le `finally` efface le payload).
+      _ensureNotLockedSince(op.epoch);
       entries = _parseBackupPayload(payload);
       final dir = await _vaultDir();
       int restored = 0;
@@ -833,6 +1227,10 @@ class VaultService {
           skipped++;
           continue;
         }
+        // HORS du try par entrée ci-dessous, qui compterait l'erreur comme un simple échec et
+        // continuerait : un verrouillage arrête toute la restauration. Les entrées déjà écrites
+        // l'ont été avec une copie valide de la clé.
+        _ensureNotLockedSince(op.epoch);
         // Try/catch par entrée : si une écriture échoue (FAT32 nom invalide,
         // disque plein, perm refusée), on continue avec les autres au lieu
         // de planter tout le restore au milieu.
@@ -842,8 +1240,13 @@ class VaultService {
             masterKey,
             destName,
           );
+          // Au plus près de l'écriture : un verrouillage pendant le chiffrement
+          // (isolate, canal natif) arrête aussi la restauration.
+          _ensureNotLockedSince(op.epoch);
           await atomicWriteBytes(dest.path, encrypted);
           restored++;
+        } on _LockedDuringOperation {
+          rethrow; // pas un échec d'entrée : toute la restauration s'arrête
         } catch (_) {
           failed++;
         } finally {
@@ -1032,6 +1435,11 @@ class VaultService {
   /// source unique pour le lockout principal, afin que le prochain ajout se
   /// propage ici sans qu'on ait à y penser.
   Future<void> reset() async {
+    // Verrouiller AVANT le premier `await` (relecture GPT 5.6, 2026-10-10) : l'époque n'était
+    // incrémentée qu'à la fin, après la suppression du dossier. Un import en cours passait sa
+    // vérification, écrivait sous l'ANCIENNE clé dans le coffre neuf, se disait réussi — et
+    // l'import de dossier supprimait l'original. Verrouillé, plus aucune opération ne s'ouvre.
+    lock();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kSalt);
     await prefs.remove(_kSetup);
@@ -1039,31 +1447,57 @@ class VaultService {
     await prefs.remove(_kArgon2MemoryKB);
     await prefs.remove(_kArgon2Iterations);
     await _clearLockout(prefs);
-    await prefs.remove(_kBackupFails);
-    await prefs.remove(_kBackupLockoutUntil);
-    await prefs.remove(_kBackupLockoutUntilElapsed);
+    await _clearBackupLockout(prefs);
     // Le flag v2-only appartient au coffre détruit. Le laisser en place ferait
     // hériter au coffre suivant une propriété qu'il n'a pas encore déclarée ;
     // `setupWithPassword` le repositionne de toute façon.
     await prefs.remove(_kV2Only);
+    await _clearZeroKeyRepairState(
+      prefs,
+    ); // le drapeau est reposé par `setupWithPassword`
     _v2OnlyCache = null;
     final dir = await _vaultDir();
     if (await dir.exists()) {
-      await dir.delete(recursive: true);
+      try {
+        await dir.delete(recursive: true);
+      } on FileSystemException {
+        // Une écriture lancée AVANT le verrouillage a pu créer un fichier pendant la
+        // suppression (ENOTEMPTY) : elle est terminée maintenant, une seconde passe suffit.
+        await dir.delete(recursive: true);
+      }
       await dir.create(recursive: true);
     }
-    final k = _cachedKey;
-    if (k != null) _zeroize(k);
-    _cachedKey = null;
-    _publishUnlocked();
   }
 
   // ── Crypto helpers ──────────────────────────────────────────────────────────
 
-  Uint8List _requireKey() {
+  /// Ouvre une opération sur le coffre : une COPIE de la clé maître, et l'époque de verrouillage
+  /// au moment où l'opération commence.
+  ///
+  /// D1 (reproduit le 2026-10-10 sur émulateur) — l'ancien `_requireKey()` rendait la référence
+  /// du tampon caché lui-même. `lock()` le remplit de zéros : un verrouillage survenu pendant un
+  /// import (sortie de l'écran, 30 s en arrière-plan, 3 min d'inactivité) laissait l'import se
+  /// terminer SANS ERREUR avec une clé de 32 zéros. Le fichier était illisible avec le vrai mot
+  /// de passe, déchiffrable par n'importe qui, et l'import de dossier pouvait ensuite supprimer
+  /// l'original. La copie appartient à l'opération, qui doit l'effacer dans son `finally`.
+  ({Uint8List key, int epoch}) _openOp() {
     final k = _cachedKey;
     if (k == null) throw StateError('Coffre verrouillé');
-    return k;
+    return (key: Uint8List.fromList(k), epoch: _lockEpoch);
+  }
+
+  /// Lève si le coffre a été verrouillé depuis l'ouverture de l'opération d'époque [epoch].
+  ///
+  /// À appeler juste AVANT d'écrire une sortie : une opération que le verrouillage a
+  /// interrompue échoue, plutôt que de terminer comme si de rien n'était.
+  ///
+  /// Fenêtre résiduelle, assumée : un verrouillage survenu PENDANT une écriture déjà lancée la
+  /// laisse se terminer. Le fichier écrit l'est avec la copie de la clé, donc valide et lisible ;
+  /// seul `decryptToTemp`, qui écrit du clair, revérifie après l'écriture et efface.
+  void _ensureNotLockedSince(int epoch) {
+    if (epoch != _lockEpoch || _cachedKey == null) {
+      throw _LockedDuringOperation();
+    }
   }
 
   Uint8List _randomBytes(int n) => SecretBytes.randomBytes(n);
@@ -1323,4 +1757,32 @@ class _BackupEntry {
   final String name;
   final Uint8List plain;
   const _BackupEntry(this.name, this.plain);
+}
+
+/// Résultat de [VaultService.repairZeroKeyFilesOnce].
+class ZeroKeyRepairResult {
+  /// Fichiers du coffre examinés par ce balayage (0 pour un compte rendu conservé).
+  final int scanned;
+
+  /// Noms (sans `.enc`) des fichiers réparés, à montrer à l'utilisateur.
+  final List<String> repaired;
+
+  /// Noms (sans `.enc`) des fichiers que la réparation n'a pas pu vérifier (trop gros, erreur de
+  /// lecture ou de mémoire), une fois le balayage achevé.
+  final List<String> unexamined;
+
+  const ZeroKeyRepairResult({
+    this.scanned = 0,
+    required this.repaired,
+    this.unexamined = const <String>[],
+  });
+}
+
+/// Un verrouillage est survenu pendant une opération sur le coffre (cf. `_openOp`).
+///
+/// Sous-type de [StateError], comme les autres erreurs « coffre verrouillé » : les appelants
+/// n'ont rien à changer. Un type à part permet à la restauration de le laisser traverser le
+/// `catch` de chaque entrée, qui compterait sinon un simple échec et continuerait.
+class _LockedDuringOperation extends StateError {
+  _LockedDuringOperation() : super('Coffre verrouillé pendant l\'opération');
 }

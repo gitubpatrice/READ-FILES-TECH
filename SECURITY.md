@@ -58,7 +58,7 @@ read-files-tech-universel-<version>.apk
 Check the file you downloaded against the digest published for it:
 
 ```bash
-sha256sum read-files-tech-arm64-v8a-2.15.2.apk
+sha256sum read-files-tech-arm64-v8a-2.15.3.apk
 ```
 
 The value must match exactly. If it does not, do not install the APK.
@@ -67,7 +67,7 @@ You can also check that the signing certificate has not changed, which is what
 actually ties a download to this project:
 
 ```bash
-apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.2.apk
+apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.3.apk
 ```
 
 The certificate SHA-256 has been stable across versions, so a build that presents
@@ -98,6 +98,54 @@ Out of scope:
 Summarised per version. The full account, with the reasoning behind each fix, is
 in [SECURITY.fr.md](./SECURITY.fr.md).
 
+- **v2.15.3** (2026-10-10) — Two vault fixes, and no network permission any more.
+  (D1) A vault lock that landed *during* an import or a restore (leaving the vault
+  screen, 30 s in the background, 3 min of inactivity) let the operation finish
+  without any error using a key of 32 zero bytes: the file could not be opened
+  with the real password, could be decrypted by anyone, and a folder import could
+  then delete the original. Each operation now works on its own copy of the key
+  and stops before writing if the vault was locked in the meantime: an
+  interrupted import writes nothing (so a folder import does not delete the
+  original), an interrupted restore stops, and nothing is encrypted under a
+  zeroed key. A write already under way when the lock lands completes, with a
+  valid key, so its file stays readable; a decryption to the cache, which writes
+  plaintext, checks again and erases it. Resetting the vault now locks it before
+  anything else, so an import in flight cannot land in the new vault.
+  (D2) After the phone rebooted, the brute-force lockout (5 failures) could last
+  about as long as the previous uptime — days — correct password included,
+  because the "monotonic" deadline came from the previous boot. A deadline that
+  cannot belong to the current boot is now ignored, for unlocking and for backup
+  restore alike; what is no longer covered is rebooting *and* moving the wall
+  clock forward, at the cost of one reboot per attempt. Both reproduced on
+  2026-10-10 on an emulator with 2.15.2, both covered by tests; no known
+  exploitation. Also: the automatic update check
+  (GitHub Releases API, at launch and from the About screen) is removed — the
+  About screen opens the releases page in the browser — and `INTERNET` and
+  `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
+  merged release manifest against a reviewed list of nine permissions, with a
+  negative control.
+  D1 dates back to v2.5.5 (the in-place wipe in `lock()` arrived with the v2
+  format), so it affects v2.5.5 to v2.15.2, and only v2 files.
+  *Files already affected* are repaired at the unlock that follows the update:
+  each vault file that an all-zero key opens is re-encrypted under the right key,
+  checked by a round trip, and replaced atomically if it has not changed since it
+  was read. A sound file is never decrypted by this pass. A file unreadable for
+  another reason is left untouched. A file the pass cannot check (larger than a
+  backup, a read error, or one the app died on) is skipped and, once the pass is
+  over, listed as "not verified": if it does not open, import the original again
+  if it still exists, or run the restore again from the `.rftvault` backup. The
+  names repaired or not verified are shown until the user has seen them. The pass
+  completes once (resumed after an interruption, retried up to three times while
+  files remain unverified) and never runs on a vault created with 2.15.3.
+  Limits: accepting an all-zero-key file widens what the vault accepts, and the
+  "done" marker is an ordinary preference. An actor able to WRITE to the app's
+  private storage (in practice, a rooted phone; Android backup is disabled for
+  this app) could clear it and replay the pass to get a file accepted, including
+  a substitute for an existing one — content injection, not disclosure; the
+  dialog warns not to trust a "repaired" file that opened normally before the
+  update. And repairing does not undo past exposure: the old all-zero-key copy
+  may survive in freed flash blocks or in copies made earlier; treat such content
+  as exposed to anyone who had access to the app's storage.
 - **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
   13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
   Two version ceilings documented against an AGP 8 packaging defect. PDF signing

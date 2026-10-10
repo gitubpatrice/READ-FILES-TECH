@@ -4,6 +4,73 @@
 
 ## Historique des durcissements
 
+- **v2.15.3** (2026-10-10) — Deux correctifs du coffre, et plus aucune permission
+  réseau. Les deux défauts ont été reproduits le 2026-10-10 sur émulateur avec la
+  2.15.2, et sont couverts par des tests. Aucune exploitation connue.
+  D1 remonte à la v2.5.5 (l'effacement en place dans `lock()` est arrivé avec le
+  format v2) : il touche les versions 2.5.5 à 2.15.2, et seulement des fichiers v2.
+  *Les fichiers déjà touchés* sont réparés au déverrouillage qui suit la mise à
+  jour : chaque fichier du coffre qu'une clé nulle ouvre est rechiffré sous la
+  bonne clé, vérifié par aller-retour, et remplacé atomiquement s'il n'a pas changé
+  depuis sa lecture. Un fichier sain n'est jamais déchiffré par ce passage. Un
+  fichier illisible pour une autre raison n'est pas touché. Un fichier que le
+  passage ne peut pas vérifier (plus gros qu'une sauvegarde, erreur de lecture, ou
+  fichier sur lequel l'application s'est arrêtée) est écarté puis, le passage
+  achevé, signalé « non vérifié » : s'il ne s'ouvre pas, importer à nouveau
+  l'original s'il existe encore, ou relancer la restauration depuis la sauvegarde
+  `.rftvault`. Les noms réparés ou non vérifiés sont montrés jusqu'à ce que
+  l'utilisateur les ait vus. Le passage s'achève une fois (repris après une
+  interruption, retenté jusqu'à trois fois tant que des fichiers restent non
+  vérifiés) et n'a jamais lieu pour un coffre créé avec la 2.15.3.
+  Limites : accepter un fichier à clé nulle élargit ce que le coffre accepte, et
+  le marqueur « fait » est une préférence ordinaire. Un acteur capable d'ÉCRIRE
+  dans le stockage privé de l'application (en pratique, un téléphone rooté ; la
+  sauvegarde Android est coupée pour cette application) pourrait l'effacer et
+  rejouer le passage pour faire accepter un fichier, y compris en remplacement
+  d'un fichier existant — injection de contenu, pas lecture ; la boîte de dialogue
+  invite à ne pas se fier à un fichier « réparé » qui s'ouvrait normalement avant
+  la mise à jour. Et réparer n'efface pas l'exposition passée : l'ancienne copie à
+  clé nulle peut subsister dans des blocs libérés de la mémoire flash ou dans des
+  copies faites auparavant ; considérer ce contenu comme exposé à quiconque a eu
+  accès au stockage de l'application.
+  - **Coffre, D1 — verrouillage pendant une opération** — Un verrouillage du
+    coffre survenu *pendant* un import ou une restauration (sortie de l'écran,
+    30 s en arrière-plan, 3 min d'inactivité) laissait l'opération se terminer
+    **sans erreur** avec une clé de 32 octets nuls : le fichier produit était
+    illisible avec le vrai mot de passe, déchiffrable par n'importe qui, et
+    l'import de dossier pouvait ensuite supprimer l'original. Une restauration
+    interrompue de la même façon écrivait les entrées restantes sous la clé
+    nulle. Chaque opération travaille désormais sur sa propre copie de la clé, et
+    s'arrête avant d'écrire si le coffre a été verrouillé entre-temps : un import
+    interrompu n'écrit rien (l'import de dossier ne supprime donc pas
+    l'original), une restauration interrompue s'arrête, et rien n'est plus
+    chiffré sous une clé nulle. Une écriture déjà lancée quand le verrouillage
+    survient se termine, avec une clé valide : son fichier reste lisible ; un
+    déchiffrement vers le cache, qui écrit du clair, revérifie et l'efface. La
+    réinitialisation du coffre le verrouille désormais avant toute autre chose :
+    un import en cours ne peut plus atterrir dans le coffre neuf.
+  - **Coffre, D2 — blocage après redémarrage** — Après un redémarrage du
+    téléphone, le blocage anti force brute (5 échecs) pouvait durer de l'ordre du
+    temps de fonctionnement précédent — des jours —, bon mot de passe compris :
+    l'échéance « monotone » (`elapsedRealtime`, cf. F3 v2.13.0) venait du
+    démarrage précédent, alors que cette horloge repart de zéro à chaque
+    démarrage. Une échéance qui ne peut pas appartenir au démarrage en cours est
+    désormais ignorée, et l'autre horloge décide — même règle pour le
+    déverrouillage et pour la restauration d'une sauvegarde, calculées par une
+    seule fonction (`lib/services/vault/vault_lockout.dart`). Dans un même
+    démarrage, avancer l'horloge murale ne lève toujours pas le blocage. Ce qui
+    n'est plus couvert : redémarrer **et** avancer l'horloge murale ; chaque
+    essai coûte alors un redémarrage.
+  - **Réseau** — La vérification automatique de mise à jour (API GitHub
+    Releases, au lancement et depuis « À propos ») est supprimée : le bouton
+    « Vérifier les mises à jour » ouvre la page des versions dans le navigateur.
+    `INTERNET` et `ACCESS_NETWORK_STATE` sont retirées du manifeste fusionné par
+    `tools:node="remove"`, comme sur les autres applications Files Tech. La CI
+    contrôle le manifeste fusionné de la variante release contre une liste revue
+    de neuf permissions, à chaque exécution et avant chaque publication
+    (`tools/check-manifest-permissions.py`, avec contrôle négatif).
+    `PRIVACY.fr.md` §6 bis et §9.
+
 - **v2.15.2** (2026-09-20) — Chaîne de dépendances débloquée à sa source dans
   `files_tech_core` : `share_plus` 13, `package_info_plus` 10, `file_picker` 13,
   Syncfusion 34.2.8, ML Kit 0.17.1. Deux plafonds de version documentés contre un
@@ -313,7 +380,7 @@ read-files-tech-universel-<version>.apk
 Vérifiez le fichier téléchargé contre l'empreinte publiée pour lui :
 
 ```bash
-sha256sum read-files-tech-arm64-v8a-2.15.2.apk
+sha256sum read-files-tech-arm64-v8a-2.15.3.apk
 ```
 
 Le résultat doit correspondre exactement. Sinon, ne pas installer l'APK.
@@ -322,7 +389,7 @@ Vous pouvez aussi contrôler que le certificat de signature n'a pas changé — 
 lui qui rattache réellement un téléchargement à ce projet :
 
 ```bash
-apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.2.apk
+apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.3.apk
 ```
 
 Le SHA-256 du certificat est stable d'une version à l'autre : un binaire qui en

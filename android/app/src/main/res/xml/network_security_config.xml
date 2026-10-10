@@ -5,10 +5,7 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <domain-config>
-        <domain includeSubdomains="false">api.github.com</domain>
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </domain-config>
+    <!-- Le domain-config d'api.github.com (vérification de mise à jour) est retiré en
+         v2.15.3 avec la permission INTERNET : l'application ne se connecte plus à rien.
+         Cette base reste, en défense en profondeur. -->
 </network-security-config>
