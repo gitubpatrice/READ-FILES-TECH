@@ -745,6 +745,16 @@ void main() {
   // premier `await` : c'est ce que provoquent la sortie de l'écran du coffre, 30 s en
   // arrière-plan ou 3 min d'inactivité.
 
+  // Précis, pas « une StateError quelconque » (audit 3 axes du 2026-10-10) : l'erreur attendue
+  // est celle d'une opération interrompue par un verrouillage, pas « coffre verrouillé » au départ.
+  final lockedDuringOp = throwsA(
+    isA<StateError>().having(
+      (e) => e.message,
+      'message',
+      contains('pendant l'),
+    ),
+  );
+
   bool decryptsWithZeroKey(File enc) {
     try {
       decryptAuto(
@@ -768,7 +778,7 @@ void main() {
 
       final pending = VaultService.instance.importFileSafe(src);
       VaultService.instance.lock();
-      await expectLater(pending, throwsA(isA<StateError>()));
+      await expectLater(pending, lockedDuringOp);
 
       expect(
         File('${vaultDir().path}/d1.bin.enc').existsSync(),
@@ -808,7 +818,7 @@ void main() {
 
       final pending = VaultService.instance.decryptToTemp(enc);
       VaultService.instance.lock();
-      await expectLater(pending, throwsA(isA<StateError>()));
+      await expectLater(pending, lockedDuringOp);
 
       final staging = Directory('${tmp.path}/cache/vault_decrypt');
       final left = staging.existsSync()
@@ -832,7 +842,7 @@ void main() {
 
       final pending = VaultService.instance.unlockWithPassword('d1 unlock');
       VaultService.instance.lock();
-      await expectLater(pending, throwsA(isA<StateError>()));
+      await expectLater(pending, lockedDuringOp);
 
       expect(VaultService.instance.isUnlocked, isFalse);
       final prefs = await SharedPreferences.getInstance();
@@ -873,7 +883,7 @@ void main() {
 
     final pending = VaultService.instance.importFileSafe(src);
     final resetting = VaultService.instance.reset();
-    await expectLater(pending, throwsA(isA<StateError>()));
+    await expectLater(pending, lockedDuringOp);
     await resetting;
 
     expect(src.existsSync(), isTrue);
@@ -910,7 +920,7 @@ void main() {
         exportPassword: 'exp',
       );
       VaultService.instance.lock();
-      await expectLater(pending, throwsA(isA<StateError>()));
+      await expectLater(pending, lockedDuringOp);
 
       expect(
         await VaultService.instance.unlockWithPassword('d1 restore'),

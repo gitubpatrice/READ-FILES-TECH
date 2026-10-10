@@ -81,7 +81,9 @@ def declared_permissions(manifest_path: str) -> set[str]:
     """Every `android:name` of a `<uses-permission>` element, parsed as XML rather than grepped."""
     root = ET.parse(manifest_path).getroot()
     names = set()
-    for tag in ("uses-permission", "uses-permission-sdk-23"):
+    # `uses-permission-sdk-m` is the historical alias of sdk-23: the merger keeps it (aapt2
+    # refuses it, measured on App Manager Tech), so it is read too.
+    for tag in ("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-m"):
         for element in root.iter(tag):
             name = element.get(f"{{{ANDROID_NS}}}name")
             if name:
@@ -169,6 +171,9 @@ def negative_control() -> int:
         ),
         "INTERNET en uses-permission-sdk-23": (
             allowed + '  <uses-permission-sdk-23 android:name="android.permission.INTERNET" />\n', 1,
+        ),
+        "INTERNET en uses-permission-sdk-m": (
+            allowed + '  <uses-permission-sdk-m android:name="android.permission.INTERNET" />\n', 1,
         ),
         "permission hors liste": (
             allowed + '  <uses-permission android:name="android.permission.READ_CONTACTS" />\n', 1,

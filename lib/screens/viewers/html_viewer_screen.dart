@@ -239,8 +239,10 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
     // JavaScript désactivé.
     //
     // L'atténuation supposée (« pas de permission INTERNET en release »)
-    // n'existe pas : `aapt dump permissions` sur l'APK v2.14.0 publié montre
-    // INTERNET, injectée par `transport-backend-cct` via ML Kit.
+    // n'existait pas jusqu'à la v2.15.2 : `aapt dump permissions` sur l'APK
+    // v2.14.0 publié montre INTERNET, injectée par `transport-backend-cct` via
+    // ML Kit. Depuis la v2.15.3 elle est retirée et la CI le vérifie ; la CSP
+    // reste, en défense en profondeur.
     //
     // `webview_flutter` n'expose PAS `shouldInterceptRequest` (vérifié dans
     // `webview_flutter_android` 4.13.0 : ni intercepteur de ressources, ni

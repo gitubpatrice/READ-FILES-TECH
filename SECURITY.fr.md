@@ -7,6 +7,12 @@
 - **v2.15.3** (2026-10-10) — Deux correctifs du coffre, et plus aucune permission
   réseau. Les deux défauts ont été reproduits le 2026-10-10 sur émulateur avec la
   2.15.2, et sont couverts par des tests. Aucune exploitation connue.
+  *Suis-je concerné par D1 ?* Seulement si un fichier du coffre, importé ou
+  restauré avec une version antérieure, ne s'ouvre plus avec le bon mot de passe.
+  La 2.15.3 empêche les nouveaux cas mais ne répare pas les anciens : si le
+  fichier source existe encore (l'import de dossier ne le supprime que si son
+  option est cochée), l'importer à nouveau ; une restauration peut être relancée
+  depuis la sauvegarde `.rftvault`.
   - **Coffre, D1 — verrouillage pendant une opération** — Un verrouillage du
     coffre survenu *pendant* un import ou une restauration (sortie de l'écran,
     30 s en arrière-plan, 3 min d'inactivité) laissait l'opération se terminer

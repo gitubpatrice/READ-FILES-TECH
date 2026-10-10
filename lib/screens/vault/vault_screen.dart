@@ -159,7 +159,10 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         onCreated: () async {
           setState(() {
             _setup = true;
-            _unlocked = true;
+            // Lu, pas supposé (audit 3 axes du 2026-10-10) : un verrouillage pendant la
+            // création (inactivité, panique) laisse le coffre créé mais VERROUILLÉ, et
+            // l'écran d'ouverture doit alors s'afficher, pas un coffre vide sans clé.
+            _unlocked = _service.isUnlocked;
           });
         },
       );

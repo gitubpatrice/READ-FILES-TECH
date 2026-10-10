@@ -124,6 +124,11 @@ in [SECURITY.fr.md](./SECURITY.fr.md).
   `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
   merged release manifest against a reviewed list of nine permissions, with a
   negative control.
+  *Am I affected by D1?* Only if a vault file that was imported or restored with
+  an earlier version no longer opens with the right password. 2.15.3 prevents new
+  cases but does not repair old ones: if the source file still exists (the folder
+  import deletes it only when its option is checked), import it again; a
+  restore can be run again from the `.rftvault` backup.
 - **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
   13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
   Two version ceilings documented against an AGP 8 packaging defect. PDF signing
