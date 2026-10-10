@@ -1004,4 +1004,117 @@ void main() {
     );
     expect(res.total, 1);
   });
+
+  // ── Réparation unique des fichiers chiffrés par une clé nulle (D1, 2.15.2) ──
+
+  /// Ce que la 2.15.2 écrivait sous D1 : un blob v2 valide, chiffré avec 32 octets nuls.
+  File plantZeroKeyFile(String encName, List<int> plain) {
+    final f = File('${vaultDir().path}/$encName');
+    f.writeAsBytesSync(
+      encryptV2(
+        plain: plain,
+        key: Uint8List(32),
+        nonce: Uint8List.fromList(List.generate(12, (i) => i + 1)),
+        filename: encName,
+      ),
+    );
+    return f;
+  }
+
+  test(
+    'la réparation rechiffre un fichier que la 2.15.2 avait chiffré avec une clé nulle',
+    () async {
+      await VaultService.instance.setupWithPassword('reparation');
+      // Coffre « venu de la 2.15.2 » : le drapeau posé à la création est retiré.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('vault_zero_key_repair_v1');
+
+      final sain = File(
+        await VaultService.instance.importFileSafe(
+          sourceFile('sain.txt', utf8.encode('sain')),
+        ),
+      );
+      final payload = List<int>.generate(3000, (i) => (i * 7) & 0xFF);
+      final abime = plantZeroKeyFile('abime.bin.enc', payload);
+      // Corrompu pour une autre raison (magic v2, contenu quelconque) : à laisser tel quel.
+      final casse = File('${vaultDir().path}/casse.bin.enc')
+        ..writeAsBytesSync([0x52, 0x46, 0x54, 0x32, ...List.filled(64, 7)]);
+      final avantSain = sain.readAsBytesSync();
+      final avantCasse = casse.readAsBytesSync();
+      expect(decryptsWithZeroKey(abime), isTrue);
+
+      final res = await VaultService.instance.repairZeroKeyFilesOnce();
+      expect(res, isNotNull);
+      expect(res!.repaired, ['abime.bin']);
+      expect(res.scanned, 3);
+
+      expect(
+        decryptsWithZeroKey(abime),
+        isFalse,
+        reason: 'plus de chiffré à clé nulle',
+      );
+      expect(
+        (await VaultService.instance.exportFile(
+          abime,
+          outDir(),
+        )).readAsBytesSync(),
+        equals(payload),
+      );
+      expect(
+        sain.readAsBytesSync(),
+        equals(avantSain),
+        reason: 'fichier sain intact',
+      );
+      expect(
+        casse.readAsBytesSync(),
+        equals(avantCasse),
+        reason: 'fichier cassé intact',
+      );
+
+      expect(
+        await VaultService.instance.repairZeroKeyFilesOnce(),
+        isNull,
+        reason: 'une seule fois',
+      );
+    },
+  );
+
+  test(
+    'un coffre créé par la 2.15.3 n\'accepte jamais de fichier à clé nulle',
+    () async {
+      await VaultService.instance.setupWithPassword('neuf');
+      final planted = plantZeroKeyFile(
+        'depose.bin.enc',
+        utf8.encode('injecté'),
+      );
+
+      expect(await VaultService.instance.repairZeroKeyFilesOnce(), isNull);
+      expect(decryptsWithZeroKey(planted), isTrue, reason: 'pas rechiffré');
+      await expectLater(
+        VaultService.instance.exportFile(planted, outDir()),
+        throwsA(anything),
+        reason: 'toujours refusé par la vraie clé',
+      );
+    },
+  );
+
+  test('un verrouillage pendant la réparation la laisse à refaire', () async {
+    await VaultService.instance.setupWithPassword('reparation verrou');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('vault_zero_key_repair_v1');
+    final abime = plantZeroKeyFile('v.bin.enc', utf8.encode('v'));
+
+    final pending = VaultService.instance.repairZeroKeyFilesOnce();
+    VaultService.instance.lock();
+    await expectLater(pending, throwsA(isA<StateError>()));
+    expect(prefs.getBool('vault_zero_key_repair_v1'), isNot(true));
+    expect(decryptsWithZeroKey(abime), isTrue);
+
+    expect(
+      await VaultService.instance.unlockWithPassword('reparation verrou'),
+      isTrue,
+    );
+    final res = await VaultService.instance.repairZeroKeyFilesOnce();
+    expect(res!.repaired, ['v.bin']);
+  });
 }

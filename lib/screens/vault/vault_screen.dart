@@ -171,6 +171,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
       return _UnlockScreen(
         onUnlocked: () {
           setState(() => _unlocked = true);
+          _repairZeroKeyFiles();
         },
         onReset: () async {
           final ok = await _confirmReset(context);
@@ -192,6 +193,42 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         _service.lock();
         setState(() => _unlocked = false);
       },
+    );
+  }
+
+  /// Réparation UNIQUE des fichiers que la 2.15.2 a chiffrés avec une clé nulle (défaut D1),
+  /// au premier déverrouillage après la mise à jour. Silencieuse s'il n'y a rien à réparer, ou si
+  /// le coffre est reverrouillé entre-temps : elle reprendra au déverrouillage suivant.
+  Future<void> _repairZeroKeyFiles() async {
+    final ZeroKeyRepairResult? res;
+    try {
+      res = await _service.repairZeroKeyFilesOnce();
+    } catch (_) {
+      return;
+    }
+    if (res == null || res.repaired.isEmpty || !mounted) return;
+    final repaired = res.repaired;
+    final n = repaired.length;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(n == 1 ? 'Fichier réparé' : '$n fichiers réparés'),
+        content: SingleChildScrollView(
+          child: Text(
+            'La version 2.15.2 pouvait enregistrer un fichier du coffre avec une '
+            'clé vide, lorsque le coffre se verrouillait pendant un import ou une '
+            'restauration. ${n == 1 ? 'Ce fichier a été réparé et s\'ouvre' : 'Ces fichiers ont été réparés et s\'ouvrent'} '
+            'à nouveau avec votre mot de passe :\n\n'
+            '${repaired.map((name) => '• $name').join('\n')}',
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 

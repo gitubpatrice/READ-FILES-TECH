@@ -124,11 +124,14 @@ in [SECURITY.fr.md](./SECURITY.fr.md).
   `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
   merged release manifest against a reviewed list of nine permissions, with a
   negative control.
-  *Am I affected by D1?* Only if a vault file that was imported or restored with
-  an earlier version no longer opens with the right password. 2.15.3 prevents new
-  cases but does not repair old ones: if the source file still exists (the folder
-  import deletes it only when its option is checked), import it again; a
-  restore can be run again from the `.rftvault` backup.
+  *Files already affected by D1* are repaired: at the first unlock after the
+  update, every vault file that the right key refuses but an all-zero key opens
+  is re-encrypted under the right key, read back, and its name is shown to the
+  user. This pass runs ONCE per vault, and never on a vault created with 2.15.3:
+  accepting an all-zero-key file is a widening of what the vault accepts (anyone
+  able to write to the app's private storage could plant one), so it is allowed
+  only for files that existed before the first unlock with the fixed version. A
+  file unreadable for another reason is left untouched.
 - **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
   13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
   Two version ceilings documented against an AGP 8 packaging defect. PDF signing
