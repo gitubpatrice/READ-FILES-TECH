@@ -115,6 +115,15 @@ jobs:
         working-directory: read_files_tech
         run: flutter build apk --release --split-per-abi
 
+      # Aucune permission réseau depuis la 2.15.3 : contrôlé sur le manifeste fusionné de CETTE
+      # build, celle qui est publiée. Une permission réseau ou hors liste revue arrête la release
+      # avant toute publication.
+      - name: Aucune permission reseau dans l'APK publie
+        working-directory: read_files_tech
+        run: |
+          python3 tools/check-manifest-permissions.py --controle-negatif
+          python3 tools/check-manifest-permissions.py
+
       - name: Recuperer les 3 APK par ABI
         run: |
           set -euo pipefail

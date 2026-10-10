@@ -41,7 +41,7 @@ Verified by unpacking the published release APK, not inferred from `pubspec.yaml
 | --- | --- | --- |
 | `libmlkit_google_ocr_pipeline.so` + `assets/mlkit-google-ocr-models` | Google ML Kit | OCR model bundled — runs fully offline. |
 | `play-services-mlkit-document-scanner` | Google Play services | Thin client: the scanner UI and model are downloaded on demand and require Play services. |
-| `transport-backend-cct`, `transport-runtime`, `transport-api` | Google | Telemetry transport pulled in by ML Kit. It contributed `INTERNET` and `ACCESS_NETWORK_STATE` to the merged manifest until v2.15 declared them explicitly in the source manifest — the app uses them itself for the update check. See `PRIVACY.md` §6 bis and §9 bis. |
+| `transport-backend-cct`, `transport-runtime`, `transport-api` | Google | Telemetry transport pulled in by ML Kit. It adds `INTERNET` and `ACCESS_NETWORK_STATE` at manifest merge time; since v2.15.3 the source manifest removes both (`tools:node="remove"`) and the app holds no network permission, checked in CI on the merged release manifest. Its components are removed from the manifest as well. See `PRIVACY.md` §9 and §9 bis. |
 
 ## Direct Flutter / Dart dependencies
 

@@ -1,7 +1,7 @@
 import 'package:files_tech_core/files_tech_core.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import '../services/app_update.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'settings_screen.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -14,8 +14,6 @@ class AboutScreen extends StatefulWidget {
 class _AboutScreenState extends State<AboutScreen> {
   static const _author = 'Patrice Haltaya';
   String _version = '';
-
-  bool _checkingUpdate = false;
 
   @override
   void initState() {
@@ -122,99 +120,34 @@ class _AboutScreenState extends State<AboutScreen> {
     ),
   ];
 
-  Future<void> _checkUpdate() async {
-    setState(() => _checkingUpdate = true);
-    final info = await AppUpdate.checkForUpdate(force: true);
-    if (!mounted) return;
-    setState(() => _checkingUpdate = false);
-    if (info == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vous avez déjà la dernière version ✓')),
+  /// Page des versions, ouverte dans le navigateur.
+  ///
+  /// Depuis la 2.15.3, l'application n'a plus aucune permission Internet, comme les autres
+  /// applications Files Tech : elle ne vérifie plus rien en ligne d'elle-même. Ce bouton confie
+  /// la question au navigateur, qui est le seul à se connecter.
+  static final _releasesUrl = Uri.parse(
+    'https://github.com/gitubpatrice/READ-FILES-TECH/releases/latest',
+  );
+
+  Future<void> _openReleases() async {
+    var opened = false;
+    try {
+      opened = await launchUrl(
+        _releasesUrl,
+        mode: LaunchMode.externalApplication,
       );
-      return;
+    } catch (_) {
+      // Aucun navigateur, ou lancement refusé : même message ci-dessous.
     }
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          title: Text('v${info.version} disponible'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  info.body.isNotEmpty
-                      ? info.body
-                      : 'Une nouvelle version est disponible.',
-                ),
-                if (info.expectedSha256 != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: cs.outline),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.verified_outlined,
-                              size: 14,
-                              color: cs.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'SHA-256 attendu (APK splits ABI)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        SelectableText(
-                          info.expectedSha256!,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 10,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Vérifiez avant install : sha256sum app-arm64-v8a-release.apk',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Aucun navigateur n\'a pu ouvrir la page des versions.',
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Plus tard'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+        ),
+      );
+    }
   }
 
   @override
@@ -274,19 +207,17 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                   const SizedBox(height: 14),
                   FilledButton.icon(
-                    onPressed: _checkingUpdate ? null : _checkUpdate,
-                    icon: _checkingUpdate
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.system_update_outlined, size: 18),
-                    label: Text(
-                      _checkingUpdate
-                          ? 'Vérification…'
-                          : 'Vérifier les mises à jour',
-                    ),
+                    onPressed: _openReleases,
+                    icon: const Icon(Icons.system_update_outlined, size: 18),
+                    label: const Text('Vérifier les mises à jour'),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Ouvre la page des versions sur GitHub dans votre '
+                    'navigateur — l\'app ne se connecte jamais à Internet '
+                    'elle-même.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -368,8 +299,10 @@ class _AboutScreenState extends State<AboutScreen> {
             const _HelpCard(
               title: 'Mise à jour',
               steps: [
-                'L\'app vérifie automatiquement les mises à jour au lancement',
-                'Ou appuie sur "Vérifier les mises à jour" ci-dessus',
+                'L\'app ne se connecte pas à Internet : elle ne cherche pas '
+                    'les mises à jour d\'elle-même',
+                'Appuie sur "Vérifier les mises à jour" ci-dessus : la page '
+                    'des versions s\'ouvre dans ton navigateur',
               ],
             ),
 
@@ -448,7 +381,7 @@ class _PrivacyCard extends StatelessWidget {
     (
       icon: Icons.wifi_off,
       color: Color(0xFF43A047),
-      label: 'Fonctionne hors ligne',
+      label: 'Aucune permission Internet',
     ),
     (
       icon: Icons.visibility_off,

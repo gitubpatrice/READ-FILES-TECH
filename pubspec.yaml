@@ -124,9 +124,6 @@ dependencies:
   syncfusion_flutter_pdf: ^34.2.8
   syncfusion_flutter_pdfviewer: ^34.2.8
 
-  # HTTP (utilisé par UpdateService pour GitHub Releases API)
-  http: ^1.2.0
-
   # Dates
   intl: ^0.20.0
 
