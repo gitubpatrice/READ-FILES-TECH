@@ -115,6 +115,25 @@ void main() {
     );
   });
 
+  test(
+    'redémarrer PUIS reculer l\'heure ne libère pas le coffre (échec fermé)',
+    () {
+      // Relecture Claude du 2026-10-10 : la monotone d'un autre démarrage écartée, l'horloge
+      // murale reculée était écartée à son tour, et le blocage tombait à zéro.
+      expect(
+        lockoutRemainingMs(
+          fails: 5,
+          wallNow: 1000000 - 2 * day,
+          monoNow: 30000,
+          wallDeadline: 1000000 + minute,
+          monoDeadline: 5 * day + minute,
+          monoArmedAt: 5 * day,
+        ),
+        2 * day + minute,
+      );
+    },
+  );
+
   test('aucun échec, aucun blocage, même avec des échéances résiduelles', () {
     expect(
       lockoutRemainingMs(

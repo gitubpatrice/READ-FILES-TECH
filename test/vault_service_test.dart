@@ -822,6 +822,48 @@ void main() {
     },
   );
 
+  // Relecture Claude du 2026-10-10 (défaut antérieur à la 2.15.3) : un verrouillage pendant la
+  // dérivation d'Argon2 était suivi de l'installation de la clé.
+  test(
+    'un verrouillage pendant un déverrouillage n\'installe pas la clé',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 unlock');
+      VaultService.instance.lock();
+
+      final pending = VaultService.instance.unlockWithPassword('d1 unlock');
+      VaultService.instance.lock();
+      await expectLater(pending, throwsA(isA<StateError>()));
+
+      expect(VaultService.instance.isUnlocked, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getInt('vault_unlock_fails'),
+        isNull,
+        reason: 'pas un échec',
+      );
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 unlock'),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'jumeau : un verrouillage pendant la création laisse le coffre verrouillé',
+    () async {
+      final pending = VaultService.instance.setupWithPassword('d1 setup');
+      VaultService.instance.lock();
+      await pending;
+
+      expect(VaultService.instance.isUnlocked, isFalse);
+      expect(await VaultService.instance.isSetup(), isTrue);
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 setup'),
+        isTrue,
+      );
+    },
+  );
+
   // Relecture GPT 5.6 du 2026-10-10 : `reset()` n'incrémentait l'époque qu'à la fin, après la
   // suppression du dossier. Un import en cours écrivait sous l'ancienne clé dans le coffre neuf
   // et se disait réussi ; l'import de dossier supprimait alors l'original.

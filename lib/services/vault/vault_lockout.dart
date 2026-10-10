@@ -32,8 +32,17 @@ int lockoutDelayMs(int fails) {
 ///
 /// Une telle échéance est écartée ; la seconde horloge décide. Dans le démarrage en cours, la
 /// monotone tient seule si l'on avance l'horloge murale (Réglages → Date et heure) — la
-/// protection de F3 v2.13.0 est intacte. Ce qui n'est plus couvert : redémarrer ET avancer
-/// l'horloge murale ; chaque essai coûte alors un redémarrage.
+/// protection de F3 v2.13.0 est intacte. Quand la monotone n'appartient pas à ce démarrage,
+/// l'horloge murale est la seule qui reste : elle décide alors même reculée (échec fermé,
+/// comme avant la 2.15.3), sans quoi redémarrer puis reculer l'heure libérerait le coffre
+/// (relecture Claude du 2026-10-10).
+///
+/// Limites connues, assumées :
+/// - redémarrer ET avancer l'horloge murale lève le blocage ; chaque essai coûte un redémarrage ;
+/// - un redémarrage n'est pas reconnu si le nouvel uptime dépasse celui de l'armement tout en
+///   restant sous l'échéance : le blocage indu dure alors au plus un délai (30 min au pire).
+///   Le reconnaître sûrement demanderait l'identité du démarrage (`Settings.Global.BOOT_COUNT`,
+///   côté natif) ; pas dans un correctif.
 int lockoutRemainingMs({
   required int fails,
   required int wallNow,
@@ -50,7 +59,7 @@ int lockoutRemainingMs({
   final wallRemaining = wallDeadline - wallNow;
   final wallTrusted = wallRemaining <= delay;
   final mono = monoBelongsToThisBoot ? monoRemaining : 0;
-  final wall = wallTrusted ? wallRemaining : 0;
+  final wall = (wallTrusted || !monoBelongsToThisBoot) ? wallRemaining : 0;
   final remaining = mono > wall ? mono : wall;
   return remaining > 0 ? remaining : 0;
 }

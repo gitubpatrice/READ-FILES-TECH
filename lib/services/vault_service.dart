@@ -162,6 +162,10 @@ class VaultService {
   /// Le calibrage tourne en Isolate (~1-3s) avant la dérivation effective
   /// (~2.5s ciblés). Cible UX globale ~3-5s à la création.
   Future<void> setupWithPassword(String password) async {
+    // Relecture Claude du 2026-10-10 : un verrouillage (sortie de l'écran, panique) pendant les
+    // secondes d'Argon2 était suivi de l'installation de la clé. Le coffre reste créé, mais
+    // verrouillé — même règle que le déverrouillage, son jumeau.
+    final epoch = _lockEpoch;
     final salt = _randomBytes(kVaultSaltLen);
     // Auto-tuning : mesure le device puis choisit des params Argon2id
     // optimaux dans les bornes [4-32 Mo] × [2-4 iter] pour cibler ~2.5s
@@ -198,6 +202,10 @@ class VaultService {
     // Coffre neuf (v2.12.0+) → refuse le fallback v1 (anti-format-confusion).
     await prefs.setBool(_kV2Only, true);
     _v2OnlyCache = true;
+    if (epoch != _lockEpoch) {
+      _zeroize(key);
+      return;
+    }
     _cachedKey = key;
     _publishUnlocked();
   }
@@ -206,6 +214,10 @@ class VaultService {
   /// Lève [StateError] si le coffre est temporairement verrouillé après trop
   /// d'échecs ; le message contient le nombre de secondes restantes.
   Future<bool> unlockWithPassword(String password) async {
+    // Un verrouillage pendant la dérivation (~2,5 s) ne doit pas être suivi de l'installation de
+    // la clé : le coffre se rouvrirait hors de son écran, ou après une panique (relecture Claude
+    // du 2026-10-10, défaut antérieur à la 2.15.3).
+    final epoch = _lockEpoch;
     final prefs = await SharedPreferences.getInstance();
     // F3 v2.13.0 — Lockout = max(wall, monotonic). Empêche bypass via
     // rembobinage Réglages → Date/heure (DateTime.now seul = contournable).
@@ -273,6 +285,9 @@ class VaultService {
       final blob = await check.readAsBytes();
       final plain = _decryptAuto(blob, key, _checkFile);
       if (utf8.decode(plain) == _checkPlain) {
+        // Bon mot de passe, mais le coffre a été verrouillé pendant la dérivation : on n'installe
+        // rien, et ce n'est pas un échec (le `on StateError` ci-dessous efface la clé et relance).
+        if (epoch != _lockEpoch) throw _LockedDuringOperation();
         // Zeroize l'ancienne clé cache (cas double unlock) avant remplacement.
         final old = _cachedKey;
         if (old != null) _zeroize(old);
@@ -319,9 +334,11 @@ class VaultService {
       // qui rembobine la wall-clock voit la deadline monotone, et inversement.
       // D2 — l'instant d'armement dit à quel démarrage la deadline monotone
       // appartient.
+      // L'instant d'armement d'ABORD : un arrêt brutal entre deux écritures laisse alors au pire
+      // une échéance ancienne, que l'invariant borne (relecture Claude du 2026-10-10).
+      await prefs.setInt(_kLockoutArmedElapsed, nowMono);
       await prefs.setInt(_kLockoutUntil, now + delayMs);
       await prefs.setInt(_kLockoutUntilElapsed, nowMono + delayMs);
-      await prefs.setInt(_kLockoutArmedElapsed, nowMono);
     }
     // Zeroize la clé dérivée (mauvaise) avant retour.
     _zeroize(key);
@@ -357,9 +374,12 @@ class VaultService {
     await prefs.setInt(_kBackupFails, fails);
     final delayMs = lockoutDelayMs(fails);
     if (delayMs > 0) {
+      await prefs.setInt(
+        _kBackupLockoutArmedElapsed,
+        monoNow,
+      ); // d'abord, cf. le jumeau
       await prefs.setInt(_kBackupLockoutUntil, wallNow + delayMs);
       await prefs.setInt(_kBackupLockoutUntilElapsed, monoNow + delayMs);
-      await prefs.setInt(_kBackupLockoutArmedElapsed, monoNow);
     }
   }
 
