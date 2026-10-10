@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        No network permission (docs D-014, since Flutter 2.15.3). Removed explicitly, in case a library
+        adds one at merge time: the CI reads the MERGED release manifest and the release APK against a
+        reviewed list, with a negative control (tools/check-manifest-permissions.py).
+    -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <!--
+        allowBackup / fullBackupContent / dataExtractionRules: the same as the 2.15.x. The app keeps an
+        encrypted vault and reads every file of the phone: none of its data goes to a cloud backup or a
+        device transfer. SECURITY.md states "Android backup is disabled for this app".
+    -->
+    <application
+        android:name=".RftApplication"
+        android:label="${appLabel}"
+        android:icon="@mipmap/launcher_icon"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ReadFilesTech"
+        tools:targetApi="36">
+
+        <!--
+            The FULL name com.readfilestech.read_files_tech.MainActivity is the one of the 2.15.x: the
+            launcher remembers it, and a renamed class would drop the user's pinned icon (docs D-012).
+            Checked by MainActivityNameTest (JVM) and by the instrumented LauncherComponentTest.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

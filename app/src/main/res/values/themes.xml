@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme only: Compose draws everything else (ui/theme/Theme.kt). The window background is
+         the scaffold colour, so nothing flashes between the system splash and the first frame. -->
+    <style name="Theme.ReadFilesTech" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_light</item>
+    </style>
+</resources>

@@ -1,0 +1,85 @@
+# detekt policy for Read Files Tech (Kotlin port) — built upon detekt's default configuration.
+#
+# This repository starts empty, so unlike App Manager Tech (whose policy turns off the layout rules
+# its existing code contradicts), every rule of the default set and of the ktlint `android` preset
+# stays ACTIVE and blocking. Each exception below exists because this project needs it, and says why.
+# There is no baseline, and there must never be one: a baseline lets the next instance through.
+#
+# LIMIT, measured on App Manager Tech and Agenda Tech: under AGP 9, detekt 1.23.8 registers no
+# per-variant task, so the rules that need type resolution (RedundantSuspendModifier,
+# SuspendFunSwallowedCancellation…) never run. TooGenericExceptionCaught below covers the commonest
+# swallowed-cancellation shape; a `catch (e: IllegalStateException)` or a `runCatching { }` around a
+# suspending call still passes, and is reviewed by hand.
+
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  active: true
+  # Compose functions are a declarative UI tree, one lambda per user action: their length and
+  # parameter count describe the screen, not tangled logic.
+  LongMethod:
+    active: true
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    active: true
+    # `Inject`: a Hilt constructor's parameter list is its dependency list.
+    ignoreAnnotated: ['Composable', 'Inject']
+  CyclomaticComplexMethod:
+    active: true
+    ignoreAnnotated: ['Composable']
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: true
+    # By default, naming the variable `ignored` or `expected` exempts a catch-all. Measured on App
+    # Manager Tech: a `catch (ignored: Exception)` around a suspending write passed detekt — the
+    # swallowed-cancellation defect. A catch-all must carry a targeted @Suppress with its reason.
+    allowedExceptionNameRegex: '^$'
+
+naming:
+  active: true
+  FunctionNaming:
+    # Composables are PascalCase by Compose's own convention.
+    ignoreAnnotated: ['Composable']
+  PackageNaming:
+    # The code lives in `com.readfilestech.read_files_tech`, underscores included, and must: the
+    # launcher and the quick-settings panel remember components by their FULL class name, so a
+    # renamed package would drop the user's pinned icon and tiles (docs D-012). Underscores are
+    # allowed; everything else of the default pattern holds.
+    packagePattern: '[a-z]+(\.[a-z][A-Za-z0-9_]*)*'
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    # Theme colours are literals by nature (one hex per tone), and tests state expected values.
+    excludes:
+      - '**/ui/theme/**'
+      - '**/test/**'
+      - '**/androidTest/**'
+    ignoreEnums: true
+  # Same width as App Manager Tech and Agenda Tech, so a reviewer reads every Kotlin app of the
+  # portfolio at the same line length.
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+
+formatting:
+  active: true
+  android: true
+  autoCorrect: false
+
+  # Duplicate of style.MaxLineLength above, which carries the threshold.
+  MaximumLineLength:
+    active: false
+
+  # ktlint's package-name rule refuses underscores outright, with no setting: it would reject the
+  # package that D-012 requires. naming.PackageNaming above checks the package instead.
+  PackageName:
+    active: false

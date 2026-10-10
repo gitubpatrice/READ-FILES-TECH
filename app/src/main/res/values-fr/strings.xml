@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="port_in_progress_title">Version Kotlin en cours</string>
+    <string name="port_in_progress_body">Cette build de Read Files Tech est en cours de réécriture en Kotlin. Elle s\'installe à côté de l\'application publiée et ne peut voir ni ses fichiers, ni son coffre, ni ses réglages.</string>
+    <string name="version_label">Version %1$s</string>
+</resources>

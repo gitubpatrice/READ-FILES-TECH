@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English is the source language (docs, phase 7); values-fr/ carries the French. Every text the user
+     can read goes through these files from the start, error messages included: App Manager Tech found
+     71 texts built in code when it was translated. -->
+<resources>
+    <string name="app_name" translatable="false">Read Files Tech</string>
+    <string name="port_in_progress_title">Kotlin version in progress</string>
+    <string name="port_in_progress_body">This build of Read Files Tech is being rewritten in Kotlin. It installs next to the published app and cannot see its files, vault or settings.</string>
+    <string name="version_label">Version %1$s</string>
+</resources>
