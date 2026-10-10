@@ -58,7 +58,7 @@ read-files-tech-universel-<version>.apk
 Check the file you downloaded against the digest published for it:
 
 ```bash
-sha256sum read-files-tech-arm64-v8a-2.15.2.apk
+sha256sum read-files-tech-arm64-v8a-2.15.3.apk
 ```
 
 The value must match exactly. If it does not, do not install the APK.
@@ -67,7 +67,7 @@ You can also check that the signing certificate has not changed, which is what
 actually ties a download to this project:
 
 ```bash
-apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.2.apk
+apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.3.apk
 ```
 
 The certificate SHA-256 has been stable across versions, so a build that presents
@@ -98,6 +98,28 @@ Out of scope:
 Summarised per version. The full account, with the reasoning behind each fix, is
 in [SECURITY.fr.md](./SECURITY.fr.md).
 
+- **v2.15.3** (2026-10-10) — Two vault fixes, and no network permission any more.
+  (D1) A vault lock that landed *during* an import or a restore (leaving the vault
+  screen, 30 s in the background, 3 min of inactivity) let the operation finish
+  without any error using a key of 32 zero bytes: the file could not be opened
+  with the real password, could be decrypted by anyone, and a folder import could
+  then delete the original. Each operation now works on its own copy of the key
+  and fails if the vault was locked in the meantime: an interrupted import writes
+  nothing (so a folder import no longer deletes the original), an interrupted
+  restore stops, and nothing is encrypted under a zeroed key.
+  (D2) After the phone rebooted, the brute-force lockout (5 failures) could last
+  about as long as the previous uptime — days — correct password included,
+  because the "monotonic" deadline came from the previous boot. A deadline that
+  cannot belong to the current boot is now ignored, for unlocking and for backup
+  restore alike; what is no longer covered is rebooting *and* moving the wall
+  clock forward, at the cost of one reboot per attempt. Both reproduced on
+  2026-10-10 on an emulator with 2.15.2, both covered by tests; no known
+  exploitation. Also: the automatic update check
+  (GitHub Releases API, at launch and from the About screen) is removed — the
+  About screen opens the releases page in the browser — and `INTERNET` and
+  `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
+  merged release manifest against a reviewed list of nine permissions, with a
+  negative control.
 - **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
   13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
   Two version ceilings documented against an AGP 8 packaging defect. PDF signing
