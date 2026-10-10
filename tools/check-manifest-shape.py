@@ -92,7 +92,9 @@ def exported_components(application: ET.Element) -> dict[str, str | None]:
         for element in application.iter(tag):
             exported = element.get(A + "exported")
             has_filter = element.find("intent-filter") is not None
-            if exported == "true" or (exported is None and has_filter):
+            # Anything but a literal "false" counts as exported: the merger can keep a resource
+            # reference (`@bool/x`) whose value this file does not show (review of the guards, 2026-10-10).
+            if (exported is not None and exported != "false") or (exported is None and has_filter):
                 found[element.get(A + "name") or f"<{tag} without a name>"] = element.get(A + "permission")
     return found
 
@@ -133,8 +135,10 @@ def main(argv: list[str]) -> int:
         if value != expected:
             problems.append(f"<application android:{attribute}> is {value!r}, expected {expected!r}.")
     for attribute in NEVER_TRUE:
-        if application.get(A + attribute) == "true":
-            problems.append(f"<application android:{attribute}=\"true\"> in a release manifest.")
+        # Absent or a literal "false" only: a resource reference could hold "true".
+        value = application.get(A + attribute)
+        if value is not None and value != "false":
+            problems.append(f"<application android:{attribute}={value!r}> in a release manifest.")
 
     for name, attributes in REQUIRED_COMPONENT_ATTRIBUTES.items():
         components = [e for tag in COMPONENT_TAGS for e in application.iter(tag) if e.get(A + "name") == name]

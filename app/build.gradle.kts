@@ -208,8 +208,11 @@ require(appVersionCode * 10 + universalRank > highestFlutterCodePublished) {
 // A release that takes the Flutter app's place must be signed by the real key: refused otherwise,
 // before anything is packaged (security review of the skeleton, 2026-10-10, B1). Debug builds keep the
 // debug key, which the phase 2 test needs (debug port over a debug Flutter build).
+// Every task that writes a signed release artefact, read from `:app:tasks --all` under AGP 9.4.1: an AAB
+// (`bundleRelease`) goes through packageReleaseBundle and signReleaseBundle, never through packageRelease.
+val releasePackagingTasks = setOf("packageRelease", "packageReleaseBundle", "signReleaseBundle", "packageReleaseUniversalApk")
 gradle.taskGraph.whenReady {
-    val packagesARelease = allTasks.any { it.project == project && it.name == "packageRelease" }
+    val packagesARelease = allTasks.any { it.project == project && it.name in releasePackagingTasks }
     if (replaceFlutter && packagesARelease && !hasReleaseKey) {
         throw GradleException(
             "A release build with -Prft.replaceFlutter=true needs keystore.properties: signed with the debug " +
