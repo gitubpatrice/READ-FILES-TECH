@@ -1,0 +1,165 @@
+name: CI
+
+# The Kotlin port of Read Files Tech (docs/00-PLAN-PORTAGE.md). Same jobs as App Manager Tech, where
+# each one was measured to catch something the others miss.
+#
+# `kotlin`, `fix/**` and `feat/**` are triggers on purpose: a work branch must not pile up commits with
+# nothing ever running on them (measured on a sibling app: 25 commits, a blocking check failing since
+# the morning, unreported).
+on:
+  push:
+    branches: [main, kotlin, 'fix/**', 'feat/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push to the same ref cancels the previous run: its result is already stale.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Gate (build · unit tests · lint · detekt · R8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      # Before any compilation, and in seconds: the two guards below must prove they can go red, and
+      # for the right reason, before their green is believed.
+      - name: Negative control of the CI guards
+        run: python3 tools/check-guards-negative-control.py
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # One command, the same as the local gate, so CI and a developer's machine can never disagree
+      # about what "green" means. detekt is blocking, with no baseline (config/detekt/detekt.yml).
+      - name: Gate
+        run: ./gradlew --no-daemon :app:assembleDebug testDebugUnitTest :app:lintDebug detekt
+
+      # A green test task does not prove a test ran: when the JUnit Platform stops discovering the
+      # tests (seen after a JUnit 6 bump on a sibling app), Gradle reports success on an empty run.
+      - name: Unit tests were actually executed
+        run: python3 tools/check-test-results.py
+
+      # `isMinifyEnabled` and `isShrinkResources` run in no other job. Without keystore.properties
+      # (absent from the repository, on purpose) the release build falls back to the debug key: what
+      # is checked here is that R8 keeps what the code needs, not the signature.
+      - name: Release build (exercises R8)
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      # The zero-network job reads the merged manifest, an intermediate: anything wired after it in
+      # the build would escape it. This reads the manifest of the release APK itself, the artefact
+      # that ships, through the same guard and its negative control.
+      - name: Assert the permissions of the release APK
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest print \
+            app/build/outputs/apk/release/app-universal-release.apk > "$RUNNER_TEMP/apk-manifest.xml"
+          python3 tools/check-guards-negative-control.py --real-manifest "$RUNNER_TEMP/apk-manifest.xml"
+          python3 tools/check-manifest-permissions.py "$RUNNER_TEMP/apk-manifest.xml"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gate-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  zero-network:
+    name: Zero-network promise
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Only the manifest merge: it needs neither keystore nor R8, and it is where libraries add their
+      # permissions.
+      - name: Merge the release manifest
+        run: ./gradlew --no-daemon :app:processReleaseMainManifest
+
+      # Against the REAL merged manifest as well as fixtures: it must pass as built, and fail once
+      # INTERNET is injected into a copy of it.
+      - name: Negative control against the merged manifest
+        run: >-
+          python3 tools/check-guards-negative-control.py --real-manifest
+          app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+
+      - name: Assert the permissions of the merged release manifest
+        run: python3 tools/check-manifest-permissions.py
+
+  instrumented:
+    name: Instrumented tests (API 29)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # KVM has to be enabled explicitly on GitHub-hosted runners for the emulator to boot.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # API 29 matches the physical test device (Galaxy S9), so a green CI run and a green local run
+      # mean the same thing.
+      #
+      # ⚠️ `connectedDebugAndroidTest` is used HERE ONLY, where the emulator is the sole attached
+      # device. Never run it on a developer machine: it targets EVERY connected device and uninstalls
+      # the app at the end. Locally, install both APKs and target one phone by serial:
+      #   adb -s <serial> shell am instrument -w -r \
+      #     com.readfilestech.read_files_tech.next.test/androidx.test.runner.AndroidJUnitRunner
+      - name: Run instrumented tests on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
+
+      # This runner reports a test skipped by an `assume` as passed: only the reports' `skipped` count
+      # tells them apart, and an empty run looks green too.
+      - name: Instrumented tests were actually executed
+        run: python3 tools/check-test-results.py app/build/outputs/androidTest-results/connected/debug
+
+      - name: Upload instrumented reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumented-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          retention-days: 14
+          if-no-files-found: ignore
