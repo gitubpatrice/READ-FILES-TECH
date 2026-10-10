@@ -1,0 +1,8 @@
+# LF in the repository AND in every working copy, whatever core.autocrlf says: a file copied into the
+# APK must be byte-identical whether it was built on Windows or on Linux (lesson of Notes Tech, whose
+# res/raw pages differed by one byte per line depending on the machine).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.webp binary

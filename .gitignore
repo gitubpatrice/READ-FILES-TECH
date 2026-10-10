@@ -1,0 +1,46 @@
+# === Signing keys and their passwords — NEVER committed (docs D-010) ===
+# The release key of Read Files Tech lives OUTSIDE this repository. The Flutter clone keeps it under
+# android/, ignored only by android/.gitignore: a merge that removes android/ removes that file too,
+# and the key becomes committable there. This root file ignores every form of it from the first
+# commit, whatever directory it lands in.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+key.properties
+keystore.properties
+
+# === Android local config ===
+local.properties
+
+# === Gradle ===
+.gradle/
+build/
+**/build/
+
+# === Kotlin 2.x compiler session and error files ===
+.kotlin/
+
+# === IDE ===
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# === Android Studio / native ===
+captures/
+.cxx/
+*.ap_
+*.dex
+*.class
+obj/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local Claude Code agent worktrees (nested git checkouts), never part of the repository
+/.claude/worktrees/
