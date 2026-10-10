@@ -124,14 +124,18 @@ in [SECURITY.fr.md](./SECURITY.fr.md).
   `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
   merged release manifest against a reviewed list of nine permissions, with a
   negative control.
-  *Files already affected by D1* are repaired: at the first unlock after the
-  update, every vault file that the right key refuses but an all-zero key opens
-  is re-encrypted under the right key, read back, and its name is shown to the
-  user. This pass runs ONCE per vault, and never on a vault created with 2.15.3:
-  accepting an all-zero-key file is a widening of what the vault accepts (anyone
-  able to write to the app's private storage could plant one), so it is allowed
-  only for files that existed before the first unlock with the fixed version. A
-  file unreadable for another reason is left untouched.
+  *Files already affected by D1* are repaired: at the unlock that follows the
+  update, every vault file that the right key cryptographically refuses but an
+  all-zero key opens is re-encrypted under the right key and replaced atomically,
+  provided it has not changed since it was read; its name is shown to the user.
+  A file unreadable for another reason is left untouched. The pass completes once
+  (if interrupted, it resumes at a later unlock; after three failures it gives
+  up), and never runs on a vault created with 2.15.3. Accepting an all-zero-key
+  file widens what the vault accepts, and the "done" marker is an ordinary
+  preference: an actor able to WRITE to the app's private storage (in practice, a
+  rooted phone) could clear it and replay the pass to get a file of their own
+  accepted — content injection, not disclosure. Nothing on the device that this
+  app controls can prevent that rollback.
 - **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
   13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
   Two version ceilings documented against an AGP 8 packaging defect. PDF signing

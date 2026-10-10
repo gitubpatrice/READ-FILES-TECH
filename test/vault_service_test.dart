@@ -1098,6 +1098,25 @@ void main() {
     },
   );
 
+  test(
+    'après trois échecs, la réparation renonce au lieu de rejouer à chaque ouverture',
+    () async {
+      await VaultService.instance.setupWithPassword('reparation echecs');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('vault_zero_key_repair_v1');
+      await prefs.setInt('vault_zero_key_repair_attempts', 3);
+      final abime = plantZeroKeyFile('e.bin.enc', utf8.encode('e'));
+
+      expect(await VaultService.instance.repairZeroKeyFilesOnce(), isNull);
+      expect(prefs.getBool('vault_zero_key_repair_v1'), isTrue);
+      expect(
+        decryptsWithZeroKey(abime),
+        isTrue,
+        reason: 'abandon : rien n\'est réécrit',
+      );
+    },
+  );
+
   test('un verrouillage pendant la réparation la laisse à refaire', () async {
     await VaultService.instance.setupWithPassword('reparation verrou');
     final prefs = await SharedPreferences.getInstance();

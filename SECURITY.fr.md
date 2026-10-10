@@ -7,15 +7,19 @@
 - **v2.15.3** (2026-10-10) — Deux correctifs du coffre, et plus aucune permission
   réseau. Les deux défauts ont été reproduits le 2026-10-10 sur émulateur avec la
   2.15.2, et sont couverts par des tests. Aucune exploitation connue.
-  *Les fichiers déjà touchés par D1* sont réparés : au premier déverrouillage
-  après la mise à jour, tout fichier du coffre que la bonne clé refuse mais qu'une
-  clé nulle ouvre est rechiffré sous la bonne clé, relu, et son nom est montré à
-  l'utilisateur. Ce passage n'a lieu qu'UNE fois par coffre, et jamais pour un
-  coffre créé avec la 2.15.3 : accepter un fichier à clé nulle élargit ce que le
-  coffre accepte (quiconque peut écrire dans le stockage privé de l'application
-  pourrait en déposer un), d'où sa limite aux fichiers présents avant le premier
-  déverrouillage avec la version corrigée. Un fichier illisible pour une autre
-  raison n'est pas touché.
+  *Les fichiers déjà touchés par D1* sont réparés : au déverrouillage qui suit la
+  mise à jour, tout fichier du coffre que la bonne clé refuse cryptographiquement
+  mais qu'une clé nulle ouvre est rechiffré sous la bonne clé et remplacé
+  atomiquement, à condition de ne pas avoir changé depuis sa lecture ; son nom est
+  montré à l'utilisateur. Un fichier illisible pour une autre raison n'est pas
+  touché. Le passage s'achève une fois (interrompu, il reprend à un déverrouillage
+  ultérieur ; après trois échecs, il renonce) et n'a jamais lieu pour un coffre
+  créé avec la 2.15.3. Accepter un fichier à clé nulle élargit ce que le coffre
+  accepte, et le marqueur « fait » est une préférence ordinaire : un acteur capable
+  d'ÉCRIRE dans le stockage privé de l'application (en pratique, un téléphone
+  rooté) pourrait l'effacer et rejouer le passage pour faire accepter un fichier
+  de son cru — injection de contenu, pas lecture. Rien de ce que l'application
+  maîtrise sur l'appareil ne peut empêcher ce retour en arrière.
   - **Coffre, D1 — verrouillage pendant une opération** — Un verrouillage du
     coffre survenu *pendant* un import ou une restauration (sortie de l'écran,
     30 s en arrière-plan, 3 min d'inactivité) laissait l'opération se terminer

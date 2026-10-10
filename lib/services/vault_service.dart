@@ -81,6 +81,9 @@ class VaultService {
   /// ([repairZeroKeyFilesOnce]), ou dès la création d'un coffre neuf, qui n'en a pas.
   static const _kZeroKeyRepairDone = 'vault_zero_key_repair_v1';
 
+  /// Échecs du balayage de réparation (hors verrouillage), pour renoncer après quelques-uns.
+  static const _kZeroKeyRepairAttempts = 'vault_zero_key_repair_attempts';
+
   /// KDF utilisé pour dériver la clé maître depuis le password.
   /// - Absent (null) ou `'pbkdf2'` : PBKDF2-HMAC-SHA256 600 000 itérations
   ///   (legacy, coffres créés avant v2.6.0)
@@ -201,13 +204,16 @@ class VaultService {
     final dir = await _vaultDir();
     final encrypted = _encryptV2(utf8.encode(_checkPlain), key, _checkFile);
     await atomicWriteBytes('${dir.path}/$_checkFile', encrypted);
-    // 3. Flag final SEULEMENT si tout précède a réussi
-    await prefs.setBool(_kSetup, true);
+    // Propriétés du coffre neuf, AVANT le marqueur final (relecture GPT du 2026-10-10) : posées
+    // après lui, un arrêt brutal entre les deux laissait un coffre « créé » sans elles — donc
+    // acceptant le repli v1 et éligible à la réparation « clé nulle ».
     // Coffre neuf (v2.12.0+) → refuse le fallback v1 (anti-format-confusion).
     await prefs.setBool(_kV2Only, true);
     // Coffre neuf : aucun fichier n'a pu y être écrit par la 2.15.2 — pas de réparation
     // « clé nulle », donc jamais de chiffré « clé nulle » accepté (cf. repairZeroKeyFilesOnce).
     await prefs.setBool(_kZeroKeyRepairDone, true);
+    // 3. Flag final SEULEMENT si tout précède a réussi
+    await prefs.setBool(_kSetup, true);
     _v2OnlyCache = true;
     if (epoch != _lockEpoch) {
       _zeroize(key);
@@ -470,27 +476,50 @@ class VaultService {
         .toList();
   }
 
-  /// Répare, UNE seule fois par coffre, les fichiers que la 2.15.2 a chiffrés avec une clé
-  /// de 32 zéros (défaut D1 : un verrouillage pendant un import ou une restauration).
+  /// Répare les fichiers que la 2.15.2 a chiffrés avec une clé de 32 octets nuls (défaut D1 :
+  /// un verrouillage pendant un import ou une restauration).
   ///
-  /// À appeler juste après un déverrouillage réussi. Chaque fichier est d'abord essayé avec la
-  /// vraie clé ; seul un fichier au format v2 qu'elle refuse ET que la clé nulle ouvre est
-  /// rechiffré sous la vraie clé, au même nom (AAD inchangée), puis relu pour contrôle. Un
+  /// À appeler juste après un déverrouillage réussi. Chaque fichier `.enc` v2 est d'abord essayé
+  /// avec la vraie clé ; seul un fichier qu'elle REFUSE (refus cryptographique, pas une panne)
+  /// ET que la clé nulle ouvre est rechiffré sous la vraie clé, au même nom (AAD inchangée), et
+  /// remplacé atomiquement — à condition que le fichier n'ait pas changé depuis sa lecture. Un
   /// fichier illisible pour une autre raison n'est pas touché.
   ///
-  /// **Pourquoi une seule fois.** Accepter un chiffré « clé nulle » élargit ce que le coffre
-  /// accepte : quelqu'un capable d'écrire dans le stockage privé de l'application pourrait y
-  /// déposer un fichier qui serait ensuite traité comme légitime. Le balayage n'a donc lieu
-  /// qu'au premier déverrouillage après la mise à jour — un coffre créé par la 2.15.3 en est
-  /// dispensé dès sa création —, après quoi plus aucun fichier « clé nulle » n'est accepté. Les
-  /// noms réparés sont rendus pour être montrés à l'utilisateur.
+  /// **Fenêtre unique, et ce qu'elle ne garantit pas.** Accepter un chiffré « clé nulle » élargit
+  /// ce que le coffre accepte. Le balayage n'a donc lieu qu'une fois, au déverrouillage qui suit
+  /// la mise à jour (drapeau [_kZeroKeyRepairDone]) ; un coffre créé par la 2.15.3 en est
+  /// dispensé dès sa création. Le drapeau est une préférence ordinaire : un acteur capable
+  /// d'ÉCRIRE dans le stockage privé de l'application (téléphone rooté, en pratique) pourrait
+  /// l'effacer et rejouer le balayage pour faire accepter un fichier qu'il aurait déposé —
+  /// injection de contenu, pas lecture. Aucun état non falsifiable n'existe ici pour l'empêcher ;
+  /// c'est dit dans SECURITY.md. Les noms réparés sont rendus pour être montrés à l'utilisateur.
   ///
-  /// Rend `null` si la réparation a déjà été faite. Lève si le coffre est verrouillé pendant le
-  /// balayage : le drapeau n'est alors pas posé, et le balayage reprend au déverrouillage suivant
-  /// (il est idempotent).
-  Future<ZeroKeyRepairResult?> repairZeroKeyFilesOnce() async {
+  /// Rend `null` si le balayage n'a plus lieu d'être. Un verrouillage pendant le balayage
+  /// l'interrompt sans compter d'échec ; toute autre erreur (mémoire, canal natif, E/S)
+  /// l'interrompt aussi, sans poser le drapeau, et compte un échec : après
+  /// [_repairMaxAttempts] échecs, on renonce plutôt que de rejouer un travail lourd à chaque
+  /// déverrouillage. Deux appels simultanés partagent le même balayage.
+  Future<ZeroKeyRepairResult?> repairZeroKeyFilesOnce() => _repairInFlight ??=
+      _repairZeroKeyFiles().whenComplete(() => _repairInFlight = null);
+
+  static Future<ZeroKeyRepairResult?>? _repairInFlight;
+
+  /// Échecs (hors verrouillage) après lesquels la réparation renonce.
+  static const _repairMaxAttempts = 3;
+
+  /// Plus gros fichier examiné : ce que l'import accepte (100 Mo) plus l'enveloppe. Un fichier
+  /// plus gros n'a pas pu être écrit par un import de la 2.15.2, et le lire en entier pourrait
+  /// faire tomber l'application à chaque déverrouillage.
+  static const _repairMaxBytes = FileCaps.vaultBackup + 64;
+
+  Future<ZeroKeyRepairResult?> _repairZeroKeyFiles() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_kZeroKeyRepairDone) == true) return null;
+    final attempts = prefs.getInt(_kZeroKeyRepairAttempts) ?? 0;
+    if (attempts >= _repairMaxAttempts) {
+      await prefs.setBool(_kZeroKeyRepairDone, true);
+      return null;
+    }
     final op = _openOp();
     final zeroKey = Uint8List(kVaultKeyLen);
     try {
@@ -501,27 +530,27 @@ class VaultService {
         final name = PathSafe.basename(f.path);
         // Résidus d'une écriture interrompue (`X.enc.<n>-<hex>.tmp`) : pas des fichiers du coffre.
         if (!name.endsWith('.enc')) continue;
+        final before = await f.stat();
+        if (before.size > _repairMaxBytes) continue;
         final blob = await f.readAsBytes();
         scanned++;
         if (!_isV2Format(blob)) continue; // D1 n'a écrit que du v2
-        try {
-          _zeroize(await _decryptMaybeIsolate(blob, op.key, name));
-          continue; // lisible avec la vraie clé : rien à faire
-        } catch (_) {
-          // Refusé par la vraie clé : peut-être la clé nulle de D1.
-        }
-        Uint8List plain;
-        try {
-          plain = await _decryptMaybeIsolate(blob, zeroKey, name);
-        } catch (_) {
-          continue; // illisible pour une autre raison : on n'y touche pas
-        }
+        // Sain : rien à faire.
+        if (await _opensWith(blob, op.key, name)) continue;
+        // Illisible pour une autre raison qu'une clé nulle : on n'y touche pas.
+        final plain = await _openOrNull(blob, zeroKey, name);
+        if (plain == null) continue;
         try {
           final ct = await _encryptMaybeIsolate(plain, op.key, name);
-          _zeroize(
-            await _decryptMaybeIsolate(ct, op.key, name),
-          ); // relu avant d'écrire
           _ensureNotLockedSince(op.epoch);
+          // Mise à jour perdue : un import, une restauration ou une suppression a pu changer ce
+          // fichier depuis sa lecture. On ne remplace que ce qu'on a lu.
+          final now = await f.stat();
+          if (now.type != FileSystemEntityType.file ||
+              now.size != before.size ||
+              now.modified != before.modified) {
+            continue;
+          }
           await atomicWriteBytes(f.path, ct);
           repaired.add(_stripEnc(name));
         } finally {
@@ -529,9 +558,40 @@ class VaultService {
         }
       }
       await prefs.setBool(_kZeroKeyRepairDone, true);
+      await prefs.remove(_kZeroKeyRepairAttempts);
       return ZeroKeyRepairResult(scanned: scanned, repaired: repaired);
+    } on _LockedDuringOperation {
+      rethrow; // pas un échec : reprise au prochain déverrouillage
+    } catch (_) {
+      await prefs.setInt(_kZeroKeyRepairAttempts, attempts + 1);
+      rethrow;
     } finally {
       _zeroize(op.key);
+    }
+  }
+
+  /// Vrai si [key] authentifie [blob] ; faux sur un REFUS cryptographique ; toute autre erreur
+  /// (mémoire, isolate, canal natif) est propagée — elle ne dit rien de la clé.
+  Future<bool> _opensWith(Uint8List blob, Uint8List key, String name) async {
+    final plain = await _openOrNull(blob, key, name);
+    if (plain == null) return false;
+    _zeroize(plain);
+    return true;
+  }
+
+  /// Le clair si [key] authentifie [blob], `null` sur un refus cryptographique (tag GCM).
+  Future<Uint8List?> _openOrNull(
+    Uint8List blob,
+    Uint8List key,
+    String name,
+  ) async {
+    try {
+      return await _decryptMaybeIsolate(blob, key, name);
+    } on InvalidCipherTextException {
+      return null;
+    } on PlatformException catch (e) {
+      if (e.code == 'DECRYPT_ERROR') return null;
+      rethrow;
     }
   }
 
@@ -1253,6 +1313,7 @@ class VaultService {
     // `setupWithPassword` le repositionne de toute façon.
     await prefs.remove(_kV2Only);
     await prefs.remove(_kZeroKeyRepairDone); // reposé par `setupWithPassword`
+    await prefs.remove(_kZeroKeyRepairAttempts);
     _v2OnlyCache = null;
     final dir = await _vaultDir();
     if (await dir.exists()) {

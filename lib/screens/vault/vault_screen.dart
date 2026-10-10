@@ -207,6 +207,9 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
       return;
     }
     if (res == null || res.repaired.isEmpty || !mounted) return;
+    // Les noms des fichiers sont une métadonnée sensible : jamais au-dessus d'un coffre
+    // reverrouillé entre-temps (relecture GPT du 2026-10-10).
+    if (!_unlocked || !_service.isUnlocked) return;
     final repaired = res.repaired;
     final n = repaired.length;
     await showDialog<void>(
@@ -216,7 +219,7 @@ class _VaultScreenState extends State<VaultScreen> with WidgetsBindingObserver {
         content: SingleChildScrollView(
           child: Text(
             'La version 2.15.2 pouvait enregistrer un fichier du coffre avec une '
-            'clé vide, lorsque le coffre se verrouillait pendant un import ou une '
+            'clé nulle, lorsque le coffre se verrouillait pendant un import ou une '
             'restauration. ${n == 1 ? 'Ce fichier a été réparé et s\'ouvre' : 'Ces fichiers ont été réparés et s\'ouvrent'} '
             'à nouveau avec votre mot de passe :\n\n'
             '${repaired.map((name) => '• $name').join('\n')}',
