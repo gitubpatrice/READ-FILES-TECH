@@ -1,0 +1,5 @@
+Vault: a lock during an import or a restore could encrypt a file with an empty key, unreadable with your password but readable by anyone; a folder import could then delete the original. The operation now fails and writes nothing.
+
+Vault: after a reboot, the lockout after five wrong passwords could last for days. Fixed.
+
+No internet permission any more: check for updates from About, which opens your browser.

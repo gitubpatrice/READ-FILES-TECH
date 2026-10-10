@@ -1,0 +1,5 @@
+Coffre : verrouillé pendant un import ou une restauration, il pouvait chiffrer un fichier avec une clé vide, illisible avec votre mot de passe mais lisible par tous ; l'import de dossier pouvait supprimer l'original. L'opération échoue désormais sans rien écrire.
+
+Coffre : après un redémarrage, le blocage suivant cinq erreurs de mot de passe pouvait durer des jours. Corrigé.
+
+Plus aucune permission Internet : les mises à jour se vérifient depuis À propos, qui ouvre le navigateur.
