@@ -251,6 +251,9 @@ dependencies {
 
     implementation(libs.coroutines.android)
 
+    // Argon2id and PBKDF2 of the vault, byte-compatible with the pointycastle the Flutter app used.
+    implementation(libs.bcprov)
+
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(platform(libs.junit.bom))
