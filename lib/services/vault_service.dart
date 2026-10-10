@@ -127,6 +127,10 @@ class VaultService {
 
   static Uint8List? _cachedKey;
 
+  /// Incrémentée à chaque verrouillage ou réinitialisation. Une opération commencée avant voit
+  /// que l'époque a changé et s'arrête avant d'écrire (cf. [_openOp]).
+  static int _lockEpoch = 0;
+
   /// Cache du flag `_kV2Only` lu au unlock pour éviter un await dans le
   /// chemin chaud `_decryptAuto`. `null` = inconnu (legacy avant lookup).
   static bool? _v2OnlyCache;
@@ -355,6 +359,7 @@ class VaultService {
   }
 
   void lock() {
+    _lockEpoch++;
     final k = _cachedKey;
     if (k != null) _zeroize(k);
     _cachedKey = null;
@@ -372,26 +377,33 @@ class VaultService {
   /// avant `readAsBytes`. Sans ça, un utilisateur tentant d'importer une
   /// vidéo 4 Go crashait l'app par OOM sur low-end (Redmi 9C 3 Go).
   Future<String> importFileSafe(File source, {bool overwrite = false}) async {
-    final key = _requireKey();
-    final dir = await _vaultDir();
-    // Cap source : on borne à 100 Mo pour rester compatible Redmi 9C 3GB.
-    final capErr = await checkFileCap(source, FileCaps.vaultBackup);
-    if (capErr != null) {
-      throw FormatException(capErr);
+    final op = _openOp();
+    try {
+      final dir = await _vaultDir();
+      // Cap source : on borne à 100 Mo pour rester compatible Redmi 9C 3GB.
+      final capErr = await checkFileCap(source, FileCaps.vaultBackup);
+      if (capErr != null) {
+        throw FormatException(capErr);
+      }
+      final name = PathSafe.basename(source.path);
+      final destName = '$name.enc';
+      final dest = File('${dir.path}/$destName');
+      if (await dest.exists() && !overwrite) {
+        throw FileSystemException(
+          'Fichier homonyme déjà dans le coffre',
+          dest.path,
+        );
+      }
+      final plain = await source.readAsBytes();
+      final ct = await _encryptMaybeIsolate(plain, op.key, destName);
+      // Verrouillé pendant l'import : on n'écrit rien. L'import échoue, donc l'appelant ne
+      // supprime pas l'original (`vault_import_folder_screen` ne le fait qu'après succès).
+      _ensureNotLockedSince(op.epoch);
+      await atomicWriteBytes(dest.path, ct);
+      return dest.path;
+    } finally {
+      _zeroize(op.key);
     }
-    final name = PathSafe.basename(source.path);
-    final destName = '$name.enc';
-    final dest = File('${dir.path}/$destName');
-    if (await dest.exists() && !overwrite) {
-      throw FileSystemException(
-        'Fichier homonyme déjà dans le coffre',
-        dest.path,
-      );
-    }
-    final plain = await source.readAsBytes();
-    final ct = await _encryptMaybeIsolate(plain, key, destName);
-    await atomicWriteBytes(dest.path, ct);
-    return dest.path;
   }
 
   /// Liste les fichiers chiffrés dans le coffre (sans le sentinelle).
@@ -414,20 +426,39 @@ class VaultService {
   /// fichier, lui, ne change pas — c'est celui que verra l'utilisateur dans
   /// l'app cible.
   Future<File> decryptToTemp(File encrypted) async {
-    final key = _requireKey();
-    final tmpRoot = await getTemporaryDirectory();
-    final slot = base64Url
-        .encode(SecretBytes.randomBytes(9))
-        .replaceAll('=', '');
-    final tmp = Directory('${tmpRoot.path}/vault_decrypt/$slot');
-    if (!await tmp.exists()) await tmp.create(recursive: true);
-    final encName = PathSafe.basename(encrypted.path);
-    final originalName = _stripEnc(encName);
-    final out = File('${tmp.path}/$originalName');
-    final blob = await encrypted.readAsBytes();
-    final plain = await _decryptMaybeIsolate(blob, key, encName);
-    await atomicWriteBytes(out.path, plain);
-    return out;
+    final op = _openOp();
+    try {
+      final tmpRoot = await getTemporaryDirectory();
+      final slot = base64Url
+          .encode(SecretBytes.randomBytes(9))
+          .replaceAll('=', '');
+      final tmp = Directory('${tmpRoot.path}/vault_decrypt/$slot');
+      if (!await tmp.exists()) await tmp.create(recursive: true);
+      final encName = PathSafe.basename(encrypted.path);
+      final originalName = _stripEnc(encName);
+      final out = File('${tmp.path}/$originalName');
+      final blob = await encrypted.readAsBytes();
+      final plain = await _decryptMaybeIsolate(blob, op.key, encName);
+      try {
+        _ensureNotLockedSince(op.epoch);
+        await atomicWriteBytes(out.path, plain);
+        // Verrouillé PENDANT l'écriture : la purge de `lock()` a pu passer avant que le clair
+        // n'atterrisse dans le cache. On le retire nous-mêmes.
+        _ensureNotLockedSince(op.epoch);
+      } catch (_) {
+        try {
+          if (await tmp.exists()) await tmp.delete(recursive: true);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('decryptToTemp: purge du clair interrompu: $e');
+          }
+        }
+        rethrow;
+      }
+      return out;
+    } finally {
+      _zeroize(op.key);
+    }
   }
 
   /// Supprime tous les fichiers déchiffrés laissés dans le cache :
@@ -492,22 +523,29 @@ class VaultService {
     String destDir, {
     bool overwrite = false,
   }) async {
-    final key = _requireKey();
-    final encName = PathSafe.basename(encrypted.path);
-    final originalName = _stripEnc(encName);
-    final out = File('$destDir/$originalName');
-    if (!overwrite &&
-        FileSystemEntity.typeSync(out.path, followLinks: false) !=
-            FileSystemEntityType.notFound) {
-      throw FileSystemException(
-        'Un fichier de ce nom existe déjà dans le dossier de destination',
-        out.path,
-      );
+    final op = _openOp();
+    try {
+      final encName = PathSafe.basename(encrypted.path);
+      final originalName = _stripEnc(encName);
+      final out = File('$destDir/$originalName');
+      if (!overwrite &&
+          FileSystemEntity.typeSync(out.path, followLinks: false) !=
+              FileSystemEntityType.notFound) {
+        throw FileSystemException(
+          'Un fichier de ce nom existe déjà dans le dossier de destination',
+          out.path,
+        );
+      }
+      final blob = await encrypted.readAsBytes();
+      final plain = await _decryptMaybeIsolate(blob, op.key, encName);
+      // Un export vers un dossier choisi est voulu par l'utilisateur : seul un verrouillage
+      // survenu AVANT l'écriture l'annule.
+      _ensureNotLockedSince(op.epoch);
+      await atomicWriteBytes(out.path, plain);
+      return out;
+    } finally {
+      _zeroize(op.key);
     }
-    final blob = await encrypted.readAsBytes();
-    final plain = await _decryptMaybeIsolate(blob, key, encName);
-    await atomicWriteBytes(out.path, plain);
-    return out;
   }
 
   Future<void> deleteFile(File encrypted) async {
@@ -549,28 +587,29 @@ class VaultService {
     required String exportPassword,
     void Function(double)? onProgress,
   }) async {
-    final masterKey = _requireKey();
-    final files = await listFiles();
-
-    // Garde-fou taille.
-    int total = 0;
-    for (final f in files) {
-      total += await f.length();
-    }
-    if (total > _backupMaxBytes) {
-      throw StateError(
-        'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
-        'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.',
-      );
-    }
-
-    onProgress?.call(0.0);
-
+    final op = _openOp();
+    final masterKey = op.key;
     // Liste des plaintext alloués pour zeroize garanti en finally.
     final plains = <Uint8List>[];
     Uint8List? payload;
     Uint8List? exportKey;
     try {
+      final files = await listFiles();
+
+      // Garde-fou taille.
+      int total = 0;
+      for (final f in files) {
+        total += await f.length();
+      }
+      if (total > _backupMaxBytes) {
+        throw StateError(
+          'Export limité à ${_backupMaxBytes ~/ (1024 * 1024)} Mo. '
+          'Coffre actuel : ${total ~/ (1024 * 1024)} Mo.',
+        );
+      }
+
+      onProgress?.call(0.0);
+
       // Construction du payload en clair (déchiffre chaque fichier avec master).
       final builder = BytesBuilder();
       builder.add(_int32be(files.length));
@@ -651,6 +690,10 @@ class VaultService {
       // Le `.rftvault` est chiffré par un mot de passe distinct du principal :
       // le poser dans un dossier visible n'expose rien, et c'est précisément
       // ce qu'on attend d'une sauvegarde.
+      //
+      // Verrouillé pendant l'export : on s'arrête AVANT de réserver le fichier, qui serait
+      // sinon laissé vide dans `Files Tech/`.
+      _ensureNotLockedSince(op.epoch);
       final outFile = await OutputStorageService().reserveFile(
         category: OutputCategory.backups,
         suggestedName: 'coffre',
@@ -666,6 +709,7 @@ class VaultService {
       }
       if (payload != null) _zeroize(payload);
       if (exportKey != null) _zeroize(exportKey);
+      _zeroize(op.key);
     }
   }
 
@@ -685,7 +729,28 @@ class VaultService {
     bool overwriteExisting = false,
     void Function(double)? onProgress,
   }) async {
-    final masterKey = _requireKey();
+    final op = _openOp();
+    try {
+      return await _restoreFromBackup(
+        op,
+        backupFile: backupFile,
+        exportPassword: exportPassword,
+        overwriteExisting: overwriteExisting,
+        onProgress: onProgress,
+      );
+    } finally {
+      _zeroize(op.key);
+    }
+  }
+
+  Future<RestoreResult> _restoreFromBackup(
+    ({Uint8List key, int epoch}) op, {
+    required File backupFile,
+    required String exportPassword,
+    required bool overwriteExisting,
+    void Function(double)? onProgress,
+  }) async {
+    final masterKey = op.key;
 
     // F2 v2.13.0 — Lockout brute-force séparé du master password. Sans ça,
     // un attaquant ayant volé le `.rftvault` pouvait tester des passwords
@@ -833,6 +898,10 @@ class VaultService {
           skipped++;
           continue;
         }
+        // HORS du try par entrée ci-dessous, qui compterait l'erreur comme un simple échec et
+        // continuerait : un verrouillage arrête toute la restauration. Les entrées déjà écrites
+        // l'ont été avec une copie valide de la clé.
+        _ensureNotLockedSince(op.epoch);
         // Try/catch par entrée : si une écriture échoue (FAT32 nom invalide,
         // disque plein, perm refusée), on continue avec les autres au lieu
         // de planter tout le restore au milieu.
@@ -1052,6 +1121,7 @@ class VaultService {
       await dir.delete(recursive: true);
       await dir.create(recursive: true);
     }
+    _lockEpoch++;
     final k = _cachedKey;
     if (k != null) _zeroize(k);
     _cachedKey = null;
@@ -1060,10 +1130,29 @@ class VaultService {
 
   // ── Crypto helpers ──────────────────────────────────────────────────────────
 
-  Uint8List _requireKey() {
+  /// Ouvre une opération sur le coffre : une COPIE de la clé maître, et l'époque de verrouillage
+  /// au moment où l'opération commence.
+  ///
+  /// D1 (reproduit le 2026-10-10 sur émulateur) — l'ancien `_requireKey()` rendait la référence
+  /// du tampon caché lui-même. `lock()` le remplit de zéros : un verrouillage survenu pendant un
+  /// import (sortie de l'écran, 30 s en arrière-plan, 3 min d'inactivité) laissait l'import se
+  /// terminer SANS ERREUR avec une clé de 32 zéros. Le fichier était illisible avec le vrai mot
+  /// de passe, déchiffrable par n'importe qui, et l'import de dossier pouvait ensuite supprimer
+  /// l'original. La copie appartient à l'opération, qui doit l'effacer dans son `finally`.
+  ({Uint8List key, int epoch}) _openOp() {
     final k = _cachedKey;
     if (k == null) throw StateError('Coffre verrouillé');
-    return k;
+    return (key: Uint8List.fromList(k), epoch: _lockEpoch);
+  }
+
+  /// Lève si le coffre a été verrouillé depuis l'ouverture de l'opération d'époque [epoch].
+  ///
+  /// À appeler juste AVANT d'écrire une sortie : une opération que le verrouillage a
+  /// interrompue échoue, plutôt que de terminer comme si de rien n'était.
+  void _ensureNotLockedSince(int epoch) {
+    if (epoch != _lockEpoch || _cachedKey == null) {
+      throw StateError('Coffre verrouillé pendant l\'opération');
+    }
   }
 
   Uint8List _randomBytes(int n) => SecretBytes.randomBytes(n);

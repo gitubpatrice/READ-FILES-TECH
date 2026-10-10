@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data' show BytesBuilder;
+import 'dart:typed_data' show BytesBuilder, Uint8List;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pointycastle/export.dart';
+import 'package:read_files_tech/services/vault/vault_blob.dart';
 import 'package:read_files_tech/services/vault_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -734,4 +735,133 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  // ── D1 : un verrouillage PENDANT une opération ───────────────────────────
+  //
+  // Reproduit le 2026-10-10 sur émulateur avec la 2.15.2 : `lock()` remplissait de zéros le
+  // tampon de clé que l'opération avait déjà capturé. L'import se terminait sans erreur, le
+  // fichier était illisible avec le vrai mot de passe et déchiffrable avec 32 zéros. Ici, le
+  // verrouillage est appelé juste après le lancement de l'opération, qui s'exécute jusqu'à son
+  // premier `await` : c'est ce que provoquent la sortie de l'écran du coffre, 30 s en
+  // arrière-plan ou 3 min d'inactivité.
+
+  bool decryptsWithZeroKey(File enc) {
+    try {
+      decryptAuto(
+        blob: enc.readAsBytesSync(),
+        key: Uint8List(32),
+        filename: enc.uri.pathSegments.last,
+        v2Only: true,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  test(
+    'un verrouillage pendant un import le fait échouer sans rien écrire',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 import');
+      final payload = List<int>.generate(200000, (i) => (i * 13) & 0xFF);
+      final src = sourceFile('d1.bin', payload);
+
+      final pending = VaultService.instance.importFileSafe(src);
+      VaultService.instance.lock();
+      await expectLater(pending, throwsA(isA<StateError>()));
+
+      expect(
+        File('${vaultDir().path}/d1.bin.enc').existsSync(),
+        isFalse,
+        reason: 'un import interrompu ne doit rien laisser dans le coffre',
+      );
+      expect(src.existsSync(), isTrue);
+
+      // Rouvert, le coffre importe normalement, et rien n'y est chiffré par une clé nulle.
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 import'),
+        isTrue,
+      );
+      final enc = File(await VaultService.instance.importFileSafe(src));
+      expect(
+        (await VaultService.instance.exportFile(
+          enc,
+          outDir(),
+        )).readAsBytesSync(),
+        equals(payload),
+      );
+      for (final f in await VaultService.instance.listFiles()) {
+        expect(decryptsWithZeroKey(f), isFalse, reason: f.path);
+      }
+    },
+  );
+
+  test(
+    'un verrouillage pendant un déchiffrement ne laisse aucun clair',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 cache');
+      final enc = File(
+        await VaultService.instance.importFileSafe(
+          sourceFile('d1-cache.txt', utf8.encode('clair à ne pas laisser')),
+        ),
+      );
+
+      final pending = VaultService.instance.decryptToTemp(enc);
+      VaultService.instance.lock();
+      await expectLater(pending, throwsA(isA<StateError>()));
+
+      final staging = Directory('${tmp.path}/cache/vault_decrypt');
+      final left = staging.existsSync()
+          ? staging.listSync(recursive: true).whereType<File>().toList()
+          : <File>[];
+      expect(
+        left,
+        isEmpty,
+        reason: 'le clair ne doit pas survivre au verrouillage',
+      );
+    },
+  );
+
+  test(
+    'un verrouillage pendant une restauration l\'arrête, sans fichier chiffré par une clé nulle',
+    () async {
+      await VaultService.instance.setupWithPassword('d1 restore');
+      await VaultService.instance.importFileSafe(
+        sourceFile('r1.txt', utf8.encode('un')),
+      );
+      await VaultService.instance.importFileSafe(
+        sourceFile('r2.txt', utf8.encode('deux')),
+      );
+      final backup = await VaultService.instance.exportToBackup(
+        exportPassword: 'exp',
+      );
+
+      // Coffre neuf, même mot de passe, puis restauration interrompue.
+      await VaultService.instance.reset();
+      await VaultService.instance.setupWithPassword('d1 restore');
+      final pending = VaultService.instance.restoreFromBackup(
+        backupFile: backup,
+        exportPassword: 'exp',
+      );
+      VaultService.instance.lock();
+      await expectLater(pending, throwsA(isA<StateError>()));
+
+      expect(
+        await VaultService.instance.unlockWithPassword('d1 restore'),
+        isTrue,
+      );
+      final files = await VaultService.instance.listFiles();
+      for (final f in files) {
+        expect(decryptsWithZeroKey(f), isFalse, reason: f.path);
+        await VaultService.instance.decryptToTemp(
+          f,
+        ); // lisible avec la vraie clé
+      }
+      expect(
+        files,
+        isEmpty,
+        reason: 'verrouillé avant la 1re entrée : rien de restauré',
+      );
+    },
+  );
 }
