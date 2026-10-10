@@ -124,18 +124,28 @@ in [SECURITY.fr.md](./SECURITY.fr.md).
   `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
   merged release manifest against a reviewed list of nine permissions, with a
   negative control.
-  *Files already affected by D1* are repaired: at the unlock that follows the
-  update, every vault file that the right key cryptographically refuses but an
-  all-zero key opens is re-encrypted under the right key and replaced atomically,
-  provided it has not changed since it was read; its name is shown to the user.
-  A file unreadable for another reason is left untouched. The pass completes once
-  (if interrupted, it resumes at a later unlock; after three failures it gives
-  up), and never runs on a vault created with 2.15.3. Accepting an all-zero-key
-  file widens what the vault accepts, and the "done" marker is an ordinary
-  preference: an actor able to WRITE to the app's private storage (in practice, a
-  rooted phone) could clear it and replay the pass to get a file of their own
-  accepted — content injection, not disclosure. Nothing on the device that this
-  app controls can prevent that rollback.
+  D1 dates back to v2.5.5 (the in-place wipe in `lock()` arrived with the v2
+  format), so it affects v2.5.5 to v2.15.2, and only v2 files.
+  *Files already affected* are repaired at the unlock that follows the update:
+  each vault file that an all-zero key opens is re-encrypted under the right key,
+  checked by a round trip, and replaced atomically if it has not changed since it
+  was read. A sound file is never decrypted by this pass. A file unreadable for
+  another reason is left untouched. A file the pass cannot check (larger than a
+  backup, a read error, or one the app died on) is skipped and, once the pass is
+  over, listed as "not verified": if it does not open, import the original again
+  if it still exists, or run the restore again from the `.rftvault` backup. The
+  names repaired or not verified are shown until the user has seen them. The pass
+  completes once (resumed after an interruption, retried up to three times while
+  files remain unverified) and never runs on a vault created with 2.15.3.
+  Limits: accepting an all-zero-key file widens what the vault accepts, and the
+  "done" marker is an ordinary preference. An actor able to WRITE to the app's
+  private storage (in practice, a rooted phone; Android backup is disabled for
+  this app) could clear it and replay the pass to get a file accepted, including
+  a substitute for an existing one — content injection, not disclosure; the
+  dialog warns not to trust a "repaired" file that opened normally before the
+  update. And repairing does not undo past exposure: the old all-zero-key copy
+  may survive in freed flash blocks or in copies made earlier; treat such content
+  as exposed to anyone who had access to the app's storage.
 - **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
   13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
   Two version ceilings documented against an AGP 8 packaging defect. PDF signing

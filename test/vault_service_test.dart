@@ -1098,22 +1098,79 @@ void main() {
     },
   );
 
+  // Relecture Claude du 2026-10-10 : une mort du processus (mémoire) sur un fichier n'était pas
+  // comptée — rejeu, voire plantage, à chaque déverrouillage — et l'abandon était silencieux.
   test(
-    'après trois échecs, la réparation renonce au lieu de rejouer à chaque ouverture',
+    'un fichier sur lequel le processus est mort est écarté, puis signalé au 3e balayage',
     () async {
-      await VaultService.instance.setupWithPassword('reparation echecs');
+      await VaultService.instance.setupWithPassword('reparation mort');
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('vault_zero_key_repair_v1');
-      await prefs.setInt('vault_zero_key_repair_attempts', 3);
-      final abime = plantZeroKeyFile('e.bin.enc', utf8.encode('e'));
+      final tueur = plantZeroKeyFile('tueur.bin.enc', utf8.encode('t'));
+      final autre = plantZeroKeyFile('autre.bin.enc', utf8.encode('a'));
+      // Ce que laisse un processus tué en plein travail sur `tueur`.
+      await prefs.setString('vault_zero_key_repair_current', 'tueur.bin.enc');
 
-      expect(await VaultService.instance.repairZeroKeyFilesOnce(), isNull);
-      expect(prefs.getBool('vault_zero_key_repair_v1'), isTrue);
+      final r1 = await VaultService.instance.repairZeroKeyFilesOnce();
+      expect(r1!.repaired, [
+        'autre.bin',
+      ], reason: 'les autres fichiers avancent');
+      expect(decryptsWithZeroKey(autre), isFalse);
+      expect(decryptsWithZeroKey(tueur), isTrue, reason: 'jamais rouvert');
+      expect(prefs.getString('vault_zero_key_repair_current'), isNull);
+      expect(prefs.getBool('vault_zero_key_repair_v1'), isNot(true));
+
+      await VaultService.instance.repairZeroKeyFilesOnce(); // 2e balayage
+      final r3 = await VaultService.instance.repairZeroKeyFilesOnce(); // 3e
+      expect(r3!.unexamined, ['tueur.bin']);
       expect(
-        decryptsWithZeroKey(abime),
+        prefs.getBool('vault_zero_key_repair_v1'),
         isTrue,
-        reason: 'abandon : rien n\'est réécrit',
+        reason: 'achevé',
       );
+      expect(
+        decryptsWithZeroKey(tueur),
+        isTrue,
+        reason: 'non vérifié : pas touché',
+      );
+
+      final report = await VaultService.instance.pendingZeroKeyRepairReport();
+      expect(report!.repaired, ['autre.bin']);
+      expect(report.unexamined, ['tueur.bin']);
+      await VaultService.instance.clearZeroKeyRepairReport();
+      expect(await VaultService.instance.pendingZeroKeyRepairReport(), isNull);
+    },
+  );
+
+  test('un coffre ancien (repli v1 autorisé) est réparé aussi', () async {
+    await VaultService.instance.setupWithPassword('reparation legacy');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('vault_zero_key_repair_v1');
+    await prefs.setBool('vault_v2_only', false); // coffre d'avant la v2.12.0
+    VaultService.instance.lock();
+    expect(
+      await VaultService.instance.unlockWithPassword('reparation legacy'),
+      isTrue,
+    );
+    final abime = plantZeroKeyFile('l.bin.enc', utf8.encode('legacy'));
+
+    final res = await VaultService.instance.repairZeroKeyFilesOnce();
+    expect(res!.repaired, ['l.bin']);
+    expect(decryptsWithZeroKey(abime), isFalse);
+  });
+
+  test(
+    'deux appels pendant le même déverrouillage partagent un balayage',
+    () async {
+      await VaultService.instance.setupWithPassword('reparation partage');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('vault_zero_key_repair_v1');
+      plantZeroKeyFile('p.bin.enc', utf8.encode('p'));
+
+      final a = VaultService.instance.repairZeroKeyFilesOnce();
+      final b = VaultService.instance.repairZeroKeyFilesOnce();
+      expect(identical(a, b), isTrue);
+      expect((await a)!.repaired, ['p.bin']);
     },
   );
 
@@ -1125,8 +1182,11 @@ void main() {
 
     final pending = VaultService.instance.repairZeroKeyFilesOnce();
     VaultService.instance.lock();
-    await expectLater(pending, throwsA(isA<StateError>()));
+    // Atteint DANS la boucle (`_openOp` passe avant le premier await) : l'erreur précise d'une
+    // opération interrompue, pas « coffre verrouillé » au départ — et ce n'est pas un échec.
+    await expectLater(pending, lockedDuringOp);
     expect(prefs.getBool('vault_zero_key_repair_v1'), isNot(true));
+    expect(prefs.getInt('vault_zero_key_repair_attempts'), isNull);
     expect(decryptsWithZeroKey(abime), isTrue);
 
     expect(

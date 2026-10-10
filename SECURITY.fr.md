@@ -7,19 +7,32 @@
 - **v2.15.3** (2026-10-10) — Deux correctifs du coffre, et plus aucune permission
   réseau. Les deux défauts ont été reproduits le 2026-10-10 sur émulateur avec la
   2.15.2, et sont couverts par des tests. Aucune exploitation connue.
-  *Les fichiers déjà touchés par D1* sont réparés : au déverrouillage qui suit la
-  mise à jour, tout fichier du coffre que la bonne clé refuse cryptographiquement
-  mais qu'une clé nulle ouvre est rechiffré sous la bonne clé et remplacé
-  atomiquement, à condition de ne pas avoir changé depuis sa lecture ; son nom est
-  montré à l'utilisateur. Un fichier illisible pour une autre raison n'est pas
-  touché. Le passage s'achève une fois (interrompu, il reprend à un déverrouillage
-  ultérieur ; après trois échecs, il renonce) et n'a jamais lieu pour un coffre
-  créé avec la 2.15.3. Accepter un fichier à clé nulle élargit ce que le coffre
-  accepte, et le marqueur « fait » est une préférence ordinaire : un acteur capable
-  d'ÉCRIRE dans le stockage privé de l'application (en pratique, un téléphone
-  rooté) pourrait l'effacer et rejouer le passage pour faire accepter un fichier
-  de son cru — injection de contenu, pas lecture. Rien de ce que l'application
-  maîtrise sur l'appareil ne peut empêcher ce retour en arrière.
+  D1 remonte à la v2.5.5 (l'effacement en place dans `lock()` est arrivé avec le
+  format v2) : il touche les versions 2.5.5 à 2.15.2, et seulement des fichiers v2.
+  *Les fichiers déjà touchés* sont réparés au déverrouillage qui suit la mise à
+  jour : chaque fichier du coffre qu'une clé nulle ouvre est rechiffré sous la
+  bonne clé, vérifié par aller-retour, et remplacé atomiquement s'il n'a pas changé
+  depuis sa lecture. Un fichier sain n'est jamais déchiffré par ce passage. Un
+  fichier illisible pour une autre raison n'est pas touché. Un fichier que le
+  passage ne peut pas vérifier (plus gros qu'une sauvegarde, erreur de lecture, ou
+  fichier sur lequel l'application s'est arrêtée) est écarté puis, le passage
+  achevé, signalé « non vérifié » : s'il ne s'ouvre pas, importer à nouveau
+  l'original s'il existe encore, ou relancer la restauration depuis la sauvegarde
+  `.rftvault`. Les noms réparés ou non vérifiés sont montrés jusqu'à ce que
+  l'utilisateur les ait vus. Le passage s'achève une fois (repris après une
+  interruption, retenté jusqu'à trois fois tant que des fichiers restent non
+  vérifiés) et n'a jamais lieu pour un coffre créé avec la 2.15.3.
+  Limites : accepter un fichier à clé nulle élargit ce que le coffre accepte, et
+  le marqueur « fait » est une préférence ordinaire. Un acteur capable d'ÉCRIRE
+  dans le stockage privé de l'application (en pratique, un téléphone rooté ; la
+  sauvegarde Android est coupée pour cette application) pourrait l'effacer et
+  rejouer le passage pour faire accepter un fichier, y compris en remplacement
+  d'un fichier existant — injection de contenu, pas lecture ; la boîte de dialogue
+  invite à ne pas se fier à un fichier « réparé » qui s'ouvrait normalement avant
+  la mise à jour. Et réparer n'efface pas l'exposition passée : l'ancienne copie à
+  clé nulle peut subsister dans des blocs libérés de la mémoire flash ou dans des
+  copies faites auparavant ; considérer ce contenu comme exposé à quiconque a eu
+  accès au stockage de l'application.
   - **Coffre, D1 — verrouillage pendant une opération** — Un verrouillage du
     coffre survenu *pendant* un import ou une restauration (sortie de l'écran,
     30 s en arrière-plan, 3 min d'inactivité) laissait l'opération se terminer

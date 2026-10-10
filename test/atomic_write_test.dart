@@ -10,6 +10,14 @@ import 'package:read_files_tech/utils/atomic_write.dart';
 /// s'appelait `'$path.tmp'`, un nom **fixe** dérivé de la seule cible. Deux
 /// écritures concurrentes vers le même chemin partageaient donc le même
 /// temporaire, et le fichier final pouvait finir mélangé ou tronqué.
+/// Vrai seulement pour le refus que Windows oppose à un `rename` par-dessus un fichier qu'un
+/// autre writer tient ouvert (« Accès refusé », code 5). Relecture Claude du 2026-10-10 : une
+/// tolérance de N'IMPORTE QUELLE erreur, sur toutes les plateformes, laissait passer sous POSIX
+/// la régression même que ces tests attrapent (un `rename` en ENOENT quand deux écrivains
+/// partagent un temporaire).
+bool refusWindowsTolere(Object e) =>
+    Platform.isWindows && e is FileSystemException && e.osError?.errorCode == 5;
+
 void main() {
   late Directory dir;
 
@@ -61,10 +69,17 @@ void main() {
     // propriete verifiee ne change pas : aucun melange, aucun residu.
     var echecs = 0;
     await Future.wait([
-      atomicWriteString(p('race.txt'), a).catchError((_) => echecs++),
-      atomicWriteString(p('race.txt'), b).catchError((_) => echecs++),
+      atomicWriteString(p('race.txt'), a).catchError((Object e) {
+        if (!refusWindowsTolere(e)) throw e;
+        echecs++;
+      }),
+      atomicWriteString(p('race.txt'), b).catchError((Object e) {
+        if (!refusWindowsTolere(e)) throw e;
+        echecs++;
+      }),
     ]);
     expect(echecs, lessThan(2), reason: 'les deux ecritures ont echoue');
+    if (!Platform.isWindows) expect(echecs, 0, reason: 'POSIX : aucun refus');
 
     final lu = File(p('race.txt')).readAsStringSync();
     expect(
@@ -100,7 +115,10 @@ void main() {
     var echecs = 0;
     await Future.wait(
       contenus.map(
-        (c) => atomicWriteString(p('m.txt'), c).catchError((_) => echecs++),
+        (c) => atomicWriteString(p('m.txt'), c).catchError((Object e) {
+          if (!refusWindowsTolere(e)) throw e;
+          echecs++;
+        }),
       ),
     );
     expect(
@@ -108,6 +126,7 @@ void main() {
       lessThan(contenus.length),
       reason: 'les dix ecritures ont echoue : ce n est plus un test de course',
     );
+    if (!Platform.isWindows) expect(echecs, 0, reason: 'POSIX : aucun refus');
 
     final lu = File(p('m.txt')).readAsStringSync();
     expect(
