@@ -52,10 +52,19 @@ void main() {
     // deux chaines de meme taille pourraient donner un resultat plausible.
     final a = 'A' * 200000;
     final b = 'B' * 50;
+    // Un echec de `rename` est TOLERE, comme dans le test des dix ecritures ci-dessous, et pour
+    // la meme raison : sous Windows, renommer par-dessus un fichier qu'un autre writer tient
+    // encore ouvert echoue (« Acces refuse », code 5). Mesure le 2026-10-10 : 390 echecs sur
+    // 2 000 paires d'ecritures, ZERO melange, zero temporaire restant. Ce test exigeait qu'aucune
+    // des deux n'echoue : il etait donc instable sur le poste de developpement (2 echecs sur ~6
+    // suites completes), alors que sur Android (POSIX) `rename` remplace sans se plaindre. La
+    // propriete verifiee ne change pas : aucun melange, aucun residu.
+    var echecs = 0;
     await Future.wait([
-      atomicWriteString(p('race.txt'), a),
-      atomicWriteString(p('race.txt'), b),
+      atomicWriteString(p('race.txt'), a).catchError((_) => echecs++),
+      atomicWriteString(p('race.txt'), b).catchError((_) => echecs++),
     ]);
+    expect(echecs, lessThan(2), reason: 'les deux ecritures ont echoue');
 
     final lu = File(p('race.txt')).readAsStringSync();
     expect(
@@ -64,6 +73,12 @@ void main() {
       reason:
           'le fichier fait ${lu.length} octets et ne vaut ni l un ni l autre : '
           'les deux ecritures se sont melangees.',
+    );
+    final restes = dir.listSync().where((e) => e.path.endsWith('.tmp'));
+    expect(
+      restes,
+      isEmpty,
+      reason: 'un rename refuse doit nettoyer son temporaire',
     );
   });
 
