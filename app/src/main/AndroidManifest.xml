@@ -22,6 +22,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReadFilesTech"
         tools:targetApi="36">
@@ -29,12 +30,17 @@
         <!--
             The FULL name com.readfilestech.read_files_tech.MainActivity is the one of the 2.15.x: the
             launcher remembers it, and a renamed class would drop the user's pinned icon (docs D-012).
-            Checked by MainActivityNameTest (JVM) and by the instrumented LauncherComponentTest.
+            Checked by MainActivityNameTest (JVM) and by the instrumented InstalledPackageTest.
+
+            taskAffinity="" as in the 2.15.x: with the default affinity (the package name), another app
+            declaring the same affinity could slip its own activity into this task (task hijacking) —
+            in front of the vault's password screen once it is ported.
         -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:taskAffinity=""
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

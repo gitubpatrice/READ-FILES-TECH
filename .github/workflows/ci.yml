@@ -56,6 +56,11 @@ jobs:
       - name: Release build (exercises R8)
         run: ./gradlew --no-daemon :app:assembleRelease
 
+      # The build refuses a version base that is too low, but that reads version.properties: this reads
+      # the four APKs it produced (package, and versionCode = base * 10 + ABI rank, above 25503).
+      - name: Assert the package and versionCode of every release APK
+        run: python3 tools/check-release-apks.py
+
       # The zero-network job reads the merged manifest, an intermediate: anything wired after it in
       # the build would escape it. This reads the manifest of the release APK itself, the artefact
       # that ships, through the same guard and its negative control.
@@ -78,7 +83,7 @@ jobs:
           if-no-files-found: ignore
 
   zero-network:
-    name: Zero-network promise
+    name: Zero-network promise and manifest shape
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -96,15 +101,20 @@ jobs:
       - name: Merge the release manifest
         run: ./gradlew --no-daemon :app:processReleaseMainManifest
 
-      # Against the REAL merged manifest as well as fixtures: it must pass as built, and fail once
-      # INTERNET is injected into a copy of it.
+      # Against the REAL merged manifest as well as fixtures: both guards must pass on it as built, and
+      # fail once INTERNET, or an exported activity, is injected into a copy of it.
       - name: Negative control against the merged manifest
         run: >-
-          python3 tools/check-guards-negative-control.py --real-manifest
+          python3 tools/check-guards-negative-control.py --real-merged-manifest
           app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
 
       - name: Assert the permissions of the merged release manifest
         run: python3 tools/check-manifest-permissions.py
+
+      # What a permission list cannot see: Android backup (default ON), cleartext, debuggable, the task
+      # affinity of the launcher activity, and the exact set of exported components.
+      - name: Assert the shape of the merged release manifest
+        run: python3 tools/check-manifest-shape.py
 
   instrumented:
     name: Instrumented tests (API 29)

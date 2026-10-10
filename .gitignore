@@ -8,8 +8,19 @@
 *.p12
 *.pfx
 *.pem
+*.key
+*.p8
+*.der
 key.properties
 keystore.properties
+# Their copies: a backup of the key is the key (security review of the skeleton, 2026-10-10, G1).
+*.jks.*
+*.keystore.*
+key.properties.*
+keystore.properties.*
+*.properties.bak
+.env
+.env.*
 
 # === Android local config ===
 local.properties

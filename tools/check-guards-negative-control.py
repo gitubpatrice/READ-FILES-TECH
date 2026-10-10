@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NEGATIVE control of the two CI guards — the proof that each can go red, and for the right reason.
+"""NEGATIVE control of the CI guards — the proof that each can go red, and for the right reason.
 
 Why this exists
 ---------------
@@ -14,21 +14,26 @@ returning 1 on everything would pass the whole series.
 
 Guards covered:
   - tools/check-manifest-permissions.py  (the "no internet permission" promise)
+  - tools/check-manifest-shape.py        (backup off, nothing debuggable, the exported components)
+  - tools/check-release-apks.py          (package and versionCode of every release APK)
   - tools/check-test-results.py          (a test run that executed zero tests)
 
-With `--real-manifest PATH`, two more cases run against a REAL manifest — the merged release
-manifest, or the manifest of the release APK as printed by apkanalyzer: it must pass as built, and
-fail once INTERNET is injected into a copy of it. That proves the guard reads the artefact the build
-produces, not only a fixture written to resemble it.
+Against REAL artefacts, which proves each guard reads what the build produces, not only a fixture:
+  --real-manifest PATH         the manifest of a release APK (apkanalyzer): the permission guard
+                               passes on it, and fails once INTERNET is injected into a copy.
+  --real-merged-manifest PATH  the merged release manifest: the same, plus the shape guard passes on
+                               it and fails once an exported activity is injected. (The shape guard
+                               reads merged manifests only: in an APK, resource references are ids.)
 
 Adapted from App Manager Tech. No dependencies, never touches the repository.
 
-    python3 tools/check-guards-negative-control.py [--real-manifest PATH]
+    python3 tools/check-guards-negative-control.py [--real-manifest PATH | --real-merged-manifest PATH]
 """
 
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,7 +44,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MANIFEST_CHECK = os.path.join(HERE, "check-manifest-permissions.py")
+SHAPE_CHECK = os.path.join(HERE, "check-manifest-shape.py")
+APKS_CHECK = os.path.join(HERE, "check-release-apks.py")
 TESTS_CHECK = os.path.join(HERE, "check-test-results.py")
+VERSION_PROPERTIES = os.path.join(os.path.dirname(HERE), "version.properties")
 
 # The guards print `::error::` annotations and write the job summary under GitHub Actions. The
 # failures provoked here are EXPECTED: left in that environment, they would paint red annotations on a
@@ -48,8 +56,9 @@ GUARD_ENV = {k: v for k, v in os.environ.items() if k not in ("GITHUB_ACTIONS", 
 
 ISOLATED = "com.readfilestech.read_files_tech.next"
 FLUTTER = "com.readfilestech.read_files_tech"
+MAIN_ACTIVITY = "com.readfilestech.read_files_tech.MainActivity"
 
-# --- Manifest fixtures ---------------------------------------------------------------------------
+# --- Permission fixtures -------------------------------------------------------------------------
 
 
 def manifest(package: str) -> str:
@@ -84,6 +93,66 @@ INTERNET_SDK_M = '    <uses-permission-sdk-m android:name="android.permission.IN
 
 def with_before_application(content: str, extra: str) -> str:
     return content.replace("    <application", extra + "    <application", 1)
+
+
+# --- Shape fixtures ------------------------------------------------------------------------------
+
+SHAPE_OK = (
+    '<?xml version="1.0" encoding="utf-8"?>\n'
+    '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
+    f'    package="{ISOLATED}">\n'
+    '    <application\n'
+    '        android:allowBackup="false"\n'
+    '        android:fullBackupContent="false"\n'
+    '        android:dataExtractionRules="@xml/data_extraction_rules"\n'
+    '        android:usesCleartextTraffic="false">\n'
+    f'        <activity android:name="{MAIN_ACTIVITY}" android:exported="true" android:taskAffinity="">\n'
+    '            <intent-filter><action android:name="android.intent.action.MAIN" /></intent-filter>\n'
+    '        </activity>\n'
+    '        <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver"\n'
+    '            android:exported="true" android:permission="android.permission.DUMP">\n'
+    '            <intent-filter><action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" /></intent-filter>\n'
+    '        </receiver>\n'
+    '        <provider android:name="androidx.startup.InitializationProvider" android:exported="false" />\n'
+    '    </application>\n'
+    '</manifest>\n'
+)
+
+
+def in_application(content: str, extra: str) -> str:
+    return content.replace("    </application>", extra + "    </application>", 1)
+
+
+EXTRA_EXPORTED_ACTIVITY = '        <activity android:name="com.example.TestActivity" android:exported="true" />\n'
+IMPLICITLY_EXPORTED = (
+    '        <activity android:name="com.example.Implicit">\n'
+    '            <intent-filter><action android:name="android.intent.action.VIEW" /></intent-filter>\n'
+    '        </activity>\n'
+)
+EXPORTED_PROVIDER = '        <provider android:name="com.example.Provider" android:exported="true" />\n'
+
+# --- Release APK fixtures (aapt2 badging output) -------------------------------------------------
+
+RANKS = {"universal": 0, "armeabi-v7a": 1, "arm64-v8a": 2, "x86_64": 3}
+
+
+def version_base() -> int:
+    with open(VERSION_PROPERTIES, encoding="utf-8") as f:
+        for line in f:
+            match = re.match(r"\s*versionCode\s*=\s*(\d+)\s*$", line)
+            if match:
+                return int(match.group(1))
+    raise ValueError(f"no versionCode in {VERSION_PROPERTIES}")
+
+
+def badging(package: str, code: int) -> str:
+    return f"package: name='{package}' versionCode='{code}' versionName='3.0.0' platformBuildVersionName='16'\n"
+
+
+def badgings(package: str = ISOLATED, codes: dict[str, int] | None = None) -> dict[str, str]:
+    base = version_base()
+    codes = {abi: base * 10 + rank for abi, rank in RANKS.items()} | (codes or {})
+    return {f"app-{abi}-release.apk.badging.txt": badging(package, code) for abi, code in codes.items()}
 
 
 # --- Test report fixtures ------------------------------------------------------------------------
@@ -142,139 +211,226 @@ def manifest_case(work: str, content: str | None) -> str:
     return path
 
 
-def results_case(work: str, reports: dict[str, str] | None) -> str:
-    """Writes the reports (None = no directory at all) and returns the directory."""
-    path = os.path.join(work, "test-results")
+def files_case(work: str, name: str, files: dict[str, str] | None) -> str:
+    """Writes the files into a fresh directory (None = no directory at all) and returns it."""
+    path = os.path.join(work, name)
     shutil.rmtree(path, ignore_errors=True)
-    if reports is not None:
-        # Gradle always writes a `binary/` directory next to the reports: an empty run keeps it.
+    if files is not None:
+        # Gradle always writes a `binary/` directory next to the test reports: an empty run keeps it.
         os.makedirs(os.path.join(path, "binary"))
-        for name, content in reports.items():
-            write(os.path.join(path, name), content)
+        for file_name, content in files.items():
+            write(os.path.join(path, file_name), content)
     return path
 
 
+def without(files: dict[str, str], name: str) -> dict[str, str]:
+    return {k: v for k, v in files.items() if k != name}
+
+
+def permission_cases(work: str) -> list[tuple]:
+    network = "NETWORK permission in the release manifest"
+    wrong_package = "is not the release manifest of"
+    return [
+        ("permissions: POSITIVE WITNESS (multi-line element)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK), 0, "OK: no network permission"),
+        ("permissions: POSITIVE WITNESS, replacing build (--replace)", MANIFEST_CHECK, ["--replace"],
+         lambda: manifest_case(work, manifest(FLUTTER)), 0, "OK: no network permission"),
+        ("permissions: INTERNET on one line", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, permission("android.permission.INTERNET"))),
+         1, network),
+        ("permissions: INTERNET across several lines", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_MULTI_LINE)), 1, network),
+        ("permissions: INTERNET via uses-permission-sdk-23", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_SDK_23)), 1, network),
+        ("permissions: INTERNET via uses-permission-sdk-m", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_SDK_M)), 1, network),
+        ("permissions: ACCESS_NETWORK_STATE (androidx.work's)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.ACCESS_NETWORK_STATE"))), 1, network),
+        ("permissions: ACCESS_WIFI_STATE", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.ACCESS_WIFI_STATE"))), 1, network),
+        ("permissions: replacing build read as the isolated one", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, manifest(FLUTTER)), 1, wrong_package + " " + ISOLATED),
+        ("permissions: isolated build read with --replace", MANIFEST_CHECK, ["--replace"],
+         lambda: manifest_case(work, MANIFEST_OK), 1, wrong_package + " " + FLUTTER),
+        ("permissions: no package attribute", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(f'\n    package="{ISOLATED}"', "")), 1, "(package=None)"),
+        ("permissions: permission outside the reviewed list", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.READ_CONTACTS"))), 1, "outside the reviewed list"),
+        ("permissions: reviewed permission absent", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(
+             "DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION", "OTHER_PERMISSION")), 1, "absent from the manifest"),
+        ("permissions: no permission at all", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.split("    <uses-permission")[0]
+                               + '    <application android:label="x" />\n</manifest>\n'),
+         1, "no permission found"),
+        ("permissions: not an application manifest", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace('    <application android:label="Read Files Tech" />\n', "")),
+         1, "is not an application manifest"),
+        ("permissions: file missing", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, None), 1, "merged manifest not found"),
+        ("permissions: malformed XML", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace("</manifest>", "")), 1, "merged manifest unreadable"),
+    ]
+
+
+def shape_cases(work: str) -> list[tuple]:
+    def case(label: str, content: str | None, code: int, text: str, extra: list[str] | None = None) -> tuple:
+        return (f"shape: {label}", SHAPE_CHECK, extra or [], lambda: manifest_case(work, content), code, text)
+
+    return [
+        case("POSITIVE WITNESS", SHAPE_OK, 0, "OK: backup off"),
+        case("allowBackup=\"true\"", SHAPE_OK.replace('allowBackup="false"', 'allowBackup="true"'),
+             1, "android:allowBackup> is 'true'"),
+        case("allowBackup absent (its default is true)", SHAPE_OK.replace('        android:allowBackup="false"\n', ""),
+             1, "android:allowBackup> is None"),
+        case("fullBackupContent absent", SHAPE_OK.replace('        android:fullBackupContent="false"\n', ""),
+             1, "android:fullBackupContent> is None"),
+        case("dataExtractionRules absent",
+             SHAPE_OK.replace('        android:dataExtractionRules="@xml/data_extraction_rules"\n', ""),
+             1, "android:dataExtractionRules> is None"),
+        case("usesCleartextTraffic=\"true\"", SHAPE_OK.replace('usesCleartextTraffic="false"', 'usesCleartextTraffic="true"'),
+             1, "android:usesCleartextTraffic> is 'true'"),
+        case("debuggable=\"true\"", SHAPE_OK.replace("<application\n", '<application\n        android:debuggable="true"\n'),
+             1, 'android:debuggable="true"'),
+        case("MainActivity without taskAffinity", SHAPE_OK.replace(' android:taskAffinity=""', ""),
+             1, "android:taskAffinity is None"),
+        case("an extra exported activity", in_application(SHAPE_OK, EXTRA_EXPORTED_ACTIVITY),
+             1, "outside the reviewed list: com.example.TestActivity"),
+        case("an activity exported by its intent filter alone", in_application(SHAPE_OK, IMPLICITLY_EXPORTED),
+             1, "outside the reviewed list: com.example.Implicit"),
+        case("an exported provider", in_application(SHAPE_OK, EXPORTED_PROVIDER),
+             1, "outside the reviewed list: com.example.Provider"),
+        case("ProfileInstallReceiver without its permission",
+             SHAPE_OK.replace(' android:permission="android.permission.DUMP"', ""),
+             1, "ProfileInstallReceiver is guarded by None"),
+        case("MainActivity renamed", SHAPE_OK.replace(MAIN_ACTIVITY, "com.readfilestech.rft.MainActivity"),
+             1, "reviewed exported component absent: " + MAIN_ACTIVITY),
+        case("replacing build read as the isolated one", SHAPE_OK.replace(f'package="{ISOLATED}"', f'package="{FLUTTER}"'),
+             1, "is not the release manifest of " + ISOLATED),
+        case("POSITIVE WITNESS, replacing build (--replace)",
+             SHAPE_OK.replace(f'package="{ISOLATED}"', f'package="{FLUTTER}"'), 0, "OK: backup off", ["--replace"]),
+        case("file missing", None, 1, "merged manifest not found"),
+        case("malformed XML", SHAPE_OK.replace("</manifest>", ""), 1, "merged manifest unreadable"),
+    ]
+
+
+def apk_cases(work: str) -> list[tuple]:
+    base = version_base()
+    universal = "app-universal-release.apk.badging.txt"
+
+    def case(label: str, files: dict[str, str] | None, code: int, text: str, extra: list[str] | None = None) -> tuple:
+        return (f"apks: {label}", APKS_CHECK, (extra or []) + ["--from-badging"],
+                lambda: files_case(work, "badging", files), code, text)
+
+    return [
+        case("POSITIVE WITNESS (four APKs)", badgings(), 0, "OK: four release APKs"),
+        case("POSITIVE WITNESS, replacing build (--replace)", badgings(FLUTTER), 0, "OK: four release APKs", ["--replace"]),
+        case("universal APK left at the bare base", badgings(codes={"universal": base}),
+             1, f"app-universal-release.apk: versionCode {base}, expected {base * 10}"),
+        case("one ABI with the rank of another", badgings(codes={"x86_64": base * 10 + 2}),
+             1, f"app-x86_64-release.apk: versionCode {base * 10 + 2}, expected {base * 10 + 3}"),
+        case("a code not above Flutter 2.15.3", badgings(codes={"universal": 25503}),
+             1, "versionCode 25503 is not above 25503"),
+        case("isolated APKs released as the replacing build", badgings(), 1,
+             f"package {ISOLATED}, expected {FLUTTER}", ["--replace"]),
+        case("replacing APKs read as the isolated build", badgings(FLUTTER), 1, f"package {FLUTTER}, expected {ISOLATED}"),
+        case("an APK missing", without(badgings(), universal), 1, "release APK missing: app-universal-release.apk"),
+        case("an unexpected APK", badgings() | {"app-riscv64-release.apk.badging.txt": badging(ISOLATED, base * 10 + 4)},
+             1, "unexpected release APK: app-riscv64-release.apk"),
+        case("unreadable badging", badgings() | {universal: "ERROR: not an APK\n"}, 1, "no package line"),
+        case("directory missing", None, 1, "directory not found"),
+    ]
+
+
+def test_cases(work: str) -> list[tuple]:
+    def case(label: str, files: dict[str, str] | None, code: int, text: str) -> tuple:
+        return (f"tests: {label}", TESTS_CHECK, [], lambda: files_case(work, "test-results", files), code, text)
+
+    return [
+        case("POSITIVE WITNESS (4 executed, 1 skipped)", REPORTS_OK, 0, "Tests executed: 4 (1 skipped, 2 reports)"),
+        case("no report at all (the JUnit 6 symptom)", {}, 1, "no TEST-*.xml report"),
+        case("directory missing", None, 1, "test results directory not found"),
+        case("suites that count zero tests", {"TEST-com.example.ATest.xml": report("com.example.ATest", 0)},
+             1, "0 tests executed in"),
+        case("every test skipped, marked in the cases only",
+             {"TEST-device-_app-.xml": report_skips_marked_in_cases_only("com.example.ATest", 3)}, 1, "0 tests executed in"),
+        case("every test skipped", {"TEST-com.example.ATest.xml": report("com.example.ATest", 3, skipped=3)},
+             1, "0 tests executed in"),
+        case("malformed report", {"TEST-com.example.ATest.xml": "<testsuite tests="}, 1, "test report unreadable"),
+        case("not a JUnit report", {"TEST-com.example.ATest.xml": "<coverage/>\n"}, 1, "no <testsuite> element"),
+    ]
+
+
+def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
+    with open(path, encoding="utf-8") as f:
+        real = f.read()
+    if "<application" not in real or "</application>" not in real:
+        return None
+    internet = permission("android.permission.INTERNET").strip()
+    cases = [
+        ("REAL manifest: permissions POSITIVE WITNESS", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, real), 0, "OK: no network permission"),
+        ("REAL manifest + INTERNET", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, real.replace("<application", internet + "\n    <application", 1)),
+         1, "NETWORK permission in the release manifest"),
+    ]
+    if merged:
+        cases += [
+            ("REAL merged manifest: shape POSITIVE WITNESS", SHAPE_CHECK, [],
+             lambda: manifest_case(work, real), 0, "OK: backup off"),
+            ("REAL merged manifest + an exported activity", SHAPE_CHECK, [],
+             lambda: manifest_case(work, real.replace("</application>", EXTRA_EXPORTED_ACTIVITY + "    </application>", 1)),
+             1, "outside the reviewed list: com.example.TestActivity"),
+        ]
+    return cases
+
+
 def main(argv: list[str]) -> int:
-    real_manifest = None
-    if len(argv) == 3 and argv[1] == "--real-manifest":
-        real_manifest = argv[2]
+    real_path, merged = None, False
+    if len(argv) == 3 and argv[1] in ("--real-manifest", "--real-merged-manifest"):
+        real_path, merged = argv[2], argv[1] == "--real-merged-manifest"
     elif len(argv) != 1:
         print(__doc__)
         return 2
 
-    for script in (MANIFEST_CHECK, TESTS_CHECK):
+    for script in (MANIFEST_CHECK, SHAPE_CHECK, APKS_CHECK, TESTS_CHECK):
         if not os.path.isfile(script):
             print(f"ERROR: {script} not found.")
             return 2
-    if real_manifest is not None and not os.path.isfile(real_manifest):
+    if real_path is not None and not os.path.isfile(real_path):
         # Asked for and absent is a failure, never a skip: a skipped case would pass for a green one.
-        print(f"ERROR: --real-manifest {real_manifest} not found. Run :app:processReleaseMainManifest first.")
+        print(f"ERROR: {argv[1]} {real_path} not found. Build it first.")
         return 1
 
     work = tempfile.mkdtemp(prefix="ci-guards-")
-    network = "NETWORK permission in the release manifest"
-    wrong_package = "is not the release manifest of"
-
-    # (label, guard, extra args, setup returning the target, expected exit code, text the output must contain)
-    cases = [
-        ("manifest: POSITIVE WITNESS (multi-line element)", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, MANIFEST_OK), 0, "OK: no network permission"),
-        ("manifest: POSITIVE WITNESS, replacing build (--replace)", MANIFEST_CHECK, ["--replace"],
-         lambda: manifest_case(work, manifest(FLUTTER)), 0, "OK: no network permission"),
-        ("manifest: INTERNET on one line", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(MANIFEST_OK, permission("android.permission.INTERNET"))),
-         1, network),
-        ("manifest: INTERNET across several lines", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_MULTI_LINE)), 1, network),
-        ("manifest: INTERNET via uses-permission-sdk-23", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_SDK_23)), 1, network),
-        ("manifest: INTERNET via uses-permission-sdk-m", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_SDK_M)), 1, network),
-        ("manifest: ACCESS_NETWORK_STATE (androidx.work's)", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(
-             MANIFEST_OK, permission("android.permission.ACCESS_NETWORK_STATE"))), 1, network),
-        ("manifest: ACCESS_WIFI_STATE", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(
-             MANIFEST_OK, permission("android.permission.ACCESS_WIFI_STATE"))), 1, network),
-        ("manifest: replacing build read as the isolated one", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, manifest(FLUTTER)), 1, wrong_package + " " + ISOLATED),
-        ("manifest: isolated build read with --replace", MANIFEST_CHECK, ["--replace"],
-         lambda: manifest_case(work, MANIFEST_OK), 1, wrong_package + " " + FLUTTER),
-        ("manifest: no package attribute", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, MANIFEST_OK.replace(f'\n    package="{ISOLATED}"', "")), 1, wrong_package),
-        ("manifest: permission outside the reviewed list", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, with_before_application(
-             MANIFEST_OK, permission("android.permission.READ_CONTACTS"))), 1, "outside the reviewed list"),
-        ("manifest: reviewed permission absent", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, MANIFEST_OK.replace(
-             "DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION", "OTHER_PERMISSION")), 1, "absent from the manifest"),
-        ("manifest: no permission at all", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, MANIFEST_OK.split("    <uses-permission")[0]
-                               + '    <application android:label="x" />\n</manifest>\n'),
-         1, "no permission found"),
-        ("manifest: not an application manifest", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, MANIFEST_OK.replace('    <application android:label="Read Files Tech" />\n', "")),
-         1, "is not an application manifest"),
-        ("manifest: file missing", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, None), 1, "merged manifest not found"),
-        ("manifest: malformed XML", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, MANIFEST_OK.replace("</manifest>", "")), 1, "merged manifest unreadable"),
-
-        ("tests: POSITIVE WITNESS (4 executed, 1 skipped)", TESTS_CHECK, [],
-         lambda: results_case(work, REPORTS_OK), 0, "Tests executed: 4 (1 skipped, 2 reports)"),
-        ("tests: no report at all (the JUnit 6 symptom)", TESTS_CHECK, [],
-         lambda: results_case(work, {}), 1, "no TEST-*.xml report"),
-        ("tests: directory missing", TESTS_CHECK, [],
-         lambda: results_case(work, None), 1, "test results directory not found"),
-        ("tests: suites that count zero tests", TESTS_CHECK, [],
-         lambda: results_case(work, {"TEST-com.example.ATest.xml": report("com.example.ATest", 0)}),
-         1, "0 tests executed in"),
-        ("tests: every test skipped, marked in the cases only", TESTS_CHECK, [],
-         lambda: results_case(work, {"TEST-device-_app-.xml": report_skips_marked_in_cases_only("com.example.ATest", 3)}),
-         1, "0 tests executed in"),
-        ("tests: every test skipped", TESTS_CHECK, [],
-         lambda: results_case(work, {"TEST-com.example.ATest.xml": report("com.example.ATest", 3, skipped=3)}),
-         1, "0 tests executed in"),
-        ("tests: malformed report", TESTS_CHECK, [],
-         lambda: results_case(work, {"TEST-com.example.ATest.xml": "<testsuite tests="}),
-         1, "test report unreadable"),
-        ("tests: not a JUnit report", TESTS_CHECK, [],
-         lambda: results_case(work, {"TEST-com.example.ATest.xml": "<coverage/>\n"}),
-         1, "no <testsuite> element"),
-    ]
-
-    if real_manifest is not None:
-        with open(real_manifest, encoding="utf-8") as f:
-            real = f.read()
-        if "<application" not in real:
-            print(f"ERROR: {real_manifest} has no <application> element to inject before.")
+    cases = permission_cases(work) + shape_cases(work) + apk_cases(work) + test_cases(work)
+    if real_path is not None:
+        extra = real_cases(work, real_path, merged)
+        if extra is None:
+            print(f"ERROR: {real_path} has no <application> element to inject into.")
             shutil.rmtree(work, ignore_errors=True)
             return 1
-        internet = permission("android.permission.INTERNET").strip()
-        cases += [
-            ("REAL manifest: POSITIVE WITNESS", MANIFEST_CHECK, [],
-             lambda: manifest_case(work, real), 0, "OK: no network permission"),
-            ("REAL manifest + INTERNET", MANIFEST_CHECK, [],
-             lambda: manifest_case(work, real.replace("<application", internet + "\n    <application", 1)),
-             1, network),
-        ]
+        cases += extra
 
     failures = []
     try:
-        for label, guard, extra, setup, expected_code, expected_text in cases:
-            code, output = run(guard, setup(), extra)
+        for label, guard, extra_args, setup, expected_code, expected_text in cases:
+            code, output = run(guard, setup(), extra_args)
             if code != expected_code:
                 verdict = "NOT DETECTED" if expected_code else "REFUSED a healthy input"
-                print(f"  FAIL  {label:60s} code={code} (expected {expected_code}) {verdict}")
+                print(f"  FAIL  {label:62s} code={code} (expected {expected_code}) {verdict}")
                 print("        " + output.strip().replace("\n", "\n        "))
                 failures.append(label)
             elif expected_text not in output:
-                print(f"  FAIL  {label:60s} right code, but for ANOTHER reason")
+                print(f"  FAIL  {label:62s} right code, but for ANOTHER reason")
                 print(f"        expected: {expected_text}")
                 print("        " + output.strip().replace("\n", "\n        "))
                 failures.append(label)
             else:
-                print(f"  OK    {label:60s} {'passes' if expected_code == 0 else 'detected, right cause'}")
+                print(f"  OK    {label:62s} {'passes' if expected_code == 0 else 'detected, right cause'}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
 

@@ -38,8 +38,13 @@ val appVersionName: String = requireNotNull(versionProps.getProperty("versionNam
 // The switch (phase 9, after parity is checked on a device):
 //     ./gradlew assembleRelease -Prft.replaceFlutter=true
 // ⚠️ Irreversible for the user: that build installs OVER Read Files Tech and opens its real data.
+//
+// Read from the COMMAND LINE only (`-P`), never from a gradle.properties file: `providers.gradleProperty`
+// also reads ~/.gradle/gradle.properties and ORG_GRADLE_PROJECT_* variables, so a line forgotten
+// there would turn every build of this machine into one that replaces the app (security review of the
+// skeleton, 2026-10-10, B3).
 // -------------------------------------------------------------------------------------------------
-val replaceFlutter: Boolean = providers.gradleProperty("rft.replaceFlutter").orNull == "true"
+val replaceFlutter: Boolean = gradle.startParameter.projectProperties["rft.replaceFlutter"] == "true"
 
 val baseApplicationId = "com.readfilestech.read_files_tech"
 val effectiveApplicationId = if (replaceFlutter) baseApplicationId else "$baseApplicationId.next"
@@ -55,12 +60,22 @@ if (replaceFlutter) {
 
 // -------------------------------------------------------------------------------------------------
 // Signing — keystore.properties at the root, never committed (.gitignore, docs D-010). Absent, the
-// release build falls back to the debug key: that is how the CI exercises R8 without the real key.
+// ISOLATED release build falls back to the debug key: that is how the CI exercises R8 without the
+// real key. A release that takes the Flutter app's place never does (see the guard below): signed with
+// the public debug key, it could not update anyone, and whoever installed it would be stuck with it.
 // -------------------------------------------------------------------------------------------------
+val keystoreFile = rootProject.file("keystore.properties")
 val keystoreProps = Properties().apply {
-    val f = rootProject.file("keystore.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
+    if (keystoreFile.exists()) keystoreFile.inputStream().use { load(it) }
 }
+val signingKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+if (keystoreFile.exists()) {
+    // Every key named: a partial file would otherwise fail late, on a null path or password.
+    signingKeys.forEach { key ->
+        require(!keystoreProps.getProperty(key).isNullOrBlank()) { "keystore.properties has no $key." }
+    }
+}
+val hasReleaseKey = keystoreFile.exists()
 
 android {
     // AGP slips an ENCRYPTED list of our dependencies into the APK signing block, for the Play
@@ -106,7 +121,7 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystoreProps.isNotEmpty()) {
+            if (hasReleaseKey) {
                 storeFile = file(keystoreProps.getProperty("storeFile"))
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
@@ -129,7 +144,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = if (keystoreProps.isNotEmpty()) {
+            signingConfig = if (hasReleaseKey) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
@@ -188,6 +203,19 @@ val highestFlutterCodePublished = 25503
 require(appVersionCode * 10 + universalRank > highestFlutterCodePublished) {
     "versionCode base $appVersionCode gives ${appVersionCode * 10}, not above $highestFlutterCodePublished " +
         "(Read Files Tech 2.15.3, x86_64): the update would be refused on the phones that installed it."
+}
+
+// A release that takes the Flutter app's place must be signed by the real key: refused otherwise,
+// before anything is packaged (security review of the skeleton, 2026-10-10, B1). Debug builds keep the
+// debug key, which the phase 2 test needs (debug port over a debug Flutter build).
+gradle.taskGraph.whenReady {
+    val packagesARelease = allTasks.any { it.project == project && it.name == "packageRelease" }
+    if (replaceFlutter && packagesARelease && !hasReleaseKey) {
+        throw GradleException(
+            "A release build with -Prft.replaceFlutter=true needs keystore.properties: signed with the debug " +
+                "key, it would install over nobody's Read Files Tech and could never be updated.",
+        )
+    }
 }
 
 androidComponents {
