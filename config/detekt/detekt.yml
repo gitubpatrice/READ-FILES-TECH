@@ -79,6 +79,16 @@ formatting:
   MaximumLineLength:
     active: false
 
+  # The wrapping rules decide "fits on one line" against the ktlint android width (100) unless told
+  # otherwise: they would then force a wrap on lines that style.MaxLineLength accepts. One width for
+  # every rule — 140.
+  ArgumentListWrapping:
+    maxLineLength: 140
+  ParameterListWrapping:
+    maxLineLength: 140
+  PropertyWrapping:
+    maxLineLength: 140
+
   # ktlint's package-name rule refuses underscores outright, with no setting: it would reject the
   # package that D-012 requires. naming.PackageNaming above checks the package instead.
   PackageName:

@@ -26,6 +26,8 @@ coroutines              = "1.11.0"
 # --- Tests ---
 junit                   = "6.1.3"
 truth                   = "1.4.5"
+# The real org.json in JVM tests: android.jar only carries stubs there. Same version as the prototype.
+orgJson                 = "20260814"
 androidxTestCore        = "1.7.0"
 androidxTestRunner      = "1.7.0"
 
@@ -56,6 +58,8 @@ junit-bom                               = { group = "org.junit",                
 junit-jupiter-api                       = { group = "org.junit.jupiter",               name = "junit-jupiter-api" }
 junit-jupiter-engine                    = { group = "org.junit.jupiter",               name = "junit-jupiter-engine" }
 junit-platform-launcher                 = { group = "org.junit.platform",              name = "junit-platform-launcher" }
+junit-jupiter-params                    = { group = "org.junit.jupiter",               name = "junit-jupiter-params" }
+org-json                                = { group = "org.json",                        name = "json",                              version.ref = "orgJson" }
 truth                                   = { group = "com.google.truth",                name = "truth",                             version.ref = "truth" }
 
 # Instrumented tests — JUnit 4 under AndroidJUnitRunner (it brings junit:junit itself).
