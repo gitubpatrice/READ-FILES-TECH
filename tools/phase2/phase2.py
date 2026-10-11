@@ -137,7 +137,9 @@ def seed(args) -> int:
     # ASCII only, double quotes escaped: it goes through two shells (adb's, then run-as's `sh -c '...'`).
     scenario = json.dumps({"scenario": args.scenario, "tag": args.tag}).replace('"', '\\"')
     device.run_as(f'mkdir -p files/rft_seed && echo "{scenario}" > files/rft_seed/scenario.json')
-    device.shell(f"am start -W -n {PACKAGE}/.MainActivity")
+    # No -W: behind a locked screen (the S9 after a reboot, PIN unknown) the activity is never displayed
+    # and `am start -W` waits forever — while the seed, which works before any frame, has run.
+    device.shell(f"am start -n {PACKAGE}/.MainActivity")
     status = ""
     started = time.time()
     while time.time() - started < SEED_TIMEOUT_S:
