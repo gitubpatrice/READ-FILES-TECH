@@ -1,13 +1,6 @@
 package com.readfilestech.read_files_tech.data.prefs
 
-import org.json.JSONArray
-import org.json.JSONException
-import java.io.ByteArrayInputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.ObjectInputStream
-import java.io.ObjectStreamClass
-import java.util.Base64
+import com.readfilestech.read_files_tech.data.DartText
 import java.util.Locale
 
 /**
@@ -42,12 +35,16 @@ fun <T> PrefRead<T>.valueOrNull(): T? = (this as? PrefRead.Present)?.value
  * | `bool` | `putBoolean` |
  * | `String` | `putString`, refused by the plugin if it starts with one of the prefixes below |
  * | `int` | **`putLong`** — `getInt` on it throws `ClassCastException` |
- * | `List<String>` | `putString(LIST_PREFIX + "!" + jsonEncode(list))` (2.4.27) |
+ * | `List<String>` | `putString(LIST_PREFIX + "!" + jsonEncode(list))` (2.4.23 to 2.4.27) |
  *
- * Older plugin versions stored lists as `LIST_PREFIX` + Base64 of a Java-serialised list, and the
- * very first ones as a `Set<String>`: an install that dates back to them may still carry those, so
- * all three are read. Writing uses the 2.4.27 JSON form only, the one the 2.15.x writes — a second
- * format on the user's disk would make the two periods indistinguishable.
+ * Only the JSON list form is read. Older plugin versions stored a list as `LIST_PREFIX` + Base64 of a
+ * Java-serialised list, and the very first ones as a `Set<String>`, but no Read Files Tech ever
+ * shipped them: its 29 `pubspec.lock` revisions, from 1.0.0 (2026-04-27) to 2.15.3, all lock
+ * shared_preferences_android 2.4.23, 2.4.26 or 2.4.27, and those write only JSON (checked in their
+ * `lib/src/shared_preferences_android.dart`, 2026-10-11). Reading the Java form would mean running
+ * `ObjectInputStream` on the file at startup — a list declaring 2^31 elements is an
+ * `OutOfMemoryError` before any check (external review of 2026-10-11) — for data that cannot exist.
+ * Such a value is Unreadable, kept as it is (docs D-019).
  *
  * Read Files Tech stores no `double` (docs/INVENTAIRE-2.15.2.md §5.1), so none is decoded.
  */
@@ -91,63 +88,27 @@ object FlutterPrefsFormat {
         else -> PrefRead.Present(raw)
     }
 
-    fun readStringList(raw: Any?): PrefRead<List<String>> = when (raw) {
-        null -> PrefRead.Absent
-        is String -> decodeList(raw)
-        // The plugin's first versions used putStringSet. The order is lost: the format lost it.
-        is Set<*> ->
-            if (raw.all { it is String }) {
-                PrefRead.Present(raw.map { it as String })
-            } else {
-                PrefRead.Unreadable("a set holding something else than strings")
-            }
-        else -> PrefRead.Unreadable("expected a list, found ${typeOf(raw)}")
-    }
-
-    /** A plain string as the plugin's `setString` accepts it: one with a reserved prefix is refused there too. */
-    fun requireStorableString(value: String) {
-        require(RESERVED_PREFIXES.none { value.startsWith(it) }) { "a string starting with a reserved prefix cannot be stored" }
-    }
-
-    /** A list in the 2.4.27 form: [JSON_LIST_PREFIX] followed by exactly what Dart's `jsonEncode` writes. */
-    fun encodeStringList(list: List<String>): String = JSON_LIST_PREFIX + dartJsonEncode(list)
-
-    private fun decodeList(raw: String): PrefRead<List<String>> = when {
-        raw.startsWith(JSON_LIST_PREFIX) -> decodeJsonList(raw.substring(JSON_LIST_PREFIX.length))
-        raw.startsWith(LIST_PREFIX) -> decodeSerializedList(raw.substring(LIST_PREFIX.length))
+    fun readStringList(raw: Any?): PrefRead<List<String>> = when {
+        raw == null -> PrefRead.Absent
+        raw !is String -> PrefRead.Unreadable("expected a list, found ${typeOf(raw)}")
+        raw.startsWith(JSON_LIST_PREFIX) ->
+            DartJsonList.decode(raw.substring(JSON_LIST_PREFIX.length))?.let { PrefRead.Present(it) }
+                ?: PrefRead.Unreadable("not a JSON list of strings that Dart's jsonDecode accepts")
+        raw.startsWith(LIST_PREFIX) -> PrefRead.Unreadable("a Java-serialised list, a form no Read Files Tech wrote")
         else -> PrefRead.Unreadable("a string where a list is expected")
     }
 
-    private fun decodeJsonList(json: String): PrefRead<List<String>> = try {
-        val array = JSONArray(json)
-        val items = (0 until array.length()).map { array.get(it) }
-        if (items.all { it is String }) {
-            PrefRead.Present(items.map { it as String })
-        } else {
-            PrefRead.Unreadable("a JSON list holding something else than strings")
-        }
-    } catch (e: JSONException) {
-        PrefRead.Unreadable("malformed JSON list: ${e.message}")
+    /**
+     * A plain string as the plugin stores it: one with a reserved prefix is refused there too, and a lone
+     * surrogate became U+FFFD on its way through the platform channel (DartText).
+     */
+    fun storableString(value: String): String {
+        require(RESERVED_PREFIXES.none { value.startsWith(it) }) { "a string starting with a reserved prefix cannot be stored" }
+        return DartText.wellFormed(value)
     }
 
-    private fun decodeSerializedList(base64: String): PrefRead<List<String>> = try {
-        // MIME decoder: Android's Base64.DEFAULT, which the plugin used, breaks lines every 76 characters.
-        val bytes = Base64.getMimeDecoder().decode(base64)
-        StringListOnlyInputStream(ByteArrayInputStream(bytes)).use { stream ->
-            val list = stream.readObject() as? List<*>
-            if (list != null && list.all { it is String }) {
-                PrefRead.Present(list.map { it as String })
-            } else {
-                PrefRead.Unreadable("a serialised object that is not a list of strings")
-            }
-        }
-    } catch (e: IOException) {
-        PrefRead.Unreadable("unreadable serialised list: ${e.message}")
-    } catch (e: ClassNotFoundException) {
-        PrefRead.Unreadable("serialised list refers to a refused class: ${e.message}")
-    } catch (e: IllegalArgumentException) {
-        PrefRead.Unreadable("invalid Base64 in a serialised list: ${e.message}")
-    }
+    /** A list in the 2.4.27 form: [JSON_LIST_PREFIX] followed by exactly what the plugin stores. */
+    fun encodeStringList(list: List<String>): String = JSON_LIST_PREFIX + dartJsonEncode(list.map(DartText::wellFormed))
 
     /**
      * Dart's `jsonEncode` for a list of strings, character for character (checked against Dart 3 in
@@ -161,29 +122,6 @@ object FlutterPrefsFormat {
             appendDartJsonString(item)
         }
         append(']')
-    }
-
-    /**
-     * An `ObjectInputStream` that refuses anything but a list of strings. Deserialising Java lets the
-     * data choose the classes to instantiate; a preferences file can be planted on a rooted phone or
-     * carried by a migration tool. The list of accepted classes is the plugin's own
-     * (`StringListObjectInputStream`): not a local invention, and loosening it would reopen a door the
-     * plugin's authors closed on purpose.
-     */
-    private class StringListOnlyInputStream(input: InputStream) : ObjectInputStream(input) {
-        override fun resolveClass(desc: ObjectStreamClass): Class<*> {
-            if (desc.name !in ACCEPTED_CLASSES) throw ClassNotFoundException(desc.name)
-            return super.resolveClass(desc)
-        }
-
-        private companion object {
-            val ACCEPTED_CLASSES = setOf(
-                "java.util.Arrays\$ArrayList",
-                "java.util.ArrayList",
-                "java.lang.String",
-                "[Ljava.lang.String;",
-            )
-        }
     }
 }
 

@@ -15,10 +15,11 @@ import javax.inject.Singleton
  * error — the read finds nothing and falls back, which looks like "the user never changed this".
  */
 @Singleton
-class FlutterPreferences @Inject constructor(@ApplicationContext context: Context) {
+class FlutterPreferences internal constructor(private val prefs: SharedPreferences) {
 
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences(FlutterPrefsFormat.FILE_NAME, Context.MODE_PRIVATE)
+    @Inject
+    constructor(@ApplicationContext context: Context) :
+        this(context.getSharedPreferences(FlutterPrefsFormat.FILE_NAME, Context.MODE_PRIVATE))
 
     fun long(key: String): PrefRead<Long> = FlutterPrefsFormat.readLong(raw(key))
 
@@ -73,8 +74,7 @@ class FlutterPreferences @Inject constructor(@ApplicationContext context: Contex
     /** The writes this file's format allows, keys prefixed, values in the plugin's own encoding. */
     inner class Edition internal constructor(private val editor: SharedPreferences.Editor) {
         fun putString(key: String, value: String) {
-            FlutterPrefsFormat.requireStorableString(value)
-            editor.putString(prefixed(key), value)
+            editor.putString(prefixed(key), FlutterPrefsFormat.storableString(value))
         }
 
         fun putBoolean(key: String, value: Boolean) {
