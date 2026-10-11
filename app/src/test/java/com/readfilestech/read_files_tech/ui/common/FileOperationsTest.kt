@@ -45,7 +45,7 @@ class FileOperationsTest {
     private fun TestScope.posted(block: (FileOperations) -> Unit): List<UserMessage> {
         val seen = mutableListOf<UserMessage>()
         // A queue serves one reader: this one stops before the next call starts its own.
-        val reader = backgroundScope.launch { messages.messages.collect { seen += it } }
+        val reader = backgroundScope.launch { messages.showEach { seen += it } }
         runCurrent()
         block(FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher))
         runCurrent()
