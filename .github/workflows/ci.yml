@@ -64,9 +64,14 @@ jobs:
       # The zero-network job reads the merged manifest, an intermediate: anything wired after it in
       # the build would escape it. This reads the manifest of the release APK itself, the artefact
       # that ships, through the same guard and its negative control.
+      # apkanalyzer is pinned: the runner's own (ubuntu-24.04 20261004) printed taskAffinity="" as
+      # "@string/0x20", where 20.0 prints "" (2026-10-11), and the guard compares literals exactly.
       - name: Assert the permissions and the shape of the release APK
         run: |
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest print \
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmdline-tools;20.0" > /dev/null
+          tools_dir=$(dirname "$(grep -l '^Pkg.Revision=20.0$' "$ANDROID_HOME"/cmdline-tools/*/source.properties | head -n 1)")
+          echo "apkanalyzer from $tools_dir"
+          "$tools_dir/bin/apkanalyzer" manifest print \
             app/build/outputs/apk/release/app-universal-release.apk > "$RUNNER_TEMP/apk-manifest.xml"
           python3 tools/check-guards-negative-control.py --real-manifest "$RUNNER_TEMP/apk-manifest.xml"
           python3 tools/check-manifest-permissions.py "$RUNNER_TEMP/apk-manifest.xml"
