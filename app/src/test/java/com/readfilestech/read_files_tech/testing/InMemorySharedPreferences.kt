@@ -21,22 +21,31 @@ class InMemorySharedPreferences : SharedPreferences {
         values[key] = value
     }
 
+    // Thread-safe, as the platform's: one monitor for reads and commits (concurrency tests rely on it).
+    @Synchronized
     override fun getAll(): Map<String, *> = LinkedHashMap(values)
 
+    @Synchronized
     override fun getString(key: String, defValue: String?): String? = values[key] as String? ?: defValue
 
     @Suppress("UNCHECKED_CAST")
+    @Synchronized
     override fun getStringSet(key: String, defValues: MutableSet<String>?): MutableSet<String>? =
         (values[key] as Set<String>?)?.toMutableSet() ?: defValues
 
+    @Synchronized
     override fun getInt(key: String, defValue: Int): Int = values[key] as Int? ?: defValue
 
+    @Synchronized
     override fun getLong(key: String, defValue: Long): Long = values[key] as Long? ?: defValue
 
+    @Synchronized
     override fun getFloat(key: String, defValue: Float): Float = values[key] as Float? ?: defValue
 
+    @Synchronized
     override fun getBoolean(key: String, defValue: Boolean): Boolean = values[key] as Boolean? ?: defValue
 
+    @Synchronized
     override fun contains(key: String): Boolean = key in values
 
     override fun edit(): SharedPreferences.Editor = Editor()
@@ -76,9 +85,11 @@ class InMemorySharedPreferences : SharedPreferences {
         override fun commit(): Boolean {
             onCommit?.invoke(puts.keys.toSet())
             if (failCommits) return false
-            if (clear) values.clear()
-            removes.forEach(values::remove)
-            values.putAll(puts)
+            synchronized(this@InMemorySharedPreferences) {
+                if (clear) values.clear()
+                removes.forEach(values::remove)
+                values.putAll(puts)
+            }
             return true
         }
 

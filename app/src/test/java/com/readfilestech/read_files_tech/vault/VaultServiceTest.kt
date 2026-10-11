@@ -6,6 +6,7 @@ import com.readfilestech.read_files_tech.vault.format.VaultKdf
 import com.readfilestech.read_files_tech.vault.format.VaultNames
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
@@ -157,14 +158,25 @@ class VaultServiceTest {
     fun `a lock during the derivation - the right password does not open the vault behind the user`() = runBlocking<Unit> {
         vault.service.setup(PASSWORD)
         vault.service.lock()
-        // The attempt starts, then the screen is left: the lock lands while the key is derived.
-        vault.clock.onWallRead = {
-            vault.clock.onWallRead = null
+        // The screen is left while the key is derived: the lock lands right before Argon2 runs, after
+        // the lockout was checked — a check of the epoch only before deriving would not see it.
+        vault.argon2.onCanAfford = {
+            vault.argon2.onCanAfford = null
             vault.service.lock()
         }
         assertThrows<LockedDuringOperationException> { runBlocking { vault.service.unlock(PASSWORD) } }
         assertThat(vault.session.unlocked.value).isFalse()
         assertThat(vault.stored(VaultKeys.UNLOCK_FAILS)).isNull() // the password was right: not counted
+        assertThat(vault.service.unlock(PASSWORD)).isTrue()
+    }
+
+    @Test
+    fun `a lock during the setup's derivation - the vault is created, and stays locked`() = runBlocking<Unit> {
+        vault.argon2.onNewVaultParams = { vault.service.lock() }
+        assertThat(vault.service.setup(PASSWORD)).isFalse()
+        assertThat(vault.session.unlocked.value).isFalse()
+        assertThat(vault.service.isSetUp()).isTrue()
+        vault.argon2.onNewVaultParams = null
         assertThat(vault.service.unlock(PASSWORD)).isTrue()
     }
 
@@ -182,7 +194,14 @@ class VaultServiceTest {
         vault.files.import("a.txt", 1, { byteArrayOf(1).inputStream() })
         repeat(2) { vault.lockouts.recordFailure(VaultKeys.BACKUP_LOCKOUT, vault.lockouts.now()) }
         vault.plant("theme_mode", "dark") // not the vault's: kept
+        // Locked FIRST: at the moment the keys are erased, no operation can open any more.
+        var openDuringErasure: Boolean? = null
+        vault.raw.onCommit = {
+            if (openDuringErasure == null) openDuringErasure = runCatching { vault.session.open().close() }.isSuccess
+        }
         vault.service.reset()
+        vault.raw.onCommit = null
+        assertThat(openDuringErasure).isFalse()
         assertThat(vault.session.unlocked.value).isFalse()
         VaultKeys.VAULT_STATE.forEach { assertThat(vault.stored(it)).isNull() }
         assertThat(vault.stored("theme_mode")).isEqualTo("dark")
@@ -190,6 +209,27 @@ class VaultServiceTest {
         assertThat(vault.service.isSetUp()).isFalse()
         assertThat(vault.service.setup("new")).isTrue()
     }
+
+    @Test
+    fun `a reset that cannot delete every file says so, instead of leaving them in the next vault`() = runBlocking<Unit> {
+        vault.service.setup(PASSWORD)
+        // A file that resists deletion: in a read-only folder (Linux, the CI), and held open (Windows).
+        val stubborn = File(vault.dirs.vault, "stuck/file").apply { parentFile.mkdirs() }
+        stubborn.writeText("resists")
+        val held = stubborn.inputStream()
+        stubborn.parentFile.setWritable(false)
+        try {
+            val probe = !File(stubborn.parentFile, "probe").let { runCatching { it.createNewFile() }.getOrDefault(false) }
+            assumeTrue(probe || isWindows(), "no way to make a file resist deletion on this machine")
+            assertThrows<VaultStorageException> { runBlocking { vault.service.reset() } }
+            VaultKeys.VAULT_STATE.forEach { assertThat(vault.stored(it)).isNull() } // the keys went, and it is said
+        } finally {
+            stubborn.parentFile.setWritable(true)
+            held.close()
+        }
+    }
+
+    private fun isWindows() = System.getProperty("os.name").orEmpty().startsWith("Windows")
 
     @Test
     fun `lock purges the plaintext the Flutter app and the port left in the cache`() = runBlocking<Unit> {

@@ -45,6 +45,7 @@ class VaultLockoutStore @Inject constructor(
      *
      * @throws VaultStorageException the file refused it.
      */
+    @Synchronized // read, add one, write: two attempts at once must count two (Claude review of 2026-10-11)
     fun recordFailure(lockout: VaultKeys.Lockout, at: Attempt) {
         val fails = (read(lockout.fails) ?: 0) + 1
         val delay = VaultLockout.delayMs(fails)
@@ -59,6 +60,7 @@ class VaultLockoutStore @Inject constructor(
     }
 
     /** After a success: the counter and both deadlines go. False if the file refused the write. */
+    @Synchronized
     fun clear(lockout: VaultKeys.Lockout): Boolean = prefs.commit { lockout.all.forEach(::remove) }
 
     private fun read(key: String): Long? = prefs.long(key).orCorrupted(key)

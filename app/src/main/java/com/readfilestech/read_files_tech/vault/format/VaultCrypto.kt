@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.vault.format
 
 import com.readfilestech.read_files_tech.data.DartText
+import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.EOFException
 import java.io.InputStream
@@ -44,7 +45,15 @@ object VaultCrypto {
     fun aad(fileName: String): ByteArray = DartText.utf8(AAD_PREFIX + fileName)
 
     fun encryptV2(plain: ByteArray, key: ByteArray, nonce: ByteArray, fileName: String): ByteArray =
-        MAGIC_V2 + nonce + Gcm.seal(plain, key, nonce, aad(fileName))
+        ByteArrayOutputStream().also { writeV2(plain, key, nonce, fileName, it) }.toByteArray()
+
+    /** [encryptV2] in one block, straight to [out]: header then ciphertext, never concatenated in memory. */
+    fun writeV2(plain: ByteArray, key: ByteArray, nonce: ByteArray, fileName: String, out: OutputStream) {
+        val sealed = Gcm.seal(plain, key, nonce, aad(fileName))
+        out.write(MAGIC_V2)
+        out.write(nonce)
+        out.write(sealed)
+    }
 
     /** The same file as [encryptV2], from [input] to [out], in constant memory. [out] is not closed. */
     fun encryptV2(input: InputStream, out: OutputStream, key: ByteArray, nonce: ByteArray, fileName: String) {

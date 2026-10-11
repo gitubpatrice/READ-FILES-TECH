@@ -22,7 +22,9 @@ class VaultDirs(
 
 /**
  * Encrypting and decrypting vault files, by the engine their size allows (docs D-023): one block when
- * three copies fit in a twelfth of the heap, a stream otherwise.
+ * the data is at most a twelfth of the heap — its three copies (input, the provider's buffer, output)
+ * then hold a quarter of it — a stream otherwise. No fourth copy: a header and its ciphertext are
+ * written one after the other, never concatenated.
  */
 @Singleton
 class VaultCipher @Inject constructor(private val memory: DeviceMemory) {
@@ -57,6 +59,21 @@ class VaultCipher @Inject constructor(private val memory: DeviceMemory) {
     }
 
     /**
+     * Runs [file] through its tag without writing its plaintext anywhere.
+     *
+     * @throws com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
+     * @throws com.readfilestech.read_files_tech.vault.format.VaultFormatException
+     */
+    fun verify(file: File, key: ByteArray, v2Only: Boolean) = decryptFile(file, key, v2Only, Discard)
+
+    /** Where verified-away plaintext goes: nowhere. */
+    private object Discard : OutputStream() {
+        override fun write(b: Int) = Unit
+
+        override fun write(b: ByteArray, off: Int, len: Int) = Unit
+    }
+
+    /**
      * Writes into [out] the v2 vault file named [fileName] holding the [size] bytes of [input]. Reading
      * more or fewer bytes than [size] is refused: the source changed under the operation.
      */
@@ -68,7 +85,7 @@ class VaultCipher @Inject constructor(private val memory: DeviceMemory) {
             try {
                 DataInputStream(exact).readFully(plain)
                 exact.ensureEnd()
-                out.write(VaultCrypto.encryptV2(plain, key, nonce, fileName))
+                VaultCrypto.writeV2(plain, key, nonce, fileName, out)
             } finally {
                 plain.fill(0)
             }

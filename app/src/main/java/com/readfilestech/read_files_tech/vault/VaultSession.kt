@@ -42,8 +42,19 @@ class VaultSession @Inject constructor() {
     }
 
     /** @throws LockedDuringOperationException the vault was locked since [op] opened. */
-    fun ensureOpen(op: Op) = synchronized(monitor) {
+    fun ensureOpen(op: Op) = whileOpen(op) {}
+
+    /**
+     * Runs [action] — publishing a file, deleting one — only if the vault is still open at [op]'s
+     * epoch, and holds the lock state while it runs: a lock() waits for it, and none can slip between
+     * the check and the write (the 2.15.x left that window open: a rename started after a lock went
+     * through). Keep [action] short, a rename or a deletion.
+     *
+     * @throws LockedDuringOperationException the vault was locked since [op] opened.
+     */
+    fun <T> whileOpen(op: Op, action: () -> T): T = synchronized(monitor) {
         if (epoch != op.epoch || key == null) throw LockedDuringOperationException()
+        action()
     }
 
     /** The epoch now: a derivation started at it installs its key only if it has not changed. */
@@ -54,29 +65,32 @@ class VaultSession @Inject constructor() {
      * Otherwise wipes it and returns false — a lock during the seconds of Argon2 must not be followed
      * by the vault opening behind the user's back.
      */
-    fun install(newKey: ByteArray, newV2Only: Boolean, startEpoch: Long): Boolean {
-        val installed = synchronized(monitor) {
-            if (epoch != startEpoch) {
-                false
-            } else {
-                key?.fill(0)
-                key = newKey
-                v2Only = newV2Only
-                true
+    fun install(newKey: ByteArray, newV2Only: Boolean, startEpoch: Long): Boolean = synchronized(monitor) {
+        // The published state changes under the same monitor as the key: a lock() between the two
+        // would otherwise leave "unlocked" true with no key, or the reverse.
+        if (epoch != startEpoch) {
+            newKey.fill(0)
+            false
+        } else {
+            // Replacing a held key closes its operations too: one opened under the old key must not
+            // write after another key took its place (Claude review of 2026-10-11).
+            key?.let {
+                it.fill(0)
+                epoch++
             }
+            key = newKey
+            v2Only = newV2Only
+            unlockedState.value = true
+            true
         }
-        if (installed) unlockedState.value = true else newKey.fill(0)
-        return installed
     }
 
     /** Wipes the key and closes every operation's epoch. Callers purge the plaintext left in the cache. */
-    fun lock() {
-        synchronized(monitor) {
-            epoch++
-            key?.fill(0)
-            key = null
-            v2Only = false
-        }
+    fun lock() = synchronized(monitor) {
+        epoch++
+        key?.fill(0)
+        key = null
+        v2Only = false
         unlockedState.value = false
     }
 }

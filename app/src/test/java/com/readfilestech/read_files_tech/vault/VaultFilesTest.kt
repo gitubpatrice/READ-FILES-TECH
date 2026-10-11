@@ -1,8 +1,10 @@
 package com.readfilestech.read_files_tech.vault
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
 import com.readfilestech.read_files_tech.vault.format.VaultNames
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
@@ -11,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import java.io.EOFException
 import java.io.File
 import java.io.InputStream
+import java.nio.file.Files
 
 class VaultFilesTest {
     @TempDir
@@ -51,17 +54,31 @@ class VaultFilesTest {
     }
 
     @Test
+    fun `streamed, an altered vault file is refused by its tag and leaves nothing - export or cache`() = runBlocking<Unit> {
+        val vault = openVault(TestVault.STREAMED)
+        val stored = vault.files.import("big.bin", 60_000, { ByteArray(60_000) { 3 }.inputStream() })
+        val bytes = stored.readBytes()
+        bytes[bytes.size - 1] = (bytes[bytes.size - 1].toInt() xor 1).toByte() // in the tag
+        stored.writeBytes(bytes)
+        val out = File(root, "out").apply { mkdirs() }
+        assertThrows<VaultAuthenticationException> { runBlocking { vault.files.export(stored, out) } }
+        assertThat(out.list()!!.toList()).isEmpty()
+        assertThrows<VaultAuthenticationException> { runBlocking { vault.files.decryptToCache(stored) } }
+        assertThat(File(vault.dirs.cache, VaultFiles.DECRYPT_DIR).list().orEmpty().toList()).isEmpty()
+    }
+
+    @Test
     fun `an import running across a reset and a new vault never lands in the new vault`() = runBlocking<Unit> {
         val vault = openVault()
         val data = ByteArray(50_000) { it.toByte() }
         // The vault is open again when the import checks — but under another key: only the epoch tells.
+        // Triggered as the source opens, once the import holds its copy of the old key.
         val source = {
-            LockingInput(data.inputStream()) {
-                runBlocking {
-                    vault.service.reset()
-                    vault.service.setup("a new vault")
-                }
+            runBlocking {
+                vault.service.reset()
+                vault.service.setup("a new vault")
             }
+            data.inputStream()
         }
         assertThrows<LockedDuringOperationException> {
             runBlocking { vault.files.import("photo.jpg", data.size.toLong(), source) }
@@ -153,10 +170,44 @@ class VaultFilesTest {
     }
 
     @Test
-    fun `a locked vault opens no operation`() = runBlocking<Unit> {
+    fun `a symbolic link planted in the vault is neither listed nor read, exported or deleted through`() = runBlocking<Unit> {
         val vault = openVault()
+        val outside = File(root, "outside.enc").apply { writeText("not the vault's") }
+        val link = File(vault.dirs.vault, "link.enc").toPath()
+        val created = runCatching { Files.createSymbolicLink(link, outside.toPath()) }.isSuccess
+        // Windows needs a privilege to create a link; the Linux CI always runs this.
+        assumeTrue(created, "symbolic links cannot be created on this machine")
+        assertThat(vault.files.list()).isEmpty()
+        val asFile = link.toFile()
+        assertThrows<IllegalArgumentException> { runBlocking { vault.files.decryptToCache(asFile) } }
+        assertThrows<IllegalArgumentException> { runBlocking { vault.files.export(asFile, File(root, "out")) } }
+        assertThrows<IllegalArgumentException> { runBlocking { vault.files.delete(asFile) } }
+        assertThat(outside.readText()).isEqualTo("not the vault's")
+    }
+
+    @Test
+    fun `a locked vault opens no operation, deletion included`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("kept.txt", 1, { byteArrayOf(1).inputStream() })
         vault.service.lock()
         assertThrows<VaultLockedException> { runBlocking { vault.files.import("a", 1, { byteArrayOf(1).inputStream() }) } }
+        assertThrows<VaultLockedException> { runBlocking { vault.files.delete(stored) } }
+        assertThat(stored.exists()).isTrue()
+    }
+
+    @Test
+    fun `two imports of the same name - the second one does not replace the first without consent`() = runBlocking<Unit> {
+        val vault = openVault()
+        // The second import starts once the first has checked for a namesake and is reading its source.
+        val second = {
+            LockingInput("first".byteInputStream()) {
+                runBlocking { vault.files.import("a.txt", 6, { "second".byteInputStream() }) }
+            }
+        }
+        assertThrows<NameTakenException> { runBlocking { vault.files.import("a.txt", 5, second) } }
+        val stored = File(vault.dirs.vault, "a.txt.enc")
+        assertThat(vault.files.decryptToCache(stored).readText()).isEqualTo("second")
+        assertThat(vault.vaultEntries().filter { it.endsWith(".tmp") }).isEmpty()
     }
 
     private suspend fun openVault(heap: Long = TestVault.ONE_BLOCK): TestVault {

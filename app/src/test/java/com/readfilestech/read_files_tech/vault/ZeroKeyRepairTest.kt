@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.vault
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.prefs.FlutterPrefsFormat
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -57,6 +58,15 @@ class ZeroKeyRepairTest {
         vault.plant(VaultKeys.ZERO_KEY_REPAIR_DONE, "yes")
         plantZeroKey(vault, "planted.txt", byteArrayOf(1))
         assertThat(vault.repair.runOnce()).isNull()
+    }
+
+    @Test
+    fun `a report list that cannot be read is not shown as empty - D-019`() = runBlocking<Unit> {
+        val vault = olderVault()
+        vault.plant(VaultKeys.ZERO_KEY_REPAIR_REPORT, FlutterPrefsFormat.encodeStringList(listOf("a.txt")))
+        vault.plant(VaultKeys.ZERO_KEY_REPAIR_UNEXAMINED, 42L)
+        assertThrows<VaultCorruptedException> { vault.repair.pendingReport() }
+        assertThat(vault.stored(VaultKeys.ZERO_KEY_REPAIR_UNEXAMINED)).isEqualTo(42L)
     }
 
     @Test

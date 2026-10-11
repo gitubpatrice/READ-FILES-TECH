@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.vault
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.testing.InMemorySharedPreferences
 import com.readfilestech.read_files_tech.vault.format.Argon2Params
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 
@@ -27,17 +28,25 @@ class FakeMemory(override var maxHeapBytes: Long, override var isSmallHeap: Bool
 
 /** The cheapest Argon2 the formats accept: the KDF itself is checked by the Dart vectors. */
 class FixedArgon2Policy(var affordable: Boolean = true) : Argon2Policy {
-    /** Runs when an export asks for its parameters: right before the derivation. */
+    /** Each runs when the vault asks — right before the derivation it is asked for. */
+    var onNewVaultParams: (() -> Unit)? = null
     var onExportParams: (() -> Unit)? = null
+    var onCanAfford: (() -> Unit)? = null
 
-    override fun newVaultParams() = CHEAP
+    override fun newVaultParams(): Argon2Params {
+        onNewVaultParams?.invoke()
+        return CHEAP
+    }
 
     override fun exportParams(): Argon2Params {
         onExportParams?.invoke()
         return CHEAP
     }
 
-    override fun canAfford(params: Argon2Params) = affordable
+    override fun canAfford(params: Argon2Params): Boolean {
+        onCanAfford?.invoke()
+        return affordable
+    }
 
     companion object {
         val CHEAP = Argon2Params(memoryKB = 1_024, iterations = 1)
@@ -49,7 +58,7 @@ class FixedArgon2Policy(var affordable: Boolean = true) : Argon2Policy {
  * [heapBytes] decides the engine (docs D-023): [ONE_BLOCK] keeps every test file in one block,
  * [STREAMED] sends anything above 1 KiB through the stream.
  */
-class TestVault(root: File, heapBytes: Long = ONE_BLOCK) {
+class TestVault(root: File, heapBytes: Long = ONE_BLOCK, dispatcher: CoroutineDispatcher = Dispatchers.Unconfined) {
     val raw = InMemorySharedPreferences()
     val prefs = FlutterPreferences(raw)
     val clock = FakeClock()
@@ -59,10 +68,10 @@ class TestVault(root: File, heapBytes: Long = ONE_BLOCK) {
     val session = VaultSession()
     val cipher = VaultCipher(memory)
     val lockouts = VaultLockoutStore(prefs, clock)
-    val service = VaultService(prefs, dirs, session, lockouts, cipher, argon2, StoredKdf(prefs, argon2), Dispatchers.Unconfined)
-    val files = VaultFiles(dirs, session, cipher, Dispatchers.Unconfined)
-    val backups = VaultBackups(dirs, session, cipher, lockouts, argon2, files, Dispatchers.Unconfined)
-    val repair = ZeroKeyRepair(prefs, session, cipher, files, Dispatchers.Unconfined)
+    val service = VaultService(prefs, dirs, session, lockouts, cipher, argon2, StoredKdf(prefs, argon2), dispatcher)
+    val files = VaultFiles(dirs, session, cipher, dispatcher)
+    val backups = VaultBackups(dirs, session, cipher, lockouts, argon2, files, dispatcher)
+    val repair = ZeroKeyRepair(prefs, session, cipher, files, dispatcher)
 
     /** The raw value under a bare Dart key, as the plugin stored it. */
     fun stored(key: String): Any? = raw.all["flutter.$key"]

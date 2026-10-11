@@ -13,6 +13,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Base64
@@ -40,6 +42,9 @@ class VaultService @Inject constructor(
 ) {
     private val background = CoroutineScope(SupervisorJob() + dispatcher)
 
+    /** Setup and reset one at a time: interleaved, they leave a vault whose sentinel or flags belong to the other. */
+    private val transitions = Mutex()
+
     val unlocked: StateFlow<Boolean> get() = session.unlocked
 
     /** @throws VaultCorruptedException the setup flag cannot be read. */
@@ -56,13 +61,17 @@ class VaultService @Inject constructor(
      * @throws VaultAlreadySetUpException a second setup would replace the salt of the existing vault.
      */
     suspend fun setup(password: String): Boolean = withContext(dispatcher) {
+        transitions.withLock { create(password) }
+    }
+
+    private fun create(password: String): Boolean {
         if (isSetUp()) throw VaultAlreadySetUpException()
         val startEpoch = session.epoch()
         val params = argon2.newVaultParams()
         val salt = cipher.randomBytes(VaultKdf.SALT_LEN)
         val key = VaultKdf.argon2id(password, salt, params.memoryKB, params.iterations)
         var handedOver = false
-        try {
+        return try {
             prefs.commitOrThrow("the vault parameters") {
                 putString(VaultKeys.SALT, Base64.getEncoder().encodeToString(salt))
                 putString(VaultKeys.KDF_VERSION, VaultKeys.KDF_ARGON2ID)
@@ -101,16 +110,21 @@ class VaultService @Inject constructor(
      * @throws LockedDuringOperationException the right password, but a lock came during the derivation.
      */
     suspend fun unlock(password: String): Boolean = withContext(dispatcher) {
+        transitions.withLock { open(password) }
+    }
+
+    /** One attempt at a time: each one counted, none racing a setup or a reset. */
+    private fun open(password: String): Boolean {
         val startEpoch = session.epoch()
         val attempt = lockouts.now()
         lockouts.ensureFree(VaultKeys.UNLOCK_LOCKOUT, attempt)
         val key = storedKdf.derive(password)
         var handedOver = false
-        try {
+        return try {
             val v2Only = prefs.boolean(VaultKeys.V2_ONLY).orCorrupted(VaultKeys.V2_ONLY) ?: false
             if (!openSentinel(key, v2Only)) {
                 lockouts.recordFailure(VaultKeys.UNLOCK_LOCKOUT, attempt)
-                return@withContext false
+                return false
             }
             // The password was right, whatever comes next. A file refusing this write only keeps the
             // old count, which the next success clears.
@@ -137,11 +151,16 @@ class VaultService @Inject constructor(
      * @throws VaultStorageException the preferences refused the erasure: the files are left in place.
      */
     suspend fun reset() = withContext(dispatcher) {
-        lock()
-        prefs.commitOrThrow("the vault erasure") { VaultKeys.VAULT_STATE.forEach(::remove) }
-        // A write started before the lock may land during the deletion: one more pass then.
-        if (!FileTrees.delete(dirs.vault)) FileTrees.delete(dirs.vault)
-        dirs.vault.mkdirs()
+        lock() // at once, before waiting for a setup that may be running: it then stays locked
+        transitions.withLock {
+            lock()
+            prefs.commitOrThrow("the vault erasure") { VaultKeys.VAULT_STATE.forEach(::remove) }
+            // A write started before the lock may land during the deletion: one more pass then. What
+            // still resists would sit, unreadable, in the next vault: said, not hidden.
+            val deleted = FileTrees.delete(dirs.vault) || FileTrees.delete(dirs.vault)
+            dirs.vault.mkdirs()
+            if (!deleted) throw VaultStorageException("files of the erased vault could not be deleted")
+        }
     }
 
     /**

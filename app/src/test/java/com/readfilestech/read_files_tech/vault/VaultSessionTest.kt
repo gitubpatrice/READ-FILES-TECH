@@ -33,6 +33,14 @@ class VaultSessionTest {
     }
 
     @Test
+    fun `an operation opened under a key cannot write once another key took its place`() {
+        session.install(key, newV2Only = true, startEpoch = session.epoch())
+        val op = session.open()
+        session.install(ByteArray(32) { 7 }, newV2Only = true, startEpoch = session.epoch())
+        assertThrows<LockedDuringOperationException> { session.ensureOpen(op) }
+    }
+
+    @Test
     fun `a second unlock replaces the key and wipes the first`() {
         session.install(key, newV2Only = true, startEpoch = session.epoch())
         val second = ByteArray(32) { 9 }

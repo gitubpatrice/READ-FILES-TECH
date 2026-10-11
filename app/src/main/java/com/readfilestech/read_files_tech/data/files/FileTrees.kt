@@ -32,6 +32,9 @@ object FileTrees {
      */
     fun exists(file: File): Boolean = Files.exists(file.toPath(), LinkOption.NOFOLLOW_LINKS)
 
+    /** A file, itself: not a directory, not a symbolic link (which `File.isFile` follows). */
+    fun isRegularFile(file: File): Boolean = Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)
+
     private object Deleter : SimpleFileVisitor<Path>() {
         override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
             file.toFile().delete()

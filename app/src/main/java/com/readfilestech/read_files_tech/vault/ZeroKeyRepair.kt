@@ -3,7 +3,6 @@ package com.readfilestech.read_files_tech.vault
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.prefs.PrefRead
-import com.readfilestech.read_files_tech.data.prefs.valueOrNull
 import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
 import com.readfilestech.read_files_tech.vault.format.VaultFormatException
@@ -79,10 +78,15 @@ class ZeroKeyRepair @Inject constructor(
         return job.await()
     }
 
-    /** What is left to show: names repaired, names it could not examine. Null when nothing. */
+    /**
+     * What is left to show: names repaired, names it could not examine. Null when nothing.
+     *
+     * @throws VaultCorruptedException a list cannot be read: shown as missing, then cleared, it would
+     *   lose the names of files that may still be under the zero key (D-019).
+     */
     fun pendingReport(): Result? {
-        val repaired = prefs.stringList(VaultKeys.ZERO_KEY_REPAIR_REPORT).valueOrNull().orEmpty()
-        val unexamined = prefs.stringList(VaultKeys.ZERO_KEY_REPAIR_UNEXAMINED).valueOrNull().orEmpty()
+        val repaired = prefs.listOrEmpty(VaultKeys.ZERO_KEY_REPAIR_REPORT)
+        val unexamined = prefs.listOrEmpty(VaultKeys.ZERO_KEY_REPAIR_UNEXAMINED)
         return if (repaired.isEmpty() && unexamined.isEmpty()) null else Result(0, repaired, unexamined)
     }
 
@@ -200,12 +204,12 @@ class ZeroKeyRepair @Inject constructor(
             // Under the name it will take: the AAD binds the final name, not the temporary one.
             val check = digestOf(tmp, op.key, file.name) ?: throw RepairNotVerifiedException("the re-encrypted file does not open")
             if (!check.contentEquals(plainDigest)) throw RepairNotVerifiedException("the re-encrypted file differs")
-            // A lost update: an import, a restore or a deletion may have changed the file since it was read.
-            val unchanged = file.isFile && file.length() == size && file.lastModified() == modified
-            if (unchanged) {
-                session.ensureOpen(op) // right before the write
-                AtomicFiles.publish(tmp, file)
-                published = true
+            // As one step with the lock state: still open, and not changed since it was read (an import,
+            // a restore or a deletion may have replaced it: a lost update otherwise).
+            published = session.whileOpen(op) {
+                val unchanged = file.isFile && file.length() == size && file.lastModified() == modified
+                if (unchanged) AtomicFiles.publish(tmp, file)
+                unchanged
             }
             return published
         } catch (expected: VaultAuthenticationException) {

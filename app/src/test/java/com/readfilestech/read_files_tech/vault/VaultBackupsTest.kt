@@ -8,6 +8,7 @@ import com.readfilestech.read_files_tech.vault.format.VaultKdf
 import com.readfilestech.read_files_tech.vault.format.VaultNames
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -150,16 +151,22 @@ class VaultBackupsTest {
         assertThat(result.refused.map { it.name }).containsExactly("_check", "../evil").inOrder()
         target.service.lock()
         assertThat(target.service.unlock(PASSWORD)).isTrue()
-        assertThat(File(root, "target/evil").exists() || File(root, "evil").exists()).isFalse()
+        // Where "../evil" would have landed: next to the vault directory, as "evil.enc".
+        assertThat(File(target.dirs.vault.parentFile, "evil.enc").exists()).isFalse()
+        assertThat(target.vaultEntries()).containsExactly(VaultNames.SENTINEL_FILE, "ok.txt.enc")
     }
 
     @Test
-    fun `parameters beyond the device are refused before any derivation`() = runBlocking<Unit> {
-        val backup = exportOf(mapOf("a.txt" to byteArrayOf(1)))
+    @Timeout(30) // a derivation at 1 GiB × 64 would run out of memory, or for minutes
+    fun `a header asking 1 GiB of Argon2 is refused before any derivation`() = runBlocking<Unit> {
+        val huge = Argon2Params(memoryKB = 1_048_576, iterations = 64) // the bounds of the 2.15.x, both maxed
+        val salt = ByteArray(VaultKdf.SALT_LEN) { 1 }
+        val file = VaultBackupFormat.writeV2(ByteArray(100), ByteArray(32) { 2 }, salt, ByteArray(12) { 3 }, huge)
+        val backup = File(root, "huge.rftvault").apply { writeBytes(file) }
         val target = vault("target")
         target.argon2.affordable = false
-        val refused = assertThrows<BackupTooCostlyException> { runBlocking { target.backups.restore(backup, "wrong") } }
-        assertThat(refused.params).isEqualTo(FixedArgon2Policy.CHEAP)
+        val refused = assertThrows<BackupTooCostlyException> { runBlocking { target.backups.restore(backup, "any") } }
+        assertThat(refused.params).isEqualTo(huge)
         assertThat(target.stored(VaultKeys.BACKUP_FAILS)).isNull() // nothing tried, nothing counted
     }
 
@@ -172,7 +179,16 @@ class VaultBackupsTest {
         assertThrows<LockedDuringOperationException> {
             runBlocking { source.backups.export(EXPORT_PASSWORD, destination("out")) }
         }
-        assertThat(out.list().orEmpty().toList()).isEmpty()
+        // Not even created: the check comes before the derivation, the destination after it.
+        assertThat(out.exists()).isFalse()
+    }
+
+    @Test
+    fun `a staging folder a killed restore left is discarded`() = runBlocking<Unit> {
+        val target = vault("target")
+        File(target.dirs.vault, ".restore-0011/0").apply { parentFile.mkdirs() }.writeText("left behind")
+        target.backups.discardLeftovers()
+        assertThat(target.vaultEntries()).containsExactly(VaultNames.SENTINEL_FILE)
     }
 
     private suspend fun vault(name: String, heap: Long = TestVault.ONE_BLOCK): TestVault {

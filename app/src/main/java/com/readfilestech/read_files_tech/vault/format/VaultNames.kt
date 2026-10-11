@@ -23,6 +23,22 @@ object VaultNames {
     /** `<target>.<n>-<hex>.tmp`: the temporary file of `atomic_write.dart` and of AtomicFiles. */
     private val WRITE_RESIDUE = Regex("""^.+\.\d+-[0-9a-f]+\.tmp$""")
 
+    /** The folder a restore stages its entries in, inside the vault directory, until the tag is checked. */
+    const val STAGING_PREFIX = ".restore-"
+
+    fun isStagingFolder(name: String): Boolean = name.startsWith(STAGING_PREFIX)
+
+    /**
+     * The name a vault file is decrypted under: its plain name, with control characters made `_`. A
+     * 2.15.x could import such a name (PathSafe let it through); refusing it here would leave the file
+     * unreadable, where the Flutter app opened it (Claude review of 2026-10-11). Null when not even
+     * that makes it a single file name.
+     */
+    fun readableName(encryptedName: String): String? {
+        val plain = plainName(encryptedName).map { if (it < ' ') '_' else it }.joinToString("")
+        return plain.takeIf { refusal(it) == null }
+    }
+
     fun isSentinel(fileName: String): Boolean = fileName == SENTINEL_FILE
 
     fun isWriteResidue(fileName: String): Boolean = WRITE_RESIDUE.matches(fileName)

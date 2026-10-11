@@ -16,6 +16,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.DataInputStream
+import java.io.EOFException
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -136,6 +137,15 @@ class VaultBackups @Inject constructor(
         }
 
     /** Everything a backup must be able to give back, checked before the seconds of Argon2. */
+    /**
+     * Deletes the staging folders a restore killed half-way left in the vault (entries encrypted under
+     * the master key, possibly never verified). At startup: no restore can be running — and taken
+     * under the restore lock all the same.
+     */
+    suspend fun discardLeftovers() = withContext(dispatcher) {
+        restoring.withLock { deleteStagingFolders(dirs.vault) }
+    }
+
     private fun checkExportable(sources: List<File>) {
         val (count, total) = sources.size.toLong() to sources.sumOf { it.length() }
         val excess = when {
@@ -252,18 +262,14 @@ class VaultBackups @Inject constructor(
         } catch (e: VaultFormatException) {
             drain(opening) // throws VaultAuthenticationException when the tag says "wrong key"
             throw e
+        } catch (e: IOException) {
+            // A full disk while staging noise decrypted by a wrong key: the tag still decides, so the
+            // wrong password is counted (GPT review of 2026-10-11).
+            drain(opening)
+            throw e
         }
         drain(opening) // what follows the last entry, then the tag
         return refused
-    }
-
-    private fun drain(input: InputStream) {
-        val sink = ByteArray(DRAIN_CHUNK)
-        try {
-            while (input.read(sink) != -1) Unit
-        } finally {
-            sink.fill(0)
-        }
     }
 
     /**
@@ -274,15 +280,14 @@ class VaultBackups @Inject constructor(
         private val op: VaultSession.Op,
         private val overwrite: Boolean,
     ) : VaultBackupPayload.EntrySink {
-        private val folder = File(dirs.vault, STAGING_PREFIX + hex(cipher.randomBytes(STAGING_ID_BYTES)))
+        private val folder = File(dirs.vault, VaultNames.STAGING_PREFIX + hex(cipher.randomBytes(STAGING_ID_BYTES)))
         private val staged = mutableListOf<Pair<String, File>>()
+        private val failedToStage = mutableListOf<String>()
         private var skipped = 0
 
         init {
             // A restore killed half-way left its folder: none can be running now (one at a time).
-            dirs.vault.listFiles().orEmpty()
-                .filter { it.isDirectory && it.name.startsWith(STAGING_PREFIX) }
-                .forEach(FileTrees::delete)
+            deleteStagingFolders(dirs.vault)
             folder.mkdirs()
         }
 
@@ -293,35 +298,43 @@ class VaultBackups @Inject constructor(
                 skipped++
                 return
             }
-            val file = File(folder, staged.size.toString())
-            FileOutputStream(file).use { out ->
-                cipher.encrypt(data, size, op.key, encryptedName, out)
-                out.fd.sync()
+            val file = File(folder, (staged.size + failedToStage.size).toString())
+            try {
+                FileOutputStream(file).use { out ->
+                    cipher.encrypt(data, size, op.key, encryptedName, out)
+                    out.fd.sync()
+                }
+                staged += name to file
+            } catch (e: EOFException) {
+                throw e // the payload itself is cut short: a format error, not this entry's failure
+            } catch (e: IOException) {
+                // A full disk, a refused write: this entry fails, the others go on, as in the 2.15.3.
+                file.delete()
+                failedToStage += "$name: ${e.message}"
             }
-            staged += name to file
         }
 
         /** After the tag: each staged entry takes its place, in the backup's order. */
         fun publish(refused: List<VaultBackupPayload.Refusal>): RestoreResult {
             var restored = 0
             var skippedNow = 0
-            val failed = mutableListOf<String>()
+            val failed = failedToStage.toMutableList()
             for ((name, file) in staged) {
-                session.ensureOpen(op)
                 val dest = File(dirs.vault, VaultNames.encryptedName(name))
-                // A second entry of the same name: the first one written stays, as in the 2.15.x.
-                if (!overwrite && FileTrees.exists(dest)) {
-                    skippedNow++
-                    continue
-                }
                 try {
-                    AtomicFiles.publish(file, dest)
-                    restored++
+                    // As one step with the lock state: still open, no namesake appeared, in place.
+                    val placed = session.whileOpen(op) {
+                        // A second entry of the same name: the first one written stays, as in the 2.15.x.
+                        val free = overwrite || !FileTrees.exists(dest)
+                        if (free) AtomicFiles.publish(file, dest)
+                        free
+                    }
+                    if (placed) restored++ else skippedNow++
                 } catch (e: IOException) {
                     failed += "$name: ${e.message}"
                 }
             }
-            return RestoreResult(staged.size + skipped, restored, skipped + skippedNow, failed, refused)
+            return RestoreResult(staged.size + failedToStage.size + skipped, restored, skipped + skippedNow, failed, refused)
         }
 
         fun discard() = FileTrees.delete(folder)
@@ -335,11 +348,27 @@ class VaultBackups @Inject constructor(
         const val RESTORE_MAX_BYTES = EXPORT_MAX_BYTES * 6 / 5
 
         private const val EXPORT_TEMP_NAME = "coffre.rftvault"
-        private const val STAGING_PREFIX = ".restore-"
         private const val STAGING_ID_BYTES = 8
         private const val MAGIC_LEN = 4
-        private const val DRAIN_CHUNK = 64 * 1024
     }
 }
 
 private fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
+
+/** Reads [input] to its end — where an opening stream checks its tag — wiping what passed through. */
+private fun drain(input: InputStream) {
+    val sink = ByteArray(DRAIN_CHUNK)
+    try {
+        while (input.read(sink) != -1) Unit
+    } finally {
+        sink.fill(0)
+    }
+}
+
+private fun deleteStagingFolders(vault: File) {
+    vault.listFiles().orEmpty()
+        .filter { it.isDirectory && VaultNames.isStagingFolder(it.name) }
+        .forEach(FileTrees::delete)
+}
+
+private const val DRAIN_CHUNK = 64 * 1024

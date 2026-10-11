@@ -31,8 +31,11 @@ object AtomicFiles {
     /**
      * Writes [target] through [write], atomically. On any failure — an exception, a cancellation —
      * the temporary file is removed and [target] is left as it was.
+     *
+     * [publish] puts the complete temporary file in place; a caller wraps [AtomicFiles.publish] in its
+     * own last-moment checks (the vault still open, no namesake appeared), run as one step with it.
      */
-    fun write(target: File, write: (OutputStream) -> Unit) {
+    fun write(target: File, publish: (from: File, to: File) -> Unit = ::publish, write: (OutputStream) -> Unit) {
         val tmp = temporaryFor(target)
         var published = false
         try {
