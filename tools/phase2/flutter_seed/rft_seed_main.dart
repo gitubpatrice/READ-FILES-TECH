@@ -300,6 +300,30 @@ Future<Map<String, List<int>>> legacyVault(SharedPreferences prefs) async {
   return files;
 }
 
+/// The vault of the repair scenarios: two sound files and one D1 file, made by a 2.15.2 (`zerokey`),
+/// then opened by a 2.15.3 installed over it.
+final zerokeySound = <String, List<int>>{
+  'Relevé été 2026 ✓.txt': vaultFiles['Relevé été 2026 ✓.txt']!,
+  'photo-200k.jpg': vaultFiles['photo-200k.jpg']!,
+};
+const zerokeyName = 'clé-nulle 2M.bin';
+final zerokeyData = pseudo(2 * 1024 * 1024, 21);
+
+Map<String, Object?> zerokeyImported() => {
+  for (final e in {...zerokeySound, zerokeyName: zerokeyData}.entries) e.key: {'size': e.value.length, 'sha256': sha(e.value)},
+};
+
+/// The 2.15.3's repair pass, through `dynamic`: the 2.15.2 does not have it, and this file compiles at both tags.
+Future<Map<String, Object?>?> repairPass(VaultService vault) async {
+  final dynamic r = await (vault as dynamic).repairZeroKeyFilesOnce();
+  return r == null ? null : {'scanned': r.scanned, 'repaired': r.repaired, 'unexamined': r.unexamined};
+}
+
+Future<Map<String, Object?>?> pendingReport(VaultService vault) async {
+  final dynamic r = await (vault as dynamic).pendingZeroKeyRepairReport();
+  return r == null ? null : {'scanned': r.scanned, 'repaired': r.repaired, 'unexamined': r.unexamined};
+}
+
 /// Fails until [counterKey] reaches [target]: a refused attempt (lockout running) waits and retries,
 /// so the counter climbs the tiers as a user's would (1, 2, then 4 minutes at the seventh).
 Future<void> failUntil(SharedPreferences prefs, String counterKey, int target, Future<Object?> Function(int) attempt) async {
@@ -476,6 +500,67 @@ Future<void> main() async {
       backups.add({'path': backup.path, 'entries': Map.of(imported)});
       expected['vaultReads'] = await vaultReads(vault);
       await failUntil(prefs, 'vault_backup_fails', 7, (i) => vault.restoreFromBackup(backupFile: backup, exportPassword: 'mauvaise $i'));
+      vault.lock();
+    } else if (scenario == 'zerokey') {
+      // 2.15.2, first stage of the repair scenarios: two sound files and a D1 file.
+      await vault.setupWithPassword(vaultPassword);
+      await importAll(vault, zerokeySound);
+      zeroKey.add(await zeroKeyFile(vault, zerokeyName, zerokeyData));
+      imported.addAll(zerokeyImported());
+      expected['vaultReads'] = await vaultReads(vault);
+      vault.lock();
+    } else if (scenario == 'repair-report') {
+      // 2.15.3 over `zerokey`: its repair pass runs; the user has not yet seen the report.
+      imported.addAll(zerokeyImported());
+      log('unlock -> ${await vault.unlockWithPassword(vaultPassword)}');
+      expected['repairRun'] = await repairPass(vault);
+      expected['pendingReport'] = await pendingReport(vault);
+      expected['vaultReads'] = await vaultReads(vault);
+      vault.lock();
+    } else if (scenario == 'repair-interrupted') {
+      // 2.15.3 over `zerokey`: what a pass killed on the D1 file leaves (`_repairZeroKeyFiles` sets
+      // `_current` before the file; `atomicWriteBytes` leaves its temporary next to it).
+      imported.addAll(zerokeyImported());
+      zeroKey.add(zerokeyName);
+      await prefs.setString('vault_zero_key_repair_current', '$zerokeyName.enc');
+      final dir = '${(await getApplicationDocumentsDirectory()).path}/vault';
+      await File('$dir/$zerokeyName.enc.1-0a1b2c3d.tmp').writeAsBytes(pseudo(4096, 41));
+      log('unlock -> ${await vault.unlockWithPassword(vaultPassword)}');
+      expected['vaultReads'] = await vaultReads(vault);
+      vault.lock();
+    } else if (scenario == 'repair-oracle') {
+      // 2.15.3 on a SNAPSHOT of the state the port will find: its own pass, the port's oracle.
+      imported.addAll(zerokeyImported());
+      zeroKey.add(zerokeyName);
+      log('unlock -> ${await vault.unlockWithPassword(vaultPassword)}');
+      expected['repairRun'] = await repairPass(vault);
+      expected['pendingReport'] = await pendingReport(vault);
+      expected['vaultReads'] = await vaultReads(vault);
+      vault.lock();
+    } else if (scenario == 'big-export') {
+      // Up to the 2.15.x's export cap (200 MiB of vault files), each file under its import cap
+      // (100 MiB): the largest `.rftvault` it can write. The host carries it to the small heaps.
+      await vault.setupWithPassword(vaultPassword);
+      const mib = 1024 * 1024;
+      final tmp = await getTemporaryDirectory();
+      for (final (name, size, seed) in [('gros A.bin', 70 * mib + 1, 51), ('gros B.bin', 70 * mib + 2, 52), ('gros C.bin', 59 * mib + 3, 53)]) {
+        final data = pseudo(size, seed);
+        final f = File('${tmp.path}/$name');
+        await f.writeAsBytes(data);
+        await vault.importFileSafe(f, overwrite: true);
+        await f.delete();
+        imported[name] = {'size': data.length, 'sha256': sha(data)};
+        log('import $name $size');
+      }
+      final backup = await vault.exportToBackup(exportPassword: backupPassword);
+      backups.add({'path': backup.path, 'entries': Map.of(imported)});
+      log('backup ${backup.path} ${await backup.length()}');
+      expected['vaultReads'] = Map.of(imported); // not decrypted again: 200 MiB through Dart, for nothing
+      vault.lock();
+    } else if (scenario == 'restore-only') {
+      // A vault set up, empty: the host pushes a `.rftvault` made elsewhere for the port to restore.
+      await vault.setupWithPassword(vaultPassword);
+      expected['vaultReads'] = await vaultReads(vault);
       vault.lock();
     } else if (scenario == 'unlock-lockout') {
       await vault.setupWithPassword(vaultPassword);

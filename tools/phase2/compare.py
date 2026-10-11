@@ -75,6 +75,8 @@ SANDBOX_RULES = [
     (r"^\./shared_prefs/FlutterSharedPreferences\.xml$", "read", "preferences (D-003, D-018)"),
     (r"^\./app_flutter/vault$|^\./app_flutter/vault/_check\.enc$", "read", "the vault and its sentinel"),
     (r"^\./app_flutter/vault/.+\.enc$", "read", "a vault file"),
+    (r"^\./app_flutter/vault/.+\.enc\.\d+-[0-9a-f]+\.tmp$", "ignored",
+     "the temporary of an interrupted write (D24): never listed as a vault file, never opened"),
     (r"^\./app_flutter/history$|^\./app_flutter/history/.+\.bak$", "read", "the editor's old history (D-021)"),
     (r"^\./app_flutter/[^/]+_extracted(/.*)?$", "read", "an old \"Extract all\" folder (D-022)"),
     (r"^\./cache/.+$", "purged", "the cache the 2.15.x left, plain copies included: emptied at the port's first start "
@@ -160,22 +162,48 @@ def compare_lockouts(d: Diff, expected: dict, report: dict) -> None:
         d.eq("unlock with the right password", unlock, True)
 
 
+WRITE_RESIDUE = re.compile(r"^.+\.\d+-[0-9a-f]+\.tmp$")
+
+
+def readable(entry) -> object:
+    """A file's digest, or only the fact that it cannot be read (each side names its errors its own way)."""
+    return "unreadable" if isinstance(entry, dict) and "error" in entry else entry
+
+
+def compare_repair(d: Diff, expected: dict, report: dict) -> None:
+    vault, seen = expected["vault"], report["vault"]
+    oracle = expected.get("repairOracle")
+    repair, pending = seen.get("repair"), seen.get("pendingReport")
+    if oracle is not None:
+        # Dual run: the 2.15.3's own pass, on a snapshot of the very state the port found.
+        d.eq("repair pass, port vs the 2.15.3 on the same state", repair, oracle["repairRun"])
+        d.eq("pending report, port vs the 2.15.3", pending, oracle["pendingReport"])
+        for k in REPAIR_KEYS:
+            d.eq(f"after the pass, {k}", report["prefsAfter"].get(k), oracle["prefs"].get(k))
+        theirs = {k: readable(v) for k, v in oracle["vaultReads"].items() if not WRITE_RESIDUE.match(k)}
+        d.eq("vault files after the pass, port vs the 2.15.3", {k: readable(v) for k, v in seen.get("files", {}).items()}, theirs)
+        return
+    d.eq("vault files, decrypted by the port", seen.get("files"), vault["imported"])
+    if pref_value(expected["prefs"], "vault_zero_key_repair_v1") is True:
+        d.eq("repair already done by the 2.15.3: no pass", repair, None)
+        # The report the 2.15.3 left unseen (null when it had nothing to show), shown by the port.
+        d.eq("pending report", pending, expected.get("pendingReport"))
+        return
+    d.true("repair pass result", isinstance(repair, dict) and "repaired" in repair, short(repair))
+    if isinstance(repair, dict):
+        d.eq("files repaired (D1)", sorted(repair.get("repaired", [])), sorted(vault["zeroKey"]))
+        d.eq("files left unexamined", repair.get("unexamined"), [])
+        d.eq("pending report after the pass", pending,
+             {"scanned": 0, "repaired": repair.get("repaired"), "unexamined": []} if repair.get("repaired") else None)
+
+
 def compare_vault(d: Diff, expected: dict, report: dict) -> None:
     vault, seen = expected["vault"], report["vault"]
     d.eq("vault set up", seen.get("setUp"), vault["setUp"])
     compare_lockouts(d, expected, report)
     if seen.get("unlock") is not True:
         return
-    d.eq("vault files, decrypted by the port", seen.get("files"), vault["imported"])
-    done = pref_value(expected["prefs"], "vault_zero_key_repair_v1") is True
-    if done:
-        d.eq("repair already done by the 2.15.3: no pass", seen.get("repair"), None)
-    else:
-        repair = seen.get("repair")
-        d.true("repair pass result", isinstance(repair, dict) and "repaired" in repair, short(repair))
-        if isinstance(repair, dict):
-            d.eq("files repaired (D1)", sorted(repair.get("repaired", [])), sorted(vault["zeroKey"]))
-            d.eq("files left unexamined", repair.get("unexamined"), [])
+    compare_repair(d, expected, report)
     restores = {r["path"]: r for r in seen.get("restores", [])}
     backup_remaining = seen["lockouts"]["backup"]["remainingMs"]
     backup_blocked = isinstance(backup_remaining, int) and backup_remaining > 0
@@ -207,7 +235,10 @@ def compare_prefs_after(d: Diff, expected: dict, report: dict) -> None:
             d.true(f"{k} cleared after the unlock", k not in after, short(after.get(k)))
     if isinstance(report["vault"].get("repair"), dict):
         allowed |= set(REPAIR_KEYS)
-        d.eq("repair recorded as done", pref_value(after, "vault_zero_key_repair_v1"), True)
+        # With a dual run the 2.15.3's own keys are the oracle (a pass may end unfinished); otherwise
+        # the pass went through every file and must be recorded as done.
+        if "repairOracle" not in expected:
+            d.eq("repair recorded as done", pref_value(after, "vault_zero_key_repair_v1"), True)
     for key in sorted(set(before) | set(after)):
         if key not in allowed:
             d.eq(f"preference {key} untouched by the port", after.get(key), before.get(key))
@@ -240,9 +271,14 @@ def compare(expected: dict, report: dict, census: dict) -> list[str]:
     compare_vault(d, expected, report)
     compare_prefs_after(d, expected, report)
     # The seed's own reading of the vault agrees with what it imported, but for the D1 files it cannot read.
-    reads = {k: v for k, v in expected["vaultReads"].items() if k not in expected["vault"]["zeroKey"]}
+    # Nor the temporary of an interrupted write, which the 2.15.x lists as a vault file (D24).
+    reads = {k: v for k, v in expected["vaultReads"].items() if k not in expected["vault"]["zeroKey"] and not WRITE_RESIDUE.match(k)}
     imported = {k: v for k, v in expected["vault"]["imported"].items() if k not in expected["vault"]["zeroKey"]}
     d.eq("seed self-check: the 2.15.x read back what it imported", reads, imported)
+    # The lockout values the rule is fed are the preferences' own (the same reading, recorded twice).
+    for name, keys in LOCKOUT_KEYS.items():
+        for k in keys:
+            d.eq(f"seed self-check: lockout {k} as recorded", expected["vault"]["lockouts"][name][k], pref_value(expected["prefs"], k))
     d.lines += census_problems(census, report, expected)
     return d.lines
 
@@ -294,7 +330,9 @@ def census_read_by_port(census: dict, report: dict) -> list[str]:
         if kind != "f":
             continue
         m = re.match(r"^\./app_flutter/vault/(.+)\.enc$", path)
-        if m and m.group(1) != "_check" and m.group(1) not in vault_files:
+        # Unlock refused during a running lockout: the port must NOT open the vault (lockout scenarios).
+        opened = report["vault"].get("unlock") is True
+        if m and opened and m.group(1) != "_check" and m.group(1) not in vault_files:
             problems.append(f"census: vault file {path} not read by the port")
         m = re.match(r"^\./app_flutter/history/(.+\.bak)$", path)
         if m and m.group(1) not in legacy:
@@ -341,6 +379,26 @@ def presence_problems(expected: dict, report: dict | None = None, rebooted: bool
     if rebooted:
         checks.append(("the device rebooted between the seed and the port", report is not None
                        and report["port"]["bootId"] != expected["seed"]["bootId"]))
+    # D1 only in the scenarios that reproduce it, and only a 2.15.2 can (the 2.15.3 fixed it): the
+    # interrupted repair is a 2.15.3 over the D1 file of a 2.15.2.
+    with_d1 = (tag == "2.15.2" and scenario in ("full", "zerokey")) or scenario == "repair-interrupted"
+    checks.append(("zeroed-key files exactly where D1 is reproduced", len(v["zeroKey"]) == (1 if with_d1 else 0)))
+    with_backup = scenario in ("full", "backup-lockout", "big-export", "restore-only")
+    checks.append(("a backup exactly where the scenario makes one", len(v["backups"]) == (1 if with_backup else 0)))
+    if scenario == "repair-report":
+        checks += [
+            ("the 2.15.3 repaired the D1 file", (expected.get("repairRun") or {}).get("repaired") == ["clé-nulle 2M.bin"]),
+            ("its report not yet seen", bool((expected.get("pendingReport") or {}).get("repaired"))),
+        ]
+    if scenario == "repair-interrupted":
+        residues = [k for k in expected["vaultReads"] if WRITE_RESIDUE.match(k)]
+        checks += [
+            ("the pass died on the D1 file: _current set", pref_value(p, "vault_zero_key_repair_current") == "clé-nulle 2M.bin.enc"),
+            ("its temporary next to it, listed by the 2.15.x itself (D24)", len(residues) == 1),
+            ("the 2.15.3 ran its own pass on the same state", expected.get("repairOracle") is not None),
+            ("the port does not take the temporary for a vault file (D24)",
+             report is not None and not any(WRITE_RESIDUE.match(k) for k in (report["vault"].get("files") or {}))),
+        ]
     if scenario == "legacy":
         checks += [
             ("no vault_kdf_version: PBKDF2", "vault_kdf_version" not in p),
@@ -353,7 +411,6 @@ def presence_problems(expected: dict, report: dict | None = None, rebooted: bool
         checks += [
             ("restore counter at 7", pref_value(p, "vault_backup_fails") == 7),
             ("restore lockout running at the end of the seed", remaining_at_seed(expected, "backup") > 0),
-            ("a backup to restore", len(v["backups"]) == 1),
         ]
     if scenario == "unlock-lockout":
         checks += [
@@ -382,14 +439,11 @@ def presence_problems(expected: dict, report: dict | None = None, rebooted: bool
             ("an empty vault file", any(x["size"] == 0 for x in v["imported"].values())),
             ("a vault file over 5 MB (native path)", any(x["size"] >= 5 * 1024 * 1024 for x in v["imported"].values())),
             ("a vault file of 1-5 MB (isolate path)", any(1024 * 1024 <= x["size"] < 5 * 1024 * 1024 for x in v["imported"].values())),
-            ("a backup", len(v["backups"]) == 1),
         ]
         if tag == "2.15.2":
-            checks.append(("a file encrypted with a zeroed key (D1), never repaired", len(v["zeroKey"]) == 1))
-            checks.append(("the 2.15.2 itself cannot read it", all("error" in (expected["vaultReads"].get(n) or {}) for n in v["zeroKey"])))
+            checks.append(("the 2.15.2 itself cannot read its D1 file", all("error" in (expected["vaultReads"].get(n) or {}) for n in v["zeroKey"])))
         else:
             checks.append(("the repair marked done at setup (2.15.3)", pref_value(p, "vault_zero_key_repair_v1") is True))
-            checks.append(("no zeroed-key file: the 2.15.3 cannot write one (D1 fixed)", v["zeroKey"] == []))
     return [f"presence: {what}" for what, ok in checks if not ok]
 
 
@@ -399,14 +453,15 @@ COMPARED = ["prefs", "recents", "trash", "history", "extractions", "vault", "vau
 REBOOTED = False  # set by main: the run's folder holds rebooted.json (phase2.py check --reboot)
 
 
-def not_compared(expected: dict, path: tuple) -> str | None:
+def not_compared(expected: dict, report: dict, path: tuple) -> str | None:
     """Why a datum is left out of the negative control, or None."""
-    if path[:2] == ("vault", "lockouts") and len(path) > 2:
-        fails = expected["vault"]["lockouts"][path[2]][LOCKOUT_KEYS[path[2]][0]] or 0
-        if fails < 5:
-            return "fewer than five failures: the rule gives no delay, the deadlines play no part"
-    if path[0] == "vaultReads" and path[-1] == "error":
-        return "the class name of the exception Dart raised on its D1 file: only its presence matters"
+    if path[-1] == "error" and (path[0] == "vaultReads" or path[:2] == ("repairOracle", "vaultReads")):
+        return "the class name of the exception Dart raised on an unreadable file: only its presence matters"
+    if "repairOracle" in expected and path[:2] == ("vault", "imported") and path[2] in expected["vault"]["zeroKey"]:
+        return "the pass died on this D1 file and skips it: neither side can read it, its content is not compared"
+    backup_remaining = report["vault"]["lockouts"]["backup"]["remainingMs"]
+    if path[:2] == ("vault", "backups") and "entries" in path and isinstance(backup_remaining, int) and backup_remaining > 0:
+        return "the restore is refused while its lockout runs: the backup's content is not read (scenario full reads it)"
     return None
 
 
@@ -448,7 +503,11 @@ def mutate(root, path):
 
 
 def problems_of(expected, report, census) -> set[str]:
-    return set(presence_problems(expected, report, REBOOTED) + compare(expected, report, census))
+    try:
+        return set(presence_problems(expected, report, REBOOTED) + compare(expected, report, census))
+    except (KeyError, TypeError, AttributeError, IndexError) as e:
+        # A mutation that changes the SHAPE (a list made a number): the comparator rejects the input.
+        return {f"comparator refused the input: {e!r}"}
 
 
 def negative_control(expected, report, census) -> list[str]:
@@ -457,9 +516,17 @@ def negative_control(expected, report, census) -> list[str]:
     baseline = problems_of(expected, report, census)
     escaped = []
     count = 0
-    for section in COMPARED:
-        for path in leaves(expected[section], (section,)):
-            if not_compared(expected, path):
+    roots = [(section,) for section in COMPARED]
+    if "repairOracle" in expected:
+        # Of the 2.15.3's pass, what is compared: its result, its report, its repair keys, its reads.
+        roots += [("repairOracle", "repairRun"), ("repairOracle", "pendingReport"), ("repairOracle", "vaultReads")]
+        roots += [("repairOracle", "prefs", k) for k in REPAIR_KEYS if k in expected["repairOracle"]["prefs"]]
+    for root in roots:
+        subtree = expected
+        for step in root:
+            subtree = subtree[step]
+        for path in leaves(subtree, root):
+            if not_compared(expected, report, path):
                 continue
             mutated = copy.deepcopy(expected)
             mutate(mutated, path)
@@ -498,6 +565,8 @@ def main() -> int:
     expected, report, census = load("expected.json"), load("report.json"), load("census.json")
     global REBOOTED
     REBOOTED = os.path.exists(os.path.join(out, "rebooted.json"))
+    if os.path.exists(os.path.join(out, "repair_oracle.json")):
+        expected["repairOracle"] = load("repair_oracle.json")
     problems = presence_problems(expected, report, REBOOTED) + compare(expected, report, census)
     print(f"{expected['seed']['tag']} / {expected['seed']['scenario']} — port {report['port']['buildType']} "
           f"sdk {report['port']['sdk']}")

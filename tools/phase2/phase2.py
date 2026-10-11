@@ -125,6 +125,15 @@ def seed(args) -> int:
         device.adb("install", "-t", args.apk)
     device.grant_storage()
     log(args.out, "seed.log", f"seed installed: {device.package_line()}")
+    pushed = None
+    if args.push_backup:
+        # A `.rftvault` the 2.15.x wrote on ANOTHER device (big-export), for the port to restore here.
+        with open(os.path.join(args.push_backup, "expected.json"), encoding="utf-8") as handle:
+            source = json.load(handle)["vault"]["backups"][0]
+        pushed = {"path": f"{SHARED}/Files Tech/Sauvegardes coffre/{source['path'].rsplit('/', 1)[1]}", "entries": source["entries"]}
+        device.shell(f"mkdir -p '{SHARED}/Files Tech/Sauvegardes coffre'")
+        device.adb("push", os.path.join(args.push_backup, "backup.rftvault"), pushed["path"], timeout=1200)
+        log(args.out, "seed.log", f"backup pushed to {pushed['path']}")
     # ASCII only, double quotes escaped: it goes through two shells (adb's, then run-as's `sh -c '...'`).
     scenario = json.dumps({"scenario": args.scenario, "tag": args.tag}).replace('"', '\\"')
     device.run_as(f'mkdir -p files/rft_seed && echo "{scenario}" > files/rft_seed/scenario.json')
@@ -140,13 +149,53 @@ def seed(args) -> int:
     if not status.startswith("ok"):
         return 1
     expected = device.raw("run-as", PACKAGE, "cat", "files/rft_seed/expected.json")
-    with open(os.path.join(args.out, "expected.json"), "wb") as handle:
+    if pushed is not None:
+        # The oracle of that backup is the 2.15.x that wrote it: what it recorded at export.
+        oracle = json.loads(expected.decode("utf-8"))
+        oracle["vault"]["backups"] = [pushed]
+        expected = json.dumps(oracle, ensure_ascii=False, indent=1).encode("utf-8")
+    with open(os.path.join(args.out, args.save_as), "wb") as handle:
         handle.write(expected)
+    if args.pull_backup:
+        path = json.loads(expected.decode("utf-8"))["vault"]["backups"][0]["path"]
+        device.adb("pull", path, os.path.join(args.out, "backup.rftvault"), timeout=1200)
+        log(args.out, "seed.log", f"backup pulled from {path}")
     device.shell(f"am force-stop {PACKAGE}")
     # The seed's own files go before the census: they are not the 2.15.x's.
     device.run_as("rm -r files/rft_seed")
-    write_json(os.path.join(args.out, "census.json"), census(device))
-    log(args.out, "seed.log", "expected.json and census.json written")
+    if args.save_as == "expected.json":
+        write_json(os.path.join(args.out, "census.json"), census(device))
+    log(args.out, "seed.log", f"{args.save_as} written")
+    return 0
+
+
+# What a snapshot holds: the 2.15.x's private data. Shared storage is not touched by a repair pass.
+SNAPSHOT_DIRS = "app_flutter shared_prefs files"
+
+
+def snapshot(args) -> int:
+    """The sandbox as it is, so that a 2.15.3 pass and the port's can start from the SAME state."""
+    device = Device(args.serial)
+    device.shell(f"am force-stop {PACKAGE}")
+    data = device.raw("run-as", PACKAGE, "tar", "-cf", "-", *SNAPSHOT_DIRS.split())
+    with open(os.path.join(args.out, "snapshot.tar"), "wb") as handle:
+        handle.write(data)
+    log(args.out, "seed.log", f"snapshot: {len(data)} bytes")
+    return 0
+
+
+def restore(args) -> int:
+    device = Device(args.serial)
+    device.shell(f"am force-stop {PACKAGE}")
+    device.run_as(f"rm -rf {SNAPSHOT_DIRS}")
+    # Through /data/local/tmp, as Android Studio deploys: `exec-in run-as … tar -x` extracted nothing
+    # on the API 34 emulator, without an error.
+    staged = "/data/local/tmp/rft-snapshot.tar"
+    device.adb("push", os.path.join(args.out, "snapshot.tar"), staged, timeout=1200)
+    device.run_as(f"cd /data/data/{PACKAGE} && tar -xf {staged}")
+    device.shell(f"rm -f {staged}")
+    listing = device.run_as(f"cd /data/data/{PACKAGE} && find app_flutter/vault shared_prefs -type f")
+    log(args.out, "seed.log", f"snapshot restored:\n{listing}")
     return 0
 
 
@@ -203,13 +252,20 @@ def main() -> int:
     s.add_argument("--out", required=True)
     s.add_argument("--wipe-shared", action="store_true")
     s.add_argument("--keep", action="store_true", help="install over the previous seed, data kept")
+    s.add_argument("--save-as", default="expected.json", help="another name: no census (an oracle stage)")
+    s.add_argument("--pull-backup", action="store_true", help="copy the seed's .rftvault to OUT/backup.rftvault")
+    s.add_argument("--push-backup", metavar="DIR", help="push DIR/backup.rftvault, with DIR/expected.json as its oracle")
+    for name in ("snapshot", "restore"):
+        p = sub.add_parser(name)
+        p.add_argument("--serial", required=True)
+        p.add_argument("--out", required=True)
     c = sub.add_parser("check")
     c.add_argument("--serial", required=True)
     c.add_argument("--apk", required=True)
     c.add_argument("--out", required=True)
     c.add_argument("--reboot", action="store_true", help="reboot the device before installing the port")
     args = parser.parse_args()
-    return {"seed": seed, "check": check}[args.command](args)
+    return {"seed": seed, "check": check, "snapshot": snapshot, "restore": restore}[args.command](args)
 
 
 if __name__ == "__main__":
