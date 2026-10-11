@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.prefs
 
+import com.readfilestech.read_files_tech.data.DartJson
 import com.readfilestech.read_files_tech.data.DartText
 import java.util.Locale
 
@@ -92,7 +93,7 @@ object FlutterPrefsFormat {
         raw == null -> PrefRead.Absent
         raw !is String -> PrefRead.Unreadable("expected a list, found ${typeOf(raw)}")
         raw.startsWith(JSON_LIST_PREFIX) ->
-            DartJsonList.decode(raw.substring(JSON_LIST_PREFIX.length))?.let { PrefRead.Present(it) }
+            DartJson.decodeStringList(raw.substring(JSON_LIST_PREFIX.length))?.let { PrefRead.Present(it) }
                 ?: PrefRead.Unreadable("not a JSON list of strings that Dart's jsonDecode accepts")
         raw.startsWith(LIST_PREFIX) -> PrefRead.Unreadable("a Java-serialised list, a form no Read Files Tech wrote")
         else -> PrefRead.Unreadable("a string where a list is expected")
