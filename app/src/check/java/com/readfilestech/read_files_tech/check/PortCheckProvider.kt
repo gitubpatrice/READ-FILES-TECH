@@ -56,6 +56,13 @@ interface PortCheckEntryPoint {
  *
  * In the `debug` and `check` builds only (src/check), never in a release. `adb shell content call`, and
  * nobody else: the framework checks no permission for call(), so the caller's uid is checked here.
+ *
+ * ⚠️ TEST DATA ONLY (security review of 2026-10-11, S5-S6). The call CHANGES the data, as the app will:
+ * it unlocks the vault (clearing its failure counter), runs the zero-key repair and restores backups
+ * over the vault's files. Its report names files and carries the SHA-256 of each decrypted vault file,
+ * which confirms a short or guessable content offline; the passwords travel in the command line of
+ * the host. Never on a phone holding real data — the debug signature already keeps it off any phone
+ * where the published app is installed.
  */
 class PortCheckProvider : ContentProvider() {
     override fun onCreate() = true

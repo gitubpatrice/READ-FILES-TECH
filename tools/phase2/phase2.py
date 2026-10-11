@@ -13,7 +13,14 @@ real package (-Prft.replaceFlutter=true) and a higher versionCode.
 
 ⚠️ DESTRUCTIVE for the device's Read Files Tech: `seed` uninstalls the installed package (its private
 data goes with it). `--wipe-shared` also deletes the 2.15.x areas of shared storage — only on an
-emulator or a test phone whose storage carries no real Read Files Tech data (docs D-017).
+emulator or a test phone whose storage carries no real Read Files Tech data (docs D-017). The check
+changes the data and reports hashes of decrypted files (PortCheckProvider): test data, test passwords.
+
+The builds:
+    seed: in a worktree of read_files_tech at the tag, flutter_seed/rft_seed_main.dart copied into lib/,
+          flutter build apk --debug -t lib/rft_seed_main.dart
+    port: ./gradlew :app:assembleCheck -Prft.replaceFlutter=true -Prft.phase2Check=true
+          (the release as R8 makes it, debug-signed, real package: the second flag is required)
 """
 
 from __future__ import annotations

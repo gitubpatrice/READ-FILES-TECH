@@ -150,14 +150,18 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
-        // The phase 2 exit criterion: the release as R8 makes it, plus the read-only check entry point
-        // of src/check. Signed with the DEBUG key, so that it installs over a seeded debug Flutter build;
-        // never published (release.yml builds the release type only, and no release manifest may carry
-        // the provider: tools/check-manifest-shape.py).
+        // The phase 2 exit criterion: the release as R8 makes it, plus the check entry point of src/check
+        // (picked up by the build type's own source set convention, `src/<type>/`). Signed with the DEBUG
+        // key, so that it installs over a seeded debug Flutter build; never published (no release manifest
+        // may carry the provider: tools/check-manifest-shape.py, run by the CI on this very variant).
+        // Under the real package it needs -Prft.phase2Check=true as well (guard below), and it never
+        // passes for a release: "-check" version, its own label.
         create("check") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
+            versionNameSuffix = "-check"
+            manifestPlaceholders["appLabel"] = "Read Files Tech (check)"
         }
     }
 
@@ -228,12 +232,24 @@ require(appVersionCode * 10 + universalRank > highestFlutterCodePublished) {
 // Every task that writes a signed release artefact, read from `:app:tasks --all` under AGP 9.4.1: an AAB
 // (`bundleRelease`) goes through packageReleaseBundle and signReleaseBundle, never through packageRelease.
 val releasePackagingTasks = setOf("packageRelease", "packageReleaseBundle", "signReleaseBundle", "packageReleaseUniversalApk")
+
+// The `check` type is a release signed with the debug key: under the real package it escaped the guard
+// above (security review of 2026-10-11, S1). It is packaged there only on an explicit, second request.
+val phase2Check: Boolean = gradle.startParameter.projectProperties["rft.phase2Check"] == "true"
+val checkPackagingTasks = releasePackagingTasks.map { it.replace("Release", "Check") }.toSet()
 gradle.taskGraph.whenReady {
     val packagesARelease = allTasks.any { it.project == project && it.name in releasePackagingTasks }
     if (replaceFlutter && packagesARelease && !hasReleaseKey) {
         throw GradleException(
             "A release build with -Prft.replaceFlutter=true needs keystore.properties: signed with the debug " +
                 "key, it would install over nobody's Read Files Tech and could never be updated.",
+        )
+    }
+    val packagesACheck = allTasks.any { it.project == project && it.name in checkPackagingTasks }
+    if (replaceFlutter && packagesACheck && !phase2Check) {
+        throw GradleException(
+            "A `check` build under the real package (the phase 2 criterion only, over a seeded debug Flutter " +
+                "build) needs -Prft.phase2Check=true as well: it is a release signed with the debug key.",
         )
     }
 }

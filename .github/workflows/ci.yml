@@ -163,6 +163,14 @@ jobs:
       # the app at the end. Locally, install both APKs and target one phone by serial:
       #   adb -s <serial> shell am instrument -w -r \
       #     com.readfilestech.read_files_tech.next.test/androidx.test.runner.AndroidJUnitRunner
+      # The exclusion below must hide nothing else: exactly one class carries @CapacityTest (security
+      # review of 2026-10-11, S9).
+      - name: Only VaultCapacityTest is left out of this run
+        run: |
+          found="$(grep -rl --include='*.kt' '^@CapacityTest' app/src/androidTest)"
+          echo "$found"
+          test "$found" = "app/src/androidTest/java/com/readfilestech/read_files_tech/vault/VaultCapacityTest.kt"
+
       - name: Run instrumented tests on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
