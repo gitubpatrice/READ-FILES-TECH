@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui.explorer
 import android.graphics.BitmapFactory
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.readfilestech.read_files_tech.data.images.ImageBounds
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
@@ -18,7 +19,11 @@ import javax.inject.Singleton
  */
 @Singleton
 class Thumbnails @Inject constructor(@param:IoDispatcher private val io: CoroutineDispatcher) {
-    private val cache = LruCache<String, ImageBitmap>(CACHE_ENTRIES)
+    // Bounded in BYTES, a sixteenth of the heap: by count, a folder of tall screenshots kept 170 MB
+    // pinned and could end the process — with every copy running in it (Claude review R5).
+    private val cache = object : LruCache<String, ImageBitmap>((Runtime.getRuntime().maxMemory() / HEAP_SHARE).toInt()) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int = value.asAndroidBitmap().byteCount
+    }
 
     fun cached(file: File, modifiedMs: Long): ImageBitmap? = cache.get(key(file, modifiedMs))
 
@@ -38,6 +43,8 @@ class Thumbnails @Inject constructor(@param:IoDispatcher private val io: Corouti
         return bounds.takeIf { ImageBounds.fits(it.outWidth, it.outHeight) }?.let { header ->
             var sample = 1
             while (header.outWidth / (sample * 2) >= sizePx && header.outHeight / (sample * 2) >= sizePx) sample *= 2
+            // The long side too: a 1080 × 20 000 screenshot would come out 135 × 2 500 otherwise.
+            while (maxOf(header.outWidth, header.outHeight) / sample > sizePx * MAX_ELONGATION) sample *= 2
             BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
         }
     }
@@ -45,6 +52,9 @@ class Thumbnails @Inject constructor(@param:IoDispatcher private val io: Corouti
     private fun key(file: File, modifiedMs: Long) = "${file.path}|$modifiedMs"
 
     private companion object {
-        const val CACHE_ENTRIES = 128
+        const val HEAP_SHARE = 16
+
+        /** A thumbnail's long side is at most this many times the size shown (a crop of its centre). */
+        const val MAX_ELONGATION = 4
     }
 }

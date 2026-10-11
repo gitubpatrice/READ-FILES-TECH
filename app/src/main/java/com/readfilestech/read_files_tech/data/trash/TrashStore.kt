@@ -112,9 +112,10 @@ class TrashStore(
         try {
             FileMoves.move(entry.payload, dest, entry.isDir)
         } catch (e: IOException) {
-            // The reservation would be left where the item was: ours (created exclusively), and holding
-            // at most a partial copy — the payload is still in the trash.
-            FileTrees.delete(dest)
+            // Our reservation, removed if still empty — never recursively: a failed move leaves no
+            // partial copy there any more (FileMoves copies into a hidden part first), and a folder
+            // that came to hold something is not ours (Claude review R5). The payload is still in the trash.
+            FileMoves.discardReservation(dest)
             throw e
         }
         entry.meta.delete()
@@ -173,7 +174,10 @@ class TrashStore(
                 // Claude review R3). Unseen: neither shown nor touched.
                 visibility.isGone(entry.payload) -> {
                     meta.delete()
-                    // Its folder only if empty: never what it may still hold under another name.
+                    // A copy killed half-way left its hidden part here (ours: the folder is reserved per
+                    // id), which would hold its space for good (Claude review R5). Then the folder, only
+                    // if empty: never what it may still hold under another name.
+                    entry.itemDir.listFiles { file -> file.name.startsWith(PART_PREFIX) }.orEmpty().forEach(FileTrees::delete)
                     runCatching { Files.deleteIfExists(entry.itemDir.toPath()) }
                     null
                 }
@@ -210,13 +214,22 @@ class TrashStore(
         private const val ID_ATTEMPTS = 64
         private const val EMULATED = "/storage/emulated/0"
         private const val SDCARD = "/sdcard"
+        private const val PART_PREFIX = FileMoves.PART_PREFIX
         private val STORAGE_VOLUME = Regex("""^(/storage/[^/]+)""")
 
-        /** The root of the volume holding [path], as `_volumeRootOf` of the 2.15.x, or null. */
+        /** The shared storage of a user: 0 the owner, 10 a work profile, 150 Samsung's Secure Folder… */
+        private val EMULATED_USER = Regex("""^(/storage/emulated/\d+)(?=/|$)""")
+
+        /**
+         * The root of the volume holding [path], or null — `_volumeRootOf` of the 2.15.x, which knew
+         * user 0 only: in a work profile, Secure Folder or Android 15's private space, every item went to
+         * the private fallback trash, a full COPY to internal storage (another volume), wiped with the
+         * app's data (Claude reviews R4, R5). Each user's storage is its own volume now.
+         */
         fun volumeRootOf(path: String): String? = when {
-            path.startsWith(EMULATED) -> EMULATED
             path.startsWith(SDCARD) -> SDCARD
-            else -> STORAGE_VOLUME.find(path)?.groupValues?.get(1)?.takeIf { it != "/storage/self" && it != "/storage/emulated" }
+            else -> EMULATED_USER.find(path)?.groupValues?.get(1)
+                ?: STORAGE_VOLUME.find(path)?.groupValues?.get(1)?.takeIf { it != "/storage/self" && it != "/storage/emulated" }
         }
 
         /**

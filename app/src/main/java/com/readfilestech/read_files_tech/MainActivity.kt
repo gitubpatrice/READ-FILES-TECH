@@ -75,9 +75,19 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Read once, then removed, whatever its value: an extra never replays (2.15.x). */
+    // TooGenericExceptionCaught: before Android 13 any getExtra unparcels the whole bundle, and another
+    // app's unknown Parcelable throws (BadParcelableException) — enough to kill the process at will
+    // (Claude review R5). No suspending call here.
+    @Suppress("TooGenericExceptionCaught")
     private fun takeShortcut(intent: Intent?) {
-        val value = intent?.getStringExtra(Shortcuts.EXTRA) ?: return
-        intent.removeExtra(Shortcuts.EXTRA)
+        // Reopened from recents, the task replays its first intent: the tile is not tapped again.
+        if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        val value = try {
+            intent.getStringExtra(Shortcuts.EXTRA)
+        } catch (expected: RuntimeException) {
+            null
+        }
+        runCatching { intent.removeExtra(Shortcuts.EXTRA) }
         Shortcuts.featureOf(value)?.let { shortcut.value = it }
     }
 }

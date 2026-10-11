@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
@@ -21,6 +23,13 @@ import javax.inject.Singleton
 /**
  * The changes the user asks of their files, run to the end whatever screen is on top ([ApplicationScope])
  * and reported through [UserMessages]. Every screen that shows files refreshes on [changes].
+ *
+ * One at a time (Claude review R5): a restore and an "empty the trash" tapped together, or two moves into
+ * one folder, never interleave; an "Undo" waits behind a running copy rather than racing it.
+ *
+ * Not covered: the process itself being frozen or killed in the background (no foreground service, as
+ * the 2.15.x). Then nothing is lost — the trash writes its metadata first, a copy is published only
+ * once whole, a source is deleted only after — but the batch stops where it was.
  */
 @Singleton
 class FileOperations @Inject constructor(
@@ -30,6 +39,7 @@ class FileOperations @Inject constructor(
     @param:ApplicationScope private val scope: CoroutineScope,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) {
+    private val serial = Mutex()
     private val changed = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     /** Something was created, renamed, moved or deleted: listings may be out of date. */
@@ -114,7 +124,7 @@ class FileOperations @Inject constructor(
     private fun launch(block: suspend () -> Unit) {
         scope.launch {
             try {
-                withContext(io) { block() }
+                serial.withLock { withContext(io) { block() } }
             } finally {
                 changed.tryEmit(Unit)
             }

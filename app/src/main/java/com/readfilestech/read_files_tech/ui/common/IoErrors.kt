@@ -22,7 +22,12 @@ object IoErrors {
             is FileAlreadyExistsException -> R.string.error_already_exists
             is NoFreeNameException -> R.string.error_no_free_name
             is AccessDeniedException -> R.string.error_access_denied
-            is NoSuchFileException, is FileNotFoundException -> R.string.error_not_found
+            is NoSuchFileException -> R.string.error_not_found
+            // java.io says "not found" for a refused write too ("open failed: EACCES", "EROFS" on an SD
+            // card under Android 8-10): its errno first, "not found" only when it gives none (Claude R5).
+            is FileNotFoundException -> reasonOfMessage(error.message).takeIf {
+                it != R.string.error_io
+            } ?: R.string.error_not_found
             is FileSystemException -> reasonOfMessage(error.reason)
             is IOException -> reasonOfMessage(error.message)
             else -> R.string.error_unexpected

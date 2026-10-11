@@ -43,11 +43,22 @@ class FileOperationsTest {
     /** Runs [block] on fresh operations and returns every message they posted. */
     private fun TestScope.posted(block: (FileOperations) -> Unit): List<UserMessage> {
         val seen = mutableListOf<UserMessage>()
-        backgroundScope.launch { messages.messages.collect { seen += it } }
+        // A queue serves one reader: this one stops before the next call starts its own.
+        val reader = backgroundScope.launch { messages.messages.collect { seen += it } }
         runCurrent()
         block(FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher))
         runCurrent()
+        reader.cancel()
         return seen
+    }
+
+    /** Claude review R5: a message posted while nothing listens (the app in the background) waits. */
+    @Test
+    fun `a message posted with no one listening waits for the next reader`() = runTest(dispatcher) {
+        val operations = FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher)
+        operations.createFolder(work, "a/b")
+        runCurrent()
+        assertThat(posted { }).hasSize(1)
     }
 
     @Test

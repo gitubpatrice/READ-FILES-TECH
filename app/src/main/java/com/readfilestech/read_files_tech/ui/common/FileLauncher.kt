@@ -44,7 +44,9 @@ class FileLauncher @Inject constructor(
 
     /** The system share sheet, for one file or several (folders were left out by the caller). */
     fun share(from: Context, files: List<File>): LaunchOutcome {
-        val served = files.map { served(from, it) ?: return LaunchOutcome.REFUSED }
+        val served = files.mapNotNull { served(from, it) }
+        // Every file may leave, or none goes; and nothing to share is no crash (clip() takes the first).
+        if (served.isEmpty() || served.size != files.size) return LaunchOutcome.REFUSED
         val send = if (served.size == 1) {
             Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, served.single().first)
         } else {

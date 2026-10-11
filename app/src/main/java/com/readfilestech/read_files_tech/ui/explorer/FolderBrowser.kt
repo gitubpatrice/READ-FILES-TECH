@@ -35,6 +35,9 @@ class FolderBrowser(
     private val query = MutableStateFlow("")
     private var listing: Job? = null
 
+    /** The folder being listed: a refresh during a navigation reloads IT, not the folder left (Claude R5). */
+    private var target: File? = null
+
     init {
         scope.launch {
             // 150 ms, as the 2.15.x: typing in a folder of thousands of entries refilters once, not per key.
@@ -56,7 +59,7 @@ class FolderBrowser(
     }
 
     fun refresh() {
-        state.value.dir?.let(::load)
+        (target ?: state.value.dir)?.let(::load)
     }
 
     /** Back from the settings: an access granted there shows at once. */
@@ -74,6 +77,7 @@ class FolderBrowser(
 
     private fun load(dir: File) {
         listing?.cancel()
+        target = dir
         // Another folder starts unfiltered; a refresh of this one keeps its filter.
         val otherFolder = dir != state.value.dir
         if (otherFolder) query.value = ""
@@ -83,6 +87,7 @@ class FolderBrowser(
                 Triple(DirectoryListing.list(dir), mounted(), !granted() && isUnderSharedStorage(dir))
             }
             state.update { it.listed(dir, result, denied, volumes, canGoBack = history.isNotEmpty()) }
+            target = null
         }
     }
 

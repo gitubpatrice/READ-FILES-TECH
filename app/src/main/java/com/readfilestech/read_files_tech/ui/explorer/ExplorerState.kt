@@ -38,8 +38,8 @@ data class ExplorerUiState(
 ) {
     val selecting: Boolean get() = selection.isNotEmpty()
 
-    /** The selected entries, in the order shown. */
-    val selectedEntries: List<FileEntry> get() = visible.filter { it.path in selection }
+    /** The selected entries — ALL of them, a filter typed since included: what the bar counts is what is acted on (Claude R5). */
+    val selectedEntries: List<FileEntry> get() = entries.filter { it.path in selection }
 }
 
 // The state's changes, pure: the screen's logic is tested on these, without Android.

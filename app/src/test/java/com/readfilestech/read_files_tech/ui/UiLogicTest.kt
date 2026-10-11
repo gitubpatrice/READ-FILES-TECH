@@ -9,6 +9,7 @@ import com.readfilestech.read_files_tech.data.browse.SortMode
 import com.readfilestech.read_files_tech.ui.common.BatchMessages
 import com.readfilestech.read_files_tech.ui.common.ByteSizes
 import com.readfilestech.read_files_tech.ui.common.ByteUnits
+import com.readfilestech.read_files_tech.ui.common.IoErrors
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.explorer.ExplorerUiState
 import com.readfilestech.read_files_tech.ui.explorer.FolderProblem
@@ -23,6 +24,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.Locale
 
 /** The screens' logic that needs no Android: sizes, explorer state, batch messages, tile shortcuts. */
@@ -109,6 +111,16 @@ class UiLogicTest {
                 R.string.joined_dot,
             ),
         )
+    }
+
+    @Test
+    fun `a refused write reads as refused, not as "not found"`() {
+        val refused = FileNotFoundException("/storage/1234-5678/a.txt: open failed: EACCES (Permission denied)")
+        assertThat(IoErrors.reasonOf(refused)).isEqualTo(UiText.Res(R.string.error_access_denied))
+        val readOnly = FileNotFoundException("/storage/1234-5678/a.txt: open failed: EROFS (Read-only file system)")
+        assertThat(IoErrors.reasonOf(readOnly)).isEqualTo(UiText.Res(R.string.error_read_only))
+        val gone = FileNotFoundException("/storage/emulated/0/a.txt: open failed: ENOENT (No such file or directory)")
+        assertThat(IoErrors.reasonOf(gone)).isEqualTo(UiText.Res(R.string.error_not_found))
     }
 
     /** Claude review R4: without the installer of phase 3b, the system cancelled an APK without a word. */

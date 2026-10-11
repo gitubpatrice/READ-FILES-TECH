@@ -122,7 +122,10 @@ fun ExplorerScreen(
         focus.clearFocus()
         when (action) {
             EntryAction.OPEN -> open(entry)
-            EntryAction.OPEN_WITH -> launching.view(context, entry, chooser = true)
+            EntryAction.OPEN_WITH -> when (val target = FileRouter.chooserTargetFor(entry)) {
+                is FileTarget.Internal -> onNavigate(target.route)
+                FileTarget.External -> launching.view(context, entry, chooser = true)
+            }
             EntryAction.PREVIEW -> dialog = ExplorerDialog.Preview(entry)
             EntryAction.EDIT_IN_PDF_TECH -> launching.editInPdfTech(context, entry)
             EntryAction.SHARE -> launching.share(context, listOf(entry))

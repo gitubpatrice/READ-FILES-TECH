@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -63,7 +64,9 @@ class SearchViewModel @Inject constructor(
                     }
                 }
             } finally {
-                state.update { it.copy(searching = false) }
+                // Only the CURRENT search may say it ended: a cancelled one finishes its blocking read
+                // after the new one started, and cleared "searching" under it (Claude review R5).
+                if (running === coroutineContext.job) state.update { it.copy(searching = false) }
             }
         }
     }

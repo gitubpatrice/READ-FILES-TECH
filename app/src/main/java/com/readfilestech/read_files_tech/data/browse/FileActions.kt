@@ -66,7 +66,7 @@ class FileActions @Inject constructor() {
             FileMoves.move(target, renamed, isDir)
         } catch (e: IOException) {
             // Our reservation, empty: removed; the item kept its name.
-            runCatching { Files.deleteIfExists(renamed.toPath()) }.exceptionOrNull()?.let(e::addSuppressed)
+            FileMoves.discardReservation(renamed)
             throw e
         }
     }
@@ -85,7 +85,10 @@ class FileActions @Inject constructor() {
         if (target.renameTo(renamed) && renamed.parentFile?.list()?.contains(renamed.name) == true) return
         // A VISIBLE temporary name next to it: a process death between the steps leaves
         // "photo.jpg.rft-rename-…" the user can see and rename, not a hidden file (GPT review R4).
-        val step = File(renamed.parentFile, "${renamed.name}.rft-rename-${Integer.toUnsignedString(random.nextInt())}").toPath()
+        // A name of 255 bytes at most, or the first move fails (ENAMETOOLONG, Claude review R5).
+        val suffix = "rft-rename-${Integer.toUnsignedString(random.nextInt())}"
+        val visible = "${renamed.name}.$suffix"
+        val step = File(renamed.parentFile, if (visible.toByteArray(Charsets.UTF_8).size <= MAX_NAME_BYTES) visible else suffix).toPath()
         Files.move(from, step)
         try {
             Files.move(step, to)
@@ -143,11 +146,16 @@ class FileActions @Inject constructor() {
         try {
             if (move) FileMoves.move(source, dest, isDir = false) else FileMoves.copyFile(source, dest)
         } catch (e: IOException) {
-            runCatching { Files.deleteIfExists(dest.toPath()) }.exceptionOrNull()?.let(e::addSuppressed)
+            FileMoves.discardReservation(dest)
             throw e
         }
     }
 
     private fun isSameFolder(a: File?, b: File): Boolean =
         a != null && runCatching { Files.isSameFile(a.toPath(), b.toPath()) }.getOrDefault(false)
+
+    private companion object {
+        /** NAME_MAX of ext4, f2fs and FUSE. */
+        const val MAX_NAME_BYTES = 255
+    }
 }

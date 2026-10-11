@@ -24,7 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -61,10 +64,15 @@ fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<F
     val resources = LocalResources.current
     val settings = rememberStorageSettings(access, messages)
 
-    LaunchedEffect(messages, resources) {
-        // One at a time, in order: showSnackbar waits for the previous one to go.
-        messages.messages.collect { message ->
-            snackbar.show(message, message.text.resolve(resources), message.action?.label?.resolve(resources))
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(messages, resources, lifecycle) {
+        // Only while the app is on screen: in the background a snackbar ran its timer unseen and the
+        // result was lost (Claude review R5); queued, it waits for the user's return. One at a time,
+        // in order: showSnackbar waits for the previous one to go.
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            messages.messages.collect { message ->
+                snackbar.show(message, message.text.resolve(resources), message.action?.label?.resolve(resources))
+            }
         }
     }
     LaunchedEffect(shortcut) {

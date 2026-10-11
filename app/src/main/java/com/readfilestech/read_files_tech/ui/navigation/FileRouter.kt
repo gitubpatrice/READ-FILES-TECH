@@ -21,8 +21,16 @@ sealed interface FileTarget {
  * without REQUEST_INSTALL_PACKAGES, it was cancelled by the installer without a word (Claude review R4).
  */
 object FileRouter {
+    private val INSTALLER = FileTarget.Internal(Routes.pending(Feature.APK_INSTALL))
+
     fun targetFor(entry: FileEntry): FileTarget = when (entry.extension) {
-        "apk" -> FileTarget.Internal(Routes.pending(Feature.APK_INSTALL))
+        "apk" -> INSTALLER
         else -> FileTarget.External
     }
+
+    /**
+     * "Open with…": another app, chosen by the user — even when a viewer of the app could open it —
+     * except an APK, which the system's installer would cancel in silence (Claude review R5).
+     */
+    fun chooserTargetFor(entry: FileEntry): FileTarget = if (entry.extension == "apk") INSTALLER else FileTarget.External
 }
