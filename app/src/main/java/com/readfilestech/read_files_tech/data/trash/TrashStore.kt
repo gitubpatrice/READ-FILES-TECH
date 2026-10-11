@@ -207,20 +207,28 @@ class TrashStore(
         }
 
         /**
-         * Where a restore may write (port plan, phase 3, finding 8, brought forward). The metadata lives
-         * in clear on shared storage: another app can forge an entry whose `originalPath` aims at the
-         * app's private folders — the vault's salt, the preferences, the editor's history —, which the
-         * app alone can write. So: never under [privateRoots]; on the trash's own volume (`/sdcard` and
-         * `/storage/emulated/0` are one; only the private fallback trash, which no other app can write,
-         * restores elsewhere); and under the name the entry carries, as the 2.15.x wrote it.
+         * Where a restore may write (port plan, phase 3, finding 8, brought forward). A trash on SHARED
+         * storage keeps its metadata in clear where another app can forge an entry whose `originalPath`
+         * aims at the app's private folders — the vault's salt, the preferences, the editor's history —,
+         * which the app alone can write. From such a trash: never under [privateRoots], and only on the
+         * trash's own volume (`/sdcard` and `/storage/emulated/0` are one). The PRIVATE fallback trash
+         * (`app_flutter/.RFT_Corbeille`) only the app writes: what the 2.15.x put there — its outputs kept
+         * in `app_flutter/Files Tech/` when shared storage refused them — goes back where it was. Always:
+         * under the name the entry carries, as the 2.15.x wrote it.
          */
         fun mayRestoreTo(entry: TrashEntry, privateRoots: List<File>): Boolean {
             val target = File(entry.originalPath)
-            val plausible = TrashEntry.isPlausibleOriginalPath(entry.originalPath) && TrashEntry.isSafeSegment(entry.name)
-            val private = privateRoots.any { target.toPath().normalize().startsWith(it.toPath().normalize()) }
+            val plausible = TrashEntry.isPlausibleOriginalPath(entry.originalPath) && TrashEntry.isSafeSegment(entry.name) &&
+                target.name == entry.name
+            val trusted = isUnder(entry.trashRoot, privateRoots)
             val trashVolume = volumeRootOf(entry.trashRoot.path)?.let(::sameVolume)
             val onItsVolume = trashVolume == null || volumeRootOf(entry.originalPath)?.let(::sameVolume) == trashVolume
-            return plausible && !private && onItsVolume && target.name == entry.name
+            return plausible && (trusted || (!isUnder(target, privateRoots) && onItsVolume))
+        }
+
+        private fun isUnder(file: File, roots: List<File>): Boolean {
+            val path = file.toPath().normalize()
+            return roots.any { path.startsWith(it.toPath().normalize()) }
         }
 
         /** `/sdcard` is a link to the primary volume: one volume under two names. */

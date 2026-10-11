@@ -38,9 +38,16 @@ class TrashStoreTest {
 
     private fun makeFile(name: String, content: String) = File(work, name).apply { writeText(content) }
 
-    /** The app's private folder is [fallback] here: what a forged restore must never reach. */
-    private fun store(names: SharedStorageNames = this.names, visible: Boolean = true) =
-        TrashStore(names, fallback, listOf(fallback), visibility = { visible }, volumeBases = { emptyList() })
+    /**
+     * The app's private folder is `tmp/private` here, what a forged restore must never reach — and the
+     * trash in [fallback] stands for a trash on SHARED storage, whose metadata another app can forge.
+     * [privateRoots] including [fallback] makes it the trusted private trash of the device.
+     */
+    private fun store(
+        names: SharedStorageNames = this.names,
+        visible: Boolean = true,
+        privateRoots: List<File> = listOf(File(tmp, "private")),
+    ) = TrashStore(names, fallback, privateRoots, visibility = { visible }, volumeBases = { emptyList() })
 
     @Test
     fun `moves a file to the trash and away from its place`() {
@@ -207,11 +214,24 @@ class TrashStoreTest {
     @Test
     fun `restore never writes into the app's private folders, whatever a forged entry says`() {
         val entry = trash.moveToTrash(makeFile("sel.txt", "forged"))
-        // fallback (app_flutter) is a private root here: a forged originalPath aiming at the vault.
-        val forged = entry.copy(originalPath = File(fallback, "vault/sel.txt").path)
+        // A shared trash's entry forged to aim at the app's private folder (the vault's salt).
+        val forged = entry.copy(originalPath = File(tmp, "private/vault/sel.txt").path)
         assertThrows<TrashException> { trash.restore(forged) }
-        assertThat(File(fallback, "vault").exists()).isFalse()
+        assertThat(File(tmp, "private/vault").exists()).isFalse()
         assertThat(entry.payload.readText()).isEqualTo("forged") // still in the trash
+    }
+
+    @Test
+    fun `the private fallback trash, which only the app writes, puts a private file back where it was`() {
+        // An output the 2.15.x kept in app_flutter/Files Tech/ when shared storage refused it.
+        val private = store(privateRoots = listOf(fallback))
+        val output = File(fallback, "Files Tech/Scans/scan.pdf").apply {
+            parentFile.mkdirs()
+            writeText("scan")
+        }
+        val entry = private.moveToTrash(output)
+        assertThat(private.restore(entry).readText()).isEqualTo("scan")
+        assertThat(output.exists()).isTrue()
     }
 
     @Test
