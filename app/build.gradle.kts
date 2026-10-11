@@ -150,6 +150,23 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+        // The phase 2 exit criterion: the release as R8 makes it, plus the read-only check entry point
+        // of src/check. Signed with the DEBUG key, so that it installs over a seeded debug Flutter build;
+        // never published (release.yml builds the release type only, and no release manifest may carry
+        // the provider: tools/check-manifest-shape.py).
+        create("check") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+    }
+
+    // The debug build carries the check too: faster to iterate on than R8, and debuggable (run-as).
+    sourceSets {
+        getByName("debug") {
+            kotlin.srcDir("src/check/java")
+            manifest.srcFile("src/check/AndroidManifest.xml")
+        }
     }
 
     compileOptions {

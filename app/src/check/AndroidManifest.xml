@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The phase 2 exit criterion's entry point (docs D-008 and the port plan, phase 2), merged into the
+    `debug` and `check` builds ONLY. A release never carries it: tools/check-manifest-shape.py allows
+    no provider in the release manifest.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        The storage permissions of the Flutter 2.15.3, so that the check can read what the 2.15.x left on
+        shared storage (trash, backups). The port's main manifest gets them with the explorer (phase 3);
+        until then only this build declares them.
+    -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <application android:requestLegacyExternalStorage="true">
+        <!--
+            `content call` from adb. android:permission covers query/insert/update/delete, never call():
+            PortCheckProvider checks the caller's uid itself (shell or root).
+        -->
+        <provider
+            android:name=".check.PortCheckProvider"
+            android:authorities="${applicationId}.portcheck"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
+    </application>
+</manifest>
