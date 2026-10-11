@@ -18,11 +18,13 @@ What is checked
 ---------------
 1. The package, as in the permission guard: the file read is the release manifest of this app.
 2. `<application>`: allowBackup="false", fullBackupContent="false", dataExtractionRules set,
-   usesCleartextTraffic="false" — the values of the Flutter 2.15.3 —; debuggable never "true".
-   MainActivity: taskAffinity="", as in the 2.15.3.
+   usesCleartextTraffic="false", requestLegacyExternalStorage="true" — the values of the Flutter
+   2.15.3 —; debuggable never "true". MainActivity: taskAffinity="", as in the 2.15.3.
 3. Exported components (activity, activity-alias, service, receiver, provider): the EXACT set below,
    each with the permission that guards it. A component with an intent filter and no `exported`
    attribute counts as exported (the pre-Android 12 default), so an omission cannot hide one.
+4. The FileProvider (phase 3): once, authority `<package>.fileprovider`, not exported, per-URI grants;
+   and `<queries>`: exactly the packages the explorer sends files to by name.
 
 Usage
 -----
@@ -56,7 +58,17 @@ REQUIRED_APPLICATION_ATTRIBUTES = {
     "fullBackupContent": "false",
     "dataExtractionRules": "@xml/data_extraction_rules",
     "usesCleartextTraffic": "false",
+    # Without it the explorer lists nothing on Android 10 (scoped storage): the S9 dead end of 2026-08-09.
+    "requestLegacyExternalStorage": "true",
 }
+
+# The FileProvider of the 2.15.x, same authority (docs D-012): never exported, per-URI grants only.
+FILE_PROVIDER = "androidx.core.content.FileProvider"
+FILE_PROVIDER_ATTRIBUTES = {"exported": "false", "grantUriPermissions": "true"}
+
+# Package visibility (Android 11+), EXACTLY: PDF Tech and the two cloud apps the explorer sends to by
+# name. Another package here is an app the port can enumerate, which the privacy text must then say.
+QUERIED_PACKAGES = {"com.pdftech.pdf_tech", "com.infomaniak.drive", "me.proton.android.drive"}
 NEVER_TRUE = ("debuggable",)
 
 # Attributes a given component must carry, as in the 2.15.x manifest.
@@ -71,6 +83,10 @@ REQUIRED_COMPONENT_ATTRIBUTES = {
 EXPORTED = {
     # The launcher entry point. Its full name is the Flutter one (docs D-012).
     "com.readfilestech.read_files_tech.MainActivity": None,
+    # The three quick-settings tiles of the 2.15.x, same full names (D-012), callable by the system only.
+    "com.readfilestech.read_files_tech.ScannerTileService": "android.permission.BIND_QUICK_SETTINGS_TILE",
+    "com.readfilestech.read_files_tech.OcrTileService": "android.permission.BIND_QUICK_SETTINGS_TILE",
+    "com.readfilestech.read_files_tech.VaultTileService": "android.permission.BIND_QUICK_SETTINGS_TILE",
     # androidx.profileinstaller: callable only with DUMP (signature|privileged — the shell, the system).
     "androidx.profileinstaller.ProfileInstallReceiver": "android.permission.DUMP",
 }
@@ -97,6 +113,23 @@ def exported_components(application: ET.Element) -> dict[str, str | None]:
             if (exported is not None and exported != "false") or (exported is None and has_filter):
                 found[element.get(A + "name") or f"<{tag} without a name>"] = element.get(A + "permission")
     return found
+
+
+def file_provider_problems(application: ET.Element, package: str) -> list[str]:
+    """The FileProvider: present once, under `<package>.fileprovider`, not exported, granting per URI."""
+    providers = [e for e in application.iter("provider") if e.get(A + "name") == FILE_PROVIDER]
+    if len(providers) != 1:
+        return [f"{FILE_PROVIDER} found {len(providers)} times, expected once."]
+    provider = providers[0]
+    problems = []
+    authority = provider.get(A + "authorities")
+    if authority != f"{package}.fileprovider":
+        problems.append(f"{FILE_PROVIDER}: authorities is {authority!r}, expected {package + '.fileprovider'!r}.")
+    for attribute, expected in FILE_PROVIDER_ATTRIBUTES.items():
+        value = provider.get(A + attribute)
+        if value != expected:
+            problems.append(f"{FILE_PROVIDER}: android:{attribute} is {value!r}, expected {expected!r}.")
+    return problems
 
 
 def main(argv: list[str]) -> int:
@@ -149,6 +182,11 @@ def main(argv: list[str]) -> int:
             value = components[0].get(A + attribute)
             if value != expected:
                 problems.append(f"{name}: android:{attribute} is {value!r}, expected {expected!r}.")
+
+    problems += file_provider_problems(application, expected_package)
+    queried = {p.get(A + "name") for q in root.iter("queries") for p in q.iter("package")}
+    if queried != QUERIED_PACKAGES:
+        problems.append(f"<queries> packages are {sorted(queried)}, expected {sorted(QUERIED_PACKAGES)}.")
 
     found = exported_components(application)
     print(f"Manifest: {manifest_path}")

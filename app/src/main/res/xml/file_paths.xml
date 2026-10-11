@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What the FileProvider can serve — and only once PathGuard has allowed the file, for the URI an intent
+    grants. Read Files Tech is a file explorer: opening or sharing any of the user's files is its job.
+
+    - external-path ".": the primary shared storage (/storage/emulated/0), as the 2.15.x.
+    - root-path "storage/": the other volumes (/storage/XXXX-XXXX, an SD card, a USB key). The 2.15.x
+      had only the line above, so a file on an SD card could neither be opened in another app nor shared
+      (getUriForFile threw). FileProvider picks the LONGEST matching root, so the primary storage still
+      goes out as "external".
+
+    Nothing private is listed: not files/ (the vault, the history), not cache/ (decrypted vault files).
+-->
+<paths>
+    <external-path
+        name="external"
+        path="." />
+    <root-path
+        name="volumes"
+        path="storage/" />
+</paths>

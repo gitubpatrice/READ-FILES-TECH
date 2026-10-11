@@ -198,7 +198,8 @@ class VaultService @Inject constructor(
         return file.readBytes()
     }
 
-    private companion object {
+    companion object {
+        /** The cache folders that may hold vault plaintext: purged here, and never served to another app (PathGuard). */
         val PLAINTEXT_CACHE_DIRS = listOf(VaultFiles.DECRYPT_DIR, "share_plus", "share", "exports")
     }
 }

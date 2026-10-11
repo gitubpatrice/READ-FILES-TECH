@@ -4,7 +4,219 @@
      71 texts built in code when it was translated. -->
 <resources>
     <string name="app_name" translatable="false">Read Files Tech</string>
-    <string name="port_in_progress_title">Kotlin version in progress</string>
-    <string name="port_in_progress_body">This build of Read Files Tech is being rewritten in Kotlin. It installs next to the published app and cannot see its files, vault or settings.</string>
-    <string name="version_label">Version %1$s</string>
+
+    <!-- Common actions -->
+    <string name="action_allow">Allow</string>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_create">Create</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_delete_forever">Delete permanently</string>
+    <string name="action_later">Later</string>
+    <string name="action_more">More options</string>
+    <string name="action_ok">OK</string>
+    <string name="action_open">Open</string>
+    <string name="action_open_settings">Open the settings</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_undo">Undo</string>
+    <string name="yes">yes</string>
+    <string name="entry_selected">Selected</string>
+    <!-- Two texts side by side, "3 copied · 1 error". -->
+    <string name="joined_dot" translatable="false">%1$s · %2$s</string>
+
+    <!-- Size units (binary, as the 2.15.x) -->
+    <string name="unit_bytes">B</string>
+    <string name="unit_kilobytes">KB</string>
+    <string name="unit_megabytes">MB</string>
+    <string name="unit_gigabytes">GB</string>
+
+    <!-- First launch and storage access -->
+    <string name="welcome_title">Welcome to Read Files Tech</string>
+    <string name="welcome_body_all_files">To explore and read your files (PDF, DOCX, images, ZIP…) anywhere on your phone, the app needs \"All files access\".\n\n➜ You will be taken to the settings.\n➜ Turn on \"Allow access to all files\".\n➜ Come back to the app.\n\nNo file is sent anywhere.</string>
+    <string name="welcome_body_storage">To explore and read your files (PDF, DOCX, images, ZIP…) anywhere on your phone, the app needs access to your storage: Android will now ask you.\n\nNo file is sent anywhere.</string>
+    <string name="all_files_instructions">Turn on \"Allow access to all files\", then come back to the app.</string>
+    <string name="access_banner_all_files">Limited file access — allow all files.</string>
+    <string name="access_banner_storage">Limited file access — allow storage.</string>
+    <string name="access_denied_title">File access denied</string>
+    <string name="access_denied_body">To show the files of this folder, allow Read Files Tech to access your files.</string>
+
+    <!-- Explorer -->
+    <string name="explorer_title">Explorer</string>
+    <string name="explorer_search_hint">Search…</string>
+    <string name="folder_empty">Empty folder</string>
+    <string name="folder_unreadable">This folder cannot be read</string>
+    <string name="folder_no_match">Nothing here matches \"%1$s\"</string>
+    <string name="folder_only_hidden">Only hidden items here</string>
+    <string name="pick_folder_title">Choose a folder</string>
+    <string name="action_choose_this_folder">Choose this folder</string>
+    <string name="action_new_folder">New folder</string>
+    <string name="new_folder_hint">Folder name</string>
+    <string name="action_hide_hidden">Hide hidden files</string>
+    <string name="action_show_hidden">Show hidden files</string>
+    <string name="action_sort">Sort</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_size">Size</string>
+    <string name="action_volumes">Storage volumes</string>
+    <string name="action_clear_search">Clear the search</string>
+    <string name="action_clear_selection">Cancel the selection</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_open_with">Open with…</string>
+    <string name="open_with_title">Open with</string>
+    <string name="action_preview">Preview</string>
+    <string name="action_edit_in_pdf_tech">Edit in PDF Tech</string>
+    <string name="action_share">Share</string>
+    <string name="share_title">Share</string>
+    <string name="action_send_to_kdrive">Send to kDrive</string>
+    <string name="action_send_to_proton">Send to Proton Drive</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_copy_to">Copy to…</string>
+    <string name="action_move_to">Move to…</string>
+    <string name="action_info">Information</string>
+    <string name="action_trash">Move to trash</string>
+    <string name="action_copy_path">Copy the path</string>
+    <string name="share_no_files">No file to share (folders are left out)</string>
+    <string name="delete_forever_file">Permanently delete \"%1$s\"?\nThis cannot be undone: the file does not go to the trash.</string>
+    <string name="delete_forever_folder">Permanently delete \"%1$s\"?\nThe folder and everything in it will be deleted.\nThis cannot be undone: nothing goes to the trash.</string>
+    <plurals name="delete_forever_many">
+        <item quantity="one">Permanently delete %d item?\nFolders are deleted with everything in them.\nThis cannot be undone: nothing goes to the trash.</item>
+        <item quantity="other">Permanently delete %d items?\nFolders are deleted with everything in them.\nThis cannot be undone: nothing goes to the trash.</item>
+    </plurals>
+    <plurals name="item_count">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="selected_count">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+
+    <!-- File information -->
+    <string name="info_type">Type</string>
+    <string name="info_type_file">File</string>
+    <string name="info_type_folder">Folder</string>
+    <string name="info_extension">Extension</string>
+    <string name="info_mime">MIME type</string>
+    <string name="info_size">Size</string>
+    <!-- "1.5 MB (1 572 864 bytes)" -->
+    <string name="info_size_value" translatable="false">%1$s (%2$s)</string>
+    <plurals name="bytes_count">
+        <item quantity="one">%d byte</item>
+        <item quantity="other">%d bytes</item>
+    </plurals>
+    <string name="info_items">Items</string>
+    <string name="info_modified">Modified</string>
+    <string name="info_accessed">Accessed</string>
+    <string name="info_symlink">Symbolic link</string>
+    <string name="info_path">Path</string>
+    <string name="info_unknown">unknown</string>
+
+    <!-- Preview -->
+    <string name="preview_empty">Empty file</string>
+    <string name="preview_unreadable">Cannot read the file.</string>
+
+    <!-- Results of file operations -->
+    <string name="trashed_one">\"%1$s\" moved to the trash</string>
+    <plurals name="trashed_many">
+        <item quantity="one">%d moved to the trash</item>
+        <item quantity="other">%d moved to the trash</item>
+    </plurals>
+    <string name="restored_one">Restored: %1$s</string>
+    <plurals name="restore_failed">
+        <item quantity="one">%d item could not be restored</item>
+        <item quantity="other">%d items could not be restored</item>
+    </plurals>
+    <plurals name="deleted_many">
+        <item quantity="one">%d deleted</item>
+        <item quantity="other">%d deleted</item>
+    </plurals>
+    <plurals name="copied_many">
+        <item quantity="one">%d copied</item>
+        <item quantity="other">%d copied</item>
+    </plurals>
+    <plurals name="moved_many">
+        <item quantity="one">%d moved</item>
+        <item quantity="other">%d moved</item>
+    </plurals>
+    <plurals name="errors_count">
+        <item quantity="one">%d error</item>
+        <item quantity="other">%d errors</item>
+    </plurals>
+    <plurals name="folders_skipped">
+        <item quantity="one">%d folder left out (files only)</item>
+        <item quantity="other">%d folders left out (files only)</item>
+    </plurals>
+
+    <!-- Why an operation failed -->
+    <string name="error_create_folder">Cannot create this folder: %1$s</string>
+    <string name="error_rename">Cannot rename: %1$s</string>
+    <string name="error_trash">Cannot move to the trash: %1$s</string>
+    <string name="error_invalid_name">invalid name (/ \\ . and .. are not allowed)</string>
+    <string name="error_already_exists">an item with this name already exists</string>
+    <string name="error_no_free_name">no free name left in the folder</string>
+    <string name="error_access_denied">permission denied</string>
+    <string name="error_not_found">the item no longer exists</string>
+    <string name="error_read_only">the volume is read-only</string>
+    <string name="error_no_space">not enough space</string>
+    <string name="error_name_too_long">name too long</string>
+    <string name="error_io">read or write error</string>
+    <string name="error_unexpected">Something went wrong.</string>
+    <string name="error_no_app">No app found to open this file.</string>
+    <string name="error_app_not_installed">%1$s is not installed on this device.</string>
+    <string name="error_file_not_shareable">This file cannot be handed to another app.</string>
+    <string name="error_open_failed">Cannot open this file.</string>
+
+    <!-- Trash -->
+    <string name="trash_title">Trash</string>
+    <!-- "3 items · 1.5 MB" -->
+    <string name="trash_summary" translatable="false">%1$s · %2$s</string>
+    <string name="action_restore">Restore</string>
+    <string name="trash_empty_action">Empty the trash</string>
+    <string name="trash_empty_title">The trash is empty</string>
+    <string name="trash_empty_body">Items moved to the trash from the explorer stay here until you delete them.</string>
+    <string name="trash_delete_one">Permanently delete \"%1$s\"?\nThis cannot be undone.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">Permanently delete %d item?\nThis cannot be undone.</item>
+        <item quantity="other">Permanently delete %d items?\nThis cannot be undone.</item>
+    </plurals>
+
+    <!-- Global search -->
+    <string name="search_title">Global search</string>
+    <string name="search_name_label">File name contains</string>
+    <string name="search_name_hint">e.g. invoice</string>
+    <string name="search_content_label">Content contains (text files only)</string>
+    <string name="search_content_hint">e.g. VAT</string>
+    <string name="search_choose_root">Choose the folder to search</string>
+    <string name="search_needs_criteria">Enter a name OR a content to look for</string>
+    <string name="action_search">Search</string>
+    <string name="action_stop">Stop</string>
+    <!-- "Scanned: 200 files — 3 found" -->
+    <string name="search_progress" translatable="false">%1$s — %2$s</string>
+    <plurals name="search_scanned">
+        <item quantity="one">Scanned: %d file</item>
+        <item quantity="other">Scanned: %d files</item>
+    </plurals>
+    <plurals name="search_found">
+        <item quantity="one">%d found</item>
+        <item quantity="other">%d found</item>
+    </plurals>
+    <string name="search_running">Searching…</string>
+    <string name="search_nothing">No result — enter what to look for</string>
+    <plurals name="search_results">
+        <item quantity="one">%d result</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+
+    <!-- Quick-settings tiles -->
+    <string name="tile_scanner">Files Tech Scanner</string>
+    <string name="tile_ocr">Files Tech OCR</string>
+    <string name="tile_vault">Files Tech Vault</string>
+
+    <!-- Screens of a later phase of the port (reached from the quick-settings tiles) -->
+    <string name="feature_scanner">Scanner</string>
+    <string name="feature_ocr">OCR</string>
+    <string name="feature_vault">Vault</string>
+    <string name="pending_title">Not available yet</string>
+    <string name="pending_body">This screen comes with a later step of the rewrite of Read Files Tech in Kotlin.</string>
 </resources>

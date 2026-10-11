@@ -11,6 +11,36 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <!--
+        Shared storage, as the 2.15.3: the app is a general file explorer, which the system's document
+        picker cannot replace (it hands out one file or folder at a time, never a browsable tree).
+        Android 11+: "All files access" (MANAGE_EXTERNAL_STORAGE), asked through the settings page;
+        Android 10 and older: the runtime storage permission, with requestLegacyExternalStorage below
+        for Android 10. Nothing runs in the background. PRIVACY.md describes it.
+        No READ_MEDIA_* and no CAMERA (docs D-027): never asked by the 2.15.x, useless with all-files
+        access, and a declared-but-refused CAMERA breaks the system camera intent.
+    -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!--
+        Package visibility (Android 11+): only the apps the explorer hands files to by name — PDF Tech
+        ("Edit in PDF Tech", its certificate checked) and the two cloud apps of "Send to". Opening with
+        or sharing to any other app goes through the system chooser, which needs no visibility.
+    -->
+    <queries>
+        <package android:name="com.pdftech.pdf_tech" />
+        <package android:name="com.infomaniak.drive" />
+        <package android:name="me.proton.android.drive" />
+    </queries>
+
+    <!--
         allowBackup / fullBackupContent / dataExtractionRules: the same as the 2.15.x. The app keeps an
         encrypted vault and reads every file of the phone: none of its data goes to a cloud backup or a
         device transfer. SECURITY.md states "Android backup is disabled for this app".
@@ -23,6 +53,7 @@
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="false"
+        android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReadFilesTech"
         tools:targetApi="36">
@@ -47,5 +78,56 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            The quick-settings tiles, under their 2.15.x names (docs D-012: the panel remembers a tile by
+            component). Exported for the system only: BIND_QUICK_SETTINGS_TILE is signature|privileged.
+            Their icons are masks (one colour): the 2.15.x used the launcher's PNG, drawn as a blank square.
+        -->
+        <service
+            android:name=".ScannerTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_scanner"
+            android:label="@string/tile_scanner"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".OcrTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_ocr"
+            android:label="@string/tile_ocr"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".VaultTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_vault"
+            android:label="@string/tile_vault"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!--
+            The files handed to other apps (open with, share, send). The authority of the 2.15.x, kept
+            (docs D-012). NOT exported: an app reads only the one URI an intent granted it, for the time
+            of that intent. What may be served is decided by PathGuard first, then by file_paths.xml.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

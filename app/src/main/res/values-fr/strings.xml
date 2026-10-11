@@ -1,6 +1,226 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- French: the 2.15.x texts, where it had them. Plurals: "one" covers 0 and 1 in French, and "many"
+     (1 000 000 and over, CLDR) must exist or Android falls back to "other" only by chance. -->
 <resources>
-    <string name="port_in_progress_title">Version Kotlin en cours</string>
-    <string name="port_in_progress_body">Cette build de Read Files Tech est en cours de réécriture en Kotlin. Elle s\'installe à côté de l\'application publiée et ne peut voir ni ses fichiers, ni son coffre, ni ses réglages.</string>
-    <string name="version_label">Version %1$s</string>
+    <!-- Actions communes -->
+    <string name="action_allow">Autoriser</string>
+    <string name="action_back">Retour</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_create">Créer</string>
+    <string name="action_delete">Supprimer</string>
+    <string name="action_delete_forever">Supprimer définitivement</string>
+    <string name="action_later">Plus tard</string>
+    <string name="action_more">Plus d\'options</string>
+    <string name="action_ok">OK</string>
+    <string name="action_open">Ouvrir</string>
+    <string name="action_open_settings">Ouvrir les Réglages</string>
+    <string name="action_refresh">Actualiser</string>
+    <string name="action_settings">Réglages</string>
+    <string name="action_undo">Annuler</string>
+    <string name="yes">oui</string>
+    <string name="entry_selected">Sélectionné</string>
+
+    <!-- Unités de taille -->
+    <string name="unit_bytes">o</string>
+    <string name="unit_kilobytes">Ko</string>
+    <string name="unit_megabytes">Mo</string>
+    <string name="unit_gigabytes">Go</string>
+
+    <!-- Premier lancement et accès au stockage -->
+    <string name="welcome_title">Bienvenue dans Read Files Tech</string>
+    <string name="welcome_body_all_files">Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) partout sur votre téléphone, l\'app a besoin de l\'accès « Tous les fichiers ».\n\n➜ Vous serez redirigé(e) vers les Réglages.\n➜ Activez « Autoriser l\'accès à tous les fichiers ».\n➜ Revenez à l\'app.\n\nAucun fichier n\'est transmis ailleurs.</string>
+    <string name="welcome_body_storage">Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) partout sur votre téléphone, l\'app a besoin d\'accéder au stockage : Android va vous le demander.\n\nAucun fichier n\'est transmis ailleurs.</string>
+    <string name="all_files_instructions">Activez « Autoriser l\'accès à tous les fichiers » puis revenez à l\'app.</string>
+    <string name="access_banner_all_files">Accès aux fichiers limité — autorisez tous les fichiers.</string>
+    <string name="access_banner_storage">Accès aux fichiers limité — autorisez le stockage.</string>
+    <string name="access_denied_title">Accès aux fichiers refusé</string>
+    <string name="access_denied_body">Pour afficher les fichiers de ce dossier, autorisez Read Files Tech à accéder à vos fichiers.</string>
+
+    <!-- Explorateur -->
+    <string name="explorer_title">Explorateur</string>
+    <string name="explorer_search_hint">Rechercher…</string>
+    <string name="folder_empty">Dossier vide</string>
+    <string name="folder_unreadable">Ce dossier est illisible</string>
+    <string name="folder_no_match">Aucun élément ne correspond à « %1$s »</string>
+    <string name="folder_only_hidden">Seulement des éléments cachés</string>
+    <string name="pick_folder_title">Choisir un dossier</string>
+    <string name="action_choose_this_folder">Choisir ce dossier</string>
+    <string name="action_new_folder">Nouveau dossier</string>
+    <string name="new_folder_hint">Nom du dossier</string>
+    <string name="action_hide_hidden">Masquer les fichiers cachés</string>
+    <string name="action_show_hidden">Afficher les fichiers cachés</string>
+    <string name="action_sort">Trier</string>
+    <string name="sort_name">Nom</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_size">Taille</string>
+    <string name="action_volumes">Volumes de stockage</string>
+    <string name="action_clear_search">Effacer la recherche</string>
+    <string name="action_clear_selection">Annuler la sélection</string>
+    <string name="action_select_all">Tout sélectionner</string>
+    <string name="action_open_with">Ouvrir avec…</string>
+    <string name="open_with_title">Ouvrir avec</string>
+    <string name="action_preview">Aperçu</string>
+    <string name="action_edit_in_pdf_tech">Éditer dans PDF Tech</string>
+    <string name="action_share">Partager</string>
+    <string name="share_title">Partager</string>
+    <string name="action_send_to_kdrive">Envoyer vers kDrive</string>
+    <string name="action_send_to_proton">Envoyer vers Proton Drive</string>
+    <string name="action_rename">Renommer</string>
+    <string name="action_copy_to">Copier vers…</string>
+    <string name="action_move_to">Déplacer vers…</string>
+    <string name="action_info">Informations</string>
+    <string name="action_trash">Mettre à la corbeille</string>
+    <string name="action_copy_path">Copier le chemin</string>
+    <string name="share_no_files">Aucun fichier à partager (dossiers ignorés)</string>
+    <string name="delete_forever_file">Supprimer définitivement « %1$s » ?\nCette action est irréversible : le fichier ne passera pas par la corbeille.</string>
+    <string name="delete_forever_folder">Supprimer définitivement « %1$s » ?\nLe dossier et tout son contenu seront supprimés.\nCette action est irréversible : rien ne passera par la corbeille.</string>
+    <plurals name="delete_forever_many">
+        <item quantity="one">Supprimer définitivement %d élément ?\nLes dossiers et leur contenu seront supprimés.\nCette action est irréversible : rien ne passera par la corbeille.</item>
+        <item quantity="many">Supprimer définitivement %d éléments ?\nLes dossiers et leur contenu seront supprimés.\nCette action est irréversible : rien ne passera par la corbeille.</item>
+        <item quantity="other">Supprimer définitivement %d éléments ?\nLes dossiers et leur contenu seront supprimés.\nCette action est irréversible : rien ne passera par la corbeille.</item>
+    </plurals>
+    <plurals name="item_count">
+        <item quantity="one">%d élément</item>
+        <item quantity="many">%d éléments</item>
+        <item quantity="other">%d éléments</item>
+    </plurals>
+    <plurals name="selected_count">
+        <item quantity="one">%d sélectionné</item>
+        <item quantity="many">%d sélectionnés</item>
+        <item quantity="other">%d sélectionnés</item>
+    </plurals>
+
+    <!-- Informations sur un fichier -->
+    <string name="info_type">Type</string>
+    <string name="info_type_file">Fichier</string>
+    <string name="info_type_folder">Dossier</string>
+    <string name="info_extension">Extension</string>
+    <plurals name="bytes_count">
+        <item quantity="one">%d octet</item>
+        <item quantity="many">%d octets</item>
+        <item quantity="other">%d octets</item>
+    </plurals>
+    <string name="info_mime">Type MIME</string>
+    <string name="info_size">Taille</string>
+    <string name="info_items">Éléments</string>
+    <string name="info_modified">Modifié</string>
+    <string name="info_accessed">Consulté</string>
+    <string name="info_symlink">Lien symbolique</string>
+    <string name="info_path">Chemin</string>
+    <string name="info_unknown">inconnu</string>
+
+    <!-- Aperçu -->
+    <string name="preview_empty">Fichier vide</string>
+    <string name="preview_unreadable">Impossible de lire le fichier.</string>
+
+    <!-- Résultats des opérations -->
+    <string name="trashed_one">« %1$s » mis à la corbeille</string>
+    <plurals name="trashed_many">
+        <item quantity="one">%d mis à la corbeille</item>
+        <item quantity="many">%d mis à la corbeille</item>
+        <item quantity="other">%d mis à la corbeille</item>
+    </plurals>
+    <string name="restored_one">Restauré : %1$s</string>
+    <plurals name="restore_failed">
+        <item quantity="one">%d élément n\'a pas pu être restauré</item>
+        <item quantity="many">%d éléments n\'ont pas pu être restaurés</item>
+        <item quantity="other">%d éléments n\'ont pas pu être restaurés</item>
+    </plurals>
+    <plurals name="deleted_many">
+        <item quantity="one">%d supprimé</item>
+        <item quantity="many">%d supprimés</item>
+        <item quantity="other">%d supprimés</item>
+    </plurals>
+    <plurals name="copied_many">
+        <item quantity="one">%d copié</item>
+        <item quantity="many">%d copiés</item>
+        <item quantity="other">%d copiés</item>
+    </plurals>
+    <plurals name="moved_many">
+        <item quantity="one">%d déplacé</item>
+        <item quantity="many">%d déplacés</item>
+        <item quantity="other">%d déplacés</item>
+    </plurals>
+    <plurals name="errors_count">
+        <item quantity="one">%d erreur</item>
+        <item quantity="many">%d erreurs</item>
+        <item quantity="other">%d erreurs</item>
+    </plurals>
+    <plurals name="folders_skipped">
+        <item quantity="one">%d dossier ignoré (fichiers seulement)</item>
+        <item quantity="many">%d dossiers ignorés (fichiers seulement)</item>
+        <item quantity="other">%d dossiers ignorés (fichiers seulement)</item>
+    </plurals>
+
+    <!-- Pourquoi une opération a échoué -->
+    <string name="error_create_folder">Impossible de créer ce dossier : %1$s</string>
+    <string name="error_rename">Impossible de renommer : %1$s</string>
+    <string name="error_trash">Mise à la corbeille impossible : %1$s</string>
+    <string name="error_invalid_name">nom invalide (/ \\ . et .. interdits)</string>
+    <string name="error_already_exists">un élément de ce nom existe déjà</string>
+    <string name="error_no_free_name">aucun nom libre dans le dossier</string>
+    <string name="error_access_denied">permission refusée</string>
+    <string name="error_not_found">l\'élément n\'existe plus</string>
+    <string name="error_read_only">le volume est en lecture seule</string>
+    <string name="error_no_space">espace insuffisant</string>
+    <string name="error_name_too_long">nom trop long</string>
+    <string name="error_io">erreur de lecture ou d\'écriture</string>
+    <string name="error_unexpected">Une erreur inattendue s\'est produite.</string>
+    <string name="error_no_app">Aucune application trouvée pour ouvrir ce fichier.</string>
+    <string name="error_app_not_installed">%1$s n\'est pas installé sur cet appareil.</string>
+    <string name="error_file_not_shareable">Ce fichier ne peut pas être confié à une autre application.</string>
+    <string name="error_open_failed">Impossible d\'ouvrir ce fichier.</string>
+
+    <!-- Corbeille -->
+    <string name="trash_title">Corbeille</string>
+    <string name="action_restore">Restaurer</string>
+    <string name="trash_empty_action">Vider la corbeille</string>
+    <string name="trash_empty_title">La corbeille est vide</string>
+    <string name="trash_empty_body">Les éléments mis à la corbeille depuis l\'explorateur restent ici jusqu\'à ce que vous les supprimiez.</string>
+    <string name="trash_delete_one">Supprimer définitivement « %1$s » ?\nCette action est irréversible.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">Supprimer définitivement %d élément ?\nCette action est irréversible.</item>
+        <item quantity="many">Supprimer définitivement %d éléments ?\nCette action est irréversible.</item>
+        <item quantity="other">Supprimer définitivement %d éléments ?\nCette action est irréversible.</item>
+    </plurals>
+
+    <!-- Recherche globale -->
+    <string name="search_title">Recherche globale</string>
+    <string name="search_name_label">Nom du fichier contient</string>
+    <string name="search_name_hint">ex : facture</string>
+    <string name="search_content_label">Contenu contient (texte uniquement)</string>
+    <string name="search_content_hint">ex : SIRET</string>
+    <string name="search_choose_root">Choisir le dossier de recherche</string>
+    <string name="search_needs_criteria">Saisissez un nom OU un contenu à rechercher</string>
+    <string name="action_search">Lancer</string>
+    <string name="action_stop">Arrêter</string>
+    <string name="search_running">Recherche…</string>
+    <plurals name="search_scanned">
+        <item quantity="one">Scan : %d fichier</item>
+        <item quantity="many">Scan : %d fichiers</item>
+        <item quantity="other">Scan : %d fichiers</item>
+    </plurals>
+    <plurals name="search_found">
+        <item quantity="one">%d trouvé</item>
+        <item quantity="many">%d trouvés</item>
+        <item quantity="other">%d trouvés</item>
+    </plurals>
+    <string name="search_nothing">Aucun résultat — saisissez vos critères</string>
+    <plurals name="search_results">
+        <item quantity="one">%d résultat</item>
+        <item quantity="many">%d résultats</item>
+        <item quantity="other">%d résultats</item>
+    </plurals>
+
+    <!-- Tuiles du volet rapide (libellés de la 2.15.x) -->
+    <string name="tile_scanner">Scanner Files Tech</string>
+    <string name="tile_ocr">OCR Files Tech</string>
+    <string name="tile_vault">Coffre Files Tech</string>
+
+    <!-- Écrans d'une phase suivante du portage -->
+    <string name="feature_scanner">Scanner</string>
+    <string name="feature_ocr">OCR</string>
+    <string name="feature_vault">Coffre</string>
+    <string name="pending_title">Pas encore disponible</string>
+    <string name="pending_body">Cet écran arrive avec une prochaine étape de la réécriture de Read Files Tech en Kotlin.</string>
 </resources>

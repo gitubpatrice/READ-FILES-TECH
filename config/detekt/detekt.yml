@@ -32,6 +32,11 @@ complexity:
   CyclomaticComplexMethod:
     active: true
     ignoreAnnotated: ['Composable']
+  # Same reason, for the count: a screen file holds its bar, its rows, its dialogs as small composables,
+  # which is the shape Compose asks for. Thresholds unchanged; plain functions and classes still count.
+  TooManyFunctions:
+    active: true
+    ignoreAnnotatedFunctions: ['Composable']
 
 exceptions:
   active: true

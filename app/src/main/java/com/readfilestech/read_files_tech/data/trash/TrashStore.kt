@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.trash
 
 import com.readfilestech.read_files_tech.data.DartDateTime
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
+import com.readfilestech.read_files_tech.data.files.FileMoves
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.files.SharedStorageNames
 import com.readfilestech.read_files_tech.data.files.StorageVisibility
@@ -57,7 +58,7 @@ class TrashStore(
         val size = if (isDir) -1L else runCatching { Files.size(item.toPath()) }.getOrDefault(-1L)
         val dest = File(itemDir, item.name)
         try {
-            TrashMoves.move(item, dest, isDir)
+            FileMoves.move(item, dest, isDir)
         } catch (e: IOException) {
             FileTrees.delete(itemDir)
             throw e
@@ -97,9 +98,9 @@ class TrashStore(
         parent.mkdirs()
         // RESERVED, not tested: a file appearing between a test and the move would be replaced in
         // silence — and it was never in the trash.
-        val dest = TrashMoves.reserveUniquePath(parent, entry.name, entry.isDir)
+        val dest = FileMoves.reserveUniquePath(parent, entry.name, entry.isDir)
         try {
-            TrashMoves.move(entry.payload, dest, entry.isDir)
+            FileMoves.move(entry.payload, dest, entry.isDir)
         } catch (e: IOException) {
             // The reservation would be left where the item was: ours (created exclusively), and holding
             // at most a partial copy — the payload is still in the trash.

@@ -61,15 +61,27 @@ MAIN_ACTIVITY = "com.readfilestech.read_files_tech.MainActivity"
 # --- Permission fixtures -------------------------------------------------------------------------
 
 
+STORAGE_PERMISSIONS = (
+    '    <uses-permission\n'
+    '        android:name="android.permission.READ_EXTERNAL_STORAGE"\n'
+    '        android:maxSdkVersion="32" />\n'
+    '    <uses-permission\n'
+    '        android:name="android.permission.WRITE_EXTERNAL_STORAGE"\n'
+    '        android:maxSdkVersion="29" />\n'
+    '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n'
+)
+
+
 def manifest(package: str) -> str:
-    # The one permission is written across several lines, the shape the manifest merger produces:
-    # the positive witness proves it is still READ.
+    # Permissions written across several lines, the shape the manifest merger produces: the positive
+    # witness proves they are still READ.
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
         f'    package="{package}">\n'
         '    <uses-permission\n'
         f'        android:name="{package}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />\n'
+        f'{STORAGE_PERMISSIONS}'
         '    <application android:label="Read Files Tech" />\n'
         '</manifest>\n'
     )
@@ -97,23 +109,49 @@ def with_before_application(content: str, extra: str) -> str:
 
 # --- Shape fixtures ------------------------------------------------------------------------------
 
+TILE = "com.readfilestech.read_files_tech.{}TileService"
+TILE_PERMISSION = "android.permission.BIND_QUICK_SETTINGS_TILE"
+
+
+def tile(name: str) -> str:
+    return (
+        f'        <service android:name="{TILE.format(name)}" android:exported="true"\n'
+        f'            android:permission="{TILE_PERMISSION}">\n'
+        '            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>\n'
+        '        </service>\n'
+    )
+
+
+QUERIES = (
+    '    <queries>\n'
+    '        <package android:name="com.pdftech.pdf_tech" />\n'
+    '        <package android:name="com.infomaniak.drive" />\n'
+    '        <package android:name="me.proton.android.drive" />\n'
+    '    </queries>\n'
+)
+
 SHAPE_OK = (
     '<?xml version="1.0" encoding="utf-8"?>\n'
     '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
     f'    package="{ISOLATED}">\n'
+    f'{QUERIES}'
     '    <application\n'
     '        android:allowBackup="false"\n'
     '        android:fullBackupContent="false"\n'
     '        android:dataExtractionRules="@xml/data_extraction_rules"\n'
-    '        android:usesCleartextTraffic="false">\n'
+    '        android:usesCleartextTraffic="false"\n'
+    '        android:requestLegacyExternalStorage="true">\n'
     f'        <activity android:name="{MAIN_ACTIVITY}" android:exported="true" android:taskAffinity="">\n'
     '            <intent-filter><action android:name="android.intent.action.MAIN" /></intent-filter>\n'
     '        </activity>\n'
+    f'{tile("Scanner")}{tile("Ocr")}{tile("Vault")}'
     '        <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver"\n'
     '            android:exported="true" android:permission="android.permission.DUMP">\n'
     '            <intent-filter><action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" /></intent-filter>\n'
     '        </receiver>\n'
     '        <provider android:name="androidx.startup.InitializationProvider" android:exported="false" />\n'
+    f'        <provider android:name="androidx.core.content.FileProvider" android:authorities="{ISOLATED}.fileprovider"\n'
+    '            android:exported="false" android:grantUriPermissions="true" />\n'
     '    </application>\n'
     '</manifest>\n'
 )
@@ -262,6 +300,16 @@ def permission_cases(work: str) -> list[tuple]:
         ("permissions: reviewed permission absent", MANIFEST_CHECK, [],
          lambda: manifest_case(work, MANIFEST_OK.replace(
              "DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION", "OTHER_PERMISSION")), 1, "absent from the manifest"),
+        ("permissions: all-files access absent (the explorer would see nothing on Android 11+)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(
+             '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n', "")),
+         1, "absent from the manifest"),
+        ("permissions: READ_MEDIA_IMAGES back (docs D-027)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.READ_MEDIA_IMAGES"))), 1, "outside the reviewed list"),
+        ("permissions: CAMERA back (docs D-027)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.CAMERA"))), 1, "outside the reviewed list"),
         ("permissions: no permission at all", MANIFEST_CHECK, [],
          lambda: manifest_case(work, MANIFEST_OK.split("    <uses-permission")[0]
                                + '    <application android:label="x" />\n</manifest>\n'),
@@ -313,10 +361,37 @@ def shape_cases(work: str) -> list[tuple]:
              1, "ProfileInstallReceiver is guarded by None"),
         case("MainActivity renamed", SHAPE_OK.replace(MAIN_ACTIVITY, "com.readfilestech.rft.MainActivity"),
              1, "reviewed exported component absent: " + MAIN_ACTIVITY),
+        case("requestLegacyExternalStorage absent (Android 10 lists nothing)",
+             SHAPE_OK.replace('\n        android:requestLegacyExternalStorage="true"', ""),
+             1, "android:requestLegacyExternalStorage> is None"),
+        case("a tile without its permission (any app could bind it)",
+             SHAPE_OK.replace(f'android:name="{TILE.format("Vault")}" android:exported="true"\n            android:permission="{TILE_PERMISSION}"',
+                              f'android:name="{TILE.format("Vault")}" android:exported="true"'),
+             1, "VaultTileService is guarded by None"),
+        case("a tile renamed (the user's placed tile would vanish)", SHAPE_OK.replace(TILE.format("Ocr"), TILE.format("Text")),
+             1, "reviewed exported component absent: " + TILE.format("Ocr")),
+        case("the FileProvider exported",
+             SHAPE_OK.replace('android:exported="false" android:grantUriPermissions="true"', 'android:exported="true" android:grantUriPermissions="true"'),
+             1, "outside the reviewed list: androidx.core.content.FileProvider"),
+        case("the FileProvider under another authority",
+             SHAPE_OK.replace(f'"{ISOLATED}.fileprovider"', f'"{ISOLATED}.provider"'),
+             1, "FileProvider: authorities is"),
+        case("the FileProvider without per-URI grants",
+             SHAPE_OK.replace(' android:grantUriPermissions="true"', ""),
+             1, "android:grantUriPermissions is None"),
+        case("the FileProvider absent", SHAPE_OK.replace("androidx.core.content.FileProvider", "com.example.OtherProvider"),
+             1, "FileProvider found 0 times"),
+        case("a package queried beyond the reviewed three",
+             SHAPE_OK.replace("    </queries>", '        <package android:name="com.whatsapp" />\n    </queries>'),
+             1, "<queries> packages are"),
+        case("PDF Tech no longer queried (\"Edit in PDF Tech\" would vanish on Android 11+)",
+             SHAPE_OK.replace('        <package android:name="com.pdftech.pdf_tech" />\n', ""),
+             1, "<queries> packages are"),
         case("replacing build read as the isolated one", SHAPE_OK.replace(f'package="{ISOLATED}"', f'package="{FLUTTER}"'),
              1, "is not the release manifest of " + ISOLATED),
+        # The package everywhere, the FileProvider's authority included.
         case("POSITIVE WITNESS, replacing build (--replace)",
-             SHAPE_OK.replace(f'package="{ISOLATED}"', f'package="{FLUTTER}"'), 0, "OK: backup off", ["--replace"]),
+             SHAPE_OK.replace(ISOLATED, FLUTTER), 0, "OK: backup off", ["--replace"]),
         case("file missing", None, 1, "merged manifest not found"),
         case("malformed XML", SHAPE_OK.replace("</manifest>", ""), 1, "merged manifest unreadable"),
     ]
