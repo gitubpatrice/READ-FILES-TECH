@@ -21,10 +21,10 @@ class PortObservation(private val dirs: CheckDirs, private val deps: PortCheckEn
     suspend fun observe(request: PortCheckRequest): Map<String, Any?> {
         val out = linkedMapOf<String, Any?>()
         out["port"] = port()
-        // What RftApplication started when this process was created: the sandbox is listed after it.
+        // RftApplication ran it when this process was created; called again, it returns at once.
         out["startup"] = attempt {
-            deps.startup().await()
-            "done"
+            deps.startup().runOnce()
+            deps.startup().failures.firstOrNull()?.let(::failure) ?: "done"
         }
         out["sandboxAtStart"] = attempt { Sandbox.list(dirs.data) }
         out["prefsBefore"] = attempt { PrefsSnapshot.of(deps.prefs()) }

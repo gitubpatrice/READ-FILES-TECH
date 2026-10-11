@@ -2,6 +2,8 @@ package com.readfilestech.read_files_tech.data.recents
 
 import com.readfilestech.read_files_tech.data.DartDateTime
 import com.readfilestech.read_files_tech.data.DartJson
+import com.readfilestech.read_files_tech.data.files.StorageVisibility
+import com.readfilestech.read_files_tech.data.files.isGone
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.prefs.PrefRead
 import java.io.File
@@ -61,15 +63,23 @@ data class RecentFile(
  * cleaned up — a positive finding. A list that cannot be read at all is neither shown nor rewritten.
  */
 @Singleton
-class RecentFiles @Inject constructor(private val prefs: FlutterPreferences) {
+class RecentFiles @Inject constructor(
+    private val prefs: FlutterPreferences,
+    private val visibility: StorageVisibility,
+) {
 
-    /** The recent files that still exist, the most recent first. */
+    /**
+     * The recent files that still exist, the most recent first. Only an entry KNOWN gone is removed from
+     * the list (docs D-019): a file on an SD card taken out, or another app's file behind a revoked
+     * all-files access, is not shown — and comes back with its favourite mark (Claude review R3).
+     */
+    @Synchronized // each read-then-write as one step: two at once must not undo each other (GPT review R3)
     fun load(): List<RecentFile> {
         val stored = read() ?: return emptyList()
+        val gone = stored.entries.filter { visibility.isGone(File(it.path)) }
+        if (gone.isNotEmpty()) save(stored.entries - gone.toSet(), stored.unreadable)
         // Dart's `File(path).exists()`: true for a file only, not for a directory.
-        val present = stored.entries.filter { File(it.path).isFile }
-        if (present.size != stored.entries.size) save(present, stored.unreadable)
-        return present.sortedByDescending(RecentFile::lastOpened)
+        return stored.entries.filter { File(it.path).isFile }.sortedByDescending(RecentFile::lastOpened)
     }
 
     /**
@@ -101,6 +111,7 @@ class RecentFiles @Inject constructor(private val prefs: FlutterPreferences) {
     fun dismissed(): Set<String> = (prefs.stringList(DISMISSED_KEY) as? PrefRead.Present)?.value?.toSet().orEmpty()
 
     /** Removes [path] from the recents for good. A list that cannot be read is left as it is (D-019). */
+    @Synchronized
     fun dismiss(path: String) {
         val current = when (val read = prefs.stringList(DISMISSED_KEY)) {
             PrefRead.Absent -> emptyList()
@@ -122,6 +133,7 @@ class RecentFiles @Inject constructor(private val prefs: FlutterPreferences) {
         is PrefRead.Unreadable -> null
     }
 
+    @Synchronized
     private fun rewrite(change: (List<RecentFile>) -> List<RecentFile>): List<RecentFile> {
         val stored = read() ?: return emptyList()
         val updated = change(stored.entries)

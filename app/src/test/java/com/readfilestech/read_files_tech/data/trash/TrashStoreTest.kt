@@ -10,6 +10,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.time.LocalDateTime
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -32,10 +33,14 @@ class TrashStoreTest {
     fun setUp() {
         work = File(tmp, "work").apply { mkdirs() }
         fallback = File(tmp, "app_flutter").apply { mkdirs() }
-        trash = TrashStore(names, fallback) { emptyList() }
+        trash = store()
     }
 
     private fun makeFile(name: String, content: String) = File(work, name).apply { writeText(content) }
+
+    /** The app's private folder is [fallback] here: what a forged restore must never reach. */
+    private fun store(names: SharedStorageNames = this.names, visible: Boolean = true) =
+        TrashStore(names, fallback, listOf(fallback), visibility = { visible }, volumeBases = { emptyList() })
 
     @Test
     fun `moves a file to the trash and away from its place`() {
@@ -144,7 +149,7 @@ class TrashStoreTest {
     fun `the trash itself cannot go to the trash - nor the real one from a next build`() {
         val self = File(fallback, names.trashDir).apply { mkdirs() }
         assertThrows<TrashException> { trash.moveToTrash(self) }
-        val next = TrashStore(SharedStorageNames(replacesFlutterApp = false), fallback) { emptyList() }
+        val next = store(SharedStorageNames(replacesFlutterApp = false))
         assertThat(next.isTrashRelated(File(tmp, ".RFT_Corbeille").path)).isTrue()
         assertThat(next.isTrashRelated(File(tmp, ".RFT_Corbeille/items/1/x.txt").path)).isTrue()
         assertThat(next.isTrashRelated("/storage/emulated/0")).isTrue()
@@ -197,6 +202,47 @@ class TrashStoreTest {
         val forged = entry.copy(originalPath = work.path + "/../evade.txt")
         assertThrows<TrashException> { trash.restore(forged) }
         assertThrows<TrashException> { trash.restore(entry.copy(originalPath = "relative/r.txt")) }
+    }
+
+    @Test
+    fun `restore never writes into the app's private folders, whatever a forged entry says`() {
+        val entry = trash.moveToTrash(makeFile("sel.txt", "forged"))
+        // fallback (app_flutter) is a private root here: a forged originalPath aiming at the vault.
+        val forged = entry.copy(originalPath = File(fallback, "vault/sel.txt").path)
+        assertThrows<TrashException> { trash.restore(forged) }
+        assertThat(File(fallback, "vault").exists()).isFalse()
+        assertThat(entry.payload.readText()).isEqualTo("forged") // still in the trash
+    }
+
+    @Test
+    fun `restore refuses a name that is not the last segment of the original path, or a target in a trash`() {
+        val entry = trash.moveToTrash(makeFile("doc.txt", "d"))
+        assertThrows<TrashException> { trash.restore(entry.copy(name = "autre.txt")) }
+        // A trash folder that is NOT under the private root: only the trash rule can refuse it.
+        val intoTrash = entry.copy(originalPath = File(work, ".RFT_Corbeille/meta/doc.txt").path)
+        assertThrows<TrashException> { trash.restore(intoTrash) }
+        assertThat(entry.payload.exists()).isTrue()
+    }
+
+    @Test
+    fun `a payload that is only UNSEEN keeps its entry - gone, positively, cleans it (D-019)`() {
+        val entry = trash.moveToTrash(makeFile("photo.jpg", "p"))
+        entry.payload.delete()
+        val blind = store(visible = false)
+        assertThat(blind.list()).isEmpty() // not shown...
+        assertThat(entry.meta.exists()).isTrue() // ...nor touched: another app's file may be hidden
+        assertThat(trash.list()).isEmpty()
+        assertThat(entry.meta.exists()).isFalse() // seen gone: cleaned
+    }
+
+    @Test
+    fun `a restore that fails leaves no empty reservation where the item was`() {
+        val f = makeFile("rapport.pdf", "r")
+        val entry = trash.moveToTrash(f)
+        entry.payload.delete() // the move will fail
+        assertThrows<IOException> { trash.restore(entry) }
+        assertThat(f.exists()).isFalse()
+        assertThat(entry.meta.exists()).isTrue()
     }
 
     @Test
@@ -311,7 +357,8 @@ class TrashStoreTest {
     @Test
     fun `values of the wrong type made Dart skip the entry - so does the port`() {
         val root = File(fallback, ".RFT_Corbeille")
-        listOf(""""size":"3"""", """"deletedAt":12""", """"id":12""").forEachIndexed { i, broken ->
+        // `1e400` is infinity, on which Dart's toInt() throws (Claude review R3).
+        listOf(""""size":"3"""", """"deletedAt":12""", """"id":12""", """"size":1e400""").forEachIndexed { i, broken ->
             val id = "17601800000${i}0_1"
             File(root, "items/$id").mkdirs()
             File(root, "items/$id/x").writeText("x")
@@ -336,7 +383,7 @@ class TrashStoreTest {
         assertThat(SharedStorageNames(replacesFlutterApp = false).trashDir).isEqualTo(".RFT_Corbeille.next")
         assertThat(SharedStorageNames(replacesFlutterApp = false).filesTechDir).isEqualTo("Files Tech.next")
         assertThat(SharedStorageNames(replacesFlutterApp = true).trashDir).isEqualTo(".RFT_Corbeille")
-        val next = TrashStore(SharedStorageNames(replacesFlutterApp = false), fallback) { emptyList() }
+        val next = store(SharedStorageNames(replacesFlutterApp = false))
         val entry = next.moveToTrash(makeFile("t.txt", "t"))
         assertThat(entry.trashRoot.name).isEqualTo(".RFT_Corbeille.next")
         assertThat(trash.list()).isEmpty() // the real trash does not see it

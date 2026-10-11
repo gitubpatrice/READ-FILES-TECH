@@ -208,8 +208,14 @@ def check(args) -> int:
     if args.reboot:
         # D2: a lockout armed before a reboot, read by the port after it.
         device.adb("reboot")
-        device.adb("wait-for-device", timeout=600)
         started = time.time()
+        # First GONE: `wait-for-device` right after `reboot` can return before the device goes down (seen
+        # on the S9: "booted in 10 s", and the next step ran in the middle of the reboot).
+        while device.shell("getprop sys.boot_completed", check=False).strip() == "1":
+            if time.time() - started > 120:
+                raise RuntimeError("the device did not go down")
+            time.sleep(1)
+        device.adb("wait-for-device", timeout=600)
         while device.shell("getprop sys.boot_completed", check=False).strip() != "1":
             if time.time() - started > 600:
                 raise RuntimeError("the device did not finish booting")

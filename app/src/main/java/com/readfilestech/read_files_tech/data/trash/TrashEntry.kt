@@ -2,7 +2,9 @@ package com.readfilestech.read_files_tech.data.trash
 
 import com.readfilestech.read_files_tech.data.DartDateTime
 import com.readfilestech.read_files_tech.data.DartJson
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -69,14 +71,14 @@ data class TrashEntry(
         /** `<root>/meta/<id>.json` of the 2.15.x, or null: above [META_MAX_BYTES], not UTF-8, not JSON, forged. */
         @Suppress("SwallowedException") // an unreadable metadata file is skipped, as by the 2.15.x
         fun read(meta: File, trashRoot: File): TrashEntry? {
-            // Capped BEFORE reading: `meta/` is on shared storage, where any app can drop a file. A
-            // legitimate entry weighs a few hundred bytes; above 256 KiB it was not written by this app.
-            if (meta.length() > META_MAX_BYTES) return null
+            // Capped WHILE reading (readCapped): `meta/` is on shared storage, where any app can drop a
+            // file. A legitimate entry weighs a few hundred bytes; above 256 KiB it was not written by this app.
             return try {
+                val bytes = readCapped(meta) ?: return null
                 val text = Charsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT)
-                    .decode(ByteBuffer.wrap(meta.readBytes()))
+                    .decode(ByteBuffer.wrap(bytes))
                     .toString()
                 (DartJson.decode(text) as? Map<*, *>)?.let { fromJson(it, trashRoot) }
             } catch (e: IOException) {
@@ -94,12 +96,11 @@ data class TrashEntry(
             val name = json["name"] as? String
             // `DateTime.tryParse(j['deletedAt'] as String? ?? '')`: absent or unparsable, the entry is skipped.
             val deletedAt = (json["deletedAt"] as? String)?.let(DartDateTime::tryParse)
-            val size = json["size"]
+            val size = dartSize(json["size"])
             val valid = id != null && ID_PATTERN.matches(id) &&
                 name != null && isSafeSegment(name) &&
                 originalPath != null && isPlausibleOriginalPath(originalPath) &&
-                deletedAt != null &&
-                (size == null || size is Long || size is Double)
+                deletedAt != null && size != null
             return if (valid) {
                 TrashEntry(
                     id = id,
@@ -107,12 +108,7 @@ data class TrashEntry(
                     originalPath = originalPath,
                     name = name,
                     isDir = json["isDir"] == true,
-                    // `(size as num?)?.toInt() ?? -1`: a double is cut toward zero, as Dart's toInt.
-                    size = when (size) {
-                        is Long -> size
-                        is Double -> size.toLong()
-                        else -> -1
-                    },
+                    size = size,
                     deletedAt = deletedAt,
                 )
             } else {
@@ -121,3 +117,32 @@ data class TrashEntry(
         }
     }
 }
+
+/**
+ * `(size as num?)?.toInt() ?? -1` of the 2.15.x, or null where it threw — not a number, or infinite
+ * (`1e400` decodes to infinity: Claude review R3). A double is cut toward zero, as Dart's toInt.
+ */
+private fun dartSize(raw: Any?): Long? = when (raw) {
+    null -> -1L
+    is Long -> raw
+    is Double -> if (raw.isFinite()) raw.toLong() else null
+    else -> null
+}
+
+/**
+ * [file]'s bytes, or null beyond [TrashEntry.META_MAX_BYTES] — bounded WHILE reading: another app can
+ * swap the file for a huge one between a size check and the read (GPT review R3).
+ */
+private fun readCapped(file: File): ByteArray? = FileInputStream(file).use { input ->
+    val out = ByteArrayOutputStream()
+    val buffer = ByteArray(READ_BUFFER)
+    while (true) {
+        val n = input.read(buffer)
+        if (n == -1) break
+        out.write(buffer, 0, n)
+        if (out.size() > TrashEntry.META_MAX_BYTES) return null
+    }
+    out.toByteArray()
+}
+
+private const val READ_BUFFER = 8 * 1024

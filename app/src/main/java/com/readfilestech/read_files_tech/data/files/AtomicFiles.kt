@@ -1,10 +1,12 @@
 package com.readfilestech.read_files_tech.data.files
 
 import java.io.File
-import java.io.FileOutputStream
 import java.io.OutputStream
+import java.nio.channels.Channels
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -37,12 +39,16 @@ object AtomicFiles {
      */
     fun write(target: File, publish: (from: File, to: File) -> Unit = ::publish, write: (OutputStream) -> Unit) {
         val tmp = temporaryFor(target)
+        // Created EXCLUSIVELY: never an existing file, nor a link planted at that name; and ours to
+        // delete only once created (GPT review R3).
+        val channel = FileChannel.open(tmp.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
         var published = false
         try {
-            FileOutputStream(tmp).use { out ->
+            channel.use {
+                val out = Channels.newOutputStream(it)
                 write(out)
                 out.flush()
-                out.fd.sync()
+                it.force(true)
             }
             publish(tmp, target)
             published = true

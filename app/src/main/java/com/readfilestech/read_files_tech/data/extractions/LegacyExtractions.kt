@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
+import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 
@@ -24,8 +25,13 @@ class LegacyExtractions(
     private val appFlutter: File,
     /** `Files Tech/Extractions/` on shared storage (suffixed in a `.next` build, docs D-017). */
     private val extractionsRoot: File,
-    /** The copy of one file; a test passes one that fails, as a full disk would. */
-    private val copy: (from: Path, to: Path) -> Unit = { from, to -> Files.copy(from, to) },
+    /**
+     * The copy of one file INTO its reservation (truncated, never unlinked first); a test passes one that
+     * fails, as a full disk would.
+     */
+    private val copy: (from: Path, to: Path) -> Unit = { from, to ->
+        Files.newOutputStream(to, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING).use { Files.copy(from, it) }
+    },
 ) {
     /** One old extraction folder: [archiveName] as the 2.15.x derived it, what it holds. */
     data class Folder(val dir: File, val archiveName: String, val files: Int, val bytes: Long)
@@ -36,7 +42,7 @@ class LegacyExtractions(
     fun find(): List<Folder> = appFlutter.listFiles().orEmpty()
         .filter(::isExtractionFolder)
         .map { dir ->
-            val files = regularFiles(dir)
+            val files = Trees.regularFiles(dir)
             Folder(dir, dir.name.removeSuffix(SUFFIX), files.size, files.sumOf { it.length() })
         }
         .sortedBy { it.dir.name }
@@ -56,24 +62,47 @@ class LegacyExtractions(
     fun move(folder: Folder): Moved {
         extractionsRoot.mkdirs()
         val destination = reserveFolder(folder.archiveName)
-        val sources = regularFiles(folder.dir)
+        // Every subfolder first, empty ones included: the private folder is deleted once its files are
+        // moved, and an empty folder of the archive would be lost with it (GPT review R3).
+        Trees.subfolders(folder.dir).forEach { File(destination, it.relativeTo(folder.dir).path).mkdirs() }
+        val sources = Trees.regularFiles(folder.dir)
         var moved = 0
         var stoppedBy: IOException? = null
         for (source in sources) {
-            val target = File(destination, source.relativeTo(folder.dir).path)
-            try {
-                copyVerified(source, target)
-                source.delete()
-                moved++
-            } catch (e: IOException) {
-                target.delete()
-                stoppedBy = e
+            val failure = moveOne(source, File(destination, source.relativeTo(folder.dir).path))
+            if (failure != null) {
+                stoppedBy = failure
                 break
             }
+            moved++
         }
-        // The folders the move emptied go too; anything still holding a file stays.
-        if (moved == sources.size) FileTrees.delete(folder.dir)
+        // The folders the move emptied go; anything still holding something — a file left, a link, an
+        // entry the walk could not read — stays (Claude review R3: a recursive delete took it all).
+        if (moved == sources.size) Trees.removeEmptyFolders(folder.dir)
         return Moved(destination, moved, sources.size - moved, stoppedBy)
+    }
+
+    /**
+     * One file, or why it stopped. The target is RESERVED first, by an exclusive creation: on a
+     * case-insensitive volume (FUSE casefold, sdcardfs, exFAT) `notes.txt` lands on the `Notes.txt` just
+     * moved, and deleting a target after a failed copy would delete THAT file, whose source is already
+     * gone (Claude review R3). A target that cannot be reserved stops the move with nothing deleted.
+     */
+    private fun moveOne(source: File, target: File): IOException? {
+        try {
+            target.parentFile?.mkdirs()
+            Files.createFile(target.toPath())
+        } catch (e: IOException) {
+            return e
+        }
+        return try {
+            copyVerified(source, target)
+            source.delete()
+            null
+        } catch (e: IOException) {
+            target.delete() // ours: reserved above
+            e
+        }
     }
 
     private fun reserveFolder(name: String): File {
@@ -88,11 +117,23 @@ class LegacyExtractions(
     private fun copyVerified(source: File, target: File) {
         target.parentFile?.mkdirs()
         copy(source.toPath(), target.toPath())
-        val same = source.length() == target.length() && sha256(source).contentEquals(sha256(target))
+        val same = source.length() == target.length() && Trees.sha256(source).contentEquals(Trees.sha256(target))
         if (!same) throw IOException("the copy of ${source.name} differs from it")
     }
 
-    private fun sha256(file: File): ByteArray {
+    companion object {
+        /** `'${base}_extracted'` of `zip_viewer_screen.dart`. */
+        const val SUFFIX = "_extracted"
+        const val EXTRACTIONS_DIR = "Extractions"
+        private const val MAX_CANDIDATES = 1_000
+    }
+}
+
+/** Walking an extraction folder: never following a link, going on past what cannot be read. */
+private object Trees {
+    private const val BUFFER = 64 * 1024
+
+    fun sha256(file: File): ByteArray {
         val digest = MessageDigest.getInstance("SHA-256")
         FileInputStream(file).use { input ->
             val buffer = ByteArray(BUFFER)
@@ -105,8 +146,41 @@ class LegacyExtractions(
         return digest.digest()
     }
 
+    /** The folders the move emptied, deepest first; anything still holding something stays with it. */
+    fun removeEmptyFolders(root: File) {
+        Files.walkFileTree(
+            root.toPath(),
+            object : SimpleFileVisitor<Path>() {
+                override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                    // Files.delete refuses a folder that is not empty.
+                    runCatching { Files.delete(dir) }
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = FileVisitResult.CONTINUE
+            },
+        )
+    }
+
+    /** Every folder under [root], [root] excluded; a symbolic link is never followed. */
+    fun subfolders(root: File): List<File> {
+        val out = mutableListOf<File>()
+        Files.walkFileTree(
+            root.toPath(),
+            object : SimpleFileVisitor<Path>() {
+                override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    if (dir != root.toPath()) out += dir.toFile()
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = FileVisitResult.CONTINUE
+            },
+        )
+        return out
+    }
+
     /** Every regular file under [root]; a symbolic link is never followed nor moved. */
-    private fun regularFiles(root: File): List<File> {
+    fun regularFiles(root: File): List<File> {
         val out = mutableListOf<File>()
         Files.walkFileTree(
             root.toPath(),
@@ -120,13 +194,5 @@ class LegacyExtractions(
             },
         )
         return out.sortedBy { it.path }
-    }
-
-    companion object {
-        /** `'${base}_extracted'` of `zip_viewer_screen.dart`. */
-        const val SUFFIX = "_extracted"
-        const val EXTRACTIONS_DIR = "Extractions"
-        private const val MAX_CANDIDATES = 1_000
-        private const val BUFFER = 64 * 1024
     }
 }

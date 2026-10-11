@@ -4,6 +4,8 @@ import com.readfilestech.read_files_tech.data.DartDateTime
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.files.SharedStorageNames
+import com.readfilestech.read_files_tech.data.files.StorageVisibility
+import com.readfilestech.read_files_tech.data.files.isGone
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -28,23 +30,31 @@ class TrashException(message: String) : IOException(message)
  *
  * @param names the shared-storage names, suffixed in a `.next` build (docs D-017).
  * @param fallbackBase where the trash goes when a path is on no known volume (`app_flutter/`).
+ * @param privateRoots the app's own folders, under every name they have: no restore ever writes there.
+ * @param visibility whether this app sees every file of shared storage: without it, other apps' files
+ *   are hidden, not gone.
  * @param volumeBases the volume roots to look in for existing trash folders.
  */
 class TrashStore(
     private val names: SharedStorageNames,
     private val fallbackBase: File,
+    private val privateRoots: List<File>,
+    private val visibility: StorageVisibility,
     private val volumeBases: () -> List<File>,
 ) {
     private val random = SecureRandom()
 
-    /** Moves [item] into the trash of its volume. @throws IOException, the item then left in place. */
-    fun moveToTrash(item: File): TrashEntry {
+    /** Moves [target] into the trash of its volume. @throws IOException, the item then left in place. */
+    fun moveToTrash(target: File): TrashEntry {
+        // Absolute: the metadata keeps the path, and the reader refuses a relative one (GPT review R3).
+        val item = target.absoluteFile
         checkTrashable(item)
         val isDir = Files.isDirectory(item.toPath(), LinkOption.NOFOLLOW_LINKS)
         val root = trashRootFor(item.path)
         val id = reserveId(root)
         val itemDir = File(File(root, TrashEntry.ITEMS_DIR), id)
-        val size = if (isDir) -1L else item.length()
+        // -1 when the size cannot be read, as the 2.15.x (File.length() would say 0) (Claude review R3).
+        val size = if (isDir) -1L else runCatching { Files.size(item.toPath()) }.getOrDefault(-1L)
         val dest = File(itemDir, item.name)
         try {
             TrashMoves.move(item, dest, isDir)
@@ -56,20 +66,11 @@ class TrashStore(
         try {
             AtomicFiles.writeBytes(entry.meta, entry.toJson().toByteArray(Charsets.UTF_8))
         } catch (e: IOException) {
-            // Without its metadata the entry could never be found again: put the item back.
-            TrashMoves.move(dest, item, isDir)
-            FileTrees.delete(itemDir)
+            TrashMoves.putBack(dest, item, isDir, itemDir, e)
             throw e
         }
         return entry
     }
-
-    /**
-     * Every valid entry, the most recent first. A metadata file whose payload is gone is cleaned up — a
-     * POSITIVE finding (docs D-019); one that cannot be read is left alone.
-     */
-    fun list(): List<TrashEntry> =
-        existingTrashRoots(volumeBases() + fallbackBase, names.trashDir).flatMap(::entriesOf).sortedByDescending(TrashEntry::deletedAt)
 
     /** @throws TrashException the trash itself; @throws FileNotFoundException nothing there to move. */
     private fun checkTrashable(item: File) {
@@ -77,24 +78,47 @@ class TrashStore(
         if (!Files.exists(item.toPath(), LinkOption.NOFOLLOW_LINKS)) throw FileNotFoundException(item.path)
     }
 
-    /** Puts [entry] back where it was; a name already taken gets ` (1)`, ` (2)`… Returns the final path. */
+    /**
+     * Every valid entry, the most recent first. A metadata file whose payload is gone is cleaned up — a
+     * POSITIVE finding (docs D-019); one that cannot be read, or whose payload is only unseen, is left alone.
+     */
+    fun list(): List<TrashEntry> =
+        existingTrashRoots(volumeBases() + fallbackBase, names.trashDir).flatMap(::entriesOf).sortedByDescending(TrashEntry::deletedAt)
+
+    /**
+     * Puts [entry] back where it was; a name already taken gets ` (1)`, ` (2)`… Returns the final path.
+     *
+     * @throws TrashException a destination it must not write to (mayRestoreTo); the entry stays.
+     */
     fun restore(entry: TrashEntry): File {
         val parent = File(entry.originalPath).parentFile
-        val plausible = TrashEntry.isPlausibleOriginalPath(entry.originalPath) && TrashEntry.isSafeSegment(entry.name) && parent != null
-        if (!plausible) throw TrashException("invalid original path: ${entry.originalPath}")
+        val allowed = mayRestoreTo(entry, privateRoots) && !isTrashRelated(entry.originalPath)
+        if (parent == null || !allowed) throw TrashException("invalid original path: ${entry.originalPath}")
         parent.mkdirs()
         // RESERVED, not tested: a file appearing between a test and the move would be replaced in
         // silence — and it was never in the trash.
         val dest = TrashMoves.reserveUniquePath(parent, entry.name, entry.isDir)
-        TrashMoves.move(entry.payload, dest, entry.isDir)
+        try {
+            TrashMoves.move(entry.payload, dest, entry.isDir)
+        } catch (e: IOException) {
+            // The reservation would be left where the item was: ours (created exclusively), and holding
+            // at most a partial copy — the payload is still in the trash.
+            FileTrees.delete(dest)
+            throw e
+        }
         entry.meta.delete()
         FileTrees.delete(entry.itemDir)
         return dest
     }
 
-    /** Deletes [entry] for good: payload and metadata. */
+    /**
+     * Deletes [entry] for good: payload, then metadata. The metadata goes only once the payload is
+     * KNOWN gone — kept, the entry stays listed and can be tried again; the 2.15.x threw there (Claude
+     * review R3).
+     */
     fun deleteForever(entry: TrashEntry) {
         FileTrees.delete(entry.payload)
+        if (!Files.notExists(entry.payload.toPath(), LinkOption.NOFOLLOW_LINKS)) return
         entry.meta.delete()
         FileTrees.delete(entry.itemDir)
     }
@@ -130,12 +154,17 @@ class TrashStore(
                 // The file name must be the id it declares: a `meta/anything.json` dropped by another
                 // app would otherwise surface as a legitimate entry.
                 meta.name != "${entry.id}.json" -> null
-                !FileTrees.exists(entry.payload) -> {
+                FileTrees.exists(entry.payload) -> entry
+                // GONE, positively — not merely unseen: Files.exists is false as well when it cannot
+                // tell, and a file of another app is hidden behind a revoked all-files access (D-019,
+                // Claude review R3). Unseen: neither shown nor touched.
+                visibility.isGone(entry.payload) -> {
                     meta.delete()
-                    FileTrees.delete(entry.itemDir)
+                    // Its folder only if empty: never what it may still hold under another name.
+                    runCatching { Files.deleteIfExists(entry.itemDir.toPath()) }
                     null
                 }
-                else -> entry
+                else -> null
             }
         }
     }
@@ -176,6 +205,26 @@ class TrashStore(
             path.startsWith(SDCARD) -> SDCARD
             else -> STORAGE_VOLUME.find(path)?.groupValues?.get(1)?.takeIf { it != "/storage/self" && it != "/storage/emulated" }
         }
+
+        /**
+         * Where a restore may write (port plan, phase 3, finding 8, brought forward). The metadata lives
+         * in clear on shared storage: another app can forge an entry whose `originalPath` aims at the
+         * app's private folders — the vault's salt, the preferences, the editor's history —, which the
+         * app alone can write. So: never under [privateRoots]; on the trash's own volume (`/sdcard` and
+         * `/storage/emulated/0` are one; only the private fallback trash, which no other app can write,
+         * restores elsewhere); and under the name the entry carries, as the 2.15.x wrote it.
+         */
+        fun mayRestoreTo(entry: TrashEntry, privateRoots: List<File>): Boolean {
+            val target = File(entry.originalPath)
+            val plausible = TrashEntry.isPlausibleOriginalPath(entry.originalPath) && TrashEntry.isSafeSegment(entry.name)
+            val private = privateRoots.any { target.toPath().normalize().startsWith(it.toPath().normalize()) }
+            val trashVolume = volumeRootOf(entry.trashRoot.path)?.let(::sameVolume)
+            val onItsVolume = trashVolume == null || volumeRootOf(entry.originalPath)?.let(::sameVolume) == trashVolume
+            return plausible && !private && onItsVolume && target.name == entry.name
+        }
+
+        /** `/sdcard` is a link to the primary volume: one volume under two names. */
+        private fun sameVolume(root: String) = if (root == SDCARD) EMULATED else root
     }
 }
 

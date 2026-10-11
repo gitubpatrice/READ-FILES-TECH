@@ -16,7 +16,7 @@ class RecentFilesTest {
     lateinit var tmp: File
 
     private val raw = InMemorySharedPreferences()
-    private val recents = RecentFiles(FlutterPreferences(raw))
+    private val recents = RecentFiles(FlutterPreferences(raw)) { true }
 
     private lateinit var a: File
     private lateinit var b: File
@@ -52,6 +52,27 @@ class RecentFilesTest {
         plant(dart(a, "2026-10-10T09:00:00.000", 5), dart(gone, "2026-10-11T00:00:00.000", 1))
         assertThat(recents.load().map { it.name }).containsExactly("a.pdf")
         assertThat(stored()).hasSize(1)
+    }
+
+    @Test
+    fun `an entry only UNSEEN - permission revoked, card taken out - is hidden, never dropped (D-019)`() {
+        val unseen = File(tmp, "carte/retiree.pdf") // its folder is not there: a card taken out
+        plant(dart(a, "2026-10-10T09:00:00.000", 5), dart(unseen, "2026-10-11T00:00:00.000", 1, favorite = true))
+        assertThat(recents.load().map { it.name }).containsExactly("a.pdf")
+        assertThat(stored()).hasSize(2) // kept, favourite mark included
+        val blind = RecentFiles(FlutterPreferences(raw)) { false } // everything visible no more
+        plant(dart(a, "2026-10-10T09:00:00.000", 5), dart(File(tmp, "gone.txt"), "2026-10-11T00:00:00.000", 1))
+        blind.load()
+        assertThat(stored()).hasSize(2)
+    }
+
+    @Test
+    fun `two writers at once lose nothing`() {
+        val files = (1..16).map { File(tmp, "f$it.txt").apply { writeText("$it") } }
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(8)
+        files.map { f -> pool.submit { recents.addOrUpdate(f.path) } }.forEach { it.get() }
+        pool.shutdown()
+        assertThat(recents.load().map { it.path }.toSet()).isEqualTo(files.map { it.path }.toSet())
     }
 
     @Test

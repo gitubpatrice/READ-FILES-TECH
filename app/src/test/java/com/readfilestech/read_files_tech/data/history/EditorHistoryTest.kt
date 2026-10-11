@@ -64,6 +64,13 @@ class EditorHistoryTest {
     }
 
     @Test
+    fun `two saves in the same millisecond keep both copies`() {
+        history.saveBefore("/storage/emulated/0/doc.txt", "v1".toByteArray(), nowMs = 1_000)
+        history.saveBefore("/storage/emulated/0/doc.txt", "v2".toByteArray(), nowMs = 1_000)
+        assertThat(history.versions("/storage/emulated/0/doc.txt").map { it.file.readText() }).containsExactly("v1", "v2")
+    }
+
+    @Test
     fun `the old history counts and goes on request only`() {
         bak("a_1.bak", "12345")
         bak("b_2.bak", "123")

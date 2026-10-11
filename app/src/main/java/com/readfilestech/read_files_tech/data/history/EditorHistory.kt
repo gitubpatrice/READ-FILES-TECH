@@ -45,12 +45,18 @@ class EditorHistory(
     /** Deletes every old copy (settings, panic, reset): the whole `history/` of the 2.15.x. */
     fun deleteLegacy(): Boolean = FileTrees.delete(legacyDir)
 
-    /** Saves [current], the content of [path] about to be overwritten, then keeps the last [KEPT] of THAT path. */
+    /**
+     * Saves [current], the content of [path] about to be overwritten, then keeps the last [KEPT] of THAT
+     * path. A copy never replaces another: two saves in the same millisecond take the next free one,
+     * reserved by an exclusive creation (GPT review R3).
+     */
+    @Synchronized
     fun saveBefore(path: String, current: ByteArray, nowMs: Long = System.currentTimeMillis()) {
         val dir = folderOf(path)
         dir.mkdirs()
         AtomicFiles.writeBytes(File(dir, PATH_FILE), path.toByteArray(Charsets.UTF_8))
-        AtomicFiles.writeBytes(File(dir, "$nowMs$BAK"), current)
+        val copy = generateSequence(nowMs) { it + 1 }.map { File(dir, "$it$BAK") }.first { it.createNewFile() }
+        AtomicFiles.writeBytes(copy, current)
         versions(path).drop(KEPT).forEach { it.file.delete() }
     }
 

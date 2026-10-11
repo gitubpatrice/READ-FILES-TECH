@@ -13,7 +13,7 @@ class RftApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // In the background: the first start may have a large cache to empty.
-        startupCleanup.start()
+        // Before any activity, provider call or service touches the cache: see StartupCleanup.
+        startupCleanup.runOnce()
     }
 }

@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.io.IOException
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 /** docs D-022: the old "Extract all" folders, moved only when asked, never over anything, verified. */
 class LegacyExtractionsTest {
@@ -68,7 +70,7 @@ class LegacyExtractionsTest {
         var copies = 0
         val failing = LegacyExtractions(appFlutter, extractions) { from, to ->
             copies++
-            Files.copy(from, to)
+            Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING) // into its reservation
             if (copies == 2) throw IOException("No space left on device")
         }
         val moved = failing.move(failing.find().single())
@@ -88,6 +90,41 @@ class LegacyExtractionsTest {
         val moved = corrupting.move(corrupting.find().single())
         assertThat(moved.moved).isEqualTo(0)
         assertThat(File(dir, "1.txt").readText()).isEqualTo("one")
+    }
+
+    @Test
+    fun `on a case-insensitive volume a name that lands on a moved file stops the move, and deletes nothing`() {
+        // `Notes.txt` then `notes.txt`: one name on FUSE casefold, sdcardfs, exFAT. Simulated by a copy
+        // that, moving the first, makes the second's target appear — the moved file under its other case.
+        val dir = extraction("docs", "1-Notes.txt" to "first", "2-notes.txt" to "second")
+        val folding = LegacyExtractions(appFlutter, extractions) { from, to ->
+            Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING)
+            if (from.fileName.toString() == "1-Notes.txt") Files.copy(from, to.resolveSibling("2-notes.txt"))
+        }
+        val moved = folding.move(folding.find().single())
+        assertThat(moved.moved).isEqualTo(1)
+        assertThat(moved.stoppedBy).isInstanceOf(FileAlreadyExistsException::class.java)
+        assertThat(File(moved.destination, "2-notes.txt").readText()).isEqualTo("first") // the moved file, intact
+        assertThat(File(dir, "2-notes.txt").readText()).isEqualTo("second") // not moved, still there
+    }
+
+    @Test
+    fun `an empty folder of the archive is moved too`() {
+        val dir = extraction("photos", "a.jpg" to "aaa")
+        File(dir, "vide/aussi vide").mkdirs()
+        val moved = legacy.move(legacy.find().single())
+        assertThat(File(moved.destination, "vide/aussi vide").isDirectory).isTrue()
+        assertThat(dir.exists()).isFalse()
+    }
+
+    @Test
+    fun `what the move does not take - a link - keeps its folder`() {
+        val dir = extraction("lien", "a.txt" to "a")
+        val link = Files.createSymbolicLink(File(dir, "vers ailleurs").toPath(), File(tmp, "ailleurs").toPath())
+        val moved = legacy.move(legacy.find().single())
+        assertThat(moved.moved).isEqualTo(1)
+        assertThat(Files.isSymbolicLink(link)).isTrue() // left, with the folder that holds it
+        assertThat(File(dir, "a.txt").exists()).isFalse()
     }
 
     @Test
