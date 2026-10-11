@@ -47,7 +47,14 @@ class TrashStoreTest {
         names: SharedStorageNames = this.names,
         visible: Boolean = true,
         privateRoots: List<File> = listOf(File(tmp, "private")),
-    ) = TrashStore(names, fallback, privateRoots, visibility = { visible }, volumeBases = { emptyList() })
+    ) = TrashStore(
+        names,
+        fallback,
+        privateRoots,
+        visibility = { visible },
+        volumeBases = { emptyList() },
+        primary = File("/storage/emulated/0"),
+    )
 
     @Test
     fun `moves a file to the trash and away from its place`() {
@@ -416,6 +423,34 @@ class TrashStoreTest {
         assertThat(TrashStore.volumeRootOf("/storage/1A2B-3C4D/DCIM/x.jpg")).isEqualTo("/storage/1A2B-3C4D")
         assertThat(TrashStore.volumeRootOf("/storage/self/primary/a")).isNull()
         assertThat(TrashStore.volumeRootOf("/data/user/0/x")).isNull()
+    }
+
+    /**
+     * In a work profile, the trash is listed under its `/sdcard` name (the first base that holds it) and
+     * its items carry `/storage/emulated/10/…`: one volume, `/sdcard` being the USER's primary — read as
+     * `/storage/emulated/0`, every restore there was refused (Claude review R6).
+     */
+    @Test
+    fun `sdcard is the primary volume of the current user`() {
+        val profile = "/storage/emulated/10"
+        fun entry(trashRoot: String, originalPath: String) = TrashEntry(
+            id = "1760180000000_7",
+            trashRoot = File(trashRoot),
+            originalPath = originalPath,
+            name = File(originalPath).name,
+            isDir = false,
+            size = 1,
+            deletedAt = DartDateTime.now(),
+        )
+        val private = listOf(File(tmp, "private"))
+
+        assertThat(TrashStore.mayRestoreTo(entry("/sdcard/.RFT_Corbeille", "$profile/Download/a.txt"), private, profile)).isTrue()
+        assertThat(TrashStore.mayRestoreTo(entry("$profile/.RFT_Corbeille", "/sdcard/Download/a.txt"), private, profile)).isTrue()
+        // Still one volume per trash: the owner's storage is another volume, from a profile's trash.
+        assertThat(TrashStore.mayRestoreTo(entry("/sdcard/.RFT_Corbeille", "/storage/emulated/0/Download/a.txt"), private, profile))
+            .isFalse()
+        assertThat(TrashStore.mayRestoreTo(entry("$profile/.RFT_Corbeille", "/storage/emulated/0/Download/a.txt"), private, profile))
+            .isFalse()
     }
 
     /** A VALID metadata file of [padding] bytes, its payload present: only the cap can refuse it. */

@@ -36,6 +36,8 @@ class TrashException(message: String) : IOException(message)
  * @param visibility whether this app sees every file of shared storage: without it, other apps' files
  *   are hidden, not gone.
  * @param volumeBases the volume roots to look in for existing trash folders.
+ * @param primary the current user's primary volume, the one `/sdcard` names: `/storage/emulated/0` for
+ *   the owner, `/storage/emulated/10` in a work profile.
  */
 class TrashStore(
     private val names: SharedStorageNames,
@@ -43,6 +45,7 @@ class TrashStore(
     private val privateRoots: List<File>,
     private val visibility: StorageVisibility,
     private val volumeBases: () -> List<File>,
+    private val primary: File,
 ) {
     private val random = SecureRandom()
 
@@ -103,7 +106,7 @@ class TrashStore(
      */
     fun restore(entry: TrashEntry): File {
         val parent = File(entry.originalPath).parentFile
-        val allowed = mayRestoreTo(entry, privateRoots) && !isTrashRelated(entry.originalPath)
+        val allowed = mayRestoreTo(entry, privateRoots, primary.path) && !isTrashRelated(entry.originalPath)
         if (parent == null || !allowed) throw TrashException("invalid original path: ${entry.originalPath}")
         parent.mkdirs()
         // RESERVED, not tested: a file appearing between a test and the move would be replaced in
@@ -212,7 +215,6 @@ class TrashStore(
 
     companion object {
         private const val ID_ATTEMPTS = 64
-        private const val EMULATED = "/storage/emulated/0"
         private const val SDCARD = "/sdcard"
         private const val PART_PREFIX = FileMoves.PART_PREFIX
         private val STORAGE_VOLUME = Regex("""^(/storage/[^/]+)""")
@@ -237,18 +239,21 @@ class TrashStore(
          * storage keeps its metadata in clear where another app can forge an entry whose `originalPath`
          * aims at the app's private folders — the vault's salt, the preferences, the editor's history —,
          * which the app alone can write. From such a trash: never under [privateRoots], and only on the
-         * trash's own volume (`/sdcard` and `/storage/emulated/0` are one). The PRIVATE fallback trash
+         * trash's own volume (`/sdcard` and the user's [primary] volume are one). The PRIVATE fallback trash
          * (`app_flutter/.RFT_Corbeille`) only the app writes: what the 2.15.x put there — its outputs kept
          * in `app_flutter/Files Tech/` when shared storage refused them — goes back where it was. Always:
          * under the name the entry carries, as the 2.15.x wrote it.
          */
-        fun mayRestoreTo(entry: TrashEntry, privateRoots: List<File>): Boolean {
+        fun mayRestoreTo(entry: TrashEntry, privateRoots: List<File>, primary: String): Boolean {
             val target = File(entry.originalPath)
             val plausible = TrashEntry.isPlausibleOriginalPath(entry.originalPath) && TrashEntry.isSafeSegment(entry.name) &&
                 target.name == entry.name
             val trusted = isUnder(entry.trashRoot, privateRoots)
-            val trashVolume = volumeRootOf(entry.trashRoot.path)?.let(::sameVolume)
-            val onItsVolume = trashVolume == null || volumeRootOf(entry.originalPath)?.let(::sameVolume) == trashVolume
+            fun volumeOf(path: String) = volumeRootOf(path)?.let { sameVolume(it, primary) }
+
+            // `invariantSeparatorsPath`: `path` itself on Android; the JVM tests also run on Windows.
+            val trashVolume = volumeOf(entry.trashRoot.invariantSeparatorsPath)
+            val onItsVolume = trashVolume == null || volumeOf(entry.originalPath) == trashVolume
             return plausible && (trusted || (!isUnder(target, privateRoots) && onItsVolume))
         }
 
@@ -257,8 +262,12 @@ class TrashStore(
             return roots.any { path.startsWith(it.toPath().normalize()) }
         }
 
-        /** `/sdcard` is a link to the primary volume: one volume under two names. */
-        private fun sameVolume(root: String) = if (root == SDCARD) EMULATED else root
+        /**
+         * `/sdcard` is a link to the user's primary volume: one volume under two names. In a work profile
+         * or Secure Folder that is `/storage/emulated/10`, not `/0`: the trash there, listed under its
+         * `/sdcard` name, refused every restore (Claude review R6).
+         */
+        private fun sameVolume(root: String, primary: String) = if (root == SDCARD) primary else root
     }
 }
 

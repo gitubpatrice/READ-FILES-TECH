@@ -67,10 +67,10 @@ fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<F
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(messages, resources, lifecycle) {
         // Only while the app is on screen: in the background a snackbar ran its timer unseen and the
-        // result was lost (Claude review R5); queued, it waits for the user's return. One at a time,
-        // in order: showSnackbar waits for the previous one to go.
+        // result was lost (Claude review R5); queued, it waits for the user's return, and the one on
+        // screen then comes back (R6). One at a time, in order: showSnackbar waits for it to go.
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            messages.messages.collect { message ->
+            messages.showEach { message ->
                 snackbar.show(message, message.text.resolve(resources), message.action?.label?.resolve(resources))
             }
         }

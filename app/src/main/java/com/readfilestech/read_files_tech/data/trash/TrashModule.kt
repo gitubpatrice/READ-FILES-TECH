@@ -29,6 +29,7 @@ object TrashModule {
         privateRoots = listOf(context.dataDir, File("/data/data/${context.packageName}")),
         visibility = visibility,
         volumeBases = { volumeBases(volumes) },
+        primary = volumes.primary(),
     )
 
     /**

@@ -37,6 +37,7 @@ class FileOperationsTest {
             privateRoots = listOf(File(tmp, "private")),
             visibility = { true },
             volumeBases = { emptyList() },
+            primary = File("/storage/emulated/0"),
         )
     }
 

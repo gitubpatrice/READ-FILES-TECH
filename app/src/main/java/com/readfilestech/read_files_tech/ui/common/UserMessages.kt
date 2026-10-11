@@ -32,6 +32,27 @@ class UserMessages @Inject constructor() {
 
     val messages: Flow<UserMessage> = queue.receiveAsFlow()
 
+    /** The message on screen, until it goes: taken from the queue, it lives only here meanwhile. */
+    @Volatile
+    private var showing: UserMessage? = null
+
+    /**
+     * Shows each message once, in order, through [show], which returns when the message is gone. One
+     * cut short — the app sent to the background, a rotation, a language change — is shown again first
+     * when this is called again: it was out of the queue, and its "Undo" with it (Claude review R6).
+     */
+    suspend fun showEach(show: suspend (UserMessage) -> Unit) {
+        showing?.let { interrupted ->
+            show(interrupted)
+            showing = null
+        }
+        messages.collect { message ->
+            showing = message
+            show(message)
+            showing = null
+        }
+    }
+
     fun post(message: UserMessage) {
         queue.trySend(message)
     }
