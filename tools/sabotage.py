@@ -17,6 +17,16 @@ with open(motifs_path, encoding="utf-8") as handle:
     motifs = json.load(handle)
 
 results = []
+
+
+def untracked():
+    """Fichiers non suivis du depot : un sabotage qui retire une garde de chemin peut ecrire HORS du
+    dossier temporaire du test (vecu le 2026-10-11 : `app/relative/r.txt`)."""
+    run = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], capture_output=True, text=True)
+    return {line[3:] for line in run.stdout.splitlines() if line.startswith("??")}
+
+
+before = untracked()
 # Temoin : sans sabotage la commande DOIT reussir. Le 2026-10-11, `cmd //c` lance depuis Python ne
 # trouvait pas gradlew.bat : chaque sabotage « echouait », donc paraissait attrape, sans qu'un seul test
 # ait tourne.
@@ -61,4 +71,7 @@ with open(path, encoding="utf-8", newline="") as handle:
 for label, verdict in results:
     print("%-60s %s" % (label, verdict))
 print("fichier restaure :", restored)
+stray = sorted(untracked() - before)
+if stray:
+    print("ATTENTION fichiers laisses dans le depot par un sabotage :", ", ".join(stray))
 sys.exit(0 if restored and all(v.startswith("ATTRAPE") for _, v in results) else 1)
