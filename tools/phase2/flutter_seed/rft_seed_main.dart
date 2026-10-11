@@ -94,7 +94,15 @@ String typeOf(Object? v) => switch (v) {
   _ => 'other:${v.runtimeType}',
 };
 
-Future<String> bootId() async => (await File('/proc/sys/kernel/random/boot_id').readAsString()).trim();
+/// The kernel's boot id where an app may read it; null on API 26-28 (SELinux denies it). The host then
+/// tells a reboot by `bootWallMs`, the wall clock minus elapsedRealtime: constant during one boot.
+Future<String?> bootId() async {
+  try {
+    return (await File('/proc/sys/kernel/random/boot_id').readAsString()).trim();
+  } on FileSystemException {
+    return null;
+  }
+}
 
 // ───────────────────────────── what only screens write ─────────────────────────────
 
@@ -538,12 +546,13 @@ Future<void> main() async {
       expected['vaultReads'] = await vaultReads(vault);
       vault.lock();
     } else if (scenario == 'big-export') {
-      // Up to the 2.15.x's export cap (200 MiB of vault files), each file under its import cap
-      // (100 MiB): the largest `.rftvault` it can write. The host carries it to the small heaps.
+      // 48 MiB of vault files: what the 2.15.3 really exports. Its caps (200 MiB export, 100 MiB per
+      // import) are out of reach — 199 and 100 MiB killed it with a 576 MB heap, a 70 MiB import with
+      // 192 MB (INVENTAIRE D29). The host carries the `.rftvault` to the small heaps.
       await vault.setupWithPassword(vaultPassword);
       const mib = 1024 * 1024;
       final tmp = await getTemporaryDirectory();
-      for (final (name, size, seed) in [('gros A.bin', 70 * mib + 1, 51), ('gros B.bin', 70 * mib + 2, 52), ('gros C.bin', 59 * mib + 3, 53)]) {
+      for (final (name, size, seed) in [('gros A.bin', 16 * mib + 1, 51), ('gros B.bin', 16 * mib + 2, 52), ('gros C.bin', 16 * mib + 3, 53)]) {
         final data = pseudo(size, seed);
         final f = File('${tmp.path}/$name');
         await f.writeAsBytes(data);
@@ -574,12 +583,15 @@ Future<void> main() async {
       throw StateError('unknown scenario $scenario');
     }
 
+    final wallMs = DateTime.now().millisecondsSinceEpoch;
+    final monoMs = await MonotonicClock.elapsedRealtimeMs();
     expected['seed'] = {
       'tag': tag,
       'scenario': scenario,
-      'wallMs': DateTime.now().millisecondsSinceEpoch,
-      'monoMs': await MonotonicClock.elapsedRealtimeMs(),
+      'wallMs': wallMs,
+      'monoMs': monoMs,
       'bootId': await bootId(),
+      'bootWallMs': wallMs - monoMs,
     };
     expected['prefs'] = await prefsAsDartReadsThem(prefs);
     expected['recents'] = await recentsAsDartReadsThem(prefs);

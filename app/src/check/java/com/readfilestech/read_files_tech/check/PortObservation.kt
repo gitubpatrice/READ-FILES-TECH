@@ -38,16 +38,22 @@ class PortObservation(private val dirs: CheckDirs, private val deps: PortCheckEn
         return out
     }
 
-    private fun port() = linkedMapOf(
-        "applicationId" to BuildConfig.APPLICATION_ID,
-        "buildType" to BuildConfig.BUILD_TYPE,
-        "versionName" to BuildConfig.VERSION_NAME,
-        "sdk" to Build.VERSION.SDK_INT,
-        "maxHeapBytes" to Runtime.getRuntime().maxMemory(),
-        "bootId" to attempt { File(BOOT_ID).readText().trim() },
-        "wallMs" to System.currentTimeMillis(),
-        "monoMs" to SystemClock.elapsedRealtime(),
-    )
+    private fun port(): Map<String, Any?> {
+        val wallMs = System.currentTimeMillis()
+        val monoMs = SystemClock.elapsedRealtime()
+        return linkedMapOf(
+            "applicationId" to BuildConfig.APPLICATION_ID,
+            "buildType" to BuildConfig.BUILD_TYPE,
+            "versionName" to BuildConfig.VERSION_NAME,
+            "sdk" to Build.VERSION.SDK_INT,
+            "maxHeapBytes" to Runtime.getRuntime().maxMemory(),
+            // Unreadable by an app on API 26-28 (SELinux): null there, and bootWallMs tells a reboot.
+            "bootId" to runCatching { File(BOOT_ID).readText().trim() }.getOrNull(),
+            "bootWallMs" to wallMs - monoMs,
+            "wallMs" to wallMs,
+            "monoMs" to monoMs,
+        )
+    }
 
     /**
      * The stored list as the core's `RecentFile.fromJsonString` reads each entry, re-encoded by

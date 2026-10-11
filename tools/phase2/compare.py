@@ -364,6 +364,15 @@ def census_table(census: dict) -> list[str]:
 # ───────────────────────────── presence ─────────────────────────────
 
 
+def rebooted_between(expected: dict, report: dict) -> bool:
+    """By the kernel's boot id where both sides could read it, otherwise by the boot instant (wall clock
+    minus elapsedRealtime), which a reboot moves by its whole duration — seconds at least."""
+    seed, port = expected["seed"], report["port"]
+    if seed.get("bootId") and port.get("bootId"):
+        return seed["bootId"] != port["bootId"]
+    return abs(seed["bootWallMs"] - port["bootWallMs"]) > 5_000
+
+
 def remaining_at_seed(expected: dict, name: str) -> int:
     seed, values = expected["seed"], expected["vault"]["lockouts"][name]
     keys = LOCKOUT_KEYS[name]
@@ -377,8 +386,7 @@ def presence_problems(expected: dict, report: dict | None = None, rebooted: bool
     p, r, v = expected["prefs"], expected["recents"], expected["vault"]
     checks: list[tuple[str, bool]] = []
     if rebooted:
-        checks.append(("the device rebooted between the seed and the port", report is not None
-                       and report["port"]["bootId"] != expected["seed"]["bootId"]))
+        checks.append(("the device rebooted between the seed and the port", report is not None and rebooted_between(expected, report)))
     # D1 only in the scenarios that reproduce it, and only a 2.15.2 can (the 2.15.3 fixed it): the
     # interrupted repair is a 2.15.3 over the D1 file of a 2.15.2.
     with_d1 = (tag == "2.15.2" and scenario in ("full", "zerokey")) or scenario == "repair-interrupted"

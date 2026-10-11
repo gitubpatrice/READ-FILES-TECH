@@ -116,6 +116,22 @@ jobs:
       - name: Assert the shape of the merged release manifest
         run: python3 tools/check-manifest-shape.py
 
+      # The phase 2 check entry point (src/check, debug and `check` builds only) must never reach a
+      # release. Proved on the real artefact: the shape guard, run on the `check` variant's merged
+      # manifest, has to refuse it — and for that provider, not for anything else.
+      - name: The shape guard refuses the check entry point
+        run: |
+          ./gradlew --no-daemon :app:processCheckMainManifest
+          manifest=app/build/intermediates/merged_manifest/check/processCheckMainManifest/AndroidManifest.xml
+          if python3 tools/check-manifest-shape.py "$manifest" > "$RUNNER_TEMP/check-shape.txt"; then
+            cat "$RUNNER_TEMP/check-shape.txt"
+            echo "::error::the shape guard accepted the manifest that carries PortCheckProvider"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/check-shape.txt"
+          test "$(grep -c '^ERROR' "$RUNNER_TEMP/check-shape.txt")" = 1
+          grep -q '^ERROR: exported component outside the reviewed list: com.readfilestech.read_files_tech.check.PortCheckProvider' "$RUNNER_TEMP/check-shape.txt"
+
   instrumented:
     name: Instrumented tests (API 29)
     runs-on: ubuntu-latest
@@ -156,7 +172,11 @@ jobs:
           ram-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
+          # @CapacityTest (VaultCapacityTest: 700 MB of disk, minutes of crypto) is run by hand on each
+          # device of the plan, not on this emulator.
+          script: >-
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest
+            -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.readfilestech.read_files_tech.vault.CapacityTest
 
       # This runner reports a test skipped by an `assume` as passed: only the reports' `skipped` count
       # tells them apart, and an empty run looks green too.
