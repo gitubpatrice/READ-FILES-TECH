@@ -2,7 +2,6 @@ package com.readfilestech.read_files_tech.data.prefs
 
 import com.readfilestech.read_files_tech.data.DartJson
 import com.readfilestech.read_files_tech.data.DartText
-import java.util.Locale
 
 /**
  * What reading one inherited preference found.
@@ -109,40 +108,7 @@ object FlutterPrefsFormat {
     }
 
     /** A list in the 2.4.27 form: [JSON_LIST_PREFIX] followed by exactly what the plugin stores. */
-    fun encodeStringList(list: List<String>): String = JSON_LIST_PREFIX + dartJsonEncode(list.map(DartText::wellFormed))
-
-    /**
-     * Dart's `jsonEncode` for a list of strings, character for character (checked against Dart 3 in
-     * FlutterPrefsFormatTest): `"` and `\` escaped, `\b \t \n \f \r` by name, the other characters
-     * below U+0020 as `\u00xx` in lower case; everything else — `/`, DEL, U+2028, emoji — as it is.
-     */
-    internal fun dartJsonEncode(list: List<String>): String = buildString {
-        append('[')
-        list.forEachIndexed { index, item ->
-            if (index > 0) append(',')
-            appendDartJsonString(item)
-        }
-        append(']')
-    }
-}
-
-/** One string as Dart's `jsonEncode` writes it — see [FlutterPrefsFormat.dartJsonEncode]. */
-private fun StringBuilder.appendDartJsonString(value: String) {
-    append('"')
-    for (char in value) {
-        when (char) {
-            '"' -> append("\\\"")
-            '\\' -> append("\\\\")
-            '\b' -> append("\\b")
-            '\t' -> append("\\t")
-            '\n' -> append("\\n")
-            '\u000C' -> append("\\f")
-            '\r' -> append("\\r")
-            // Dart writes the other control characters as \u00xx, hexadecimal in lower case.
-            else -> if (char < ' ') append("\\u").append(String.format(Locale.ROOT, "%04x", char.code)) else append(char)
-        }
-    }
-    append('"')
+    fun encodeStringList(list: List<String>): String = JSON_LIST_PREFIX + DartJson.encode(list.map(DartText::wellFormed))
 }
 
 private fun typeOf(raw: Any): String = raw::class.java.simpleName

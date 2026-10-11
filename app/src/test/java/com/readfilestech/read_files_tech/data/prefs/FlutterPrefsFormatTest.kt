@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.prefs
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.DartJson
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -18,7 +19,7 @@ class FlutterPrefsFormatTest {
     @MethodSource("dartOracle")
     fun `a list is encoded exactly as Dart's jsonEncode writes it`(case: OracleCase) {
         val expected = String(Base64.getDecoder().decode(case.dartOutputBase64), Charsets.UTF_8)
-        assertThat(FlutterPrefsFormat.dartJsonEncode(case.input)).isEqualTo(expected)
+        assertThat(DartJson.encode(case.input)).isEqualTo(expected)
     }
 
     @ParameterizedTest

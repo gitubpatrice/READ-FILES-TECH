@@ -31,6 +31,60 @@ object DartJson {
     fun decode(json: String): Any? = Parser(Cursor(json)).document()
 
     /**
+     * `jsonEncode`, character for character (checked against Dart 3 in FlutterPrefsFormatTest), for what
+     * the app stores: maps (in their order), lists, strings, integers, booleans, null. In a string `"`
+     * and `\` are escaped, `\b \t \n \f \r` by name, the other characters below U+0020 as `\u00xx` in
+     * lower case; everything else — `/`, DEL, U+2028, emoji — is written as it is.
+     */
+    fun encode(value: Any?): String = buildString { appendJson(value) }
+
+    private fun StringBuilder.appendJson(value: Any?) {
+        when (value) {
+            null -> append("null")
+            is Boolean, is Int, is Long -> append(value.toString())
+            is String -> appendJsonString(value)
+            is List<*> -> {
+                append('[')
+                value.forEachIndexed { i, item ->
+                    if (i > 0) append(',')
+                    appendJson(item)
+                }
+                append(']')
+            }
+            is Map<*, *> -> {
+                append('{')
+                value.entries.forEachIndexed { i, (k, v) ->
+                    if (i > 0) append(',')
+                    appendJsonString(k as String)
+                    append(':')
+                    appendJson(v)
+                }
+                append('}')
+            }
+            // A double would need Dart's own number spelling (1.0, not 1.0E3): the app stores none.
+            else -> throw IllegalArgumentException("not encoded as Dart does: ${value::class.java.simpleName}")
+        }
+    }
+
+    private fun StringBuilder.appendJsonString(value: String) {
+        append('"')
+        for (c in value) {
+            when (c) {
+                '"' -> append("\\\"")
+                '\\' -> append("\\\\")
+                '\b' -> append("\\b")
+                '\t' -> append("\\t")
+                '\n' -> append("\\n")
+                Char(FORM_FEED_CODE) -> append("\\f")
+                '\r' -> append("\\r")
+                // Dart writes the other control characters as \u00xx, hexadecimal in lower case.
+                else -> if (c < ' ') append("\\u").append(c.code.toString(HEX_RADIX).padStart(HEX_DIGITS, '0')) else append(c)
+            }
+        }
+        append('"')
+    }
+
+    /**
      * A list of strings as the plugin's `getStringList` returned it — `(value as List).cast<String>()` —
      * or null when Dart would have thrown.
      */
