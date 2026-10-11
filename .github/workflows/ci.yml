@@ -123,7 +123,8 @@ jobs:
         run: |
           ./gradlew --no-daemon :app:processCheckMainManifest
           manifest=app/build/intermediates/merged_manifest/check/processCheckMainManifest/AndroidManifest.xml
-          if python3 tools/check-manifest-shape.py "$manifest" > "$RUNNER_TEMP/check-shape.txt"; then
+          # GITHUB_ACTIONS=false: the plain "ERROR:" lines rather than annotations, counted below.
+          if GITHUB_ACTIONS=false python3 tools/check-manifest-shape.py "$manifest" > "$RUNNER_TEMP/check-shape.txt"; then
             cat "$RUNNER_TEMP/check-shape.txt"
             echo "::error::the shape guard accepted the manifest that carries PortCheckProvider"
             exit 1
