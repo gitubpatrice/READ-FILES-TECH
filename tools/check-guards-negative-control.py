@@ -20,10 +20,10 @@ Guards covered:
 
 Against REAL artefacts, which proves each guard reads what the build produces, not only a fixture:
   --real-manifest PATH         the manifest of a release APK (apkanalyzer): the permission guard
-                               passes on it, and fails once INTERNET is injected into a copy.
-  --real-merged-manifest PATH  the merged release manifest: the same, plus the shape guard passes on
-                               it and fails once an exported activity is injected. (The shape guard
-                               reads merged manifests only: in an APK, resource references are ids.)
+                               passes on it, and fails once INTERNET is injected into a copy; the shape
+                               guard (--apk, where resource references are ids) passes on it, and fails
+                               once an exported activity, allowBackup or a missing rule is injected.
+  --real-merged-manifest PATH  the merged release manifest: the same, the shape guard as it is.
 
 Adapted from App Manager Tech. No dependencies, never touches the repository.
 
@@ -457,14 +457,23 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
          lambda: manifest_case(work, real.replace("<application", internet + "\n    <application", 1)),
          1, "NETWORK permission in the release manifest"),
     ]
-    if merged:
-        cases += [
-            ("REAL merged manifest: shape POSITIVE WITNESS", SHAPE_CHECK, [],
-             lambda: manifest_case(work, real), 0, "OK: backup off"),
-            ("REAL merged manifest + an exported activity", SHAPE_CHECK, [],
-             lambda: manifest_case(work, real.replace("</application>", EXTRA_EXPORTED_ACTIVITY + "    </application>", 1)),
-             1, "outside the reviewed list: com.example.TestActivity"),
-        ]
+    # The shape guard reads both: the merged manifest as it is, the APK's with --apk (S8), where a
+    # resource reference is an id.
+    shape = [] if merged else ["--apk"]
+    kind = "merged manifest" if merged else "APK manifest"
+    cases += [
+        (f"REAL {kind}: shape POSITIVE WITNESS", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real), 0, "OK: backup off"),
+        (f"REAL {kind} + an exported activity", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real.replace("</application>", EXTRA_EXPORTED_ACTIVITY + "    </application>", 1)),
+         1, "outside the reviewed list: com.example.TestActivity"),
+        (f"REAL {kind} with allowBackup=\"true\"", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real.replace('android:allowBackup="false"', 'android:allowBackup="true"', 1)),
+         1, "android:allowBackup> is 'true'"),
+        (f"REAL {kind} without its data extraction rules", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, re.sub(r'\s*android:dataExtractionRules="[^"]*"', "", real, count=1)),
+         1, "android:dataExtractionRules> is None"),
+    ]
     return cases
 
 

@@ -28,10 +28,13 @@ What is checked
 
 Usage
 -----
-    python3 tools/check-manifest-shape.py [--replace] [merged-manifest]
+    python3 tools/check-manifest-shape.py [--replace] [--apk] [manifest]
 
-Reads the merged manifest (resource references stay symbolic there, unlike in an APK's binary XML).
-Exit code 0 when the shape matches, 1 otherwise.
+Reads the merged manifest by default (resource references stay symbolic there). `--apk` reads the
+manifest of the APK itself (`apkanalyzer manifest print`), the artefact that ships — anything wired
+after the merge would escape the merged one (security review of 2026-10-11, S8): there a resource
+reference reads `@ref/0x…`, and is accepted where a reference is expected; every literal is compared
+exactly. Exit code 0 when the shape matches, 1 otherwise.
 """
 
 from __future__ import annotations
@@ -115,6 +118,15 @@ def exported_components(application: ET.Element) -> dict[str, str | None]:
     return found
 
 
+def matches(value: str | None, expected: str, apk: bool) -> bool:
+    """Equal, except that in an APK a resource reference reads `@ref/0x7f…`: there, an expected
+    `@xml/…` is satisfied by a reference being present (the name is gone from the binary XML).
+    Literal values (`"false"`, `"true"`, `""`) are compared exactly in both."""
+    if apk and expected.startswith("@"):
+        return value is not None and value.startswith("@ref/0x")
+    return value == expected
+
+
 def file_provider_problems(application: ET.Element, package: str) -> list[str]:
     """The FileProvider: present once, under `<package>.fileprovider`, not exported, granting per URI."""
     providers = [e for e in application.iter("provider") if e.get(A + "name") == FILE_PROVIDER]
@@ -135,7 +147,8 @@ def file_provider_problems(application: ET.Element, package: str) -> list[str]:
 def main(argv: list[str]) -> int:
     args = argv[1:]
     replace = "--replace" in args
-    args = [a for a in args if a != "--replace"]
+    apk = "--apk" in args
+    args = [a for a in args if a not in ("--replace", "--apk")]
     if len(args) > 1 or any(a.startswith("--") for a in args):
         print(__doc__)
         return 2
@@ -165,7 +178,7 @@ def main(argv: list[str]) -> int:
 
     for attribute, expected in REQUIRED_APPLICATION_ATTRIBUTES.items():
         value = application.get(A + attribute)
-        if value != expected:
+        if not matches(value, expected, apk):
             problems.append(f"<application android:{attribute}> is {value!r}, expected {expected!r}.")
     for attribute in NEVER_TRUE:
         # Absent or a literal "false" only: a resource reference could hold "true".

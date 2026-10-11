@@ -64,12 +64,15 @@ jobs:
       # The zero-network job reads the merged manifest, an intermediate: anything wired after it in
       # the build would escape it. This reads the manifest of the release APK itself, the artefact
       # that ships, through the same guard and its negative control.
-      - name: Assert the permissions of the release APK
+      - name: Assert the permissions and the shape of the release APK
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest print \
             app/build/outputs/apk/release/app-universal-release.apk > "$RUNNER_TEMP/apk-manifest.xml"
           python3 tools/check-guards-negative-control.py --real-manifest "$RUNNER_TEMP/apk-manifest.xml"
           python3 tools/check-manifest-permissions.py "$RUNNER_TEMP/apk-manifest.xml"
+          # Its SHAPE as well (S8): backup off, nothing debuggable, the exported components, the
+          # FileProvider, <queries> — read from the artefact that ships, references being ids there.
+          python3 tools/check-manifest-shape.py --apk "$RUNNER_TEMP/apk-manifest.xml"
 
       - name: Upload reports
         if: always()
