@@ -4,6 +4,8 @@ import com.google.common.truth.Truth.assertThat
 import org.json.JSONObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 /**
@@ -65,6 +67,74 @@ class VaultFormatVectorsTest {
     }
 
     @Test
+    fun `the Dart v2 and v1 blobs decrypt as a stream too`() {
+        val key = hex(vectors.getString("blobKey"))
+        val blobs = vectors.getJSONArray("blobs")
+        for (i in 0 until blobs.length()) {
+            val blob = blobs.getJSONObject(i)
+            val bytes = hex(blob.getString("blob"))
+            val out = ByteArrayOutputStream()
+            VaultCrypto.decryptAuto(ByteArrayInputStream(bytes), bytes.size.toLong(), out, key, blob.getString("filename"), v2Only = false)
+            assertThat(out.toByteArray()).isEqualTo(hex(blob.getString("plain")))
+        }
+    }
+
+    @Test
+    fun `Kotlin stream encryption gives the same v2 blob as Dart`() {
+        val key = hex(vectors.getString("blobKey"))
+        var compared = 0
+        for (blob in blobs("v2")) {
+            val expected = hex(blob.getString("blob"))
+            val nonce = expected.copyOfRange(4, 4 + VaultCrypto.NONCE_LEN)
+            val out = ByteArrayOutputStream()
+            VaultCrypto.encryptV2(ByteArrayInputStream(hex(blob.getString("plain"))), out, key, nonce, blob.getString("filename"))
+            assertThat(out.toByteArray()).isEqualTo(expected)
+            compared++
+        }
+        assertThat(compared).isEqualTo(3)
+    }
+
+    @Test
+    fun `streamed, a renamed blob fails at its end and a v1 blob is refused on a v2-only vault`() {
+        val key = hex(vectors.getString("blobKey"))
+        val v2 = blobs("v2").first { it.getString("filename") != VaultNames.SENTINEL_FILE }
+        assertThrows<VaultAuthenticationException> { streamDecrypt(hex(v2.getString("blob")), key, "other.pdf.enc") }
+        val v1 = blobs("v1").first()
+        assertThrows<VaultFormatException> { streamDecrypt(hex(v1.getString("blob")), key, v1.getString("filename")) }
+    }
+
+    /** The stream form of decryptAuto, on a v2-only vault. */
+    private fun streamDecrypt(blob: ByteArray, key: ByteArray, fileName: String) {
+        val out = ByteArrayOutputStream()
+        VaultCrypto.decryptAuto(ByteArrayInputStream(blob), blob.size.toLong(), out, key, fileName, v2Only = true)
+    }
+
+    @Test
+    fun `rftvault v2 and v1 backups open as a stream`() {
+        val backup = vectors.getJSONObject("backup")
+        val expected = backup.getJSONArray("entries")
+        for (version in listOf("v2", "v1")) {
+            val raw = hex(backup.getString(version))
+            val header = VaultBackupFormat.readHeader(raw.copyOf(VaultBackupFormat.MAX_HEADER_LEN), raw.size.toLong())
+            val key = VaultKdf.argon2id(backup.getString("exportPassword"), header.salt, header.params.memoryKB, header.params.iterations)
+            val input = ByteArrayInputStream(raw, header.length, raw.size - header.length)
+            val payload = VaultBackupFormat.openPayload(input, header, key)
+            val read = mutableListOf<Pair<String, ByteArray>>()
+            val payloadLength = (raw.size - header.length - VaultCrypto.TAG_LEN).toLong()
+            val refused = VaultBackupPayload.readPayload(payload, payloadLength) { name, _, data ->
+                read += name to data.readBytes()
+            }
+            assertThat(payload.read()).isEqualTo(-1) // the end, where the tag is checked
+            assertThat(refused).isEmpty()
+            val expectedNames = (0 until expected.length()).map { expected.getJSONObject(it).getString("name") }
+            assertThat(read.map { it.first }).isEqualTo(expectedNames)
+            read.forEachIndexed { i, (_, data) ->
+                assertThat(data).isEqualTo(hex(expected.getJSONObject(i).getString("data")))
+            }
+        }
+    }
+
+    @Test
     fun `a renamed blob does not decrypt - the AAD binds the name`() {
         val key = hex(vectors.getString("blobKey"))
         val blob = blobs("v2").first { it.getString("filename") != VaultNames.SENTINEL_FILE }
@@ -98,11 +168,24 @@ class VaultFormatVectorsTest {
     }
 
     @Test
-    fun `a v2 backup whose header is altered is refused`() {
+    fun `a v2 backup whose header is altered is refused by the AAD, under the right key`() {
         val backup = vectors.getJSONObject("backup")
         val raw = hex(backup.getString("v2"))
-        raw[20] = (raw[20].toInt() xor 1).toByte() // first byte of the salt
-        assertThrows<VaultAuthenticationException> { open(raw, backup.getString("exportPassword")) }
+        val original = VaultBackupFormat.readHeader(raw)
+        // The key of the UNALTERED header: only the AAD can refuse what follows (a changed salt alone
+        // would also change the derived key, and prove nothing about the AAD — review of 2026-10-11).
+        val key = VaultKdf.argon2id(backup.getString("exportPassword"), original.salt, original.params.memoryKB, original.params.iterations)
+        assertThat(VaultBackupFormat.decryptPayload(raw, original, key)).isNotEmpty()
+        val alterations = mapOf<String, (ByteArray) -> Unit>(
+            "a reserved byte" to { b -> b[9] = 1 },
+            "the iterations, 4 to 5, still in bounds" to { b -> ByteBuffer.wrap(b).putInt(16, 5) },
+            "a byte of the salt" to { b -> b[20] = (b[20].toInt() xor 1).toByte() },
+        )
+        for ((label, alter) in alterations) {
+            val altered = raw.copyOf().also(alter)
+            val header = VaultBackupFormat.readHeader(altered)
+            assertThrows<VaultAuthenticationException>(label) { VaultBackupFormat.decryptPayload(altered, header, key) }
+        }
     }
 
     @Test
@@ -115,10 +198,10 @@ class VaultFormatVectorsTest {
         }
     }
 
-    private fun open(raw: ByteArray, password: String): VaultBackupFormat.Payload {
+    private fun open(raw: ByteArray, password: String): VaultBackupPayload.Payload {
         val header = VaultBackupFormat.readHeader(raw)
         val key = VaultKdf.argon2id(password, header.salt, header.params.memoryKB, header.params.iterations)
-        return VaultBackupFormat.parsePayload(VaultBackupFormat.decryptPayload(raw, header, key))
+        return VaultBackupPayload.parsePayload(VaultBackupFormat.decryptPayload(raw, header, key))
     }
 
     private fun blobs(format: String): List<JSONObject> {

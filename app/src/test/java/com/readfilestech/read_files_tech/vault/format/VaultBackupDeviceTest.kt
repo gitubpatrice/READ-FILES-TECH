@@ -2,6 +2,8 @@ package com.readfilestech.read_files_tech.vault.format
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
 /**
@@ -26,7 +28,7 @@ class VaultBackupDeviceTest {
     fun `the backup the 2_15_2 wrote on a device restores identical`() {
         val header = VaultBackupFormat.readHeader(raw)
         assertThat(header.version).isEqualTo(VaultBackupFormat.VERSION_2)
-        val payload = VaultBackupFormat.parsePayload(decrypt(header))
+        val payload = VaultBackupPayload.parsePayload(decrypt(header))
         assertThat(payload.refused).isEmpty()
         assertThat(payload.entries.associate { it.name to sha256(it.data) }).isEqualTo(expected)
     }
@@ -36,10 +38,49 @@ class VaultBackupDeviceTest {
         val header = VaultBackupFormat.readHeader(raw)
         val key = VaultKdf.argon2id(password, header.salt, header.params.memoryKB, header.params.iterations)
         val payload = VaultBackupFormat.decryptPayload(raw, header, key)
-        val reencoded = VaultBackupFormat.encodePayload(VaultBackupFormat.parsePayload(payload).entries)
+        val reencoded = VaultBackupPayload.encodePayload(VaultBackupPayload.parsePayload(payload).entries)
         assertThat(reencoded).isEqualTo(payload)
         val rewritten = VaultBackupFormat.writeV2(reencoded, key, header.salt, header.nonce, header.params)
         assertThat(rewritten).isEqualTo(raw)
+    }
+
+    @Test
+    fun `the same backup restores identical through the stream, no entry held whole`() {
+        val header = VaultBackupFormat.readHeader(raw.copyOf(VaultBackupFormat.MAX_HEADER_LEN), raw.size.toLong())
+        val key = VaultKdf.argon2id(password, header.salt, header.params.memoryKB, header.params.iterations)
+        val payload = VaultBackupFormat.openPayload(ByteArrayInputStream(raw, header.length, raw.size - header.length), header, key)
+        val digests = mutableMapOf<String, String>()
+        val payloadLength = (raw.size - header.length - VaultCrypto.TAG_LEN).toLong()
+        val refused = VaultBackupPayload.readPayload(payload, payloadLength) { name, size, data ->
+            val digest = MessageDigest.getInstance("SHA-256")
+            val chunk = ByteArray(4096) // smaller than the 6 MB entry: it is read in pieces
+            var total = 0L
+            while (true) {
+                val n = data.read(chunk)
+                if (n == -1) break
+                digest.update(chunk, 0, n)
+                total += n
+            }
+            assertThat(total).isEqualTo(size)
+            digests[name] = digest.digest().joinToString("") { "%02x".format(it) }
+        }
+        assertThat(payload.read()).isEqualTo(-1)
+        assertThat(refused).isEmpty()
+        assertThat(digests).isEqualTo(expected)
+    }
+
+    @Test
+    fun `the port streams that backup again byte for byte`() {
+        val header = VaultBackupFormat.readHeader(raw)
+        val key = VaultKdf.argon2id(password, header.salt, header.params.memoryKB, header.params.iterations)
+        val entries = VaultBackupPayload.parsePayload(VaultBackupFormat.decryptPayload(raw, header, key)).entries
+        val out = ByteArrayOutputStream()
+        VaultBackupFormat.writeV2(out, key, header.salt, header.nonce, header.params) { sealing ->
+            val writer = VaultBackupPayload.PayloadWriter(sealing, entries.size)
+            entries.forEach { entry -> writer.entry(entry.name, entry.data.size.toLong()) { it.write(entry.data) } }
+            writer.finish()
+        }
+        assertThat(out.toByteArray()).isEqualTo(raw)
     }
 
     private fun decrypt(header: VaultBackupFormat.Header): ByteArray {

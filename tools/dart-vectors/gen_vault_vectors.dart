@@ -6,9 +6,12 @@
 // (elle vit dans VaultService, qui dépend de Flutter) — elle est donc AUSSI produite sur
 // appareil par l'application réelle, et c'est ce second jeu qui fait foi.
 //
-// Lancement :
+// Lancement, depuis la racine du portage, le clone Flutter au tag v2.15.2 (les fichiers lus sont
+// identiques en 2.15.3) :
 //   dart --packages=J:/applications/read_files_tech/.dart_tool/package_config.json \
-//        tools/dart-vectors/gen_vectors.dart > app/src/test/resources/vectors.json
+//        tools/dart-vectors/gen_vault_vectors.dart > app/src/test/resources/vault-vectors-2.15.2.json
+// C'est le fichier que lit VaultFormatVectorsTest : régénérer ailleurs laisserait le test vert sur
+// l'ancien jeu (relecture du 2026-10-11).
 
 import 'dart:convert';
 import 'dart:typed_data';
