@@ -14,8 +14,12 @@ object Shortcuts {
         "vault" to Feature.VAULT,
     )
 
+    /** The features a tile opens; the others (an APK's installer) are never reached by an extra. */
+    val TILE_FEATURES: Set<Feature> = ALLOWED.values.toSet()
+
     fun featureOf(value: String?): Feature? = ALLOWED[value]
 
-    /** The value a tile puts in the extra for [feature]. */
-    fun valueOf(feature: Feature): String = ALLOWED.entries.first { it.value == feature }.key
+    /** The value a tile puts in the extra for [feature], one of [TILE_FEATURES]. */
+    fun valueOf(feature: Feature): String =
+        requireNotNull(ALLOWED.entries.find { it.value == feature }?.key) { "$feature has no tile" }
 }

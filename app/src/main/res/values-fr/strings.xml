@@ -221,6 +221,7 @@
     <string name="feature_scanner">Scanner</string>
     <string name="feature_ocr">OCR</string>
     <string name="feature_vault">Coffre</string>
+    <string name="feature_apk_install">Installer une application</string>
     <string name="pending_title">Pas encore disponible</string>
     <string name="pending_body">Cet écran arrive avec une prochaine étape de la réécriture de Read Files Tech en Kotlin.</string>
 </resources>

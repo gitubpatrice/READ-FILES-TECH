@@ -78,7 +78,9 @@ class FileLauncher @Inject constructor(
         return served(from, file)?.let { (uri, _) ->
             val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, MimeTypes.PDF).setPackage(KnownApps.PDF_TECH)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            if (signatures.isSignedBy(KnownApps.PDF_TECH, KnownApps.PDF_TECH_CERT_SHA256)) {
+            // Write for a PDF only, as the 2.15.x (`mime == "application/pdf"`), whatever a caller offers.
+            val pdf = FileNames.extension(file.name) == "pdf"
+            if (pdf && signatures.isSignedBy(KnownApps.PDF_TECH, KnownApps.PDF_TECH_CERT_SHA256)) {
                 view.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
             start(from, view)
@@ -109,12 +111,17 @@ class FileLauncher @Inject constructor(
         return clip
     }
 
+    // TooGenericExceptionCaught: startActivity reports an intent too large for the binder (thousands of
+    // shared files) as a RuntimeException wrapping TransactionTooLargeException — it crashed the app
+    // (Claude review R4). No suspending call here, so no cancellation to swallow.
+    @Suppress("TooGenericExceptionCaught")
     private fun start(from: Context, intent: Intent): LaunchOutcome = try {
         from.startActivity(intent)
         LaunchOutcome.STARTED
     } catch (expected: ActivityNotFoundException) {
         LaunchOutcome.NO_APP
-    } catch (expected: SecurityException) {
+    } catch (expected: RuntimeException) {
+        // SecurityException included.
         LaunchOutcome.FAILED
     }
 

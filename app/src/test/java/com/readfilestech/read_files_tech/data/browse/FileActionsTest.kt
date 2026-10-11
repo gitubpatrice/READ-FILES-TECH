@@ -53,6 +53,25 @@ class FileActionsTest {
     }
 
     @Test
+    fun `a folder is renamed with what it holds, over its reservation`() {
+        val album = File(src, "album").apply { mkdirs() }
+        File(album, "a.jpg").writeText("A")
+        val renamed = actions.rename(album, "photos")
+        assertThat(File(renamed, "a.jpg").readText()).isEqualTo("A")
+        assertThat(src.list()!!.toList()).containsExactly("photos")
+    }
+
+    @Test
+    fun `renaming onto an existing folder fails and leaves both as they were`() {
+        val a = File(src, "a").apply { mkdirs() }
+        File(src, "b").mkdirs()
+        File(a, "x.txt").writeText("x")
+        assertThrows<FileAlreadyExistsException> { actions.rename(a, "b") }
+        assertThat(File(a, "x.txt").readText()).isEqualTo("x")
+        assertThat(File(src, "b").list()!!.toList()).isEmpty()
+    }
+
+    @Test
     fun `rename moves the item and keeps its content`() {
         val renamed = actions.rename(file(src, "a.txt", "A"), "c.txt")
         assertThat(renamed).isEqualTo(File(src, "c.txt"))

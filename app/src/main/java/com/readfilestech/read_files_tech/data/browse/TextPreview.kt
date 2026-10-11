@@ -1,8 +1,7 @@
 package com.readfilestech.read_files_tech.data.browse
 
+import com.readfilestech.read_files_tech.data.files.CappedInputStream
 import java.io.File
-import java.io.FilterInputStream
-import java.io.InputStream
 import java.nio.file.Files
 
 /** The explorer's "Preview": the first lines of a text file (`file_preview_sheet.dart` of the 2.15.x). */
@@ -22,24 +21,7 @@ object TextPreview {
      * (V-H3).
      */
     fun firstLines(file: File): List<String> =
-        Capped(Files.newInputStream(file.toPath()), MAX_BYTES).bufferedReader(Charsets.UTF_8).use { reader ->
+        CappedInputStream(Files.newInputStream(file.toPath()), MAX_BYTES).bufferedReader(Charsets.UTF_8).use { reader ->
             generateSequence { reader.readLine() }.take(MAX_LINES).toList()
         }
-
-    /** Ends, quietly, after [left] bytes; closing it closes the file. */
-    private class Capped(input: InputStream, private var left: Long) : FilterInputStream(input) {
-        override fun read(): Int {
-            if (left <= 0) return -1
-            val byte = super.read()
-            if (byte != -1) left--
-            return byte
-        }
-
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            if (left <= 0) return -1
-            val n = super.read(b, off, minOf(len.toLong(), left).toInt())
-            if (n > 0) left -= n
-            return n
-        }
-    }
 }

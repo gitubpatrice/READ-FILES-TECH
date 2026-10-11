@@ -5,6 +5,7 @@ import java.io.IOException
 import java.nio.channels.Channels
 import java.nio.channels.FileChannel
 import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -13,6 +14,8 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
+import java.security.SecureRandom
 
 /** No free name left in a folder for an item: `name`, `name (1)` … `name (999)` are all taken. */
 class NoFreeNameException(message: String) : IOException(message)
@@ -23,6 +26,7 @@ class NoFreeNameException(message: String) : IOException(message)
  */
 object FileMoves {
     private const val MAX_CANDIDATES = 1_000
+    private val random = SecureRandom()
 
     /**
      * Moves [from] to [to] — a free path, or the empty reservation of [reserveUniquePath] — never over
@@ -56,7 +60,17 @@ object FileMoves {
      * full disk, a card pulled out, a source that shrank meanwhile all throw instead.
      */
     fun copyFile(from: File, to: File) {
-        copyInto(from.toPath(), to.toPath(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+        // Into a hidden temporary file first, published by one rename once complete: a process killed
+        // half-way leaves an empty reservation and a hidden `.rft-part-…`, never a truncated file under
+        // the real name that looks whole (Claude review R4). Short name: a long one could pass 255 bytes.
+        val folder = to.absoluteFile.parentFile ?: throw IOException("no folder for $to")
+        val part = File(folder, ".rft-part-${Integer.toUnsignedString(random.nextInt())}").toPath()
+        try {
+            copyInto(from.toPath(), part, StandardOpenOption.CREATE_NEW)
+            Files.move(part, to.toPath(), StandardCopyOption.ATOMIC_MOVE)
+        } finally {
+            runCatching { Files.deleteIfExists(part) }
+        }
     }
 
     /**
@@ -68,10 +82,13 @@ object FileMoves {
      */
     fun reserveUniquePath(dir: File, name: String, isDir: Boolean): File {
         for (candidate in candidates(dir, name)) {
-            val reserved = runCatching {
+            try {
                 if (isDir) Files.createDirectory(candidate.toPath()) else Files.createFile(candidate.toPath())
-            }.isSuccess
-            if (reserved) return candidate
+                return candidate
+            } catch (expected: FileAlreadyExistsException) {
+                // Taken: the next candidate. Any OTHER error (a read-only volume, a missing folder) is
+                // thrown as it is — it used to read as "taken", 999 times (Claude review R4).
+            }
         }
         throw NoFreeNameException("no free name for ${dir.path}/$name")
     }
@@ -90,10 +107,22 @@ object FileMoves {
             copyTree(from.toPath(), to.toPath())
             FileTrees.delete(from)
         } else {
+            val before = identityOf(from.toPath())
             copyFile(from, to)
+            // Deleted only if it is still the file that was copied: renamed and replaced, or rewritten in
+            // place meanwhile, it is kept, and the caller removes the copy (GPT review R4).
+            if (identityOf(from.toPath()) != before) throw IOException("$from changed during the copy: the source is kept")
             Files.delete(from.toPath())
         }
     }
+
+    /** What tells "the same file, unchanged": its inode (when the volume gives one), size and date. */
+    private data class Identity(val key: Any?, val size: Long, val modified: FileTime)
+
+    private fun identityOf(path: Path): Identity =
+        Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS).let {
+            Identity(it.fileKey(), it.size(), it.lastModifiedTime())
+        }
 
     private fun copyInto(from: Path, to: Path, vararg modes: StandardOpenOption) {
         FileChannel.open(to, StandardOpenOption.WRITE, *modes).use { out ->

@@ -217,6 +217,7 @@
     <string name="feature_scanner">Scanner</string>
     <string name="feature_ocr">OCR</string>
     <string name="feature_vault">Vault</string>
+    <string name="feature_apk_install">Install an app</string>
     <string name="pending_title">Not available yet</string>
     <string name="pending_body">This screen comes with a later step of the rewrite of Read Files Tech in Kotlin.</string>
 </resources>

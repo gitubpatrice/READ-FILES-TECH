@@ -17,6 +17,9 @@ import com.readfilestech.read_files_tech.ui.explorer.listed
 import com.readfilestech.read_files_tech.ui.explorer.sortedBy
 import com.readfilestech.read_files_tech.ui.explorer.toggled
 import com.readfilestech.read_files_tech.ui.navigation.Feature
+import com.readfilestech.read_files_tech.ui.navigation.FileRouter
+import com.readfilestech.read_files_tech.ui.navigation.FileTarget
+import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -108,12 +111,21 @@ class UiLogicTest {
         )
     }
 
+    /** Claude review R4: without the installer of phase 3b, the system cancelled an APK without a word. */
+    @Test
+    fun `an APK goes to the installer's pending screen, any other file to another app`() {
+        assertThat(FileRouter.targetFor(entry("app.APK"))).isEqualTo(FileTarget.Internal(Routes.pending(Feature.APK_INSTALL)))
+        assertThat(FileRouter.targetFor(entry("doc.pdf"))).isEqualTo(FileTarget.External)
+        assertThat(FileRouter.targetFor(entry("apk", dir = true))).isEqualTo(FileTarget.External)
+    }
+
     @Test
     fun `only the three tile values lead anywhere`() {
         assertThat(Shortcuts.featureOf("scanner")).isEqualTo(Feature.SCANNER)
         assertThat(Shortcuts.featureOf("ocr")).isEqualTo(Feature.OCR)
         assertThat(Shortcuts.featureOf("vault")).isEqualTo(Feature.VAULT)
         listOf(null, "", "VAULT", "vault ", "settings", "../vault").forEach { assertThat(Shortcuts.featureOf(it)).isNull() }
-        Feature.entries.forEach { assertThat(Shortcuts.featureOf(Shortcuts.valueOf(it))).isEqualTo(it) }
+        Shortcuts.TILE_FEATURES.forEach { assertThat(Shortcuts.featureOf(Shortcuts.valueOf(it))).isEqualTo(it) }
+        assertThat(Shortcuts.TILE_FEATURES).doesNotContain(Feature.APK_INSTALL)
     }
 }

@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.ui.common
 
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -22,7 +23,9 @@ data class UserMessage(
  */
 @Singleton
 class UserMessages @Inject constructor() {
-    private val queue = MutableSharedFlow<UserMessage>(extraBufferCapacity = CAPACITY)
+    // A burst beyond the buffer drops the OLDEST, never the latest result (tryEmit on the default
+    // SUSPEND policy returned false and lost the newest one — Claude review R4b).
+    private val queue = MutableSharedFlow<UserMessage>(extraBufferCapacity = CAPACITY, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     val messages: SharedFlow<UserMessage> = queue.asSharedFlow()
 

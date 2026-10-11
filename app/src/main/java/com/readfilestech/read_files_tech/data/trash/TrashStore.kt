@@ -14,6 +14,7 @@ import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.security.SecureRandom
+import java.util.concurrent.ConcurrentHashMap
 
 /** What the trash refuses: its own folders, a target it cannot reserve, an id it cannot find a slot for. */
 class TrashException(message: String) : IOException(message)
@@ -45,7 +46,17 @@ class TrashStore(
 ) {
     private val random = SecureRandom()
 
-    /** Moves [target] into the trash of its volume. @throws IOException, the item then left in place. */
+    /** Entries being put in the trash: their metadata written, their item maybe not moved yet. */
+    private val inFlight: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    /**
+     * Moves [target] into the trash of its volume. @throws IOException, the item then left in place.
+     *
+     * The metadata FIRST, then the item (Claude review R4). A process killed in between — likely in a
+     * batch of hundreds, the rename taking a millisecond and the synced metadata tens — leaves metadata
+     * whose payload is gone, which [list] cleans, and the item still in its place. The other order, the
+     * 2.15.x's, left the item in the trash with nothing to find it by.
+     */
     fun moveToTrash(target: File): TrashEntry {
         // Absolute: the metadata keeps the path, and the reader refuses a relative one (GPT review R3).
         val item = target.absoluteFile
@@ -53,22 +64,21 @@ class TrashStore(
         val isDir = Files.isDirectory(item.toPath(), LinkOption.NOFOLLOW_LINKS)
         val root = trashRootFor(item.path)
         val id = reserveId(root)
-        val itemDir = File(File(root, TrashEntry.ITEMS_DIR), id)
         // -1 when the size cannot be read, as the 2.15.x (File.length() would say 0) (Claude review R3).
         val size = if (isDir) -1L else runCatching { Files.size(item.toPath()) }.getOrDefault(-1L)
-        val dest = File(itemDir, item.name)
-        try {
-            FileMoves.move(item, dest, isDir)
-        } catch (e: IOException) {
-            FileTrees.delete(itemDir)
-            throw e
-        }
         val entry = TrashEntry(id, root, item.path, item.name, isDir, size, DartDateTime.now())
+        // Listed meanwhile, the entry would look gone and lose its metadata: list() skips it.
+        inFlight += id
         try {
             AtomicFiles.writeBytes(entry.meta, entry.toJson().toByteArray(Charsets.UTF_8))
+            FileMoves.move(item, entry.payload, isDir)
         } catch (e: IOException) {
-            TrashMoves.putBack(dest, item, isDir, itemDir, e)
+            // The item is where it was (FileMoves never deletes a source it has not fully copied).
+            entry.meta.delete()
+            FileTrees.delete(entry.itemDir)
             throw e
+        } finally {
+            inFlight -= id
         }
         return entry
     }
@@ -155,6 +165,8 @@ class TrashStore(
                 // The file name must be the id it declares: a `meta/anything.json` dropped by another
                 // app would otherwise surface as a legitimate entry.
                 meta.name != "${entry.id}.json" -> null
+                // Being written by moveToTrash: neither shown yet nor cleaned.
+                entry.id in inFlight -> null
                 FileTrees.exists(entry.payload) -> entry
                 // GONE, positively — not merely unseen: Files.exists is false as well when it cannot
                 // tell, and a file of another app is hidden behind a revoked all-files access (D-019,

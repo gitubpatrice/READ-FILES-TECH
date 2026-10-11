@@ -31,6 +31,7 @@ fun PendingScreen(feature: Feature?, onBack: () -> Unit) {
         Feature.SCANNER -> R.string.feature_scanner
         Feature.OCR -> R.string.feature_ocr
         Feature.VAULT -> R.string.feature_vault
+        Feature.APK_INSTALL -> R.string.feature_apk_install
         null -> R.string.app_name
     }
     Scaffold(

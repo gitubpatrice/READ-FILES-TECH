@@ -42,33 +42,50 @@ class FileActions @Inject constructor() {
      * @throws InvalidFileNameException, FileAlreadyExistsException, IOException
      */
     fun rename(target: File, newName: String): File {
-        val renamed = sibling(target, newName)
-        if (newName == target.name) return target
-        if (Files.exists(renamed.toPath(), LinkOption.NOFOLLOW_LINKS)) {
-            renameCase(target, renamed)
-        } else {
-            // No REPLACE_EXISTING: an item appearing meanwhile makes this throw, never disappear.
-            Files.move(target.toPath(), renamed.toPath())
-        }
+        if (!FileNames.isValid(newName)) throw InvalidFileNameException(newName)
+        val parent = target.absoluteFile.parentFile ?: throw IOException("no parent folder: $target")
+        val renamed = File(parent, newName)
+        if (newName != target.name) moveTo(target, renamed)
         return renamed
     }
 
-    /** [newName] next to [target]. @throws InvalidFileNameException, IOException (no parent folder) */
-    private fun sibling(target: File, newName: String): File {
-        if (!FileNames.isValid(newName)) throw InvalidFileNameException(newName)
-        val parent = target.absoluteFile.parentFile ?: throw IOException("no parent folder: $target")
-        return File(parent, newName)
+    /**
+     * The new name is RESERVED first (an exclusive file or empty folder), then the item renamed over its
+     * reservation: a check then a rename let an item appearing in between be replaced (Claude and GPT
+     * reviews R4). Taken already: either the item itself under another case, or another item, refused.
+     */
+    private fun moveTo(target: File, renamed: File) {
+        val isDir = Files.isDirectory(target.toPath(), LinkOption.NOFOLLOW_LINKS)
+        try {
+            if (isDir) Files.createDirectory(renamed.toPath()) else Files.createFile(renamed.toPath())
+        } catch (taken: FileAlreadyExistsException) {
+            renameCase(target, renamed, taken)
+            return
+        }
+        try {
+            FileMoves.move(target, renamed, isDir)
+        } catch (e: IOException) {
+            // Our reservation, empty: removed; the item kept its name.
+            runCatching { Files.deleteIfExists(renamed.toPath()) }.exceptionOrNull()?.let(e::addSuppressed)
+            throw e
+        }
     }
 
     /**
      * [renamed] exists: the same item under another case is renamed through a free temporary name, put
      * back if the second step fails; another item is never replaced.
      */
-    private fun renameCase(target: File, renamed: File) {
+    private fun renameCase(target: File, renamed: File, taken: FileAlreadyExistsException) {
         val from = target.toPath()
         val to = renamed.toPath()
-        if (!Files.isSameFile(from, to)) throw FileAlreadyExistsException(renamed.path)
-        val step = File(renamed.parentFile, ".rft-rename-${Integer.toUnsignedString(random.nextInt())}").toPath()
+        if (!Files.isSameFile(from, to)) throw taken
+        // One rename first: a volume that keeps case changes it in place, nothing in between. Where a
+        // rename onto "itself" changes nothing (POSIX: same file, success), the listing still shows the
+        // old name, and the two steps below do it.
+        if (target.renameTo(renamed) && renamed.parentFile?.list()?.contains(renamed.name) == true) return
+        // A VISIBLE temporary name next to it: a process death between the steps leaves
+        // "photo.jpg.rft-rename-…" the user can see and rename, not a hidden file (GPT review R4).
+        val step = File(renamed.parentFile, "${renamed.name}.rft-rename-${Integer.toUnsignedString(random.nextInt())}").toPath()
         Files.move(from, step)
         try {
             Files.move(step, to)

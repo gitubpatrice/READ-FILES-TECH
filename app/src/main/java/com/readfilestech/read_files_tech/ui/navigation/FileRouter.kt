@@ -17,9 +17,12 @@ sealed interface FileTarget {
  * not the other — finding S6). Every screen that opens a file asks here.
  *
  * Phase 3: no viewer is ported yet, so every file goes to another app; each viewer of phase 4 adds its
- * extensions here, and nowhere else.
+ * extensions here, and nowhere else. An APK says its installer comes with phase 3b: handed to the system
+ * without REQUEST_INSTALL_PACKAGES, it was cancelled by the installer without a word (Claude review R4).
  */
 object FileRouter {
-    @Suppress("UnusedParameter") // The viewers of phase 4 read it.
-    fun targetFor(entry: FileEntry): FileTarget = FileTarget.External
+    fun targetFor(entry: FileEntry): FileTarget = when (entry.extension) {
+        "apk" -> FileTarget.Internal(Routes.pending(Feature.APK_INSTALL))
+        else -> FileTarget.External
+    }
 }

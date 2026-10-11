@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.search
 
 import com.readfilestech.read_files_tech.data.browse.FileNames
+import com.readfilestech.read_files_tech.data.files.CappedInputStream
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -63,6 +64,9 @@ object FileSearch {
         while (folders.isNotEmpty() && !walk.full) {
             currentCoroutineContext().ensureActive()
             for (child in walk.children(folders.removeFirst())) {
+                // Per entry, not per folder: a folder of thousands of texts read up to 2 MiB each kept
+                // the cancelled walk reading (Claude review R4).
+                currentCoroutineContext().ensureActive()
                 walk.visit(child)?.let(folders::addLast)
                 reporter.report(walk)
                 if (walk.full) break
@@ -161,12 +165,17 @@ object FileSearch {
             null
         }
 
-        /** Malformed bytes are REPLACED: the 2.15.x decoded strict UTF-8 and silently skipped any Latin-1 text. */
+        /**
+         * Malformed bytes are REPLACED: the 2.15.x decoded strict UTF-8 and silently skipped any Latin-1
+         * text. The read stops at the size cap even if the file grew since its size was read (GPT
+         * review R4): a text replaced by a huge one without a line break would be read whole otherwise.
+         */
         private fun firstLineWith(path: Path, pattern: String): String? {
             val decoder = Charsets.UTF_8.newDecoder()
                 .onMalformedInput(CodingErrorAction.REPLACE)
                 .onUnmappableCharacter(CodingErrorAction.REPLACE)
-            return InputStreamReader(Files.newInputStream(path), decoder).buffered().use { reader ->
+            val input = CappedInputStream(Files.newInputStream(path), query.maxContentBytes)
+            return InputStreamReader(input, decoder).buffered().use { reader ->
                 generateSequence { reader.readLine() }.firstOrNull { pattern in it.lowercase() }
             }
         }

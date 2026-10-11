@@ -1,9 +1,11 @@
 package com.readfilestech.read_files_tech.data.browse
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.files.CappedInputStream
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.file.Files
 
@@ -84,6 +86,15 @@ class BrowseTest {
         val f = File(tmp, "f.txt").apply { writeText("x") }
         assertThat(DirectoryListing.list(f)).isEqualTo(Listing.NotADirectory)
         assertThat(DirectoryListing.list(File(tmp, "absent"))).isEqualTo(Listing.NotADirectory)
+    }
+
+    @Test
+    fun `a capped stream ends quietly at its limit, and a shorter source is no error`() {
+        val capped = CappedInputStream(ByteArrayInputStream(ByteArray(100) { 7 }), 10)
+        assertThat(capped.readBytes()).hasLength(10)
+        assertThat(CappedInputStream(ByteArrayInputStream(ByteArray(3)), 10).readBytes()).hasLength(3)
+        val single = CappedInputStream(ByteArrayInputStream(byteArrayOf(1, 2, 3)), 2)
+        assertThat(listOf(single.read(), single.read(), single.read())).containsExactly(1, 2, -1).inOrder()
     }
 
     @Test

@@ -33,6 +33,6 @@ object Routes {
 
 /**
  * The destinations reached from phase 3 whose screens come with a later phase: the three quick-settings
- * tiles (scanner, OCR, vault), and the internal viewers.
+ * tiles (scanner, OCR, vault) and installing an APK (phase 3b).
  */
-enum class Feature { SCANNER, OCR, VAULT }
+enum class Feature { SCANNER, OCR, VAULT, APK_INSTALL }
