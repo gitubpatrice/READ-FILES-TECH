@@ -116,9 +116,13 @@ private fun EntryIcon(entry: FileEntry, selected: Boolean, thumbnails: Thumbnail
         }
         return
     }
-    val thumbnail = if (!entry.isDirectory && entry.extension in FileVisuals.IMAGE_EXTENSIONS) thumbnailOf(entry, thumbnails) else null
+    val isApk = entry.extension == FileVisuals.APK
+    val pictured = !entry.isDirectory && (isApk || entry.extension in FileVisuals.IMAGE_EXTENSIONS)
+    val thumbnail = if (pictured) thumbnailOf(entry, thumbnails) else null
     if (thumbnail != null) {
-        Image(thumbnail, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(IconBox).clip(shape))
+        // An app's icon whole, a picture filling its square.
+        val scale = if (isApk) ContentScale.Fit else ContentScale.Crop
+        Image(thumbnail, contentDescription = null, contentScale = scale, modifier = Modifier.size(IconBox).clip(shape))
         return
     }
     val tint = FileVisuals.color(entry.isDirectory, entry.extension)

@@ -69,6 +69,7 @@ STORAGE_PERMISSIONS = (
     '        android:name="android.permission.WRITE_EXTERNAL_STORAGE"\n'
     '        android:maxSdkVersion="29" />\n'
     '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n'
+    '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n'
 )
 
 
@@ -304,6 +305,10 @@ def permission_cases(work: str) -> list[tuple]:
         ("permissions: all-files access absent (the explorer would see nothing on Android 11+)", MANIFEST_CHECK, [],
          lambda: manifest_case(work, MANIFEST_OK.replace(
              '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n', "")),
+         1, "absent from the manifest"),
+        ("permissions: APK install absent (the system's installer would cancel in silence)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(
+             '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n', "")),
          1, "absent from the manifest"),
         ("permissions: READ_MEDIA_IMAGES back (docs D-027)", MANIFEST_CHECK, [],
          lambda: manifest_case(work, with_before_application(

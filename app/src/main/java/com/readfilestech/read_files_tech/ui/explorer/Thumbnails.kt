@@ -5,6 +5,8 @@ import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.readfilestech.read_files_tech.data.apps.ApkArchives
+import com.readfilestech.read_files_tech.data.browse.FileNames
 import com.readfilestech.read_files_tech.data.images.ImageBounds
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
@@ -15,10 +17,11 @@ import javax.inject.Singleton
 
 /**
  * The small pictures of the explorer's image rows (`Image.file(cacheWidth: 72)` in the 2.15.x),
- * decoded at the size shown — never the full image — and kept for the folders visited.
+ * decoded at the size shown — never the full image — and kept for the folders visited; an APK's own
+ * icon too (`ApkIcon` of the 2.15.x), read off the main thread where the 2.15.x parsed it on it (F36).
  */
 @Singleton
-class Thumbnails @Inject constructor(@param:IoDispatcher private val io: CoroutineDispatcher) {
+class Thumbnails @Inject constructor(private val apks: ApkArchives, @param:IoDispatcher private val io: CoroutineDispatcher) {
     // Bounded in BYTES, a sixteenth of the heap: by count, a folder of tall screenshots kept 170 MB
     // pinned and could end the process — with every copy running in it (Claude review R5).
     private val cache = object : LruCache<String, ImageBitmap>((Runtime.getRuntime().maxMemory() / HEAP_SHARE).toInt()) {
@@ -35,8 +38,13 @@ class Thumbnails @Inject constructor(@param:IoDispatcher private val io: Corouti
         }
     }
 
+    private fun decode(file: File, sizePx: Int): ImageBitmap? = when (FileNames.extension(file.name)) {
+        FileVisuals.APK -> apks.describe(file, sizePx)?.icon?.asImageBitmap()
+        else -> decodeImage(file, sizePx)
+    }
+
     /** The header first: a file too large, or announcing too many pixels, is never decoded. */
-    private fun decode(file: File, sizePx: Int): ImageBitmap? {
+    private fun decodeImage(file: File, sizePx: Int): ImageBitmap? {
         if (file.length() !in 1..ImageBounds.MAX_FILE_BYTES) return null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)

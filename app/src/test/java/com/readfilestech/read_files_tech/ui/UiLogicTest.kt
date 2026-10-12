@@ -181,12 +181,29 @@ class UiLogicTest {
         }
     }
 
-    /** Claude review R4: without the installer of phase 3b, the system cancelled an APK without a word. */
+    /**
+     * Claude review R4: handed to the system without the app's permission, an APK was cancelled without a
+     * word. "Open with…" too goes to the installer screen — the 2.15.x's went around its check (D23).
+     */
     @Test
-    fun `an APK goes to the installer's pending screen, any other file to another app`() {
-        assertThat(FileRouter.targetFor(entry("app.APK"))).isEqualTo(FileTarget.Internal(Routes.pending(Feature.APK_INSTALL)))
+    fun `an APK goes to the installer screen, from either menu, any other file to another app`() {
+        val install = FileTarget.Internal("install?path=%2Fd%2Fapp.APK")
+        assertThat(FileRouter.targetFor(entry("app.APK"))).isEqualTo(install)
+        assertThat(FileRouter.chooserTargetFor(entry("app.APK"))).isEqualTo(install)
         assertThat(FileRouter.targetFor(entry("doc.pdf"))).isEqualTo(FileTarget.External)
+        assertThat(FileRouter.chooserTargetFor(entry("doc.pdf"))).isEqualTo(FileTarget.External)
         assertThat(FileRouter.targetFor(entry("apk", dir = true))).isEqualTo(FileTarget.External)
+    }
+
+    /** Navigation decodes the arguments: a name with `?`, `&`, `#`, `%` or accents comes back whole. */
+    @Test
+    fun `route arguments are encoded as Uri encodes them`() {
+        val name = "/storage/emulated/0/Été & co/a?b#c%d (1)'*!~.txt"
+        val encoded = Routes.encode(name)
+        assertThat(encoded).doesNotContainMatch("[^A-Za-z0-9_\\-!.~'()*%]")
+        assertThat(java.net.URLDecoder.decode(encoded, Charsets.UTF_8)).isEqualTo(name)
+        assertThat(Routes.encode("a b")).isEqualTo("a%20b")
+        assertThat(Routes.encode("é")).isEqualTo("%C3%A9")
     }
 
     @Test
@@ -196,6 +213,5 @@ class UiLogicTest {
         assertThat(Shortcuts.featureOf("vault")).isEqualTo(Feature.VAULT)
         listOf(null, "", "VAULT", "vault ", "settings", "../vault").forEach { assertThat(Shortcuts.featureOf(it)).isNull() }
         Shortcuts.TILE_FEATURES.forEach { assertThat(Shortcuts.featureOf(Shortcuts.valueOf(it))).isEqualTo(it) }
-        assertThat(Shortcuts.TILE_FEATURES).doesNotContain(Feature.APK_INSTALL)
     }
 }

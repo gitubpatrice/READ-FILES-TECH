@@ -33,11 +33,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.data.storage.StorageModel
+import com.readfilestech.read_files_tech.ui.apps.ApkInstallDialog
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.common.uiText
@@ -157,6 +159,9 @@ private fun Destinations(navController: NavHostController) {
                 onFolderPicked = { navController.handBack(Routes.RESULT_PICKED_FOLDER, it) },
                 onCancel = { navController.popBackStack() },
             )
+        }
+        dialog(Routes.INSTALL, arguments = listOf(navArgument(Routes.ARG_PATH) { type = NavType.StringType })) {
+            ApkInstallDialog(onDismiss = { navController.popBackStack() })
         }
         composable(Routes.TRASH) { TrashScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.SEARCH) { entry ->

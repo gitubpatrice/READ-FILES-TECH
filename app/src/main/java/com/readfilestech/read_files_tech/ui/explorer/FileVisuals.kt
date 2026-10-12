@@ -25,6 +25,9 @@ object FileVisuals {
     /** The extensions shown as a thumbnail (`imageExts` of the 2.15.x). */
     val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp")
 
+    /** An app's archive: its row shows the app's own icon. */
+    const val APK = "apk"
+
     fun icon(isDirectory: Boolean, extension: String): ImageVector =
         if (isDirectory) Icons.Outlined.Folder else ICONS[extension] ?: Icons.AutoMirrored.Outlined.InsertDriveFile
 

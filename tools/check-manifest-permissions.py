@@ -70,15 +70,17 @@ def allowed_for(package: str) -> set[str]:
 
     Phase 1 (skeleton): the one androidx.core generates for its own non-exported receivers (signature
     level, named after the applicationId). Phase 3 (the explorer): shared storage, as the 2.15.3 — read
-    up to Android 12, write up to Android 10, all-files access from Android 11. The 2.15.3 carries nine;
-    READ_MEDIA_* and CAMERA do not come back (docs D-027), INTERNET and ACCESS_NETWORK_STATE never
-    (D-014). Each permission comes with the phase that needs it, documented in PRIVACY.md at the same time.
+    up to Android 12, write up to Android 10, all-files access from Android 11. Phase 3b: installing an
+    APK the user taps. The 2.15.3 carries nine; READ_MEDIA_* and CAMERA do not come back (docs D-027),
+    INTERNET and ACCESS_NETWORK_STATE never (D-014). Each permission comes with the phase that needs it,
+    documented in PRIVACY.md at the same time.
     """
     return {
         f"{package}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.MANAGE_EXTERNAL_STORAGE",
+        "android.permission.REQUEST_INSTALL_PACKAGES",
     }
 
 

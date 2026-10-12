@@ -30,9 +30,17 @@
         tools:ignore="ScopedStorage" />
 
     <!--
+        Installing an APK the user taps, as the 2.15.3: without it the system's installer cancels in
+        silence. Android still asks the user to allow "Install unknown apps" for this app, once.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!--
         Package visibility (Android 11+): only the apps the explorer hands files to by name — PDF Tech
-        ("Edit in PDF Tech", its certificate checked) and the two cloud apps of "Send to". Opening with
-        or sharing to any other app goes through the system chooser, which needs no visibility.
+        ("Edit in PDF Tech", its certificate checked) and the cloud apps a file is sent to: kDrive and
+        Proton Drive from the explorer, Google Drive too from the row under a tool's result — the 2.15.3's
+        four. Opening with or sharing to any other app goes through the system chooser, which needs no
+        visibility.
     -->
     <queries>
         <package android:name="com.pdftech.pdf_tech" />

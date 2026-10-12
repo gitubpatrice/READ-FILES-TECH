@@ -17,11 +17,11 @@ sealed interface FileTarget {
  * not the other — finding S6). Every screen that opens a file asks here.
  *
  * Phase 3: no viewer is ported yet, so every file goes to another app; each viewer of phase 4 adds its
- * extensions here, and nowhere else. An APK says its installer comes with phase 3b: handed to the system
- * without REQUEST_INSTALL_PACKAGES, it was cancelled by the installer without a word (Claude review R4).
+ * extensions here, and nowhere else. An APK goes to the app's own installer screen, whatever the menu:
+ * the 2.15.x's "Open" and "Open with…" handed it to the system around its permission check (D23).
  */
 object FileRouter {
-    private val INSTALLER = FileTarget.Internal(Routes.pending(Feature.APK_INSTALL))
+    private const val APK = "apk"
 
     /**
      * What the app's viewers open (`FileViewerRouter` of the 2.15.3, the table that disagreed with the
@@ -35,13 +35,14 @@ object FileRouter {
     )
 
     fun targetFor(entry: FileEntry): FileTarget = when (entry.extension) {
-        "apk" -> INSTALLER
+        APK -> FileTarget.Internal(Routes.install(entry.path))
         else -> FileTarget.External
     }
 
     /**
      * "Open with…": another app, chosen by the user — even when a viewer of the app could open it —
-     * except an APK, which the system's installer would cancel in silence (Claude review R5).
+     * except an APK, which the system's installer would cancel in silence without the app's permission
+     * (Claude review R5).
      */
-    fun chooserTargetFor(entry: FileEntry): FileTarget = if (entry.extension == "apk") INSTALLER else FileTarget.External
+    fun chooserTargetFor(entry: FileEntry): FileTarget = if (entry.extension == APK) targetFor(entry) else FileTarget.External
 }
