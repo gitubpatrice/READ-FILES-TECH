@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -147,7 +148,12 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             )
         },
         bottomBar = {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Above the navigation bar: its three buttons on a Galaxy S9 hid half of these (seen there; the
+            // emulator's thin gesture bar did not show it).
+            Row(
+                Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedButton(onClick = takePhoto, enabled = !full && !busy, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Outlined.PhotoCamera, contentDescription = null)
                     Text(stringResource(R.string.scanner_take_photo), Modifier.padding(start = 6.dp))

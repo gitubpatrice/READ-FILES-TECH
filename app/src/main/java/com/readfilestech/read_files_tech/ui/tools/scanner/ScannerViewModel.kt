@@ -56,12 +56,18 @@ import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
 
-/** The crop screen: the frame being adjusted, the picture under it (null while it loads). */
+/**
+ * The crop screen: the frame being adjusted, the picture under it (null while it loads), and that picture
+ * with the page's filter applied ([filtered], null for "Original" and while [filtering]) — a filter is seen
+ * as soon as it is chosen, not only once the page is kept (seen on the S9).
+ */
 data class PageEditorState(
     val draft: ScanDraft,
     val preview: ImageBitmap? = null,
     val detecting: Boolean = false,
     val notFound: Boolean = false,
+    val filtered: ImageBitmap? = null,
+    val filtering: Boolean = false,
 )
 
 /** What the crop screen asks; the view model answers. */
@@ -125,6 +131,7 @@ class ScannerViewModel @Inject constructor(
     val state: StateFlow<ScannerState> = mutableState.asStateFlow()
     private var session: ScanSession? = null
     private var editorJob: Job? = null
+    private var filterJob: Job? = null
     private val thumbnails = object : LruCache<String, ImageBitmap>(THUMBNAIL_BYTES) {
         override fun sizeOf(key: String, value: ImageBitmap): Int = value.asAndroidBitmap().byteCount
     }
@@ -258,6 +265,7 @@ class ScannerViewModel @Inject constructor(
                     val preview = photo.preview.asImageBitmap()
                     e.copy(draft = e.draft.copy(settings = settings), preview = preview, detecting = false, notFound = notFound)
                 }
+                showFilter()
             }.onFailure { error ->
                 messages.error(uiText(R.string.scanner_photo_failed, reasonOf(error)))
                 closeEditor(discardNewPhoto = true)
@@ -317,6 +325,30 @@ class ScannerViewModel @Inject constructor(
         updateSettings { it.copy(filter = filter) }
         session = current().copy(filter = filter)
         keepDraft()
+        showFilter()
+    }
+
+    /**
+     * The picture under the frame redrawn with the page's filter, off the main thread; a newer choice
+     * cancels the one being drawn. A failure only leaves the picture unfiltered: the page itself is made
+     * at "Keep", from the whole photo.
+     */
+    private fun showFilter() {
+        filterJob?.cancel()
+        val editor = state.value.editor
+        val preview = editor?.preview
+        val filter = editor?.draft?.settings?.filter?.takeIf { it != PageFilter.ORIGINAL }
+        updateEditor { it.copy(filtered = null, filtering = preview != null && filter != null) }
+        if (preview != null && filter != null) {
+            filterJob = viewModelScope.launch {
+                val shown = loadOrFailure {
+                    withContext(Dispatchers.Default) { ScanPages.filteredPreview(preview.asAndroidBitmap(), filter) { ensureActive() } }
+                }.getOrNull()?.asImageBitmap()
+                updateEditor { e ->
+                    if (e.preview === preview && e.draft.settings.filter == filter) e.copy(filtered = shown, filtering = false) else e
+                }
+            }
+        }
     }
 
     /** The page made from the frame: written, then put in the list (in its place when it was there). */
@@ -359,6 +391,7 @@ class ScannerViewModel @Inject constructor(
 
     /** Closes the crop screen; a photo just taken for a page never made goes with it. */
     private suspend fun closeEditor(discardNewPhoto: Boolean) {
+        filterJob?.cancel()
         val draft = state.value.editor?.draft
         mutableState.update { it.copy(editor = null) }
         val s = session ?: return

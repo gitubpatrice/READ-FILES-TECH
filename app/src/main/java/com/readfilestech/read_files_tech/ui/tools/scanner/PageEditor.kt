@@ -104,9 +104,9 @@ fun PageEditor(editor: PageEditorState, busy: Boolean, actions: PageEditorAction
                 if (preview == null) {
                     CircularProgressIndicator()
                 } else {
-                    FrameCanvas(preview, settings.quad, actions::moveCorner, actions::keepDraft)
+                    FrameCanvas(editor.filtered ?: preview, settings.quad, actions::moveCorner, actions::keepDraft)
                 }
-                if (editor.detecting || busy) CircularProgressIndicator()
+                if (editor.detecting || editor.filtering || busy) CircularProgressIndicator()
             }
             val note = when {
                 editor.detecting -> stringResource(R.string.scanner_detecting)

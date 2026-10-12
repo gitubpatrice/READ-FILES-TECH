@@ -131,6 +131,22 @@ object ScanPages {
         return scaled
     }
 
+    /**
+     * A copy of [preview] with [filter] applied: what the crop screen shows under the frame once a filter is
+     * chosen. The whole photo, not the page — the page is made at "Keep", from the photo at full size.
+     */
+    fun filteredPreview(preview: Bitmap, filter: PageFilter, checkpoint: () -> Unit): Bitmap {
+        val copy = preview.copy(Bitmap.Config.ARGB_8888, true) ?: throw IOException("preview not copied")
+        var done = false
+        try {
+            PageFilters.apply(filter, BitmapRows(copy), checkpoint)
+            done = true
+        } finally {
+            if (!done) copy.recycle()
+        }
+        return copy
+    }
+
     /** A Bitmap's rows, for the filters. */
     private class BitmapRows(private val bitmap: Bitmap) : PixelRows {
         override val width: Int get() = bitmap.width
