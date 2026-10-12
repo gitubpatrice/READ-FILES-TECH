@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.check
 import android.os.Debug
 import android.os.SystemClock
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
@@ -12,6 +13,7 @@ import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.ViewerResources
+import com.readfilestech.read_files_tech.ui.viewer.image.ImagePages
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import org.json.JSONArray
 import java.io.File
@@ -24,9 +26,9 @@ data class CorpusCase(val file: String, val viewer: ViewerKind, val expect: Stri
  * The hostile corpus of phase 4 (port plan, phase 4, finding 8): each file of a folder that
  * `tools/corpus/corpus.py` pushed is opened by its viewer's load, as the screen does — in the `check`
  * build, the release as R8 makes it. Its `corpus.json` names, per file, the viewer and the outcome
- * expected (`ok`, `too_large`, `unreadable`, `unsupported`, `out_of_memory`, `cannot_open`); the report
- * gives the outcome, the time, the heap kept by the result, and whatever was written in the app's
- * sandbox or in the corpus folder meanwhile — a viewer writes nothing.
+ * expected (`ok`, `too_large`, `too_many_pixels`, `unreadable`, `unsupported`, `out_of_memory`,
+ * `cannot_open`); the report gives the outcome, the time, the heap kept by the result, and whatever
+ * was written in the app's sandbox or in the corpus folder meanwhile — a viewer writes nothing.
  *
  * A viewer of phase 4 adds its branch to [load]: the `when` is exhaustive, the build fails without it.
  */
@@ -73,7 +75,6 @@ class CorpusCheck(private val sandbox: File) {
      * load that opens what must be closed (a ZipFile, a PdfRenderer) keeps it in [resources], as its
      * screen does.
      */
-    @Suppress("UnusedParameter") // the text viewer opens nothing to close; the ZIP and PDF viewers will
     private suspend fun load(kind: ViewerKind, source: ViewerSource, resources: ViewerResources): Any = when (kind) {
         // Strictly here, where the screen tolerates it: a failure of the colours is the corpus's to see.
         ViewerKind.TEXT -> TextDocument.read(source).also { document ->
@@ -89,11 +90,14 @@ class CorpusCheck(private val sandbox: File) {
             for (row in 0 until minOf(table.rows, FIRST_SCREEN_ROWS)) table.cells(row, 0, columns, CsvTable.SHOWN_CHARS)
             if (table.rows > 0) table.cells(table.rows - 1, 0, columns, CsvTable.SHOWN_CHARS)
         }
+        // A page of a phone held upright: the bounds, then the decode at the size the page shows it at.
+        ViewerKind.IMAGE -> ImagePages.decode(source, PAGE_WIDTH, PAGE_HEIGHT, resources)
     }
 
     private fun outcomeOf(error: Throwable): String = when (error) {
         is OutOfMemoryError -> OUT_OF_MEMORY
         is FileTooLargeException -> "too_large"
+        is ImageTooLargeException -> "too_many_pixels"
         is UnsupportedFormatException -> "unsupported"
         is UnreadableFileException -> UNREADABLE
         is IOException -> "cannot_open"
@@ -132,5 +136,8 @@ class CorpusCheck(private val sandbox: File) {
 
         /** About what a phone shows of a table across (columns of 136 dp), and then some. */
         const val FIRST_SCREEN_COLUMNS = 8
+        /** The page the image viewer decodes for: a phone of 1080 x 2400 held upright. */
+        const val PAGE_WIDTH = 1080
+        const val PAGE_HEIGHT = 2400
     }
 }

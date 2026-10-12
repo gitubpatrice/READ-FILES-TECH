@@ -39,6 +39,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.sharing.KnownApps
 import com.readfilestech.read_files_tech.data.storage.StorageModel
+import com.readfilestech.read_files_tech.data.viewer.image.GalleryOrder
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
@@ -110,7 +111,9 @@ fun ExplorerScreen(
     BackHandler(enabled = !state.selecting && state.canGoBack) { browser.back() }
 
     fun open(entry: FileEntry) {
-        when (val target = FileRouter.targetFor(entry)) {
+        // How this folder is shown: an image opens among the images the user sees here, in this order.
+        val gallery = GalleryOrder(state.sort, state.showHidden, state.query, state.extensions)
+        when (val target = FileRouter.targetFor(entry, gallery)) {
             is FileTarget.Internal -> onNavigate(target.route)
             FileTarget.External -> launching.view(context, entry, chooser = false)
         }

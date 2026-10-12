@@ -1,14 +1,15 @@
 package com.readfilestech.read_files_tech.ui.explorer
 
-import android.graphics.BitmapFactory
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.readfilestech.read_files_tech.data.apps.ApkArchives
 import com.readfilestech.read_files_tech.data.browse.FileNames
-import com.readfilestech.read_files_tech.data.images.ImageBounds
+import com.readfilestech.read_files_tech.data.images.ImageDecoding
+import com.readfilestech.read_files_tech.data.images.ImageScale
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
+import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -38,24 +39,20 @@ class Thumbnails @Inject constructor(private val apks: ApkArchives, @param:IoDis
         }
     }
 
-    private fun decode(file: File, sizePx: Int): ImageBitmap? = when (FileNames.extension(file.name)) {
+    private suspend fun decode(file: File, sizePx: Int): ImageBitmap? = when (FileNames.extension(file.name)) {
         FileVisuals.APK -> apks.describe(file, sizePx)?.icon?.asImageBitmap()
         else -> decodeImage(file, sizePx)
     }
 
-    /** The header first: a file too large, or announcing too many pixels, is never decoded. */
-    private fun decodeImage(file: File, sizePx: Int): ImageBitmap? {
-        if (file.length() !in 1..ImageBounds.MAX_FILE_BYTES) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.path, bounds)
-        return bounds.takeIf { ImageBounds.fits(it.outWidth, it.outHeight) }?.let { header ->
-            var sample = 1
-            while (header.outWidth / (sample * 2) >= sizePx && header.outHeight / (sample * 2) >= sizePx) sample *= 2
-            // The long side too: a 1080 × 20 000 screenshot would come out 135 × 2 500 otherwise.
-            while (maxOf(header.outWidth, header.outHeight) / sample > sizePx * MAX_ELONGATION) sample *= 2
-            BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
-        }
-    }
+    /**
+     * The viewer's decoder (ImageDecoding): the caps first — a file too large, or announcing too many
+     * pixels, is never decoded — and the EXIF orientation applied, so a portrait photo is not on its side.
+     * Refused, unreadable, or whatever a hostile file made the decoder throw (the viewers' guard): the row
+     * shows the type's icon instead.
+     */
+    private suspend fun decodeImage(file: File, sizePx: Int): ImageBitmap? = loadOrFailure {
+        ImageDecoding.still(file) { width, height -> ImageScale.coveringSample(width, height, sizePx, MAX_ELONGATION) }.asImageBitmap()
+    }.getOrNull()
 
     private fun key(file: File, modifiedMs: Long) = "${file.path}|$modifiedMs"
 

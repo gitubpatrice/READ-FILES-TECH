@@ -8,6 +8,7 @@ import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,9 +28,13 @@ class ViewerActionsViewModel @Inject constructor(
     /** The file the viewer shows, when it may be handed to another app (PathGuard); null otherwise. */
     val leavable: StateFlow<FileEntry?> = leaving.asStateFlow()
 
+    private var loading: Job? = null
+
+    /** The last file asked wins: a gallery asks at each page, and an earlier answer must not land after it. */
     fun load(file: File?) {
         if (file == null) return
-        viewModelScope.launch {
+        loading?.cancel()
+        loading = viewModelScope.launch {
             leaving.value = withContext(io) {
                 file.takeIf(File::isFile)?.let(DirectoryListing::entryOf)?.takeIf(launching::canLeave)
             }

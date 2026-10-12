@@ -275,6 +275,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+    // The EXIF orientation of a photo below API 28 (docs: libs.versions.toml).
+    implementation(libs.androidx.exifinterface)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

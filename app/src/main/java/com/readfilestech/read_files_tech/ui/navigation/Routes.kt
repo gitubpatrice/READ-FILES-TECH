@@ -34,10 +34,16 @@ object Routes {
 
     const val ARG_VIEWER = "viewer"
 
-    /** The viewer named [ARG_VIEWER] (a [ViewerKind]), on the file at [ARG_PATH]. */
-    const val VIEWER = "viewer/{$ARG_VIEWER}?$ARG_PATH={$ARG_PATH}"
+    /** How the explorer showed the folder of an image it opened: the image viewer's gallery (GalleryOrder). */
+    const val ARG_GALLERY = "gallery"
 
-    fun viewer(kind: ViewerKind, path: String): String = "viewer/${kind.name}?$ARG_PATH=${encode(path)}"
+    /** The viewer named [ARG_VIEWER] (a [ViewerKind]), on the file at [ARG_PATH]. */
+    const val VIEWER = "viewer/{$ARG_VIEWER}?$ARG_PATH={$ARG_PATH}&$ARG_GALLERY={$ARG_GALLERY}"
+
+    fun viewer(kind: ViewerKind, path: String, gallery: String? = null): String = buildString {
+        append("viewer/${kind.name}?$ARG_PATH=${encode(path)}")
+        if (gallery != null) append("&$ARG_GALLERY=${encode(gallery)}")
+    }
 
     /** A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. */
     const val FEATURE = "feature/{$ARG_FEATURE}"

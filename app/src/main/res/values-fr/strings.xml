@@ -328,6 +328,7 @@
     <string name="viewer_unsupported">Ce format ne peut pas être ouvert ici. Essayez « Ouvrir avec… ».</string>
     <string name="viewer_out_of_memory">Pas assez de mémoire sur ce téléphone pour ouvrir ce fichier.</string>
     <string name="viewer_cannot_open">Impossible d\'ouvrir ce fichier : %1$s</string>
+    <string name="viewer_image_too_large">Cette image est trop grande pour être affichée ici : %1$,d × %2$,d px, quand les limites sont de %3$,d px de côté et de %4$,d Mpx en tout.</string>
     <string name="text_colors">Couleurs</string>
     <string name="text_size">Taille du texte</string>
     <string name="text_size_value">%1$d pt</string>

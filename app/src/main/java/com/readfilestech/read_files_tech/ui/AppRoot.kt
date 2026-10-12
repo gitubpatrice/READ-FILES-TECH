@@ -169,12 +169,13 @@ private fun Destinations(navController: NavHostController) {
             Routes.VIEWER,
             arguments = listOf(
                 navArgument(Routes.ARG_VIEWER) { type = NavType.StringType },
-                navArgument(Routes.ARG_PATH) {
+            ) + listOf(Routes.ARG_PATH, Routes.ARG_GALLERY).map { name ->
+                navArgument(name) {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
-                },
-            ),
+                }
+            },
         ) { entry ->
             ViewerHost(
                 ViewerKind.fromArgument(entry.arguments?.getString(Routes.ARG_VIEWER)),

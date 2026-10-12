@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.ui.navigation
 
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.viewer.image.GalleryOrder
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 
 /** Where opening a file leads. */
@@ -36,12 +37,19 @@ object FileRouter {
         "docx", "doc", "odt", "odp", "xlsx", "xls", "ods", "pdf", "zip", "epub",
     )
 
-    fun targetFor(entry: FileEntry): FileTarget {
+    /**
+     * @param gallery how the explorer shows the folder, given by the explorer only: an image opens among
+     *   its siblings, in that order (`FES:401` of the 2.15.3); from anywhere else, alone. The other viewers
+     *   ignore it.
+     */
+    fun targetFor(entry: FileEntry, gallery: GalleryOrder? = null): FileTarget {
         // A folder has no extension (FileEntry): it goes nowhere here.
         val viewer = ViewerKind.forExtension(entry.extension)
         return when {
             entry.extension == APK -> FileTarget.Internal(Routes.install(entry.path))
-            viewer != null -> FileTarget.Internal(Routes.viewer(viewer, entry.path))
+            viewer != null -> FileTarget.Internal(
+                Routes.viewer(viewer, entry.path, gallery?.takeIf { viewer == ViewerKind.IMAGE }?.toArgument()),
+            )
             else -> FileTarget.External
         }
     }

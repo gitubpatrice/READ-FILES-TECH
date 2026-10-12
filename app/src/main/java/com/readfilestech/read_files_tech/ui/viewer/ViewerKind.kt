@@ -14,6 +14,8 @@ enum class ViewerKind(val extensions: Set<String>) {
 
     /** `CsvViewerScreen` of the 2.15.3. */
     CSV(setOf("csv")),
+    /** `ImageViewerScreen` of the 2.15.3: a gallery over the images of the folder, zoom, info, share. */
+    IMAGE(setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")),
     ;
 
     companion object {

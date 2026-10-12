@@ -47,6 +47,8 @@ import java.io.File
  * Every viewer's frame: back, the file's name, the viewer's own [actions], share and "Open with…" when the
  * file may leave the app (never for the vault's, D-028), and the three states of [state] — the content
  * drawn by [content] only once it is ready.
+ *
+ * @param barVisible false hides the bar, actions included: a tap on a picture does (the 2.15.3's image viewer).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +57,7 @@ fun <T> ViewerScaffold(
     shareable: File?,
     state: ViewerState<T>,
     onBack: () -> Unit,
+    barVisible: Boolean = true,
     actions: @Composable RowScope.(T) -> Unit = {},
     content: @Composable (T, PaddingValues) -> Unit,
 ) {
@@ -64,7 +67,8 @@ fun <T> ViewerScaffold(
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Scaffold(
-        topBar = {
+        topBar = topBar@{
+            if (!barVisible) return@topBar
             TopAppBar(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
@@ -74,7 +78,8 @@ fun <T> ViewerScaffold(
                 },
                 actions = {
                     if (state is ViewerState.Ready) actions(state.content)
-                    leavable?.let { entry ->
+                    // The entry of the file shown, never of the one before it: a gallery changes [shareable] at each page.
+                    leavable?.takeIf { it.path == shareable?.absolutePath }?.let { entry ->
                         IconButton(onClick = { viewModel.launching.share(context, listOf(entry)) }) {
                             Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.action_share))
                         }
@@ -100,14 +105,14 @@ fun <T> ViewerScaffold(
             ViewerState.Loading -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            is ViewerState.Failed -> FailureMessage(state.failure, padding)
+            is ViewerState.Failed -> ViewerFailureMessage(state.failure, padding)
             is ViewerState.Ready -> content(state.content, padding)
         }
     }
 }
 
 @Composable
-private fun FailureMessage(failure: ViewerFailure, padding: PaddingValues) {
+internal fun ViewerFailureMessage(failure: ViewerFailure, padding: PaddingValues) {
     val text = when (failure) {
         is ViewerFailure.TooLarge -> stringResource(R.string.viewer_too_large, formatBytes(failure.capBytes))
         is ViewerFailure.Reason -> failure.text.resolve()
