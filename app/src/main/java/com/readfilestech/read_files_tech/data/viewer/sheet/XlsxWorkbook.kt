@@ -4,7 +4,9 @@ import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.document.XmlEvents
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipItem
 import org.apache.poi.ss.usermodel.BuiltinFormats
+import org.apache.poi.ss.usermodel.DateUtil
 import org.xmlpull.v1.XmlPullParser
+import java.time.LocalDate
 import java.util.Locale
 
 /**
@@ -35,7 +37,7 @@ internal class XlsxWorkbook private constructor(
         val grid = GridBuilder(limits, budget)
         // A chart sheet, or a sheet whose part is missing: an empty one, as Excel shows a chart's cells.
         sheets[index].second?.let { part ->
-            parts.parse(part, limits, whole = false) { SheetReader(it, grid, numbers.cellText, limits.cellChars).read() }
+            parts.parse(part, limits, whole = false) { SheetReader(it, grid, numbers, limits.cellChars).read() }
         }
         val indices = grid.sharedIndices()
         if (indices.isNotEmpty()) {
@@ -62,6 +64,32 @@ internal class XlsxWorkbook private constructor(
             val index = styles.getOrElse(style) { 0 }
             val code = custom[index] ?: BuiltinFormats.getBuiltinFormat(index) ?: GENERAL
             return synchronized(cellText) { cellText.formatNumber(value, index, code, date1904) }
+        }
+
+        /**
+         * A date of strict OOXML (`t="d"`: "2026-10-09", "2026-10-09T14:35:19.99…", "14:32:39.99…" — Excel's
+         * strict files write every date so) as the serial number its format shows, in the workbook's
+         * calendar; null when [text] is no ISO date or time, or a date no serial number holds (before 1900).
+         */
+        fun isoSerial(text: String): Double? {
+            val match = ISO.matchEntire(text.trim()) ?: return null
+            val (year, month, date) = match.destructured
+            val (hours, minutes, seconds) = match.groupValues.takeLast(TIME_PARTS)
+            val day = if (year.isEmpty()) 0.0 else excelDay(year, month, date)
+            val time = if (hours.isEmpty()) 0.0 else hours.toInt() * HOUR + minutes.toInt() * MINUTE + seconds.toDouble()
+            return day?.takeIf { year.isNotEmpty() || hours.isNotEmpty() }?.plus(time / DAY)
+        }
+
+        private fun excelDay(year: String, month: String, day: String): Double? =
+            runCatching { LocalDate.of(year.toInt(), month.toInt(), day.toInt()) }.getOrNull()
+                ?.let { DateUtil.getExcelDate(it, date1904) }?.takeIf { it >= 0 }
+
+        private companion object {
+            val ISO = Regex("""(?:(\d{4})-(\d{2})-(\d{2}))?T?(?:(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?))?""")
+            const val HOUR = 3600
+            const val MINUTE = 60
+            const val DAY = 86_400.0
+            const val TIME_PARTS = 3
         }
     }
 
@@ -144,7 +172,9 @@ private class WorkbookPart(private val xml: XmlEvents, private val nameChars: In
     suspend fun read() {
         var type = xml.next()
         while (type != XmlPullParser.END_DOCUMENT) {
-            if (type == XmlPullParser.START_TAG) start()
+            // The main namespace's only: Excel's own extensions repeat names (`<x15:workbookPr/>` in `extLst`,
+            // without date1904 — read as the main one, it put a 1904 workbook back in 1900, measured).
+            if (type == XmlPullParser.START_TAG && xml.namespace in MAIN_NAMESPACES) start()
             type = xml.next()
         }
     }
@@ -161,6 +191,8 @@ private class WorkbookPart(private val xml: XmlEvents, private val nameChars: In
     }
 
     private companion object {
+        val MAIN_NAMESPACES =
+            setOf("http://schemas.openxmlformats.org/spreadsheetml/2006/main", "http://purl.oclc.org/ooxml/spreadsheetml/main")
         val RELATIONSHIP_IDS = listOf(
             "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
             "http://purl.oclc.org/ooxml/officeDocument/relationships",
@@ -306,7 +338,12 @@ internal class CellChars(private val max: Int) {
  * One sheet, read as a stream: each row's cells kept within the caps, until the first row past the row cap
  * — the rest of the part is never inflated. `<f>` (a formula's text) is skipped: its cached `<v>` shows.
  */
-private class SheetReader(private val xml: XmlEvents, private val grid: GridBuilder, private val cellText: CellText, cellChars: Int) {
+private class SheetReader(
+    private val xml: XmlEvents,
+    private val grid: GridBuilder,
+    private val numbers: XlsxWorkbook.Numbers,
+    cellChars: Int
+) {
     private var row = -1
     private var column = -1
     private var type: String? = null
@@ -375,8 +412,10 @@ private class SheetReader(private val xml: XmlEvents, private val grid: GridBuil
         when (type) {
             "s" -> if (raw.isNotEmpty()) grid.shared(row, column, raw.trim().toIntOrNull()?.takeIf { it >= 0 } ?: incoherent())
             "inlineStr" -> grid.text(row, column, inline.shown())
-            "str", "e", "d" -> grid.text(row, column, raw)
-            "b" -> if (raw.isNotEmpty()) grid.text(row, column, cellText.booleanText(raw.trim() == "1"))
+            "str", "e" -> grid.text(row, column, raw)
+            // A strict date: a number for its format; its text as it is when it is no ISO date.
+            "d" -> numbers.isoSerial(raw)?.let { grid.number(row, column, it, style) } ?: grid.text(row, column, raw)
+            "b" -> if (raw.isNotEmpty()) grid.text(row, column, numbers.cellText.booleanText(raw.trim() == "1"))
             else -> if (raw.isNotBlank()) {
                 grid.number(
                     row,

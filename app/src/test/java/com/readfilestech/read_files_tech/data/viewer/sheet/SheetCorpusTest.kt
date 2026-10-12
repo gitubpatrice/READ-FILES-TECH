@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import java.io.IOException
@@ -30,19 +31,33 @@ class SheetCorpusTest {
 
     private fun file(name: String) = File(corpus, name).also { check(it.isFile) { "missing corpus file: $it" } }
 
+    /**
+     * One workbook saved by Excel as .xls, .xlsx, strict .xlsx and .ods, and one of the 1904 calendar as .xls
+     * and .xlsx: each against what Excel showed before saving it.
+     */
     @ParameterizedTest
-    @ValueSource(strings = ["excel-main.xls", "excel-main.xlsx"])
-    fun `every cell shows what Excel shows`(name: String) {
-        val oracle = JSONObject(file("excel-main.expected.json").readText())
+    @CsvSource(
+        "excel-main.xls, excel-main",
+        "excel-main.xlsx, excel-main",
+        "excel-main-strict.xlsx, excel-main",
+        "excel-main.ods, excel-main",
+        "excel-1904.xls, excel-1904",
+        "excel-1904.xlsx, excel-1904",
+    )
+    fun `every cell shows what Excel shows`(name: String, made: String) {
+        val oracle = JSONObject(file("$made.expected.json").readText())
         val sheets = oracle.getJSONArray("sheets")
         open(file(name)).use { workbook ->
+            // Excel's .ods export writes a sheet name's spaces as underscores (`table:name` of its content.xml).
             val names = (0 until sheets.length()).map { sheets.getJSONObject(it).getString("name") }
+                .map { if (name.endsWith(".ods")) it.replace(' ', '_') else it }
             assertThat(workbook.sheetNames).containsExactlyElementsIn(names).inOrder()
             val compared = (0 until sheets.length()).map { s ->
                 compare(sheet(workbook, s), s, sheets.getJSONObject(s).getJSONArray("cells"))
             }
-            assertThat(compared.flatMap { it.second }).isEmpty()
-            assertThat(compared.sumOf { it.first }).isGreaterThan(MAIN_CELLS_AT_LEAST)
+            val wrong = compared.flatMap { it.second }.map { it.substringBefore(" [") }
+            assertThat(wrong).containsExactlyElementsIn(EXPORT_DIFFERENCES[name].orEmpty())
+            assertThat(compared.sumOf { it.first }).isAtLeast(if (made == "excel-main") MAIN_CELLS_AT_LEAST else 1)
         }
     }
 
@@ -94,10 +109,15 @@ class SheetCorpusTest {
         assertThrows<IOException> { sheet(workbook) }
     }
 
-    /** Encrypted by Excel with a password: the 2.15.3 called it unreadable; it is a format not opened. */
-    @Test
-    fun `an xls encrypted with a password is a format not opened`() {
-        assertThrows<UnsupportedFormatException> { open(file("excel-main-password.xls")) }
+    /**
+     * Encrypted by Excel with a password (.xls in RC4, .xlsx as a package inside an OLE file), or saved as
+     * Excel 5.0/95: formats not opened, said so. The 2.15.3 called the first unreadable, and showed the last
+     * as a sheet named "潲" holding no text.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = ["excel-main-password.xls", "excel-main-password.xlsx", "excel-main-95.xls"])
+    fun `an encrypted workbook and an Excel 95 one are formats not opened`(name: String) {
+        assertThrows<UnsupportedFormatException> { open(file(name)) }
     }
 
     @Test
@@ -124,6 +144,13 @@ class SheetCorpusTest {
     }
 
     private companion object {
+        /**
+         * Where a file holds another text than Excel showed, by what saved it: an .ods carries each cell's text
+         * as written by the export, and Excel's wrote the negative accounting amount without the fill of its
+         * format ("-1 234,56 €" in content.xml, "- 1 234,56 €" on Excel's screen). The viewer shows the file's.
+         */
+        val EXPORT_DIFFERENCES = mapOf("excel-main.ods" to listOf("sheet 0 11,1"))
+
         /** Cells of the oracle within the caps: 347 measured by the prototype, the wide row's past 200 aside. */
         const val MAIN_CELLS_AT_LEAST = 200
         val BOF = byteArrayOf(0x09, 0x08, 0x10, 0x00, 0x00, 0x06)
