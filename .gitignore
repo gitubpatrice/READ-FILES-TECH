@@ -55,3 +55,6 @@ desktop.ini
 
 # Local Claude Code agent worktrees (nested git checkouts), never part of the repository
 /.claude/worktrees/
+
+# Python bytecode of the tools (tools/corpus imports its generators)
+__pycache__/
