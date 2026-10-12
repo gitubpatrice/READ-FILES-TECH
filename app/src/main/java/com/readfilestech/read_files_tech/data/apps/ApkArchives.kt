@@ -2,6 +2,8 @@ package com.readfilestech.read_files_tech.data.apps
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.provider.Settings
 import androidx.core.graphics.drawable.toBitmap
@@ -38,13 +40,26 @@ class ApkArchives @Inject constructor(@param:ApplicationContext private val cont
                         label = application.loadLabel(manager).toString(),
                         packageName = info.packageName,
                         versionName = info.versionName,
-                        icon = application.loadIcon(manager)?.toBitmap(iconPx, iconPx),
+                        icon = iconOf(application, manager, iconPx),
                     )
                 }
             }
         } catch (expected: RuntimeException) {
             null
         }
+    }
+
+    /**
+     * The app's icon at [iconPx], or null. Android decodes it at the size the archive declares: a hostile
+     * APK can declare a gigantic one, and the OutOfMemoryError — an Error, past the catch above — ended
+     * the app each time its folder was listed (security review, phase 3b). Only the icon is given up: the
+     * huge allocation is the one that failed, the heap is free again.
+     */
+    @Suppress("SwallowedException")
+    private fun iconOf(application: ApplicationInfo, manager: PackageManager, iconPx: Int): Bitmap? = try {
+        application.loadIcon(manager)?.toBitmap(iconPx, iconPx)
+    } catch (expected: OutOfMemoryError) {
+        null
     }
 
     /** "Install unknown apps" allowed for this app (asked once, in the system's settings). */

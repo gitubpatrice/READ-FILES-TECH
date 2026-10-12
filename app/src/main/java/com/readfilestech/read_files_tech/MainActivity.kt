@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
         accessGranted = access.isGranted()
         // Once: a recreated activity (rotation) must not replay the tile that opened it.
         if (savedInstanceState == null) takeShortcut(intent)
+        dropExtras(intent)
         setContent {
             // Followed, not read once: the home's theme menu applies at once.
             val theme by themes.current.collectAsStateWithLifecycle()
@@ -62,6 +63,18 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         takeShortcut(intent)
+        dropExtras(intent)
+    }
+
+    /**
+     * Every other extra dropped, unread: this activity is exported, and the navigation reads its intent
+     * for the extras of an explicit deep link (`android-support-nav:controller:deepLinkIds`), which any
+     * app could forge to open any screen — the installer among them — with arguments of its choice
+     * (security review, phase 3b). The `shortcut` extra was the only entry, already read. Replaced, not
+     * unparcelled: another app's unknown Parcelable is never opened.
+     */
+    private fun dropExtras(intent: Intent?) {
+        intent?.replaceExtras(null as Bundle?)
     }
 
     /**

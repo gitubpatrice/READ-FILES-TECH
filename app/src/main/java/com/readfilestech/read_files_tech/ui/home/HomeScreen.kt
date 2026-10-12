@@ -92,7 +92,10 @@ fun HomeScreen(
 
     fun open(path: String) = viewModel.open(path) { entry: FileEntry ->
         when (val target = FileRouter.targetFor(entry)) {
-            is FileTarget.Internal -> onNavigate(target.route)
+            is FileTarget.Internal -> {
+                onNavigate(target.route)
+                true
+            }
             FileTarget.External -> viewModel.launching.view(context, entry, chooser = false)
         }
     }

@@ -49,9 +49,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 
-data class ApkInstallUiState(val loading: Boolean = true, val info: ApkInfo? = null, val allowed: Boolean = false)
+data class ApkInstallUiState(
+    val loading: Boolean = true,
+    val info: ApkInfo? = null,
+    val allowed: Boolean = false,
+    /** The file described, as it was then; null when there is none to install. */
+    val stamp: ApkStamp? = null,
+)
 
 @HiltViewModel
 class ApkInstallViewModel @Inject constructor(
@@ -61,15 +68,45 @@ class ApkInstallViewModel @Inject constructor(
     val launching: EntryLaunching,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
-    val file = File(checkNotNull(savedState.get<String>(Routes.ARG_PATH)))
+    /** As asked; null only if the route came without one (an outside app's deep link — refused). */
+    private val requested: File? = savedState.get<String>(Routes.ARG_PATH)?.let(::File)
+    val name: String = requested?.name.orEmpty()
     private val state = MutableStateFlow(ApkInstallUiState())
     val uiState: StateFlow<ApkInstallUiState> = state.asStateFlow()
 
-    /** On each return too: back from the settings, an access just allowed shows at once. */
+    /**
+     * On each return too: back from the settings, an access just allowed shows at once. The archive is
+     * read by its REAL path, and its size and date kept: what is described is what [install] hands over.
+     */
     fun reload() {
         viewModelScope.launch {
             state.value = withContext(io) {
-                ApkInstallUiState(loading = false, info = apks.describe(file, ICON_PX), allowed = apks.canInstall())
+                val stamp = requested?.let { ApkStamp.of(realFile(it)) }
+                ApkInstallUiState(
+                    loading = false,
+                    info = stamp?.let { apks.describe(it.file, ICON_PX) },
+                    allowed = apks.canInstall(),
+                    stamp = stamp,
+                )
+            }
+        }
+    }
+
+    /**
+     * The APK to the system's installer — if it is still the file described: replaced or rewritten
+     * meanwhile (another app, a link retargeted), it is read and shown again instead (security review,
+     * phase 3b; the installer shows its own confirmation too).
+     */
+    fun install(onReady: (File) -> Unit, onHandedOver: () -> Unit) {
+        viewModelScope.launch {
+            val shown = state.value.stamp ?: return@launch
+            val now = withContext(io) { ApkStamp.of(realFile(shown.file)) }
+            if (now == shown) {
+                onReady(shown.file)
+                onHandedOver()
+            } else {
+                messages.info(uiText(R.string.install_changed))
+                reload()
             }
         }
     }
@@ -84,6 +121,20 @@ class ApkInstallViewModel @Inject constructor(
 
     private companion object {
         const val ICON_PX = 144
+
+        @Suppress("SwallowedException") // unresolvable: the path as given, which the guard then judges
+        fun realFile(file: File): File = try {
+            file.canonicalFile
+        } catch (expected: IOException) {
+            file
+        }
+    }
+}
+
+/** A file as it was when described: where it really is, its size and its date. */
+data class ApkStamp(val file: File, val length: Long, val modifiedMs: Long) {
+    companion object {
+        fun of(file: File) = ApkStamp(file, file.length(), file.lastModified())
     }
 }
 
@@ -132,7 +183,7 @@ fun ApkInstallDialog(onDismiss: () -> Unit, viewModel: ApkInstallViewModel = hil
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
                 info == null -> Text(stringResource(R.string.install_not_apk), style = MaterialTheme.typography.bodyMedium)
                 !state.allowed -> Text(stringResource(R.string.install_permission), style = MaterialTheme.typography.bodyMedium)
-                else -> Text(viewModel.file.name, style = MaterialTheme.typography.bodyMedium)
+                else -> Text(viewModel.name, style = MaterialTheme.typography.bodyMedium)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
@@ -142,8 +193,10 @@ fun ApkInstallDialog(onDismiss: () -> Unit, viewModel: ApkInstallViewModel = hil
                         Text(stringResource(R.string.action_open_settings))
                     }
                     else -> TextButton(onClick = {
-                        viewModel.launching.view(context, DirectoryListing.entryOf(viewModel.file), chooser = false)
-                        onDismiss()
+                        viewModel.install(
+                            onReady = { viewModel.launching.view(context, DirectoryListing.entryOf(it), chooser = false) },
+                            onHandedOver = onDismiss,
+                        )
                     }) { Text(stringResource(R.string.action_install)) }
                 }
             }

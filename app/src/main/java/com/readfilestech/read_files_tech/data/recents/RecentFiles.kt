@@ -78,8 +78,12 @@ class RecentFiles @Inject constructor(
         val stored = read() ?: return emptyList()
         val gone = stored.entries.filter { visibility.isGone(File(it.path)) }
         if (gone.isNotEmpty()) save(stored.entries - gone.toSet(), stored.unreadable)
-        // Dart's `File(path).exists()`: true for a file only, not for a directory.
-        return stored.entries.filter { File(it.path).isFile }.sortedByDescending(RecentFile::lastOpened)
+        // Dart's `File(path).exists()`: true for a file only, not for a directory. Once per path, the
+        // latest: the core never de-duplicated a stored list, and a path twice in the home's lists — its
+        // keys — would end the start screen at every launch (Claude review R8).
+        return stored.entries.filter {
+            File(it.path).isFile
+        }.sortedByDescending(RecentFile::lastOpened).distinctBy(RecentFile::path)
     }
 
     /**

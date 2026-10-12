@@ -48,6 +48,8 @@ class PickerSourcesTest {
         // An output that fell back to the app's own folder is found too (inventory D46).
         val fallback = file(external, "Files Tech/OCR/texte.txt", 3_000)
         file(primary, "Files Tech/Scans/.hidden.pdf", 4_000)
+        // A reservation still empty: a tool writing it, or one that died (Claude review R8).
+        File(primary, "Files Tech/Scans/reserved.pdf").createNewFile()
         val removed = file(primary, "Files Tech/Conversions/removed.txt", 5_000)
         sources().remove(removed.path)
 

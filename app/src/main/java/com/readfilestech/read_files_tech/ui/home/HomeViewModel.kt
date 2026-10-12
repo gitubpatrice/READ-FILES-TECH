@@ -17,6 +17,7 @@ import com.readfilestech.read_files_tech.ui.theme.ThemeMode
 import com.readfilestech.read_files_tech.ui.theme.ThemeSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,8 +54,12 @@ class HomeViewModel @Inject constructor(
     private val state = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = state.asStateFlow()
 
+    /** The reload under way: a newer one cancels it, so a slow one never puts back a list already changed (R8). */
+    private var reloading: Job? = null
+
     fun reload() {
-        viewModelScope.launch {
+        reloading?.cancel()
+        reloading = viewModelScope.launch {
             state.value = withContext(io) {
                 HomeUiState(
                     loaded = true,
@@ -76,9 +81,10 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Opens [path] if it is still there — the 2.15.x pushed a viewer onto a missing file (F26) — through
-     * [then], then records it as opened: AFTER, so a format nothing opens is not recorded (F17).
+     * [then], which says whether something opened it; recorded as opened only then: a file nothing opens
+     * is not recorded (F17; GPT review R8).
      */
-    fun open(path: String, then: (FileEntry) -> Unit) {
+    fun open(path: String, then: (FileEntry) -> Boolean) {
         viewModelScope.launch {
             val entry = withContext(io) { File(path).takeIf(File::isFile)?.let(DirectoryListing::entryOf) }
             if (entry == null) {
@@ -86,8 +92,7 @@ class HomeViewModel @Inject constructor(
                 reload()
                 return@launch
             }
-            then(entry)
-            change { recents.addOrUpdate(path) }
+            if (then(entry)) change { recents.addOrUpdate(path) }
         }
     }
 

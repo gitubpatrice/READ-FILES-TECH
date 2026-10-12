@@ -83,7 +83,11 @@ class OutputStorage(
     /**
      * Writes the output into its [reservation], atomically: a temporary file beside it, synced, then
      * moved over the reservation in one step — and only while the reservation is still the empty file
-     * reserved: what took its place meanwhile is left alone.
+     * reserved: what took its place during the write is left alone. One instant remains, between that
+     * check and the rename, which no rename on Android can close (the one that refuses to replace would
+     * refuse the reservation itself) — the window accepted for copies too (Claude reviews R6, R8).
+     * Writing into the reservation in place would close it, and leave a truncated file under the real
+     * name when the app dies half-way (review R4).
      */
     fun write(reservation: File, write: (OutputStream) -> Unit) {
         AtomicFiles.write(reservation, publish = { from, to ->

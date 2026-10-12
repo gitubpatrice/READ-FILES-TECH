@@ -283,6 +283,7 @@
     <string name="install_not_apk">Android ne peut pas lire ce fichier comme une application à installer.</string>
     <string name="install_permission">Pour installer une APK depuis Read Files Tech, activez d\'abord « Autoriser depuis cette source » dans les réglages Android, puis revenez ici.</string>
     <string name="error_no_settings">Ce réglage ne peut pas être ouvert sur ce téléphone.</string>
+    <string name="install_changed">Le fichier a changé depuis son affichage : vérifiez-le à nouveau.</string>
     <string name="feature_color_picker">Sélecteur de couleur</string>
     <string name="feature_txt_tools">Outils TXT</string>
     <string name="feature_csv_tools">Outils CSV</string>

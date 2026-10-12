@@ -98,9 +98,12 @@ class PickerSources(
             .sortedBy { it.name.lowercase() }
     }
 
-    /** The files a tool left in [dir]: regular files only — a link is never followed — and not hidden. */
+    /**
+     * The files a tool left in [dir]: regular files only — a link is never followed —, not hidden, and
+     * not empty: an empty one is a reservation being written, or left by a tool that died (Claude R8).
+     */
     private fun outputsIn(dir: File): List<FileEntry> = dir.listFiles().orEmpty()
-        .filter { !it.name.startsWith('.') && Files.isRegularFile(it.toPath(), LinkOption.NOFOLLOW_LINKS) }
+        .filter { !it.name.startsWith('.') && Files.isRegularFile(it.toPath(), LinkOption.NOFOLLOW_LINKS) && it.length() > 0 }
         .map {
             FileEntry(it.absolutePath, it.name, isDirectory = false, size = it.length(), modifiedMs = it.lastModified(), isSymlink = false)
         }

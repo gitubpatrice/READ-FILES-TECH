@@ -16,8 +16,12 @@ class EntryLaunching @Inject constructor(
     private val guard: PathGuard,
     private val messages: UserMessages,
 ) {
-    /** Opens [entry] in another app; the chooser asks which ("Open with…"). */
-    fun view(from: Context, entry: FileEntry, chooser: Boolean) = say(launcher.view(from, entry.file, chooser))
+    /** Opens [entry] in another app; the chooser asks which ("Open with…"). True when an app was started. */
+    fun view(from: Context, entry: FileEntry, chooser: Boolean): Boolean {
+        val outcome = launcher.view(from, entry.file, chooser)
+        say(outcome)
+        return outcome == LaunchOutcome.STARTED
+    }
 
     /** The share sheet for the files among [entries]; folders are left out, as the 2.15.x did. */
     fun share(from: Context, entries: List<FileEntry>) {

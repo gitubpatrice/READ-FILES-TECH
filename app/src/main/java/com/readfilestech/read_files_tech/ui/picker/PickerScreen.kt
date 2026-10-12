@@ -200,9 +200,11 @@ private fun RecentsTab(
         }
         return
     }
-    fun open(entry: FileEntry) = when (val target = FileRouter.targetFor(entry)) {
-        is FileTarget.Internal -> onNavigate(target.route)
-        FileTarget.External -> viewModel.launching.view(context, entry, chooser = false)
+    fun open(entry: FileEntry) {
+        when (val target = FileRouter.targetFor(entry)) {
+            is FileTarget.Internal -> onNavigate(target.route)
+            FileTarget.External -> viewModel.launching.view(context, entry, chooser = false)
+        }
     }
     LazyColumn(Modifier.fillMaxSize()) {
         items(state.recents, key = FileEntry::path) { entry ->
@@ -218,14 +220,20 @@ private fun RecentsTab(
                     null
                 } else {
                     { dismiss ->
-                        DropdownMenuItem(text = { Text(stringResource(R.string.action_open)) }, onClick = {
-                            dismiss()
-                            open(entry)
-                        })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) }, onClick = {
-                            dismiss()
-                            viewModel.launching.share(context, listOf(entry))
-                        })
+                        val canLeave = entry.path !in state.cannotLeave
+                        // Another app opens it only if it may leave the app; the app's own viewer always.
+                        if (canLeave || FileRouter.targetFor(entry) is FileTarget.Internal) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.action_open)) }, onClick = {
+                                dismiss()
+                                open(entry)
+                            })
+                        }
+                        if (canLeave) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) }, onClick = {
+                                dismiss()
+                                viewModel.launching.share(context, listOf(entry))
+                            })
+                        }
                         DropdownMenuItem(text = { Text(stringResource(R.string.picker_remove)) }, onClick = {
                             dismiss()
                             viewModel.remove(entry)

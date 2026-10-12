@@ -127,10 +127,10 @@ private fun Destinations(navController: NavHostController) {
                 onOpenTrash = { navController.navigate(Routes.TRASH) { launchSingleTop = true } },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) { launchSingleTop = true } },
                 onChooseFolder = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
-                onFolderChosen = { navController.handBack(Routes.RESULT_PICKED_FOLDER, it) },
-                onFilesChosen = { navController.handBack(Routes.RESULT_PICKED_FILES, ArrayList(it)) },
+                onFolderChosen = { navController.handBack(entry, Routes.RESULT_PICKED_FOLDER, it) },
+                onFilesChosen = { navController.handBack(entry, Routes.RESULT_PICKED_FILES, ArrayList(it)) },
                 onNavigate = { navController.navigate(it) },
-                onLeave = { navController.popBackStack() },
+                onLeave = { navController.leave(entry) },
             )
         }
         composable(
@@ -155,28 +155,28 @@ private fun Destinations(navController: NavHostController) {
                 },
                 onBrowse = { navController.navigate(it) },
                 onNavigate = { navController.navigate(it) },
-                onFilesPicked = { navController.handBack(Routes.RESULT_PICKED_FILES, ArrayList(it)) },
-                onFolderPicked = { navController.handBack(Routes.RESULT_PICKED_FOLDER, it) },
-                onCancel = { navController.popBackStack() },
+                onFilesPicked = { navController.handBack(entry, Routes.RESULT_PICKED_FILES, ArrayList(it)) },
+                onFolderPicked = { navController.handBack(entry, Routes.RESULT_PICKED_FOLDER, it) },
+                onCancel = { navController.leave(entry) },
             )
         }
-        dialog(Routes.INSTALL, arguments = listOf(navArgument(Routes.ARG_PATH) { type = NavType.StringType })) {
-            ApkInstallDialog(onDismiss = { navController.popBackStack() })
+        dialog(Routes.INSTALL, arguments = listOf(navArgument(Routes.ARG_PATH) { type = NavType.StringType })) { entry ->
+            ApkInstallDialog(onDismiss = { navController.leave(entry) })
         }
-        composable(Routes.TRASH) { TrashScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.TRASH) { entry -> TrashScreen(onBack = { navController.leave(entry) }) }
         composable(Routes.SEARCH) { entry ->
             val picked = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
             SearchScreen(
                 pickedRoot = picked.value,
                 onPickedRootUsed = picked.consume,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.leave(entry) },
                 onChooseRoot = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
                 onOpenFolder = { navController.navigate(Routes.explorer(it)) },
             )
         }
         composable(Routes.PENDING, arguments = listOf(navArgument(Routes.ARG_FEATURE) { type = NavType.StringType })) { entry ->
             val feature = entry.arguments?.getString(Routes.ARG_FEATURE)?.let { name -> Feature.entries.find { it.name == name } }
-            PendingScreen(feature, onBack = { navController.popBackStack() })
+            PendingScreen(feature, onBack = { navController.leave(entry) })
         }
     }
 }
@@ -194,10 +194,20 @@ private fun <T> NavBackStackEntry.picked(key: String): Picked<T> {
     return Picked(value) { savedStateHandle[key] = null }
 }
 
-/** A chooser's result, set on the entry that asked, then back to it. */
-private fun NavHostController.handBack(key: String, value: Any) {
+/**
+ * A chooser's result, set on the entry that asked, then back to it — only while [from] is still on top:
+ * a second tap during the exit animation handed the result to nobody and popped the screen that asked,
+ * the home itself when it was the one (Claude review R8).
+ */
+private fun NavHostController.handBack(from: NavBackStackEntry, key: String, value: Any) {
+    if (currentBackStackEntry?.id != from.id) return
     previousBackStackEntry?.savedStateHandle?.set(key, value)
     popBackStack()
+}
+
+/** Leaves [from], if it is still the screen on top (the same double tap, on a back or a cancel button). */
+private fun NavHostController.leave(from: NavBackStackEntry) {
+    if (currentBackStackEntry?.id == from.id) popBackStack()
 }
 
 /**

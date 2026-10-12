@@ -112,6 +112,14 @@ class RecentFilesTest {
         assertThat(recents.load().map { it.name }).doesNotContain("f1.txt")
     }
 
+    /** The core never de-duplicated a stored list: a path twice would be two rows with one key (R8). */
+    @Test
+    fun `a path stored twice is listed once, at its latest opening`() {
+        plant(dart(a, "2026-10-09T09:00:00.000", 5), dart(b, "2026-10-10T09:00:00.000", 2), dart(a, "2026-10-11T09:00:00.000", 5))
+        assertThat(recents.load().map { it.path to it.lastOpened.toIso8601String() })
+            .containsExactly(a.path to "2026-10-11T09:00:00.000", b.path to "2026-10-10T09:00:00.000").inOrder()
+    }
+
     /** Inventory D44: the 2.15.x evicted a favourite like any entry once 20 newer files were opened. */
     @Test
     fun `a favourite is never cut by the cap`() {

@@ -109,9 +109,11 @@ fun ExplorerScreen(
     BackHandler(enabled = state.selecting) { viewModel.clearSelection() }
     BackHandler(enabled = !state.selecting && state.canGoBack) { browser.back() }
 
-    fun open(entry: FileEntry) = when (val target = FileRouter.targetFor(entry)) {
-        is FileTarget.Internal -> onNavigate(target.route)
-        FileTarget.External -> launching.view(context, entry, chooser = false)
+    fun open(entry: FileEntry) {
+        when (val target = FileRouter.targetFor(entry)) {
+            is FileTarget.Internal -> onNavigate(target.route)
+            FileTarget.External -> launching.view(context, entry, chooser = false)
+        }
     }
 
     fun click(entry: FileEntry) {

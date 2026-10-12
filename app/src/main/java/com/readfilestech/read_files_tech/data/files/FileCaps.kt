@@ -35,7 +35,13 @@ object FileCaps {
     /** Pixels of a decoded image, whatever its file size. */
     const val IMAGE_PIXELS = 64_000_000L
 
-    /** @throws FileTooLargeException [file] is larger than [cap]. */
+    /**
+     * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
+     * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
+     * (Claude review R8).
+     *
+     * @throws FileTooLargeException [file] is larger than [cap].
+     */
     fun check(file: File, cap: Long) {
         if (file.length() > cap) throw FileTooLargeException(cap)
     }

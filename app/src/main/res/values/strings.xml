@@ -277,6 +277,7 @@
     <string name="install_not_apk">Android cannot read this file as an app to install.</string>
     <string name="install_permission">To install an app from Read Files Tech, first allow \"Install unknown apps\" for it in the Android settings, then come back here.</string>
     <string name="error_no_settings">This setting cannot be opened on this phone.</string>
+    <string name="install_changed">The file changed since it was shown: check it again.</string>
     <string name="feature_color_picker">Color picker</string>
     <string name="feature_txt_tools">Text tools</string>
     <string name="feature_csv_tools">CSV tools</string>

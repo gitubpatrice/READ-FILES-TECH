@@ -38,6 +38,11 @@ data class PickerUiState(
     /** The files chosen so far, choosing several: in the order chosen. */
     val picked: List<String> = emptyList(),
     val granted: Boolean = true,
+    /**
+     * Recents that may not leave the app (an output kept in its private fallback): no "Share", no other
+     * app to open them — buttons that would only fail (inventory D46; Claude review R8).
+     */
+    val cannotLeave: Set<String> = emptySet(),
 )
 
 /** The picker: `RftPickerScreen.pickOne` / `pickMany` / `pickFolder` of the 2.15.3, its route's arguments. */
@@ -70,12 +75,14 @@ class PickerViewModel @Inject constructor(
             val folderMode = mode == PickMode.FOLDER
             val loaded = withContext(io) {
                 val shortcuts = sources.shortcuts(extensions, folderMode)
+                val recents = if (folderMode) emptyList() else sources.recents(extensions)
                 PickerUiState(
                     loading = false,
-                    recents = if (folderMode) emptyList() else sources.recents(extensions),
+                    recents = recents,
                     shortcuts = shortcuts,
                     folders = sources.folders(shortcuts),
                     granted = access.isGranted(),
+                    cannotLeave = recents.filterNot(launching::canLeave).mapTo(HashSet(), FileEntry::path),
                 )
             }
             state.update { loaded.copy(picked = it.picked) }
