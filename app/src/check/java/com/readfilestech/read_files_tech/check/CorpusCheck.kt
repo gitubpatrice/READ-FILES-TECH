@@ -136,6 +136,7 @@ class CorpusCheck(private val sandbox: File) {
 
         /** About what a phone shows of a table across (columns of 136 dp), and then some. */
         const val FIRST_SCREEN_COLUMNS = 8
+
         /** The page the image viewer decodes for: a phone of 1080 x 2400 held upright. */
         const val PAGE_WIDTH = 1080
         const val PAGE_HEIGHT = 2400
