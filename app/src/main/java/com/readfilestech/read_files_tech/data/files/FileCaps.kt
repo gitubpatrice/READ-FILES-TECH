@@ -24,6 +24,17 @@ object FileCaps {
     /** One entry of an archive, once decompressed (zip, ods, epub, docx text). */
     const val ZIP_ENTRY_DECOMPRESSED = 200 * MIB
     const val CSV_FILE = 50 * MIB
+
+    /**
+     * What the CSV viewer builds from one file, whatever its size: Excel's own limits for a sheet —
+     * rows (the header row included), columns, and characters in a cell — so that every CSV Excel opens
+     * whole opens whole here. The 2.15.3 had none: it laid every cell out at once (a `DataTable`), and a
+     * file of 50 MiB froze it long before its cap. Rows and columns beyond are not shown, and the screen
+     * says so; a longer cell is shown, searched and sorted by its first [CSV_CELL_CHARS] characters.
+     */
+    const val CSV_ROWS = 1_048_576
+    const val CSV_COLUMNS = 16_384
+    const val CSV_CELL_CHARS = 32_767
     const val IMAGE_FILE = 100 * MIB
     const val IMAGES_TO_PDF_TOTAL = 200 * MIB
     const val ZIP_CREATE_TOTAL = 200 * MIB

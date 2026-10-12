@@ -11,6 +11,9 @@ package com.readfilestech.read_files_tech.ui.viewer
 enum class ViewerKind(val extensions: Set<String>) {
     /** `TxtViewerScreen` of the 2.15.3: plain text, and the code it coloured (css, js, php, xml, dart). */
     TEXT(setOf("txt", "log", "ini", "conf", "yaml", "yml", "xml", "css", "js", "php", "dart")),
+
+    /** `CsvViewerScreen` of the 2.15.3. */
+    CSV(setOf("csv")),
     ;
 
     companion object {

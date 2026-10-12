@@ -7,6 +7,7 @@ import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
+import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
@@ -81,6 +82,13 @@ class CorpusCheck(private val sandbox: File) {
             for (index in 0 until minOf(document.rowCount, FIRST_SCREEN_ROWS)) document.row(index)
             document.row(document.rowCount - 1)
         }
+        ViewerKind.CSV -> CsvTable.read(source).also { table ->
+            // The cells the screen decodes first, on its main thread: the header, the first rows, the last one.
+            val columns = minOf(table.columns, FIRST_SCREEN_COLUMNS)
+            table.header(0, columns, CsvTable.SHOWN_CHARS)
+            for (row in 0 until minOf(table.rows, FIRST_SCREEN_ROWS)) table.cells(row, 0, columns, CsvTable.SHOWN_CHARS)
+            if (table.rows > 0) table.cells(table.rows - 1, 0, columns, CsvTable.SHOWN_CHARS)
+        }
     }
 
     private fun outcomeOf(error: Throwable): String = when (error) {
@@ -121,5 +129,8 @@ class CorpusCheck(private val sandbox: File) {
 
         /** About what a phone shows of a text at once, and then some. */
         const val FIRST_SCREEN_ROWS = 100
+
+        /** About what a phone shows of a table across (columns of 136 dp), and then some. */
+        const val FIRST_SCREEN_COLUMNS = 8
     }
 }

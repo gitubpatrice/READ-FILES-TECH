@@ -200,7 +200,11 @@ class TextDocument private constructor(private val rows: TextRows) {
             return TextDocument(indexRows(bytes, size, encoding))
         }
 
-        private suspend fun readAll(input: InputStream, expected: Long, cap: Long): Pair<ByteArray, Int> {
+        /**
+         * The bytes of [input] and how many there are, read in pieces of [READ_CHUNK], within [cap]; the
+         * CSV viewer reads its files the same way.
+         */
+        internal suspend fun readAll(input: InputStream, expected: Long, cap: Long): Pair<ByteArray, Int> {
             // One byte more than announced: a file that grew is read on, up to the cap.
             var buffer = ByteArray((expected.coerceIn(0, cap) + 1).toInt())
             var size = 0

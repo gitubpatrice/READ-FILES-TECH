@@ -332,6 +332,39 @@
     <string name="text_size">Taille du texte</string>
     <string name="text_size_value">%1$d pt</string>
     <string name="value_copied">Copié : %1$s</string>
+
+    <string name="action_edit">Modifier</string>
+    <plurals name="csv_rows">
+        <item quantity="one">%d ligne</item>
+        <item quantity="many">%d lignes</item>
+        <item quantity="other">%d lignes</item>
+    </plurals>
+    <plurals name="csv_rows_found">
+        <item quantity="one">%1$d ligne sur %2$d</item>
+        <item quantity="many">%1$d lignes sur %2$d</item>
+        <item quantity="other">%1$d lignes sur %2$d</item>
+    </plurals>
+    <plurals name="csv_columns">
+        <item quantity="one">%d colonne</item>
+        <item quantity="many">%d colonnes</item>
+        <item quantity="other">%d colonnes</item>
+    </plurals>
+    <plurals name="csv_rows_cut">
+        <item quantity="one">Seule %d ligne est affichée, le maximum d\'une feuille de calcul.</item>
+        <item quantity="many">Seules les %d premières lignes sont affichées, le maximum d\'une feuille de calcul.</item>
+        <item quantity="other">Seules les %d premières lignes sont affichées, le maximum d\'une feuille de calcul.</item>
+    </plurals>
+    <plurals name="csv_columns_cut">
+        <item quantity="one">Seule %d colonne est affichée, le maximum d\'une feuille de calcul.</item>
+        <item quantity="many">Seules les %d premières colonnes sont affichées, le maximum d\'une feuille de calcul.</item>
+        <item quantity="other">Seules les %d premières colonnes sont affichées, le maximum d\'une feuille de calcul.</item>
+    </plurals>
+    <string name="csv_no_match">Aucune ligne ne contient « %1$s »</string>
+    <string name="csv_sort">Trier selon cette colonne</string>
+    <string name="csv_sorted_ascending">Trié, ordre croissant</string>
+    <string name="csv_sorted_descending">Trié, ordre décroissant</string>
+    <string name="csv_column_number">Colonne %1$d</string>
+
     <string name="action_choose_file">Choisir un fichier</string>
     <string name="action_change">Changer</string>
     <string name="action_copy">Copier</string>

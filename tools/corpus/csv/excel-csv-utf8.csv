@@ -1,0 +1,8 @@
+﻿Nom;Ville;Montant;Quantité;Code postal;Remarque
+Émile Zola;Paris;1234,56;3;75001;Livré
+albert;Évry;9,5;12;91000;"Il a dit ""bonjour"""
+Zoé;Saint-Étienne;-0,25;100;42000;"Ligne 1
+Ligne 2"
+;;;;;
+Bob;"Lyon; Rhône";10000000;7;01000;"virgule, point-virgule ; fin"
+çà€;Nice;0;1;06000;

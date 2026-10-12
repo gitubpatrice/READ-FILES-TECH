@@ -176,9 +176,11 @@ private fun Destinations(navController: NavHostController) {
                 },
             ),
         ) { entry ->
-            ViewerHost(ViewerKind.fromArgument(entry.arguments?.getString(Routes.ARG_VIEWER)), onBack = {
-                navController.leave(entry)
-            })
+            ViewerHost(
+                ViewerKind.fromArgument(entry.arguments?.getString(Routes.ARG_VIEWER)),
+                onBack = { navController.leave(entry) },
+                onNavigate = { navController.navigate(it) },
+            )
         }
         composable(Routes.TRASH) { entry -> TrashScreen(onBack = { navController.leave(entry) }) }
         composable(Routes.SEARCH) { entry ->

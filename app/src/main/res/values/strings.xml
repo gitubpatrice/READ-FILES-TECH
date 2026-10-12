@@ -327,6 +327,37 @@
     <string name="text_size">Text size</string>
     <string name="text_size_value">%1$d pt</string>
     <string name="value_copied">Copied: %1$s</string>
+
+    <!-- CSV viewer -->
+    <string name="action_edit">Edit</string>
+    <plurals name="csv_rows">
+        <item quantity="one">%d row</item>
+        <item quantity="other">%d rows</item>
+    </plurals>
+    <!-- "12 rows of 1200": the rows the search found, of all of them. -->
+    <plurals name="csv_rows_found">
+        <item quantity="one">%1$d row of %2$d</item>
+        <item quantity="other">%1$d rows of %2$d</item>
+    </plurals>
+    <plurals name="csv_columns">
+        <item quantity="one">%d column</item>
+        <item quantity="other">%d columns</item>
+    </plurals>
+    <plurals name="csv_rows_cut">
+        <item quantity="one">Only %d row is shown, the most a spreadsheet holds.</item>
+        <item quantity="other">Only the first %d rows are shown, the most a spreadsheet holds.</item>
+    </plurals>
+    <plurals name="csv_columns_cut">
+        <item quantity="one">Only %d column is shown, the most a spreadsheet holds.</item>
+        <item quantity="other">Only the first %d columns are shown, the most a spreadsheet holds.</item>
+    </plurals>
+    <string name="csv_no_match">No row contains \"%1$s\"</string>
+    <string name="csv_sort">Sort by this column</string>
+    <string name="csv_sorted_ascending">Sorted, ascending</string>
+    <string name="csv_sorted_descending">Sorted, descending</string>
+    <!-- A column whose header is empty, for TalkBack. -->
+    <string name="csv_column_number">Column %1$d</string>
+
     <!-- Tools (phase 5) -->
     <string name="action_choose_file">Choose a file</string>
     <string name="action_change">Change</string>
