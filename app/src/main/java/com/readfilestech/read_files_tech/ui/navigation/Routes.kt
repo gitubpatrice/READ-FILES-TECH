@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui.navigation
 import androidx.annotation.StringRes
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
+import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 
 /** The app's destinations. Paths travel URI-encoded: a file name may hold `?`, `&`, `#` or `%`. */
 object Routes {
@@ -30,6 +31,13 @@ object Routes {
     const val INSTALL = "install?$ARG_PATH={$ARG_PATH}"
 
     fun install(path: String): String = "install?$ARG_PATH=${encode(path)}"
+
+    const val ARG_VIEWER = "viewer"
+
+    /** The viewer named [ARG_VIEWER] (a [ViewerKind]), on the file at [ARG_PATH]. */
+    const val VIEWER = "viewer/{$ARG_VIEWER}?$ARG_PATH={$ARG_PATH}"
+
+    fun viewer(kind: ViewerKind, path: String): String = "viewer/${kind.name}?$ARG_PATH=${encode(path)}"
 
     /** A screen of a later phase of the port: says so instead of failing (see [Feature]). */
     const val PENDING = "pending/{$ARG_FEATURE}"

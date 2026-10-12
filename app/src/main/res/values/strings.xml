@@ -316,4 +316,15 @@
     <string name="tool_hint_trash">Restore deleted items</string>
     <string name="pending_title">Not available yet</string>
     <string name="pending_body">This screen comes with a later step of the rewrite of Read Files Tech in Kotlin.</string>
+
+    <!-- Viewers (phase 4): why a file does not open, said in words — never the parser's exception. -->
+    <string name="viewer_too_large">This file is too large to open here (over %1$s).</string>
+    <string name="viewer_unreadable">This file is damaged, or is not in the format its name says.</string>
+    <string name="viewer_unsupported">This format cannot be opened here. Try “Open with…”.</string>
+    <string name="viewer_out_of_memory">Not enough memory on this phone to open this file.</string>
+    <string name="viewer_cannot_open">Cannot open this file: %1$s</string>
+    <string name="text_colors">Colours</string>
+    <string name="text_size">Text size</string>
+    <string name="text_size_value">%1$d pt</string>
+    <string name="color_copied">Copied: %1$s</string>
 </resources>

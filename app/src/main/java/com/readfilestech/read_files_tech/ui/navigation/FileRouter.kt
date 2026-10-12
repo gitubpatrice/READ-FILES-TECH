@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.ui.navigation
 
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 
 /** Where opening a file leads. */
 sealed interface FileTarget {
@@ -16,9 +17,9 @@ sealed interface FileTarget {
  * and `HomeScreen._screenForExt`, inventory §1.H: bmp, heic, xml and six more were handled by one and
  * not the other — finding S6). Every screen that opens a file asks here.
  *
- * Phase 3: no viewer is ported yet, so every file goes to another app; each viewer of phase 4 adds its
- * extensions here, and nowhere else. An APK goes to the app's own installer screen, whatever the menu:
- * the 2.15.x's "Open" and "Open with…" handed it to the system around its permission check (D23).
+ * A file with a viewer of the app ([ViewerKind], the one table of the extensions each opens) goes to
+ * it; any other to another app. An APK goes to the app's own installer screen, whatever the menu: the
+ * 2.15.x's "Open" and "Open with…" handed it to the system around its permission check (D23).
  */
 object FileRouter {
     private const val APK = "apk"
@@ -26,7 +27,8 @@ object FileRouter {
     /**
      * What the app's viewers open (`FileViewerRouter` of the 2.15.3, the table that disagreed with the
      * home's copy — S6): the home's "Open a file" offers these, `heic` no more — it was offered, then
-     * refused (F17). Until phase 4, they open in another app.
+     * refused (F17). Those whose viewer is not ported yet open in another app; at the end of phase 4,
+     * this is the union of the viewers' extensions (ViewerKindTest keeps every viewer's inside it).
      */
     val VIEWABLE: Set<String> = setOf(
         "jpg", "jpeg", "png", "gif", "webp", "bmp",
@@ -34,9 +36,14 @@ object FileRouter {
         "docx", "doc", "odt", "odp", "xlsx", "xls", "ods", "pdf", "zip", "epub",
     )
 
-    fun targetFor(entry: FileEntry): FileTarget = when (entry.extension) {
-        APK -> FileTarget.Internal(Routes.install(entry.path))
-        else -> FileTarget.External
+    fun targetFor(entry: FileEntry): FileTarget {
+        // A folder has no extension (FileEntry): it goes nowhere here.
+        val viewer = ViewerKind.forExtension(entry.extension)
+        return when {
+            entry.extension == APK -> FileTarget.Internal(Routes.install(entry.path))
+            viewer != null -> FileTarget.Internal(Routes.viewer(viewer, entry.path))
+            else -> FileTarget.External
+        }
     }
 
     /**

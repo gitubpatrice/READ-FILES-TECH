@@ -51,6 +51,8 @@ import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.picker.PickerScreen
 import com.readfilestech.read_files_tech.ui.search.SearchScreen
 import com.readfilestech.read_files_tech.ui.trash.TrashScreen
+import com.readfilestech.read_files_tech.ui.viewer.ViewerHost
+import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -162,6 +164,21 @@ private fun Destinations(navController: NavHostController) {
         }
         dialog(Routes.INSTALL, arguments = listOf(navArgument(Routes.ARG_PATH) { type = NavType.StringType })) { entry ->
             ApkInstallDialog(onDismiss = { navController.leave(entry) })
+        }
+        composable(
+            Routes.VIEWER,
+            arguments = listOf(
+                navArgument(Routes.ARG_VIEWER) { type = NavType.StringType },
+                navArgument(Routes.ARG_PATH) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            ViewerHost(ViewerKind.fromArgument(entry.arguments?.getString(Routes.ARG_VIEWER)), onBack = {
+                navController.leave(entry)
+            })
         }
         composable(Routes.TRASH) { entry -> TrashScreen(onBack = { navController.leave(entry) }) }
         composable(Routes.SEARCH) { entry ->

@@ -7,3 +7,5 @@
 *.png binary
 *.webp binary
 *.rftvault binary
+# The viewers' corpus: files as REAL software wrote them (CRLF, UTF-16, Windows-1252), byte for byte.
+tools/corpus/*/** binary

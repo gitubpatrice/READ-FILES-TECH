@@ -1,0 +1,9 @@
+[
+ {"file": "powershell-utf16.txt", "viewer": "TEXT", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, Set-Content -Encoding Unicode (UTF-16LE, BOM, CRLF)"},
+ {"file": "powershell-ansi.txt", "viewer": "TEXT", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, Set-Content -Encoding Default (code page 1252, CRLF)"},
+ {"file": "powershell-utf8-bom.txt", "viewer": "TEXT", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, Set-Content -Encoding UTF8 (BOM, CRLF)"},
+ {"file": "git-log.log", "viewer": "TEXT", "expect": "ok", "maxMillis": 2000, "made_by": "git log of this repository (UTF-8, LF)"},
+ {"file": "node-one-line.js", "viewer": "TEXT", "expect": "ok", "maxMillis": 3000, "made_by": "node, one line of 150 KB"},
+ {"file": "ci.yml", "viewer": "TEXT", "expect": "ok", "maxMillis": 2000, "made_by": "this repository's CI workflow"},
+ {"file": "data_extraction_rules.xml", "viewer": "TEXT", "expect": "ok", "maxMillis": 2000, "made_by": "this repository's backup rules"}
+]

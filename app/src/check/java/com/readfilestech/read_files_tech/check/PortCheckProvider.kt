@@ -70,6 +70,7 @@ class PortCheckProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
         val uid = Binder.getCallingUid()
         if (uid != SHELL_UID && uid != ROOT_UID) throw SecurityException("uid $uid: adb shell only")
+        if (method == METHOD_CORPUS) return corpus(requireNotNull(arg))
         require(method == METHOD_OBSERVE) { "unknown method $method" }
         val request = PortCheckRequest.decode(String(Base64.decode(requireNotNull(arg), Base64.NO_WRAP), Charsets.UTF_8))
         val app = requireNotNull(context).applicationContext
@@ -77,6 +78,16 @@ class PortCheckProvider : ContentProvider() {
         val report = DartJson.encode(runBlocking { observation.observe(request) })
         val encoded = Base64.encodeToString(report.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         return Bundle().apply { putString(KEY_REPORT, encoded) }
+    }
+
+    /** The hostile corpus of phase 4 (CorpusCheck), in the folder [dir] of the device. */
+    private fun corpus(dir: String): Bundle {
+        val app = requireNotNull(context).applicationContext
+        val sandbox = requireNotNull(app.filesDir.parentFile)
+        val report = DartJson.encode(runBlocking { CorpusCheck(sandbox).run(File(dir)) })
+        return Bundle().apply {
+            putString(KEY_REPORT, Base64.encodeToString(report.toByteArray(Charsets.UTF_8), Base64.NO_WRAP))
+        }
     }
 
     private fun dirsOf(app: Context): CheckDirs {
@@ -107,6 +118,7 @@ class PortCheckProvider : ContentProvider() {
         const val SHELL_UID = 2000
         const val ROOT_UID = 0
         const val METHOD_OBSERVE = "observe"
+        const val METHOD_CORPUS = "corpus"
         const val KEY_REPORT = "report"
     }
 }

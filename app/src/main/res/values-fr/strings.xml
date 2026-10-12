@@ -322,4 +322,14 @@
     <string name="tool_hint_trash">Restaurer les éléments supprimés</string>
     <string name="pending_title">Pas encore disponible</string>
     <string name="pending_body">Cet écran arrive avec une prochaine étape de la réécriture de Read Files Tech en Kotlin.</string>
+
+    <string name="viewer_too_large">Ce fichier est trop volumineux pour être ouvert ici (plus de %1$s).</string>
+    <string name="viewer_unreadable">Ce fichier est endommagé, ou n\'est pas au format qu\'annonce son nom.</string>
+    <string name="viewer_unsupported">Ce format ne peut pas être ouvert ici. Essayez « Ouvrir avec… ».</string>
+    <string name="viewer_out_of_memory">Pas assez de mémoire sur ce téléphone pour ouvrir ce fichier.</string>
+    <string name="viewer_cannot_open">Impossible d\'ouvrir ce fichier : %1$s</string>
+    <string name="text_colors">Couleurs</string>
+    <string name="text_size">Taille du texte</string>
+    <string name="text_size_value">%1$d pt</string>
+    <string name="color_copied">Copié : %1$s</string>
 </resources>
