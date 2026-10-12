@@ -24,6 +24,7 @@ internal data class DocumentLimits(
     val textBytes: Long = FileCaps.TEXT_VIEWER,
     val stretchChars: Long = FileCaps.XML_STRETCH_CHARS,
     val depth: Int = FileCaps.XML_DEPTH,
+    val elements: Int = FileCaps.XML_ELEMENTS,
 )
 
 /**
@@ -94,5 +95,5 @@ class DocumentText internal constructor(val document: TextDocument, val hasText:
 /** Reads [part] of the archive as XML, bounded: its decompressed bytes, its stretches, its depth. */
 internal suspend fun <T> ZipFile.parsePart(part: ZipEntry, limits: DocumentLimits, read: suspend (XmlEvents) -> T): T =
     BoundedInputStream(getInputStream(part), limits.partBytes).use { input ->
-        read(XmlEvents(DocumentXml.parser(input, limits.stretchChars), limits.depth))
+        read(XmlEvents(DocumentXml.parser(input, limits.stretchChars), limits.depth, limits.elements))
     }

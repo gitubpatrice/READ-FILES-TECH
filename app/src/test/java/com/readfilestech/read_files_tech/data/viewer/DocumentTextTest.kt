@@ -392,6 +392,16 @@ class DocumentTextTest {
         assertThrows<UnreadableFileException> { open(docx(nested(4, "<w:p><w:r><w:t>no</w:t></w:r></w:p>")), limits) }
     }
 
+    /** What a part costs is its elements: past the bound, refused, however few bytes the file holds. */
+    @Test
+    fun `a part of more elements than its bound holds too many items`() {
+        val limits = DocumentLimits(elements = 1000)
+        // w:document, w:body and 998 empty paragraphs: the bound exactly.
+        assertThat(open(docx("<w:p/>".repeat(998)), limits).hasText).isFalse()
+        val refused = assertThrows<TooManyItemsException> { open(docx("<w:p/>".repeat(999)), limits) }
+        assertThat(refused.limit).isEqualTo(1000)
+    }
+
     @Test
     fun `a million nested elements are refused, quickly`() {
         val file = docx("<w:p>" + "<x>".repeat(1_000_000))
@@ -410,6 +420,7 @@ class DocumentTextTest {
         assertThat(limits.textBytes).isEqualTo(FileCaps.TEXT_VIEWER)
         assertThat(limits.stretchChars).isEqualTo(FileCaps.XML_STRETCH_CHARS)
         assertThat(limits.depth).isEqualTo(FileCaps.XML_DEPTH)
+        assertThat(limits.elements).isEqualTo(FileCaps.XML_ELEMENTS)
         assertThat(FileCaps.DOC_ZIPPED).isEqualTo(50L shl 20)
         assertThat(FileCaps.ZIP_ENTRY_DECOMPRESSED).isEqualTo(200L shl 20)
     }

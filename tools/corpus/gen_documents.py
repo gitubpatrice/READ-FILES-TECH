@@ -52,10 +52,10 @@ def generate(out):
         cases.append({"file": name, "viewer": "DOCUMENT", "expect": expect, "maxMillis": max_millis})
 
     # A main part of 300 KB that inflates past 200 MiB: 35 million empty paragraphs, the most tags a
-    # byte can buy — the slowest bomb to refuse (2.8 s on a desktop JVM). The decompressed bytes are
-    # counted, not the size its header announces.
+    # byte can buy. Refused at FileCaps.XML_ELEMENTS (4 million), after 24 MB: at 200 MiB it took 59 s
+    # on an emulator.
     _docx(out / "documents-bomb.docx", _repeat(b"<w:p/>", PART_CAP + MIB))
-    case("documents-bomb.docx", "too_large", 30000)
+    case("documents-bomb.docx", "too_many_items", 10000)
 
     # 60 MiB of text in a part of 61 MiB: the text shown is capped too, at the text viewer's cap.
     _docx(out / "documents-text-over-cap.docx", _repeat(b"<w:p><w:r><w:t>" + b"x" * 4000 + b"</w:t></w:r></w:p>", 60 * MIB))

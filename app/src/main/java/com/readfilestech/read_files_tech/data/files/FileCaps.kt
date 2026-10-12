@@ -76,6 +76,16 @@ object FileCaps {
     const val XML_STRETCH_CHARS = 4 * MIB
 
     /**
+     * Elements in one XML part of a document: past it, the file holds too many items. What a part costs is
+     * its elements, not its bytes: 200 MiB of `<w:p/>` (a 300 KB file, 35 million elements) took 59 s to
+     * refuse on an emulator in a debug build, 10.7 s in the release one; refused here, 7.6 s and 1.3 s. Word's
+     * densest corpus file, a French text whose every accented letter is a run of its own, holds an element
+     * every 37.5 bytes: a real part reaches this bound at 150 MB of XML, three quarters of the part cap.
+     * No 2.15.3 counterpart (its regex built no elements).
+     */
+    const val XML_ELEMENTS = 4_000_000
+
+    /**
      * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
      * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
      * (Claude review R8).

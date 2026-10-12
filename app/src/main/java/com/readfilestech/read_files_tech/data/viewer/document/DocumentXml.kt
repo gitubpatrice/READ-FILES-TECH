@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.viewer.document
 
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import kotlinx.coroutines.currentCoroutineContext
@@ -156,11 +157,13 @@ internal class XmlGuard(input: Reader, private val maxStretch: Long) : FilterRea
 }
 
 /**
- * The events of a part, each START_TAG checked against [maxDepth], the coroutine's cancellation checked
- * every [CANCEL_CHECK_EVERY] events: a parser's one call is bounded by [XmlGuard]'s stretch.
+ * The events of a part, each START_TAG checked against [maxDepth] and counted against [maxElements], the
+ * coroutine's cancellation checked every [CANCEL_CHECK_EVERY] events: a parser's one call is bounded by
+ * [XmlGuard]'s stretch.
  */
-internal class XmlEvents(private val parser: XmlPullParser, private val maxDepth: Int) {
+internal class XmlEvents(private val parser: XmlPullParser, private val maxDepth: Int, private val maxElements: Int) {
     private var count = 0
+    private var elements = 0
 
     val depth: Int get() = parser.depth
     val name: String get() = parser.name
@@ -172,7 +175,10 @@ internal class XmlEvents(private val parser: XmlPullParser, private val maxDepth
     suspend fun next(): Int {
         if (++count % CANCEL_CHECK_EVERY == 0) currentCoroutineContext().ensureActive()
         val type = parser.next()
-        if (type == XmlPullParser.START_TAG && parser.depth > maxDepth) throw UnreadableFileException("XML nested deeper than $maxDepth")
+        if (type == XmlPullParser.START_TAG) {
+            if (parser.depth > maxDepth) throw UnreadableFileException("XML nested deeper than $maxDepth")
+            if (++elements > maxElements) throw TooManyItemsException(maxElements)
+        }
         return type
     }
 
