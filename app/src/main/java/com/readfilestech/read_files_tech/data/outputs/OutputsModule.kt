@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.outputs
 
 import android.content.Context
+import com.readfilestech.read_files_tech.data.files.SharedStorageNames
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.storage.StorageVolumes
 import dagger.Module
@@ -21,5 +22,6 @@ object OutputsModule {
         primary = volumes::primary,
         appExternal = { context.getExternalFilesDir(null) },
         appPrivate = context.getDir("flutter", Context.MODE_PRIVATE),
+        folder = SharedStorageNames().filesTechDir,
     )
 }

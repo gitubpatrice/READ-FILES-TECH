@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.outputs
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.files.SharedStorageNames
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.testing.InMemorySharedPreferences
 import org.junit.jupiter.api.BeforeEach
@@ -53,6 +54,17 @@ class OutputStorageTest {
         assertThat(first).isEqualTo(File(base, "Scans/scan_20261012_140305.pdf"))
         assertThat(second).isEqualTo(File(base, "Scans/scan_20261012_140305_1.pdf"))
         assertThat(first.length()).isEqualTo(0)
+    }
+
+    /** The `.next` build installs next to the real app: it must never write into the real `Files Tech/` (D-017). */
+    @Test
+    fun `a next build keeps its outputs in its own suffixed folder, fallbacks included`() {
+        val folder = SharedStorageNames(replacesFlutterApp = false).filesTechDir
+        val next = OutputStorage(prefs, { primary }, { external }, private, folder) { now }
+        assertThat(next.reserve(OutputCategory.SCANS, "scan", "pdf").parentFile).isEqualTo(File(primary, "Files Tech.next/Scans"))
+        assertThat(next.bases())
+            .containsExactly(File(primary, "Files Tech.next"), File(external, "Files Tech.next"), File(private, "Files Tech.next"))
+            .inOrder()
     }
 
     @Test

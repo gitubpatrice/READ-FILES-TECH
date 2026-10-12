@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.outputs
 
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileMoves
+import com.readfilestech.read_files_tech.data.files.SharedStorageNames
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.prefs.PrefRead
 import java.io.File
@@ -38,23 +39,26 @@ class NoOutputLocationException(cause: Throwable?) : IOException("no writable lo
  * @param primary the user's primary volume (`/storage/emulated/0` for the owner).
  * @param appExternal the app's own folder on shared storage (`Android/data/<pkg>/files`), null when unmounted.
  * @param appPrivate `app_flutter/`, the 2.15.x's last resort (path_provider's documents).
+ * @param folder the outputs' folder under each of the three: `Files Tech`, suffixed in a `.next` build so
+ *   it never writes into the real app's folder (docs D-017) — the module passes [SharedStorageNames.filesTechDir].
  */
 class OutputStorage(
     private val prefs: FlutterPreferences,
     private val primary: () -> File,
     private val appExternal: () -> File?,
     private val appPrivate: File,
+    private val folder: String = SharedStorageNames.FLUTTER_FILES_TECH_DIR,
     private val clock: () -> LocalDateTime = LocalDateTime::now,
 ) {
-    /** The configured base (`output_base_path`, verbatim, as the 2.15.x reads it), or `<primary>/Files Tech`. */
+    /** The configured base (`output_base_path`, verbatim, as the 2.15.x reads it), or `<primary>/<folder>`. */
     fun basePath(): File =
-        (prefs.string(KEY_BASE_PATH) as? PrefRead.Present)?.value?.takeIf(String::isNotEmpty)?.let(::File) ?: File(primary(), FOLDER)
+        (prefs.string(KEY_BASE_PATH) as? PrefRead.Present)?.value?.takeIf(String::isNotEmpty)?.let(::File) ?: File(primary(), folder)
 
     /** "Share automatically after creation" (`output_auto_share`), off by default. */
     fun autoShare(): Boolean = (prefs.boolean(KEY_AUTO_SHARE) as? PrefRead.Present)?.value ?: false
 
     /** Every folder outputs may be in, in the order they are tried: the base, then the two fallbacks. */
-    fun bases(): List<File> = listOfNotNull(basePath(), appExternal()?.let { File(it, FOLDER) }, File(appPrivate, FOLDER))
+    fun bases(): List<File> = listOfNotNull(basePath(), appExternal()?.let { File(it, folder) }, File(appPrivate, folder))
 
     /**
      * A new, empty file reserved for an output — created EXCLUSIVELY, so two tools never share one and
@@ -115,9 +119,6 @@ class OutputStorage(
     companion object {
         const val KEY_BASE_PATH = "output_base_path"
         const val KEY_AUTO_SHARE = "output_auto_share"
-
-        /** The folder under the primary volume, and under each fallback. */
-        const val FOLDER = "Files Tech"
 
         private const val MAX_CANDIDATES = 1_000
         private const val MAX_NAME_CHARS = 60
