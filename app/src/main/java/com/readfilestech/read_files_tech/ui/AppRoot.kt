@@ -45,6 +45,7 @@ import com.readfilestech.read_files_tech.ui.explorer.ExplorerScreen
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.picker.PickerScreen
 import com.readfilestech.read_files_tech.ui.search.SearchScreen
 import com.readfilestech.read_files_tech.ui.trash.TrashScreen
 import kotlinx.coroutines.Dispatchers
@@ -104,30 +105,51 @@ private fun Destinations(navController: NavHostController) {
                 }
             },
         ) { entry ->
-            val picked = entry.pickedFolder()
+            val picked = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
             ExplorerScreen(
-                pickedFolder = picked.folder,
+                pickedFolder = picked.value,
                 onPickedFolderUsed = picked.consume,
                 onOpenTrash = { navController.navigate(Routes.TRASH) { launchSingleTop = true } },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) { launchSingleTop = true } },
                 onChooseFolder = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
-                onFolderChosen = { folder ->
-                    navController.previousBackStackEntry?.savedStateHandle?.set(Routes.RESULT_PICKED_FOLDER, folder)
-                    navController.popBackStack()
-                },
-                onFilesChosen = { files ->
-                    navController.previousBackStackEntry?.savedStateHandle?.set(Routes.RESULT_PICKED_FILES, ArrayList(files))
-                    navController.popBackStack()
-                },
+                onFolderChosen = { navController.handBack(Routes.RESULT_PICKED_FOLDER, it) },
+                onFilesChosen = { navController.handBack(Routes.RESULT_PICKED_FILES, ArrayList(it)) },
                 onNavigate = { navController.navigate(it) },
                 onLeave = { navController.popBackStack() },
             )
         }
+        composable(
+            Routes.PICKER,
+            arguments = listOf(Routes.ARG_PICK, Routes.ARG_EXTENSIONS, Routes.ARG_TITLE).map { name ->
+                navArgument(name) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            },
+        ) { entry ->
+            // What the explorer chose for the picker, which hands it on to whoever asked.
+            val folder = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
+            val files = entry.picked<ArrayList<String>>(Routes.RESULT_PICKED_FILES)
+            PickerScreen(
+                pickedFiles = files.value,
+                pickedFolder = folder.value,
+                onResultUsed = {
+                    folder.consume()
+                    files.consume()
+                },
+                onBrowse = { navController.navigate(it) },
+                onNavigate = { navController.navigate(it) },
+                onFilesPicked = { navController.handBack(Routes.RESULT_PICKED_FILES, ArrayList(it)) },
+                onFolderPicked = { navController.handBack(Routes.RESULT_PICKED_FOLDER, it) },
+                onCancel = { navController.popBackStack() },
+            )
+        }
         composable(Routes.TRASH) { TrashScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.SEARCH) { entry ->
-            val picked = entry.pickedFolder()
+            val picked = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
             SearchScreen(
-                pickedRoot = picked.folder,
+                pickedRoot = picked.value,
                 onPickedRootUsed = picked.consume,
                 onBack = { navController.popBackStack() },
                 onChooseRoot = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
@@ -141,17 +163,23 @@ private fun Destinations(navController: NavHostController) {
     }
 }
 
-/** A folder handed back by the folder chooser, and how to mark it used so it is not handed twice. */
-private class PickedFolder(val folder: String?, val consume: () -> Unit)
+/** A result handed back by a chooser (a folder, files), and how to mark it used so it is not handed twice. */
+private class Picked<T>(val value: T?, val consume: () -> Unit)
 
 /**
- * What the chooser set on THIS entry's saved state ([Routes.RESULT_PICKED_FOLDER]). Read here, at the
- * navigation level: a view model's own SavedStateHandle is not the entry's, and never sees it.
+ * What a chooser set on THIS entry's saved state under [key]. Read here, at the navigation level: a view
+ * model's own SavedStateHandle is not the entry's, and never sees it.
  */
 @Composable
-private fun NavBackStackEntry.pickedFolder(): PickedFolder {
-    val folder by savedStateHandle.getStateFlow<String?>(Routes.RESULT_PICKED_FOLDER, null).collectAsStateWithLifecycle()
-    return PickedFolder(folder) { savedStateHandle[Routes.RESULT_PICKED_FOLDER] = null }
+private fun <T> NavBackStackEntry.picked(key: String): Picked<T> {
+    val value by savedStateHandle.getStateFlow<T?>(key, null).collectAsStateWithLifecycle()
+    return Picked(value) { savedStateHandle[key] = null }
+}
+
+/** A chooser's result, set on the entry that asked, then back to it. */
+private fun NavHostController.handBack(key: String, value: Any) {
+    previousBackStackEntry?.savedStateHandle?.set(key, value)
+    popBackStack()
 }
 
 /**

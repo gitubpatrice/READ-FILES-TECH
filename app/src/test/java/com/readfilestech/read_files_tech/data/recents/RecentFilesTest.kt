@@ -112,6 +112,31 @@ class RecentFilesTest {
         assertThat(recents.load().map { it.name }).doesNotContain("f1.txt")
     }
 
+    /** Inventory D44: the 2.15.x evicted a favourite like any entry once 20 newer files were opened. */
+    @Test
+    fun `a favourite is never cut by the cap`() {
+        recents.addOrUpdate(a.path)
+        recents.toggleFavorite(a.path)
+        val files = (1..25).map { File(tmp, "f$it.txt").apply { writeText("x") } }
+        files.forEach { recents.addOrUpdate(it.path) }
+        val kept = recents.load()
+        assertThat(kept).hasSize(RecentFiles.MAX_FILES)
+        assertThat(kept.filter { it.isFavorite }.map { it.name }).containsExactly("a.pdf")
+        assertThat(kept.first().name).isEqualTo("f25.txt")
+    }
+
+    /** Inventory F27: removed from the picker, a file reopened was hidden there for good. */
+    @Test
+    fun `removing a file hides it until it is opened again`() {
+        recents.addOrUpdate(a.path)
+        recents.dismiss(a.path)
+        assertThat(recents.load()).isEmpty()
+        assertThat(recents.dismissed()).containsExactly(a.path)
+        recents.addOrUpdate(a.path)
+        assertThat(recents.dismissed()).isEmpty()
+        assertThat(recents.load().map { it.path }).containsExactly(a.path)
+    }
+
     @Test
     fun `a folder or a missing file is never recorded`() {
         recents.addOrUpdate(tmp.path)

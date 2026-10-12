@@ -84,23 +84,21 @@ class RecentFiles @Inject constructor(
 
     /**
      * [path] opened now: added at the front (or moved there), its favourite mark kept, the list cut at
-     * [MAX_FILES]. Nothing happens for a file that does not exist, or a name that is not one.
+     * [MAX_FILES] — favourites never cut (the 2.15.x evicted them like any entry, inventory D44). Opened
+     * again, a path the user had removed from the picker shows there again: the 2.15.x hid it for good
+     * (F27). Nothing happens for a file that does not exist, or a name that is not one.
      */
     fun addOrUpdate(path: String): List<RecentFile> {
         val file = File(path)
-        return if (isRecordable(file)) {
-            rewrite { entries ->
-                val favorite = entries.firstOrNull { it.path == path }?.isFavorite ?: false
-                val opened = RecentFile(path, file.name, DartDateTime.now(), file.length(), favorite)
-                (listOf(opened) + entries.filter { it.path != path }).take(MAX_FILES)
-            }
-        } else {
-            read()?.entries.orEmpty()
+        if (!isRecordable(file)) return read()?.entries.orEmpty()
+        val updated = rewrite { entries ->
+            val favorite = entries.firstOrNull { it.path == path }?.isFavorite ?: false
+            val opened = RecentFile(path, file.name, DartDateTime.now(), file.length(), favorite)
+            capped(listOf(opened) + entries.filter { it.path != path })
         }
+        changeDismissed { it - path }
+        return updated
     }
-
-    /** A file that exists, under a name `PathSafe.basename` accepts. */
-    private fun isRecordable(file: File): Boolean = file.isFile && file.name !in setOf("", ".", "..")
 
     fun remove(path: String): List<RecentFile> = rewrite { entries -> entries.filter { it.path != path } }
 
@@ -110,15 +108,26 @@ class RecentFiles @Inject constructor(
     /** Paths removed from the recents by the user: never shown again. */
     fun dismissed(): Set<String> = (prefs.stringList(DISMISSED_KEY) as? PrefRead.Present)?.value?.toSet().orEmpty()
 
-    /** Removes [path] from the recents for good. A list that cannot be read is left as it is (D-019). */
+    /**
+     * Removes [path] from the recents, and from what the picker finds by itself (the output folders),
+     * until it is opened again. A list that cannot be read is left as it is (D-019).
+     */
     @Synchronized
     fun dismiss(path: String) {
+        remove(path)
+        changeDismissed { it + path }
+    }
+
+    @Synchronized
+    private fun changeDismissed(change: (Set<String>) -> Set<String>) {
         val current = when (val read = prefs.stringList(DISMISSED_KEY)) {
             PrefRead.Absent -> emptyList()
             is PrefRead.Present -> read.value
             is PrefRead.Unreadable -> return
         }
-        prefs.commit { putStringList(DISMISSED_KEY, (current.toCollection(LinkedHashSet()) + path).toList()) }
+        val before = current.toCollection(LinkedHashSet())
+        val after = change(before)
+        if (after != before) prefs.commit { putStringList(DISMISSED_KEY, after.toList()) }
     }
 
     /** The stored list, readable entries apart from the others; null when the list itself is unreadable. */
@@ -153,3 +162,12 @@ class RecentFiles @Inject constructor(
         const val MAX_FILES = 20
     }
 }
+
+/** At most [RecentFiles.MAX_FILES] entries, the most recent kept — and every favourite, whatever their number. */
+private fun capped(entries: List<RecentFile>): List<RecentFile> {
+    var others = (RecentFiles.MAX_FILES - entries.count(RecentFile::isFavorite)).coerceAtLeast(1)
+    return entries.filter { it.isFavorite || others-- > 0 }
+}
+
+/** A file that exists, under a name `PathSafe.basename` accepts. */
+private fun isRecordable(file: File): Boolean = file.isFile && file.name !in setOf("", ".", "..")

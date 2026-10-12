@@ -18,6 +18,7 @@ object Routes {
     const val RESULT_PICKED_FILES = "picked_files"
 
     const val EXPLORER = "explorer?$ARG_PATH={$ARG_PATH}&$ARG_PICK={$ARG_PICK}&$ARG_EXTENSIONS={$ARG_EXTENSIONS}&$ARG_TITLE={$ARG_TITLE}"
+    const val PICKER = "picker?$ARG_PICK={$ARG_PICK}&$ARG_EXTENSIONS={$ARG_EXTENSIONS}&$ARG_TITLE={$ARG_TITLE}"
     const val TRASH = "trash"
     const val SEARCH = "search"
 
@@ -39,6 +40,16 @@ object Routes {
             }
             if (args.isNotEmpty()) append(args.joinToString("&", prefix = "?"))
         }
+
+    /**
+     * The app's picker (`pickOne` / `pickMany` / `pickFolder` of the 2.15.x): its result comes back as
+     * [RESULT_PICKED_FILES] or [RESULT_PICKED_FOLDER] on the caller's entry.
+     */
+    fun picker(pick: PickMode, extensions: Set<String>? = null, title: String? = null): String = buildString {
+        append("picker?$ARG_PICK=${pick.argument}")
+        if (extensions != null) append("&$ARG_EXTENSIONS=${Uri.encode(extensions.joinToString(EXTENSION_SEPARATOR))}")
+        if (title != null) append("&$ARG_TITLE=${Uri.encode(title)}")
+    }
 
     /** The extensions of an explorer route, as [explorer] wrote them; an empty set is a filter that keeps folders only. */
     fun extensionsOf(argument: String?): Set<String>? = argument?.split(EXTENSION_SEPARATOR)?.filter(String::isNotEmpty)?.toSet()
