@@ -99,4 +99,34 @@ class StartupCleanupTest {
         cleanup.runOnce()
         assertThat(later.exists()).isTrue() // not purged again by the same instance
     }
+
+    /** A fresh start: nothing can claim the photos and pages of a scan left there, they go. */
+    @Test
+    fun `the scanner's folder is emptied when the first activity starts afresh, once`() {
+        cleanup().runOnce()
+        val photo = cacheFile("scanner/0123456789abcdef/src-0123456789abcdef.jpg")
+        val capture = cacheFile("scanner/capture/fedcba9876543210.jpg")
+        val other = cacheFile("zip_viewer_note.txt")
+        val cleanup = cleanup()
+        cleanup.clearScansOnce(restoring = false)
+        assertThat(photo.exists()).isFalse()
+        assertThat(capture.exists()).isFalse()
+        assertThat(File(vault.dirs.cache, "scanner").exists()).isFalse()
+        assertThat(other.exists()).isTrue()
+        // A second window of the app, later in the same process, empties nothing.
+        val second = cacheFile("scanner/0123456789abcdef/session.json")
+        cleanup.clearScansOnce(restoring = false)
+        assertThat(second.exists()).isTrue()
+    }
+
+    /** The process died in the middle of a scan (the camera app open): the restored screen reads it back. */
+    @Test
+    fun `a restored activity keeps the scan the process died in`() {
+        cleanup().runOnce()
+        val photo = cacheFile("scanner/capture/fedcba9876543210.jpg")
+        val cleanup = cleanup()
+        cleanup.clearScansOnce(restoring = true)
+        cleanup.clearScansOnce(restoring = false)
+        assertThat(photo.exists()).isTrue()
+    }
 }

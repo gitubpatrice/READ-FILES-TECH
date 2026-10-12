@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui
 import androidx.compose.runtime.Composable
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.tools.hash.HashScreen
+import com.readfilestech.read_files_tech.ui.tools.scanner.ScannerScreen
 
 /**
  * The screen of each [Feature] — a tool of the home's grid, a quick-settings tile, a menu entry. A tool
@@ -15,6 +16,7 @@ import com.readfilestech.read_files_tech.ui.tools.hash.HashScreen
 fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -> Unit) {
     when (feature) {
         Feature.HASH -> HashScreen(picked, onNavigate, onBack)
+        Feature.SCANNER -> ScannerScreen(picked, onNavigate, onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

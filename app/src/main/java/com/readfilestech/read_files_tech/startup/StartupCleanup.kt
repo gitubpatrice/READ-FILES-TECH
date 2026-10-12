@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.startup
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.prefs.valueOrNull
+import com.readfilestech.read_files_tech.data.scanner.ScanFiles
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipShares
 import com.readfilestech.read_files_tech.vault.VaultBackups
 import com.readfilestech.read_files_tech.vault.VaultDirs
@@ -31,6 +32,10 @@ import javax.inject.Singleton
  * SYNCHRONOUS, before any component runs (RftApplication.onCreate): run in the background, it could
  * delete a file the port had just put in the cache, or miss one written meanwhile (GPT review R3,
  * 2026-10-11). Deleting is unlinking: a cache of a few hundred files takes milliseconds.
+ *
+ * The scanner's folder ([clearScansOnce]) waits for the first activity of the process: only it knows
+ * whether the system is giving back a saved state — a scan the process died in the middle of, the
+ * camera app's photo among it — or starting afresh, when nothing can claim what is left there.
  */
 @Singleton
 class StartupCleanup @Inject constructor(
@@ -40,6 +45,7 @@ class StartupCleanup @Inject constructor(
     private val dirs: VaultDirs,
 ) {
     private var done = false
+    private var scansDone = false
 
     /** What failed during this process's cleanup: each step runs whatever the others did (Claude review R3). */
     var failures: List<Exception> = emptyList()
@@ -59,6 +65,22 @@ class StartupCleanup @Inject constructor(
         step(failed) { runBlocking { backups.discardLeftovers() } }
         step(failed) { ZipShares.under(dirs.cache).purge() }
         failures = failed
+    }
+
+    /**
+     * Empties the scanner's folder (`cache/scanner/`: photos taken, pages not exported) at the first
+     * activity's creation in this process, unless that activity is [restoring] a saved state: the scan it
+     * holds is then read back from there. Later calls return at once — a second window of the app must
+     * not empty the scan of the first. Never throws, like [runOnce].
+     */
+    @Synchronized
+    fun clearScansOnce(restoring: Boolean) {
+        if (scansDone) return
+        scansDone = true
+        if (restoring) return
+        val failed = mutableListOf<Exception>()
+        step(failed) { ScanFiles.under(dirs.cache).purge() }
+        failures = failures + failed
     }
 
     @Suppress("TooGenericExceptionCaught") // see runOnce: kept, never thrown at the app's start

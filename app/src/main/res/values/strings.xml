@@ -416,4 +416,50 @@
     </plurals>
     <string name="zip_share_failed">Cannot share this entry: %1$s</string>
     <string name="action_open_folder">Open the folder</string>
+    <string name="scanner_intro">Edges found automatically, perspective straightened, saved as a PDF, all on this phone: your documents never leave it.</string>
+    <string name="scanner_take_photo">Take a photo</string>
+    <string name="scanner_import">Import images</string>
+    <plurals name="scanner_make_pdf">
+        <item quantity="one">Make the PDF (%d page)</item>
+        <item quantity="other">Make the PDF (%d pages)</item>
+    </plurals>
+    <string name="scanner_page">Page %1$d</string>
+    <string name="scanner_edit_page">Adjust page %1$d</string>
+    <string name="scanner_move_earlier">Move earlier</string>
+    <string name="scanner_move_later">Move later</string>
+    <string name="scanner_delete_page">Delete page %1$d</string>
+    <string name="scanner_adjust_title">Adjust the page</string>
+    <string name="scanner_keep_page">Keep this page</string>
+    <string name="scanner_detect_again">Detect again</string>
+    <string name="scanner_whole_image">Whole image</string>
+    <string name="scanner_rotate">Rotate</string>
+    <string name="scanner_turned">Page turned %1$d°</string>
+    <string name="scanner_filter_original">Original</string>
+    <string name="scanner_filter_grey">Grey</string>
+    <string name="scanner_filter_black_white">Black &amp; white</string>
+    <string name="scanner_filter_white_paper">White paper</string>
+    <string name="scanner_detecting">Finding the page…</string>
+    <string name="scanner_not_found">No page found: drag the corners onto the document.</string>
+    <string name="scanner_frame_description">The photo and the frame of the page: drag a corner to move it</string>
+    <string name="scanner_adding">Adding image %1$d of %2$d…</string>
+    <string name="scanner_making_page">Making the page…</string>
+    <string name="scanner_making_pdf">Making the PDF…</string>
+    <string name="scanner_saved_title">Scan saved on your phone</string>
+    <string name="scanner_saved_body">The PDF is here, you can find it at any time:</string>
+    <plurals name="scanner_full">
+        <item quantity="one">%d page at most: the other images were not added.</item>
+        <item quantity="other">%d pages at most: the other images were not added.</item>
+    </plurals>
+    <string name="scanner_no_camera">No camera app on this phone: import images instead.</string>
+    <string name="scanner_photo_failed">Cannot read this photo: %1$s</string>
+    <string name="scanner_page_failed">%1$s was not added: %2$s</string>
+    <string name="scanner_page_not_made">Cannot make this page: %1$s</string>
+    <string name="scanner_pdf_failed">Cannot save the PDF: %1$s</string>
+    <string name="scanner_too_large">This image is larger than %1$d MB.</string>
+    <string name="scanner_discard_title">Discard this scan?</string>
+    <plurals name="scanner_discard_body">
+        <item quantity="one">Its %d page has not been saved as a PDF.</item>
+        <item quantity="other">Its %d pages have not been saved as a PDF.</item>
+    </plurals>
+    <string name="scanner_discard">Discard</string>
 </resources>

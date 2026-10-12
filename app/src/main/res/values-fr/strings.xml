@@ -424,4 +424,53 @@
     </plurals>
     <string name="zip_share_failed">Impossible de partager cette entrée : %1$s</string>
     <string name="action_open_folder">Ouvrir le dossier</string>
+    <string name="scanner_intro">Détection des bords automatique, redressement de la perspective, export PDF, entièrement sur ce téléphone : vos documents ne le quittent jamais.</string>
+    <string name="scanner_take_photo">Prendre une photo</string>
+    <string name="scanner_import">Importer des images</string>
+    <plurals name="scanner_make_pdf">
+        <item quantity="one">Créer le PDF (%d page)</item>
+        <item quantity="many">Créer le PDF (%d pages)</item>
+        <item quantity="other">Créer le PDF (%d pages)</item>
+    </plurals>
+    <string name="scanner_page">Page %1$d</string>
+    <string name="scanner_edit_page">Ajuster la page %1$d</string>
+    <string name="scanner_move_earlier">Avancer</string>
+    <string name="scanner_move_later">Reculer</string>
+    <string name="scanner_delete_page">Supprimer la page %1$d</string>
+    <string name="scanner_adjust_title">Ajuster la page</string>
+    <string name="scanner_keep_page">Garder cette page</string>
+    <string name="scanner_detect_again">Détecter à nouveau</string>
+    <string name="scanner_whole_image">Image entière</string>
+    <string name="scanner_rotate">Pivoter</string>
+    <string name="scanner_turned">Page pivotée de %1$d°</string>
+    <string name="scanner_filter_original">Original</string>
+    <string name="scanner_filter_grey">Gris</string>
+    <string name="scanner_filter_black_white">Noir et blanc</string>
+    <string name="scanner_filter_white_paper">Papier blanc</string>
+    <string name="scanner_detecting">Recherche de la page…</string>
+    <string name="scanner_not_found">Aucune page trouvée : faites glisser les coins sur le document.</string>
+    <string name="scanner_frame_description">La photo et le cadre de la page : faites glisser un coin pour le déplacer</string>
+    <string name="scanner_adding">Ajout de l\'image %1$d sur %2$d…</string>
+    <string name="scanner_making_page">Création de la page…</string>
+    <string name="scanner_making_pdf">Création du PDF…</string>
+    <string name="scanner_saved_title">Scan sauvegardé sur votre téléphone</string>
+    <string name="scanner_saved_body">Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :</string>
+    <plurals name="scanner_full">
+        <item quantity="one">%d page au plus : les autres images n\'ont pas été ajoutées.</item>
+        <item quantity="many">%d pages au plus : les autres images n\'ont pas été ajoutées.</item>
+        <item quantity="other">%d pages au plus : les autres images n\'ont pas été ajoutées.</item>
+    </plurals>
+    <string name="scanner_no_camera">Aucune appli photo sur ce téléphone : importez plutôt des images.</string>
+    <string name="scanner_photo_failed">Impossible de lire cette photo : %1$s</string>
+    <string name="scanner_page_failed">%1$s n\'a pas été ajoutée : %2$s</string>
+    <string name="scanner_page_not_made">Impossible de créer cette page : %1$s</string>
+    <string name="scanner_pdf_failed">Impossible d\'enregistrer le PDF : %1$s</string>
+    <string name="scanner_too_large">Cette image dépasse %1$d Mo.</string>
+    <string name="scanner_discard_title">Abandonner ce scan ?</string>
+    <plurals name="scanner_discard_body">
+        <item quantity="one">Sa %d page n\'a pas été enregistrée en PDF.</item>
+        <item quantity="many">Ses %d pages n\'ont pas été enregistrées en PDF.</item>
+        <item quantity="other">Ses %d pages n\'ont pas été enregistrées en PDF.</item>
+    </plurals>
+    <string name="scanner_discard">Abandonner</string>
 </resources>

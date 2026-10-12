@@ -12,6 +12,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
+import com.readfilestech.read_files_tech.startup.StartupCleanup
 import com.readfilestech.read_files_tech.ui.AppRoot
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.navigation.Feature
@@ -42,11 +43,16 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var themes: ThemeSettings
 
+    @Inject
+    lateinit var startupCleanup: StartupCleanup
+
     private val shortcut = MutableStateFlow<Feature?>(null)
     private var accessGranted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Before any screen: a scan left by a process that died is kept only when its screen comes back.
+        startupCleanup.clearScansOnce(restoring = savedInstanceState != null)
         enableEdgeToEdge()
         accessGranted = access.isGranted()
         // Once: a recreated activity (rotation) must not replay the tile that opened it.
