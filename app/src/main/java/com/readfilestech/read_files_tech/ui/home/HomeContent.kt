@@ -307,7 +307,7 @@ private fun recentLine(file: RecentFile): String {
         is RecentDate.DaysAgo -> pluralStringResource(R.plurals.date_days_ago, date.days, date.days)
         is RecentDate.On -> date.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(locale))
     }
-    return stringResource(R.string.recent_line, day, formatBytes(file.sizeBytes))
+    return stringResource(R.string.joined_dot, day, formatBytes(file.sizeBytes))
 }
 
 @Composable
