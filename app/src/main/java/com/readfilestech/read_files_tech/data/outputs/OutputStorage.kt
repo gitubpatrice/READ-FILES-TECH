@@ -22,6 +22,9 @@ enum class OutputCategory(val folderName: String) {
     NO_EXIF("Sans-EXIF"),
     OCR("OCR"),
     VAULT_BACKUPS("Sauvegardes coffre"),
+
+    /** "Extract all" of the ZIP viewer: one folder per extraction (docs D-022). */
+    EXTRACTIONS("Extractions"),
 }
 
 /** No folder could take an output: neither the configured one nor either fallback. */
@@ -103,17 +106,43 @@ class OutputStorage(
     /** A reservation never filled: removed if still empty (the 2.15.x left it, D18). */
     fun discard(reservation: File) = FileMoves.discardReservation(reservation)
 
-    private fun reserveIn(dir: File, name: String, ext: String): File {
-        for (i in 0 until MAX_CANDIDATES) {
-            val candidate = File(dir, if (i == 0) "$name.$ext" else "${name}_$i.$ext")
+    /**
+     * A new, empty FOLDER for an output made of several files — `<base>/<category>/<name>_<stamp>/`,
+     * named as [reserve] names a file and created exclusively the same way, never an existing folder
+     * (the 2.15.x's "Extract all" wrote into the folder of the previous extraction, D17). The app's
+     * private fallback is not tried: files no other app nor the explorer can reach are what D-022 moves
+     * OUT of `app_flutter/`.
+     *
+     * @throws NoOutputLocationException no folder of shared storage could take it.
+     */
+    fun reserveFolder(category: OutputCategory, suggestedName: String): File {
+        val name = "${sanitize(suggestedName)}_${clock().format(STAMP)}"
+        var failure: IOException? = null
+        for (base in listOfNotNull(basePath(), appExternal()?.let { File(it, folder) })) {
+            val dir = File(base, category.folderName)
             try {
-                Files.createFile(candidate.toPath())
+                Files.createDirectories(dir.toPath())
+                return reserveIn(dir, name, ext = null)
+            } catch (e: IOException) {
+                failure = e
+            }
+        }
+        throw NoOutputLocationException(failure)
+    }
+
+    /** `name.ext` (a folder: `name`), then `_1` … `_999` before the extension, created exclusively. */
+    private fun reserveIn(dir: File, name: String, ext: String?): File {
+        for (i in 0 until MAX_CANDIDATES) {
+            val stem = if (i == 0) name else "${name}_$i"
+            val candidate = File(dir, if (ext == null) stem else "$stem.$ext")
+            try {
+                if (ext == null) Files.createDirectory(candidate.toPath()) else Files.createFile(candidate.toPath())
                 return candidate
             } catch (expected: FileAlreadyExistsException) {
                 // Taken: the next candidate. Any OTHER error is this folder's, and goes up (D49).
             }
         }
-        throw IOException("no free name in $dir for $name.$ext")
+        throw IOException("no free name in $dir for $name")
     }
 
     companion object {

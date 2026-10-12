@@ -5,12 +5,14 @@ import android.os.SystemClock
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
+import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
+import com.readfilestech.read_files_tech.data.viewer.zip.ZipArchive
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.ViewerResources
 import com.readfilestech.read_files_tech.ui.viewer.image.ImagePages
@@ -26,9 +28,9 @@ data class CorpusCase(val file: String, val viewer: ViewerKind, val expect: Stri
  * The hostile corpus of phase 4 (port plan, phase 4, finding 8): each file of a folder that
  * `tools/corpus/corpus.py` pushed is opened by its viewer's load, as the screen does — in the `check`
  * build, the release as R8 makes it. Its `corpus.json` names, per file, the viewer and the outcome
- * expected (`ok`, `too_large`, `too_many_pixels`, `unreadable`, `unsupported`, `out_of_memory`,
- * `cannot_open`); the report gives the outcome, the time, the heap kept by the result, and whatever
- * was written in the app's sandbox or in the corpus folder meanwhile — a viewer writes nothing.
+ * expected (`ok`, `too_large`, `too_many_pixels`, `too_many_items`, `unreadable`, `unsupported`,
+ * `out_of_memory`, `cannot_open`); the report gives the outcome, the time, the heap kept by the result,
+ * and whatever was written in the app's sandbox or in the corpus folder meanwhile — a viewer writes nothing.
  *
  * A viewer of phase 4 adds its branch to [load]: the `when` is exhaustive, the build fails without it.
  */
@@ -92,12 +94,14 @@ class CorpusCheck(private val sandbox: File) {
         }
         // A page of a phone held upright: the bounds, then the decode at the size the page shows it at.
         ViewerKind.IMAGE -> ImagePages.decode(source, PAGE_WIDTH, PAGE_HEIGHT, resources)
+        ViewerKind.ZIP -> resources.keep(ZipArchive.open(source))
     }
 
     private fun outcomeOf(error: Throwable): String = when (error) {
         is OutOfMemoryError -> OUT_OF_MEMORY
         is FileTooLargeException -> "too_large"
         is ImageTooLargeException -> "too_many_pixels"
+        is TooManyItemsException -> "too_many_items"
         is UnsupportedFormatException -> "unsupported"
         is UnreadableFileException -> UNREADABLE
         is IOException -> "cannot_open"

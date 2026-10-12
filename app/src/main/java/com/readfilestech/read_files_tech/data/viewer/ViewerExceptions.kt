@@ -11,3 +11,9 @@ class UnreadableFileException(reason: String, cause: Throwable? = null) : IOExce
 
 /** A format the viewer knows and does not open (a `.doc` in the OLE format of Word 97, for one). */
 class UnsupportedFormatException(reason: String) : IOException(reason)
+
+/**
+ * The file holds more items than the viewer shows — an archive's entries, a sheet's cells — whatever
+ * its size in bytes: what a viewer builds from a file is bounded too, and [limit] is that bound.
+ */
+class TooManyItemsException(val limit: Int) : IOException("more than $limit items")

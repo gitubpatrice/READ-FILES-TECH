@@ -1,0 +1,7 @@
+[
+ {"file": "7zip-deflate.zip", "viewer": "ZIP", "expect": "ok", "maxMillis": 2000, "made_by": "7-Zip 26.02 (Windows 10), 7z a -tzip -mm=Deflate -mx=5 of a tree: accented names in code page 850 unflagged, a Japanese one in UTF-8 flagged, an empty folder, an empty file, 20 KB of noise kept stored; java.util.zip.ZipFile refuses it whole (bad entry name)"},
+ {"file": "7zip-store.zip", "viewer": "ZIP", "expect": "ok", "maxMillis": 2000, "made_by": "7-Zip 26.02 (Windows 10), 7z a -tzip -mx=0 of the same tree: every entry stored"},
+ {"file": "7zip-aes256.zip", "viewer": "ZIP", "expect": "ok", "maxMillis": 2000, "made_by": "7-Zip 26.02 (Windows 10), 7z a -tzip -p -mem=AES256: every entry encrypted (method 99), listed, each refused"},
+ {"file": "7zip-mixed-zipcrypto.zip", "viewer": "ZIP", "expect": "ok", "maxMillis": 2000, "made_by": "7-Zip 26.02 (Windows 10), lisez-moi.txt under ZipCrypto (-p -mem=ZipCrypto), then docs/ added without a password: one entry refused, the others read"},
+ {"file": "7zip-bzip2.zip", "viewer": "ZIP", "expect": "ok", "maxMillis": 2000, "made_by": "7-Zip 26.02 (Windows 10), 7z a -tzip -mm=BZip2: notes.md in bzip2 (method 12, refused), the 55-byte file stored by 7-Zip itself"}
+]

@@ -17,6 +17,9 @@ enum class ViewerKind(val extensions: Set<String>) {
 
     /** `ImageViewerScreen` of the 2.15.3: a gallery over the images of the folder, zoom, info, share. */
     IMAGE(setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")),
+
+    /** `ZipViewerScreen` of the 2.15.3: the listing, one entry shared, "Extract all". */
+    ZIP(setOf("zip")),
     ;
 
     companion object {

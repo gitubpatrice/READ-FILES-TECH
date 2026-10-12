@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.sharing
 
 import android.content.Context
 import android.os.Environment
+import com.readfilestech.read_files_tech.data.viewer.zip.ZipShares
 import com.readfilestech.read_files_tech.vault.VaultService
 import dagger.Module
 import dagger.Provides
@@ -18,7 +19,9 @@ object SharingModule {
      * What may leave the app: shared storage (every volume, `/storage`) and the app's own folder on it.
      * The 2.15.x also listed its private `files/` and `cache/`; file_paths.xml serves neither, so they
      * could never actually leave — they are not listed. The vault's plaintext cache folders are refused
-     * by name, the same list the purge empties (`VaultService.PLAINTEXT_CACHE_DIRS`).
+     * by name, the same list the purge empties (`VaultService.PLAINTEXT_CACHE_DIRS`). One private folder
+     * may leave: `cache/zip_shared/`, the entries of archives the user shares (ZipShares) — never a vault
+     * file's, whose viewer offers no share (D-028).
      */
     @Provides
     @Singleton
@@ -27,6 +30,7 @@ object SharingModule {
             Environment.getExternalStorageDirectory(),
             File("/storage"),
             context.getExternalFilesDir(null),
+            ZipShares.under(context.cacheDir).folder,
         ).mapNotNull { runCatching { it.canonicalFile }.getOrNull() },
         blockedDirs = VaultService.PLAINTEXT_CACHE_DIRS.map { File(context.cacheDir.canonicalFile, it) },
         packageName = context.packageName,

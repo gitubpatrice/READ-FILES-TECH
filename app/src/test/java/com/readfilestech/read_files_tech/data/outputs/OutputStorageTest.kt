@@ -75,7 +75,8 @@ class OutputStorageTest {
         assertThat(storage().reserve(OutputCategory.VAULT_BACKUPS, "coffre", "rftvault").parentFile)
             .isEqualTo(File(chosen, "Sauvegardes coffre"))
         assertThat(OutputCategory.entries.map { it.folderName })
-            .containsExactly("Scans", "Conversions", "Compressions", "Signatures", "Sans-EXIF", "OCR", "Sauvegardes coffre").inOrder()
+            .containsExactly("Scans", "Conversions", "Compressions", "Signatures", "Sans-EXIF", "OCR", "Sauvegardes coffre", "Extractions")
+            .inOrder()
     }
 
     /** A base it cannot write to (here a FILE where the folder should be): the app's own folders, in turn. */
@@ -120,6 +121,24 @@ class OutputStorageTest {
         val filled = storage.reserve(OutputCategory.COMPRESSIONS, "img", "jpg").apply { writeText("x") }
         storage.discard(filled)
         assertThat(filled.exists()).isTrue()
+    }
+
+    /** "Extract all" (docs D-022): a new folder each time — the 2.15.x wrote into the previous one (D17). */
+    @Test
+    fun `a folder is reserved as a file is, new each time, never in the app's private fallback`() {
+        val first = storage().reserveFolder(OutputCategory.EXTRACTIONS, "mon archive")
+        val second = storage().reserveFolder(OutputCategory.EXTRACTIONS, "mon archive")
+        val base = File(primary, "Files Tech/Extractions")
+        assertThat(first).isEqualTo(File(base, "mon_archive_20261012_140305"))
+        assertThat(second).isEqualTo(File(base, "mon_archive_20261012_140305_1"))
+        assertThat(first.list()!!.toList()).isEmpty()
+
+        primary = File(tmp, "nothing").apply { writeText("x") }
+        assertThat(storage().reserveFolder(OutputCategory.EXTRACTIONS, "x").parentFile).isEqualTo(File(external, "Files Tech/Extractions"))
+        // Files no other app nor the explorer could reach: refused rather than kept there (D17).
+        externalMounted = false
+        assertThrows<NoOutputLocationException> { storage().reserveFolder(OutputCategory.EXTRACTIONS, "x") }
+        assertThat(File(private, "Files Tech/Extractions").exists()).isFalse()
     }
 
     @Test

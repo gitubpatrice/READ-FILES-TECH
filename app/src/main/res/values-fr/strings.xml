@@ -329,6 +329,7 @@
     <string name="viewer_out_of_memory">Pas assez de mémoire sur ce téléphone pour ouvrir ce fichier.</string>
     <string name="viewer_cannot_open">Impossible d\'ouvrir ce fichier : %1$s</string>
     <string name="viewer_image_too_large">Cette image est trop grande pour être affichée ici : %1$,d × %2$,d px, quand les limites sont de %3$,d px de côté et de %4$,d Mpx en tout.</string>
+    <string name="viewer_too_many_items">Ce fichier contient trop d\'éléments pour être affiché ici (plus de %1$,d).</string>
     <string name="text_colors">Couleurs</string>
     <string name="text_size">Taille du texte</string>
     <string name="text_size_value">%1$d pt</string>
@@ -373,4 +374,53 @@
     <string name="hash_digests">Empreintes</string>
     <string name="hash_computing">Calcul en cours… %1$d %%</string>
     <string name="hash_failed">Impossible de calculer les empreintes : %1$s</string>
+
+    <string name="zip_empty">Cette archive est vide.</string>
+    <string name="zip_extract_all">Extraire tout</string>
+    <string name="zip_share_entry">Partager %1$s</string>
+    <string name="zip_problem_encrypted">Chiffré : non ouvert</string>
+    <string name="zip_problem_method">Compressé par une méthode non prise en charge</string>
+    <string name="zip_problem_link">Lien symbolique : non extrait</string>
+    <string name="zip_problem_overlapping">Chevauche une autre entrée : archive forgée ou endommagée</string>
+    <string name="zip_problem_too_large">Plus de %1$s une fois décompressé</string>
+    <string name="zip_problem_damaged">Endommagé</string>
+    <string name="zip_unsafe_name">Son nom mène hors du dossier : non extrait</string>
+    <string name="zip_name_taken">Une autre entrée porte le même nom</string>
+    <string name="zip_over_total">Au-delà des %1$s qu\'une extraction peut écrire</string>
+    <string name="zip_extracting">Extraction…</string>
+    <plurals name="zip_extracting_progress">
+        <item quantity="one">%1$d entrée sur %2$d · %3$s</item>
+        <item quantity="many">%1$d entrées sur %2$d · %3$s</item>
+        <item quantity="other">%1$d entrées sur %2$d · %3$s</item>
+    </plurals>
+    <string name="zip_extract_done">Extraction terminée</string>
+    <string name="zip_extract_stopped">Extraction interrompue</string>
+    <plurals name="zip_extract_written">
+        <item quantity="one">%1$d fichier écrit dans %2$s.</item>
+        <item quantity="many">%1$d fichiers écrits dans %2$s.</item>
+        <item quantity="other">%1$d fichiers écrits dans %2$s.</item>
+    </plurals>
+    <string name="zip_extract_nothing">Aucun fichier n\'a été extrait.</string>
+    <string name="zip_extract_no_file">L\'archive ne contient aucun fichier.</string>
+    <plurals name="zip_extract_refused">
+        <item quantity="one">%d entrée non extraite :</item>
+        <item quantity="many">%d entrées non extraites :</item>
+        <item quantity="other">%d entrées non extraites :</item>
+    </plurals>
+    <plurals name="zip_extract_refused_more">
+        <item quantity="one">…et %1$d de plus</item>
+        <item quantity="many">…et %1$d de plus</item>
+        <item quantity="other">…et %1$d de plus</item>
+    </plurals>
+    <string name="zip_stop_total">Les %1$s qu\'une extraction peut écrire sont atteints : les entrées suivantes ne sont pas extraites.</string>
+    <string name="zip_stop_cancelled">Annulée : les fichiers écrits sont gardés, celui en cours est retiré.</string>
+    <string name="zip_stop_failed">Écriture interrompue : %1$s</string>
+    <string name="zip_no_location">Aucun dossier du stockage n\'a pu recevoir l\'extraction.</string>
+    <plurals name="zip_extract_left">
+        <item quantity="one">Extraction interrompue en quittant son écran : %1$d fichier écrit dans %2$s.</item>
+        <item quantity="many">Extraction interrompue en quittant son écran : %1$d fichiers écrits dans %2$s.</item>
+        <item quantity="other">Extraction interrompue en quittant son écran : %1$d fichiers écrits dans %2$s.</item>
+    </plurals>
+    <string name="zip_share_failed">Impossible de partager cette entrée : %1$s</string>
+    <string name="action_open_folder">Ouvrir le dossier</string>
 </resources>

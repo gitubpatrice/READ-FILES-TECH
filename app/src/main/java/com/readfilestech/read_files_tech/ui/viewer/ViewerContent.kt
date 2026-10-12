@@ -7,6 +7,7 @@ import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.images.ImageBounds
 import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
+import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
@@ -136,6 +137,7 @@ object ViewerErrors {
         is ImageTooLargeException -> ViewerFailure.Reason(
             uiText(R.string.viewer_image_too_large, error.width, error.height, ImageBounds.MAX_SIDE_PX, FileCaps.IMAGE_PIXELS / MEGA),
         )
+        is TooManyItemsException -> ViewerFailure.Reason(uiText(R.string.viewer_too_many_items, error.limit))
         is IOException -> ViewerFailure.Reason(uiText(R.string.viewer_cannot_open, IoErrors.reasonOf(error)))
         // A parser's own exception on a hostile file: an index out of bounds, a number that is not one.
         else -> ViewerFailure.Reason(uiText(R.string.viewer_unreadable))

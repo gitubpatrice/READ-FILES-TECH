@@ -77,6 +77,20 @@ class StartupCleanupTest {
         assertThat(vault.stored(StartupCleanup.FLUTTER_CACHE_PURGED)).isNull()
     }
 
+    /** The entries of archives shared by the port (ZipShares): kept until the next start, then purged. */
+    @Test
+    fun `later starts purge the entries of archives shared before`() {
+        cleanup().runOnce()
+        val shared = cacheFile("zip_shared/1a2b3c/Relevé été.pdf")
+        val own = cacheFile("port-thumbnail.png")
+
+        cleanup().runOnce()
+
+        assertThat(shared.exists()).isFalse()
+        assertThat(File(vault.dirs.cache, "zip_shared").exists()).isFalse()
+        assertThat(own.exists()).isTrue()
+    }
+
     @Test
     fun `the cleanup runs once per process, however often it is called`() {
         val cleanup = cleanup()

@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.startup
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.prefs.valueOrNull
+import com.readfilestech.read_files_tech.data.viewer.zip.ZipShares
 import com.readfilestech.read_files_tech.vault.VaultBackups
 import com.readfilestech.read_files_tech.vault.VaultDirs
 import com.readfilestech.read_files_tech.vault.VaultService
@@ -24,7 +25,8 @@ import javax.inject.Singleton
  *
  * At EVERY start, as the 2.15.x did, and whatever happened above: the decrypted copies
  * (VaultService.purgeDecrypted) and the staging folders of an interrupted restore
- * (VaultBackups.discardLeftovers).
+ * (VaultBackups.discardLeftovers); and the entries of archives shared by the port (ZipShares), which
+ * the 2.15.x never purged (D16) — kept until then, another app may still be reading the last one.
  *
  * SYNCHRONOUS, before any component runs (RftApplication.onCreate): run in the background, it could
  * delete a file the port had just put in the cache, or miss one written meanwhile (GPT review R3,
@@ -55,6 +57,7 @@ class StartupCleanup @Inject constructor(
         step(failed) { if (prefs.boolean(FLUTTER_CACHE_PURGED).valueOrNull() != true) purgeFlutterCache() }
         step(failed) { runBlocking { vault.purgeDecrypted() } }
         step(failed) { runBlocking { backups.discardLeftovers() } }
+        step(failed) { ZipShares.under(dirs.cache).purge() }
         failures = failed
     }
 

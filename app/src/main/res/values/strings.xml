@@ -324,6 +324,7 @@
     <string name="viewer_out_of_memory">Not enough memory on this phone to open this file.</string>
     <string name="viewer_cannot_open">Cannot open this file: %1$s</string>
     <string name="viewer_image_too_large">This image is too large to display here: %1$,d × %2$,d px, where the limits are %3$,d px a side and %4$,d Mpx in all.</string>
+    <string name="viewer_too_many_items">This file holds too many items to be shown here (over %1$,d).</string>
     <string name="text_colors">Colours</string>
     <string name="text_size">Text size</string>
     <string name="text_size_value">%1$d pt</string>
@@ -369,4 +370,49 @@
     <string name="hash_failed">Cannot compute the digests: %1$s</string>
     <!-- The image viewer: which image of the folder is shown, out of how many. -->
     <string name="image_position" translatable="false">%1$d / %2$d</string>
+
+    <!-- ZIP viewer: the listing, one entry shared, "Extract all" -->
+    <string name="zip_empty">This archive is empty.</string>
+    <string name="zip_extract_all">Extract all</string>
+    <string name="zip_share_entry">Share %1$s</string>
+    <string name="zip_problem_encrypted">Encrypted: not opened</string>
+    <string name="zip_problem_method">Compressed by a method not supported</string>
+    <string name="zip_problem_link">Symbolic link: not extracted</string>
+    <string name="zip_problem_overlapping">Overlaps another entry: forged or damaged archive</string>
+    <string name="zip_problem_too_large">Over %1$s once decompressed</string>
+    <string name="zip_problem_damaged">Damaged</string>
+    <string name="zip_unsafe_name">Its name leads outside the folder: not extracted</string>
+    <string name="zip_name_taken">Another entry has the same name</string>
+    <string name="zip_over_total">Over the %1$s an extraction may write</string>
+    <string name="zip_extracting">Extracting…</string>
+    <plurals name="zip_extracting_progress">
+        <item quantity="one">%1$d of %2$d entry · %3$s</item>
+        <item quantity="other">%1$d of %2$d entries · %3$s</item>
+    </plurals>
+    <string name="zip_extract_done">Extraction finished</string>
+    <string name="zip_extract_stopped">Extraction stopped</string>
+    <plurals name="zip_extract_written">
+        <item quantity="one">%1$d file written into %2$s.</item>
+        <item quantity="other">%1$d files written into %2$s.</item>
+    </plurals>
+    <string name="zip_extract_nothing">No file was extracted.</string>
+    <string name="zip_extract_no_file">The archive holds no file.</string>
+    <plurals name="zip_extract_refused">
+        <item quantity="one">%d entry not extracted:</item>
+        <item quantity="other">%d entries not extracted:</item>
+    </plurals>
+    <plurals name="zip_extract_refused_more">
+        <item quantity="one">…and %1$d more</item>
+        <item quantity="other">…and %1$d more</item>
+    </plurals>
+    <string name="zip_stop_total">The %1$s an extraction may write are reached: the entries after are not extracted.</string>
+    <string name="zip_stop_cancelled">Cancelled: the files written are kept, the one in progress is removed.</string>
+    <string name="zip_stop_failed">Writing stopped: %1$s</string>
+    <string name="zip_no_location">No folder of the storage could take the extraction.</string>
+    <plurals name="zip_extract_left">
+        <item quantity="one">Extraction stopped when its screen was left: %1$d file written into %2$s.</item>
+        <item quantity="other">Extraction stopped when its screen was left: %1$d files written into %2$s.</item>
+    </plurals>
+    <string name="zip_share_failed">Cannot share this entry: %1$s</string>
+    <string name="action_open_folder">Open the folder</string>
 </resources>

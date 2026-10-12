@@ -39,6 +39,19 @@ object FileCaps {
     const val IMAGES_TO_PDF_TOTAL = 200 * MIB
     const val ZIP_CREATE_TOTAL = 200 * MIB
     const val ZIP_VIEWER = 500 * MIB
+
+    /**
+     * Entries an archive may list. No 2.15.3 equivalent: archive 4 decoded every entry of a 500 MiB file
+     * in memory. The listing costs about a hundred bytes and its name per entry; 70 000 entries are
+     * listed (corpus), a central directory declaring billions is refused before a record is read.
+     */
+    const val ZIP_VIEWER_ENTRIES = 200_000
+
+    /**
+     * Bytes of central directory read for a listing — its names are what a listing keeps. No 2.15.3
+     * equivalent; 200 000 entries with paths of about a hundred characters fit in it.
+     */
+    const val ZIP_VIEWER_DIRECTORY = 32 * MIB
     const val HTML_VIEWER = 20 * MIB
     const val PDF_SIGNATURE_SOURCE = 100 * MIB
     const val ZIP_EXTRACT_TOTAL = 1024 * MIB

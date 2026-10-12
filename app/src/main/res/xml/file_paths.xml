@@ -9,7 +9,12 @@
       (getUriForFile threw). FileProvider picks the LONGEST matching root, so the primary storage still
       goes out as "external".
 
-    Nothing private is listed: not files/ (the vault, the history), not cache/ (decrypted vault files).
+    - cache-path "zip_shared/": ONE private folder, the entries of archives the user shares from the ZIP
+      viewer (ZipShares), each extracted there for that share and purged at every start. Never a vault
+      file's: the viewer offers no share when its file may not leave the app (docs D-028).
+
+    Nothing else private is listed: not files/ (the vault, the history), not the rest of cache/
+    (decrypted vault files).
 -->
 <paths>
     <external-path
@@ -18,4 +23,7 @@
     <root-path
         name="volumes"
         path="storage/" />
+    <cache-path
+        name="zip_entries"
+        path="zip_shared/" />
 </paths>

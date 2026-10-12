@@ -125,9 +125,18 @@ private fun EntryIcon(entry: FileEntry, selected: Boolean, thumbnails: Thumbnail
         Image(thumbnail, contentDescription = null, contentScale = scale, modifier = Modifier.size(IconBox).clip(shape))
         return
     }
-    val tint = FileVisuals.color(entry.isDirectory, entry.extension)
-    Box(Modifier.size(IconBox).clip(shape).background(tint.copy(alpha = SELECTED_TINT)), contentAlignment = Alignment.Center) {
-        Icon(FileVisuals.icon(entry.isDirectory, entry.extension), contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+    FileTypeIcon(entry.isDirectory, entry.extension)
+}
+
+/** The icon of a type of file, in its colour, on a square of that colour: a row of the explorer, or of an archive. */
+@Composable
+fun FileTypeIcon(isDirectory: Boolean, extension: String) {
+    val tint = FileVisuals.color(isDirectory, extension)
+    Box(
+        Modifier.size(IconBox).clip(RoundedCornerShape(8.dp)).background(tint.copy(alpha = SELECTED_TINT)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(FileVisuals.icon(isDirectory, extension), contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
 
