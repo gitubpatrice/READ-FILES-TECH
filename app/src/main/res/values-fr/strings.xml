@@ -367,6 +367,7 @@
     <string name="csv_sorted_descending">Trié, ordre décroissant</string>
     <string name="csv_column_number">Colonne %1$d</string>
 
+    <string name="document_no_text">Ce document ne contient aucun texte.</string>
     <string name="action_choose_file">Choisir un fichier</string>
     <string name="action_change">Changer</string>
     <string name="action_copy">Copier</string>

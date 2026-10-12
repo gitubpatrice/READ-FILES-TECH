@@ -109,8 +109,9 @@ fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltVi
     }
 }
 
+/** The rows of [document], laid out lazily and selectable — also the document viewer's, which shows a text. */
 @Composable
-private fun TextRows(document: TextDocument, fontSize: Int, code: Boolean) {
+internal fun TextRows(document: TextDocument, fontSize: Int, code: Boolean) {
     val style = if (code) {
         TextStyle(fontSize = fontSize.sp, fontFamily = FontFamily.Monospace)
     } else {
@@ -125,14 +126,15 @@ private fun TextRows(document: TextDocument, fontSize: Int, code: Boolean) {
     }
 }
 
+/** The text size, chosen among [sizes] (points). */
 @Composable
-private fun FontSizeMenu(current: Int, onChoose: (Int) -> Unit) {
+internal fun FontSizeMenu(current: Int, sizes: List<Int> = FONT_SIZES, onChoose: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
         Icon(Icons.Filled.TextFields, contentDescription = stringResource(R.string.text_size))
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-        FONT_SIZES.forEach { size ->
+        sizes.forEach { size ->
             DropdownMenuItem(
                 text = {
                     Text(

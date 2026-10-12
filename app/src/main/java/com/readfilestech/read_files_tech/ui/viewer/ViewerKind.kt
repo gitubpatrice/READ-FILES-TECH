@@ -20,6 +20,13 @@ enum class ViewerKind(val extensions: Set<String>) {
 
     /** `ZipViewerScreen` of the 2.15.3: the listing, one entry shared, "Extract all". */
     ZIP(setOf("zip")),
+
+    /**
+     * `DocxViewerScreen` of the 2.15.3: the text of a Word or OpenDocument file, told by its content. A
+     * `.doc` comes here as it did, to be refused in words when it is the Word 97 format (OLE) — and opened
+     * when it is in fact a .docx.
+     */
+    DOCUMENT(setOf("docx", "doc", "odt", "odp")),
     ;
 
     companion object {

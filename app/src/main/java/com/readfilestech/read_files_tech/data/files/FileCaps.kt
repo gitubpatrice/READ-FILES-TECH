@@ -60,6 +60,22 @@ object FileCaps {
     const val IMAGE_PIXELS = 64_000_000L
 
     /**
+     * Elements nested in one XML part of a document (docx, odt, odp): deeper, the file is refused. No
+     * 2.15.3 counterpart — its regex scan built no tree. Word's deepest real nesting, a text box in a
+     * table cell, stays under 30; a million nested elements is refused here instead of being held.
+     */
+    const val XML_DEPTH = 256
+
+    /**
+     * The longest stretch of an XML part between two tags — one text, or one tag with its attributes —
+     * in chars: the parser holds a stretch whole before handing it over (Android's KXmlParser in a
+     * StringBuilder, about 6 bytes per char at its peak, so 24 MB here). No 2.15.3 counterpart: it decoded
+     * the whole part into one String (200 MiB of XML, up to 400 MB of chars), then copied it once per
+     * `replaceAll` (`text_extraction_service.dart:155-169`).
+     */
+    const val XML_STRETCH_CHARS = 4 * MIB
+
+    /**
      * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
      * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
      * (Claude review R8).

@@ -304,6 +304,7 @@ dependencies {
     testImplementation(libs.junit.jupiter.params)
     testImplementation(libs.truth)
     testImplementation(libs.org.json)
+    testImplementation(libs.xmlpull)
     testImplementation(libs.coroutines.test)
 
     androidTestImplementation(libs.androidx.test.runner)

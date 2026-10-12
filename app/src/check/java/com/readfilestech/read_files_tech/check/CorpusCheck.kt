@@ -10,6 +10,7 @@ import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
+import com.readfilestech.read_files_tech.data.viewer.document.DocumentText
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipArchive
@@ -81,9 +82,7 @@ class CorpusCheck(private val sandbox: File) {
         // Strictly here, where the screen tolerates it: a failure of the colours is the corpus's to see.
         ViewerKind.TEXT -> TextDocument.read(source).also { document ->
             TextColors.extract(document)
-            // The rows the screen decodes first, on its main thread, and the last one.
-            for (index in 0 until minOf(document.rowCount, FIRST_SCREEN_ROWS)) document.row(index)
-            document.row(document.rowCount - 1)
+            decodeScreenRows(document)
         }
         ViewerKind.CSV -> CsvTable.read(source).also { table ->
             // The cells the screen decodes first, on its main thread: the header, the first rows, the last one.
@@ -95,6 +94,14 @@ class CorpusCheck(private val sandbox: File) {
         // A page of a phone held upright: the bounds, then the decode at the size the page shows it at.
         ViewerKind.IMAGE -> ImagePages.decode(source, PAGE_WIDTH, PAGE_HEIGHT, resources)
         ViewerKind.ZIP -> resources.keep(ZipArchive.open(source))
+        // A document's text is shown by the text viewer's rows.
+        ViewerKind.DOCUMENT -> DocumentText.read(source).also { decodeScreenRows(it.document) }
+    }
+
+    /** The rows the screen decodes first, on its main thread, and the last one. */
+    private fun decodeScreenRows(document: TextDocument) {
+        for (index in 0 until minOf(document.rowCount, FIRST_SCREEN_ROWS)) document.row(index)
+        document.row(document.rowCount - 1)
     }
 
     private fun outcomeOf(error: Throwable): String = when (error) {
