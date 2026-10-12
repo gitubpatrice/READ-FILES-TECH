@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -104,7 +106,15 @@ fun PageEditor(editor: PageEditorState, busy: Boolean, actions: PageEditorAction
                 if (preview == null) {
                     CircularProgressIndicator()
                 } else {
-                    FrameCanvas(editor.filtered ?: preview, settings.quad, actions::moveCorner, actions::keepDraft)
+                    // Turned as the page will be, at once (seen on the S9: "Rotate" showed nothing until "Keep").
+                    // A quarter turn swaps the space's sides; Compose maps a touch back through the rotation,
+                    // so a dragged corner still lands where the finger is.
+                    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val turned = if (settings.turns % 2 == 0) Modifier.fillMaxSize() else Modifier.requiredSize(maxHeight, maxWidth)
+                        Box(turned.graphicsLayer { rotationZ = settings.turns * QUARTER_DEGREES.toFloat() }) {
+                            FrameCanvas(editor.filtered ?: preview, settings.quad, actions::moveCorner, actions::keepDraft)
+                        }
+                    }
                 }
                 if (editor.detecting || editor.filtering || busy) CircularProgressIndicator()
             }
