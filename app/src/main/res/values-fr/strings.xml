@@ -65,6 +65,7 @@
     <string name="picker_music">Musique</string>
     <string name="picker_screenshots">Captures</string>
     <string name="picker_apks">APK</string>
+    <string name="output_private">Gardé dans le stockage privé de l\'app : il ne peut pas être partagé d\'ici.</string>
     <string name="home_tab_home">Accueil</string>
     <string name="home_tab_tools">Outils</string>
     <string name="home_open_file">Ouvrir un fichier</string>

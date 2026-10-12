@@ -69,4 +69,5 @@ object KnownApps {
 
     const val KDRIVE = "com.infomaniak.drive"
     const val PROTON_DRIVE = "me.proton.android.drive"
+    const val GOOGLE_DRIVE = "com.google.android.apps.docs"
 }

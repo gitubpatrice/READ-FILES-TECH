@@ -69,9 +69,10 @@ REQUIRED_APPLICATION_ATTRIBUTES = {
 FILE_PROVIDER = "androidx.core.content.FileProvider"
 FILE_PROVIDER_ATTRIBUTES = {"exported": "false", "grantUriPermissions": "true"}
 
-# Package visibility (Android 11+), EXACTLY: PDF Tech and the two cloud apps the explorer sends to by
-# name. Another package here is an app the port can enumerate, which the privacy text must then say.
-QUERIED_PACKAGES = {"com.pdftech.pdf_tech", "com.infomaniak.drive", "me.proton.android.drive"}
+# Package visibility (Android 11+), EXACTLY the 2.15.3's: PDF Tech and the three cloud apps a file is sent
+# to by name (kDrive and Proton from the explorer, Google Drive too from the row under a tool's output).
+# Another package here is an app the port can enumerate, which the privacy text must then say.
+QUERIED_PACKAGES = {"com.pdftech.pdf_tech", "com.infomaniak.drive", "me.proton.android.drive", "com.google.android.apps.docs"}
 NEVER_TRUE = ("debuggable",)
 
 # Attributes a given component must carry, as in the 2.15.x manifest.

@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui.explorer
 import android.content.Context
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.sharing.PathGuard
 import com.readfilestech.read_files_tech.ui.common.FileLauncher
 import com.readfilestech.read_files_tech.ui.common.LaunchOutcome
 import com.readfilestech.read_files_tech.ui.common.UserMessages
@@ -12,6 +13,7 @@ import javax.inject.Inject
 /** The explorer's ways out to other apps, each saying why when it cannot. The activity is passed, never kept. */
 class EntryLaunching @Inject constructor(
     private val launcher: FileLauncher,
+    private val guard: PathGuard,
     private val messages: UserMessages,
 ) {
     /** Opens [entry] in another app; the chooser asks which ("Open with…"). */
@@ -34,6 +36,9 @@ class EntryLaunching @Inject constructor(
 
     fun isInstalled(packageName: String): Boolean = launcher.isInstalled(packageName)
 
+    /** Whether [entry] may be handed to another app at all: the guard each action goes through first. */
+    fun canLeave(entry: FileEntry): Boolean = guard.resolve(entry.file) != null
+
     private fun say(outcome: LaunchOutcome, appName: String? = null) {
         FileLauncher.messageFor(outcome, appName)?.let(messages::post)
     }
@@ -43,5 +48,6 @@ class EntryLaunching @Inject constructor(
         const val PDF_TECH_NAME = "PDF Tech"
         const val KDRIVE_NAME = "kDrive"
         const val PROTON_DRIVE_NAME = "Proton Drive"
+        const val GOOGLE_DRIVE_NAME = "Google Drive"
     }
 }

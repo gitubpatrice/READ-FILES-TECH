@@ -38,6 +38,7 @@
         <package android:name="com.pdftech.pdf_tech" />
         <package android:name="com.infomaniak.drive" />
         <package android:name="me.proton.android.drive" />
+        <package android:name="com.google.android.apps.docs" />
     </queries>
 
     <!--

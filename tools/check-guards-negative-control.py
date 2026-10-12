@@ -127,6 +127,7 @@ QUERIES = (
     '        <package android:name="com.pdftech.pdf_tech" />\n'
     '        <package android:name="com.infomaniak.drive" />\n'
     '        <package android:name="me.proton.android.drive" />\n'
+    '        <package android:name="com.google.android.apps.docs" />\n'
     '    </queries>\n'
 )
 
@@ -381,7 +382,7 @@ def shape_cases(work: str) -> list[tuple]:
              1, "android:grantUriPermissions is None"),
         case("the FileProvider absent", SHAPE_OK.replace("androidx.core.content.FileProvider", "com.example.OtherProvider"),
              1, "FileProvider found 0 times"),
-        case("a package queried beyond the reviewed three",
+        case("a package queried beyond the reviewed four",
              SHAPE_OK.replace("    </queries>", '        <package android:name="com.whatsapp" />\n    </queries>'),
              1, "<queries> packages are"),
         case("PDF Tech no longer queried (\"Edit in PDF Tech\" would vanish on Android 11+)",

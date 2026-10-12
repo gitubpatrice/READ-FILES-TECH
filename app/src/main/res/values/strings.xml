@@ -70,6 +70,7 @@
     <string name="picker_music">Music</string>
     <string name="picker_screenshots">Screenshots</string>
     <string name="picker_apks">APKs</string>
+    <string name="output_private">Kept in the app\'s own storage: it cannot be shared from here.</string>
     <string name="home_tab_home">Home</string>
     <string name="home_tab_tools">Tools</string>
     <string name="home_open_file">Open a file</string>
