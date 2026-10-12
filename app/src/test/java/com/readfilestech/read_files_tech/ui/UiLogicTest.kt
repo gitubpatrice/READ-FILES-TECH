@@ -13,9 +13,12 @@ import com.readfilestech.read_files_tech.ui.common.IoErrors
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.explorer.ExplorerUiState
 import com.readfilestech.read_files_tech.ui.explorer.FolderProblem
+import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.explorer.allSelected
+import com.readfilestech.read_files_tech.ui.explorer.isVolumeParent
 import com.readfilestech.read_files_tech.ui.explorer.listed
 import com.readfilestech.read_files_tech.ui.explorer.sortedBy
+import com.readfilestech.read_files_tech.ui.explorer.togglePicked
 import com.readfilestech.read_files_tech.ui.explorer.toggled
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
@@ -121,6 +124,61 @@ class UiLogicTest {
         assertThat(IoErrors.reasonOf(readOnly)).isEqualTo(UiText.Res(R.string.error_read_only))
         val gone = FileNotFoundException("/storage/emulated/0/a.txt: open failed: ENOENT (No such file or directory)")
         assertThat(IoErrors.reasonOf(gone)).isEqualTo(UiText.Res(R.string.error_not_found))
+    }
+
+    @Test
+    fun `a filter of extensions keeps the folders, and says what it hides`() {
+        val listing = Listing.Listed(File("/d"), listOf(entry("a.pdf"), entry("B.PDF"), entry("c.txt"), entry("sub", dir = true)))
+        val state = ExplorerUiState(
+            extensions = setOf("pdf")
+        ).listed(File("/d"), listing, denied = false, mounted = emptyList(), canGoBack = false)
+        assertThat(state.visible.map { it.name }).containsExactly("sub", "a.pdf", "B.PDF").inOrder()
+        assertThat(state.filteredOut).isTrue()
+        val onlyPdf = ExplorerUiState(extensions = setOf("pdf"))
+            .listed(
+                File("/d"),
+                Listing.Listed(File("/d"), listOf(entry("a.pdf"))),
+                denied = false,
+                mounted = emptyList(),
+                canGoBack = false
+            )
+        assertThat(onlyPdf.filteredOut).isFalse()
+        assertThat(ExplorerUiState().listed(File("/d"), listing, denied = false, mounted = emptyList(), canGoBack = false).filteredOut)
+            .isFalse()
+    }
+
+    /** Several files chosen for another screen: kept from folder to folder, in the order chosen. */
+    @Test
+    fun `the files chosen survive a change of folder`() {
+        val chosen = ExplorerUiState(pick = PickMode.FILES).togglePicked(entry("b.txt")).togglePicked(entry("a.txt"))
+        val elsewhere = chosen.listed(
+            File("/e"),
+            Listing.Listed(File("/e"), emptyList()),
+            denied = false,
+            mounted = emptyList(),
+            canGoBack = true
+        )
+        assertThat(elsewhere.picked).containsExactly("/d/b.txt", "/d/a.txt").inOrder()
+        assertThat(elsewhere.togglePicked(entry("b.txt")).picked).containsExactly("/d/a.txt")
+    }
+
+    @Test
+    fun `the route carries the pick mode and the extensions`() {
+        PickMode.entries.forEach { assertThat(PickMode.of(it.argument)).isEqualTo(it) }
+        assertThat(PickMode.of(null)).isNull()
+        assertThat(PickMode.of("FOLDER")).isNull()
+        assertThat(Routes.extensionsOf("pdf,docx")).containsExactly("pdf", "docx")
+        assertThat(Routes.extensionsOf(null)).isNull()
+        assertThat(Routes.extensionsOf("")).isEmpty()
+    }
+
+    /** The folders reached by climbing the breadcrumb above a volume, which offer the volumes instead. */
+    @Test
+    fun `only the folders above the volumes offer the volumes`() {
+        listOf("/storage", "/storage/emulated").forEach { assertThat(isVolumeParent(File(it))).isTrue() }
+        listOf("/", "/storage/emulated/0", "/storage/1A2B-3C4D", "/storage/self", "/storage2", "/sdcard").forEach {
+            assertThat(isVolumeParent(File(it))).isFalse()
+        }
     }
 
     /** Claude review R4: without the installer of phase 3b, the system cancelled an APK without a word. */

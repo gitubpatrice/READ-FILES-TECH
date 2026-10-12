@@ -7,6 +7,21 @@ import com.readfilestech.read_files_tech.data.browse.SortMode
 import com.readfilestech.read_files_tech.data.storage.VolumeRoot
 import java.io.File
 
+/** What the explorer chooses for another screen (`pickMode` of the 2.15.x, which knew one file only). */
+enum class PickMode {
+    FOLDER,
+    FILE,
+    FILES,
+    ;
+
+    /** The route argument. */
+    val argument: String get() = name.lowercase()
+
+    companion object {
+        fun of(argument: String?): PickMode? = entries.find { it.argument == argument }
+    }
+}
+
 /** Why a folder shows nothing. */
 enum class FolderProblem {
     /** No storage access, under shared storage: the banner and the "settings" button. */
@@ -30,13 +45,25 @@ data class ExplorerUiState(
     val sort: SortMode = SortMode.NAME,
     val selection: Set<String> = emptySet(),
     val canGoBack: Boolean = false,
-    /** Choosing a destination folder (copy / move to): files are shown, not actionable. */
-    val pickFolder: Boolean = false,
+    /** What the explorer chooses for another screen, if anything: no menu, no selection, no action. */
+    val pick: PickMode? = null,
+    /** The files chosen so far in [PickMode.FILES], in the order chosen, across folders. */
+    val picked: List<String> = emptyList(),
+    /** Only files of these extensions are shown, folders always (a quick access, a picker's filter). */
+    val extensions: Set<String>? = null,
+    /** The caller's name for this place ("Videos"), shown instead of the explorer's. */
+    val title: String? = null,
     val volumes: List<VolumeRoot> = emptyList(),
     val kDriveInstalled: Boolean = false,
     val protonInstalled: Boolean = false,
 ) {
     val selecting: Boolean get() = selection.isNotEmpty()
+
+    /** Choosing a destination folder (copy / move to): files are shown, not actionable. */
+    val pickFolder: Boolean get() = pick == PickMode.FOLDER
+
+    /** Entries the filters hide that are files of other extensions: the empty state says why. */
+    val filteredOut: Boolean get() = extensions != null && entries.any { !it.isDirectory && it.extension !in extensions }
 
     /** The selected entries — ALL of them, a filter typed since included: what the bar counts is what is acted on (Claude R5). */
     val selectedEntries: List<FileEntry> get() = entries.filter { it.path in selection }
@@ -70,7 +97,11 @@ fun ExplorerUiState.listed(dir: File, listing: Listing, denied: Boolean, mounted
     ).refiltered()
 }
 
-fun ExplorerUiState.refiltered(): ExplorerUiState = copy(visible = EntryOrder.filter(entries, showHidden, query))
+fun ExplorerUiState.refiltered(): ExplorerUiState = copy(visible = EntryOrder.filter(entries, showHidden, query, extensions))
+
+/** A file chosen, or un-chosen, in [PickMode.FILES]. */
+fun ExplorerUiState.togglePicked(entry: FileEntry): ExplorerUiState =
+    copy(picked = if (entry.path in picked) picked - entry.path else picked + entry.path)
 
 fun ExplorerUiState.sortedBy(mode: SortMode): ExplorerUiState = copy(sort = mode, entries = EntryOrder.sort(entries, mode)).refiltered()
 

@@ -4,14 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -70,6 +67,7 @@ private sealed interface ExplorerDialog {
  * @param pickedFolder the destination the chooser handed back (copy / move to), until [onPickedFolderUsed].
  * @param onChooseFolder opens this screen in folder-choosing mode, starting at the given folder.
  * @param onFolderChosen the folder chosen, in folder-choosing mode.
+ * @param onFilesChosen the files chosen, in file-choosing mode ([PickMode.FILE], [PickMode.FILES]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +78,7 @@ fun ExplorerScreen(
     onOpenSearch: () -> Unit,
     onChooseFolder: (String) -> Unit,
     onFolderChosen: (String) -> Unit,
+    onFilesChosen: (List<String>) -> Unit,
     onNavigate: (String) -> Unit,
     onLeave: () -> Unit,
     viewModel: ExplorerViewModel = hiltViewModel(),
@@ -113,6 +112,17 @@ fun ExplorerScreen(
         FileTarget.External -> launching.view(context, entry, chooser = false)
     }
 
+    fun click(entry: FileEntry) {
+        focus.clearFocus()
+        when {
+            state.selecting -> viewModel.toggleSelection(entry)
+            entry.isDirectory -> browser.open(entry.file)
+            state.pick == PickMode.FILE -> onFilesChosen(listOf(entry.path))
+            state.pick == PickMode.FILES -> viewModel.togglePicked(entry)
+            else -> open(entry)
+        }
+    }
+
     fun transfer(entries: List<FileEntry>, move: Boolean) {
         viewModel.startTransfer(entries, move)
         state.dir?.let { onChooseFolder(it.path) }
@@ -144,7 +154,7 @@ fun ExplorerScreen(
         snackbarHost = { AppSnackbarHost() },
         topBar = {
             when {
-                state.pickFolder -> PickTopBar(state, onCancel = onLeave)
+                state.pick != null -> PickTopBar(state, onCancel = onLeave, onVolume = { browser.open(it) })
                 state.selecting -> SelectionTopBar(
                     count = state.selection.size,
                     onClear = viewModel::clearSelection,
@@ -168,21 +178,14 @@ fun ExplorerScreen(
             }
         },
         floatingActionButton = {
-            if (!state.selecting) {
+            // A new folder: to browse, or as a destination — not while choosing files.
+            if (!state.selecting && (state.pick == null || state.pickFolder)) {
                 FloatingActionButton(onClick = { dialog = ExplorerDialog.NewFolder }) {
                     Icon(Icons.Outlined.CreateNewFolder, contentDescription = stringResource(R.string.action_new_folder))
                 }
             }
         },
-        bottomBar = {
-            if (state.pickFolder) {
-                Button(
-                    onClick = { state.dir?.let { onFolderChosen(it.path) } },
-                    enabled = state.dir != null && state.problem == null,
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                ) { Text(stringResource(R.string.action_choose_this_folder)) }
-            }
-        },
+        bottomBar = { PickBottomBar(state, onFolderChosen, onFilesChosen) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Breadcrumb(state.dir) { browser.open(it) }
@@ -205,24 +208,19 @@ fun ExplorerScreen(
                         CircularProgressIndicator()
                     }
                     state.visible.isEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
-                        item { FolderEmptyState(state, storageSettings.request) }
+                        item { FolderEmptyState(state, storageSettings.request, onVolume = { browser.open(it) }) }
                     }
                     else -> LazyColumn(Modifier.fillMaxSize()) {
                         items(state.visible, key = FileEntry::path) { entry ->
                             EntryRow(
                                 entry = entry,
-                                selected = entry.path in state.selection,
+                                selected = entry.path in state.selection || entry.path in state.picked,
                                 enabled = entry.isDirectory || !state.pickFolder,
                                 thumbnails = viewModel.thumbnails,
-                                onClick = {
-                                    focus.clearFocus()
-                                    when {
-                                        state.selecting -> viewModel.toggleSelection(entry)
-                                        entry.isDirectory -> browser.open(entry.file)
-                                        else -> open(entry)
-                                    }
-                                },
-                                onLongClick = if (state.pickFolder) {
+                                onClick = { click(entry) },
+                                // Choosing for another screen: no selection, no menu — nothing to rename,
+                                // move or delete on the way (the 2.15.x left them all there).
+                                onLongClick = if (state.pick != null) {
                                     null
                                 } else {
                                     {
@@ -231,7 +229,7 @@ fun ExplorerScreen(
                                         viewModel.toggleSelection(entry)
                                     }
                                 },
-                                menu = if (state.selecting || state.pickFolder) {
+                                menu = if (state.selecting || state.pick != null) {
                                     null
                                 } else {
                                     { dismiss ->

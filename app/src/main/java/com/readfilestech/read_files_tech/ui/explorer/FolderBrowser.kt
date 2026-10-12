@@ -100,6 +100,15 @@ class FolderBrowser(
  * Shared storage, every volume: what the storage permission opens. `/sdcard` is a real alias of the
  * primary volume that the user reaches by climbing the breadcrumb to `/`: it is recognised, not built.
  */
+/**
+ * The folders above the volumes (`drwx--x---`): an app crosses them to reach a volume, never lists them.
+ * `invariantSeparatorsPath`: `path` itself on Android; the JVM tests also run on Windows.
+ */
+internal fun isVolumeParent(dir: File): Boolean {
+    val path = dir.invariantSeparatorsPath
+    return path == "/storage" || path == "/storage/emulated"
+}
+
 @SuppressLint("SdCardPath")
 internal fun isUnderSharedStorage(dir: File): Boolean =
     dir.path.startsWith("/storage/") || dir.path == "/sdcard" || dir.path.startsWith("/sdcard/")

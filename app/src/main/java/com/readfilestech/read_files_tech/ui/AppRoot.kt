@@ -42,6 +42,7 @@ import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.ExplorerScreen
+import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.search.SearchScreen
@@ -95,18 +96,13 @@ private fun Destinations(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Routes.EXPLORER) {
         composable(
             Routes.EXPLORER,
-            arguments = listOf(
-                navArgument(Routes.ARG_PATH) {
+            arguments = listOf(Routes.ARG_PATH, Routes.ARG_PICK, Routes.ARG_EXTENSIONS, Routes.ARG_TITLE).map { name ->
+                navArgument(name) {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
-                },
-                navArgument(Routes.ARG_PICK) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                },
-            ),
+                }
+            },
         ) { entry ->
             val picked = entry.pickedFolder()
             ExplorerScreen(
@@ -114,9 +110,13 @@ private fun Destinations(navController: NavHostController) {
                 onPickedFolderUsed = picked.consume,
                 onOpenTrash = { navController.navigate(Routes.TRASH) { launchSingleTop = true } },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) { launchSingleTop = true } },
-                onChooseFolder = { navController.navigate(Routes.explorer(it, pickFolder = true)) },
+                onChooseFolder = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
                 onFolderChosen = { folder ->
                     navController.previousBackStackEntry?.savedStateHandle?.set(Routes.RESULT_PICKED_FOLDER, folder)
+                    navController.popBackStack()
+                },
+                onFilesChosen = { files ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set(Routes.RESULT_PICKED_FILES, ArrayList(files))
                     navController.popBackStack()
                 },
                 onNavigate = { navController.navigate(it) },
@@ -130,7 +130,7 @@ private fun Destinations(navController: NavHostController) {
                 pickedRoot = picked.folder,
                 onPickedRootUsed = picked.consume,
                 onBack = { navController.popBackStack() },
-                onChooseRoot = { navController.navigate(Routes.explorer(it, pickFolder = true)) },
+                onChooseRoot = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
                 onOpenFolder = { navController.navigate(Routes.explorer(it)) },
             )
         }

@@ -41,9 +41,13 @@
     <string name="explorer_search_hint">Rechercher…</string>
     <string name="folder_empty">Dossier vide</string>
     <string name="folder_unreadable">Ce dossier est illisible</string>
+    <string name="folder_pick_volume">Ouvrez l\'un des volumes qu\'il contient :</string>
     <string name="folder_no_match">Aucun élément ne correspond à « %1$s »</string>
     <string name="folder_only_hidden">Seulement des éléments cachés</string>
     <string name="pick_folder_title">Choisir un dossier</string>
+    <string name="pick_file_title">Choisir un fichier</string>
+    <string name="pick_files_title">Choisir des fichiers</string>
+    <string name="folder_no_compatible">Aucun fichier compatible ici (%1$s)</string>
     <string name="action_choose_this_folder">Choisir ce dossier</string>
     <string name="action_new_folder">Nouveau dossier</string>
     <string name="new_folder_hint">Nom du dossier</string>
@@ -83,6 +87,11 @@
         <item quantity="one">%d élément</item>
         <item quantity="many">%d éléments</item>
         <item quantity="other">%d éléments</item>
+    </plurals>
+    <plurals name="action_confirm_files">
+        <item quantity="one">Valider (%d fichier)</item>
+        <item quantity="many">Valider (%d fichiers)</item>
+        <item quantity="other">Valider (%d fichiers)</item>
     </plurals>
     <plurals name="selected_count">
         <item quantity="one">%d sélectionné</item>

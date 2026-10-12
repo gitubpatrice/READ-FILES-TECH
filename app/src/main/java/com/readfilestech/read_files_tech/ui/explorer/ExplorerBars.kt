@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -44,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -92,7 +94,7 @@ fun BrowseTopBar(
                 }
             }
         },
-        title = { BarTitle(stringResource(R.string.explorer_title), state.dir?.name?.ifEmpty { "/" } ?: "/") },
+        title = { BarTitle(state.title ?: stringResource(R.string.explorer_title), state.dir?.name?.ifEmpty { "/" } ?: "/") },
         actions = {
             IconButton(onClick = onRefresh) {
                 Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh))
@@ -157,15 +159,45 @@ fun SelectionTopBar(
 /** The bar while choosing a destination folder. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PickTopBar(state: ExplorerUiState, onCancel: () -> Unit) {
+fun PickTopBar(state: ExplorerUiState, onCancel: () -> Unit, onVolume: (File) -> Unit) {
     TopAppBar(
         navigationIcon = {
             IconButton(
                 onClick = onCancel
             ) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel)) }
         },
-        title = { BarTitle(stringResource(R.string.pick_folder_title), state.dir?.path.orEmpty()) },
+        title = { BarTitle(state.title ?: stringResource(pickTitleOf(state.pick)), state.dir?.path.orEmpty()) },
+        // Another volume: a folder of the SD card cannot be reached otherwise.
+        actions = { if (state.volumes.size > 1) VolumeButton(state.volumes, onVolume) },
     )
+}
+
+private fun pickTitleOf(pick: PickMode?): Int = when (pick) {
+    PickMode.FILE -> R.string.pick_file_title
+    PickMode.FILES -> R.string.pick_files_title
+    PickMode.FOLDER, null -> R.string.pick_folder_title
+}
+
+/**
+ * The confirmation of a choice: this folder, or the files chosen so far. Choosing ONE file needs none —
+ * the tap is the choice.
+ */
+@Composable
+fun PickBottomBar(state: ExplorerUiState, onFolderChosen: (String) -> Unit, onFilesChosen: (List<String>) -> Unit) {
+    val modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)
+    when (state.pick) {
+        PickMode.FOLDER -> Button(
+            onClick = { state.dir?.let { onFolderChosen(it.path) } },
+            enabled = state.dir != null && state.problem == null,
+            modifier = modifier,
+        ) { Text(stringResource(R.string.action_choose_this_folder)) }
+        PickMode.FILES -> Button(
+            onClick = { onFilesChosen(state.picked) },
+            enabled = state.picked.isNotEmpty(),
+            modifier = modifier,
+        ) { Text(pluralStringResource(R.plurals.action_confirm_files, state.picked.size, state.picked.size)) }
+        PickMode.FILE, null -> Unit
+    }
 }
 
 @Composable
@@ -343,7 +375,7 @@ fun AccessBanner(allFilesModel: Boolean, onSettings: () -> Unit) {
 
 /** An empty or unreadable folder, or one the missing access hides. */
 @Composable
-fun FolderEmptyState(state: ExplorerUiState, onSettings: () -> Unit) {
+fun FolderEmptyState(state: ExplorerUiState, onSettings: () -> Unit, onVolume: (File) -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -373,6 +405,22 @@ fun FolderEmptyState(state: ExplorerUiState, onSettings: () -> Unit) {
                     tint = MaterialTheme.colorScheme.outline
                 )
                 Text(stringResource(R.string.folder_unreadable), style = MaterialTheme.typography.titleSmall)
+                // `/storage` and `/storage/emulated` can be crossed, not listed: reached by climbing the
+                // breadcrumb, they offer the volumes instead of a dead end (the 2.15.x showed it empty).
+                if (state.dir?.let(::isVolumeParent) == true) {
+                    Text(
+                        stringResource(R.string.folder_pick_volume),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                    state.volumes.forEach { volume ->
+                        OutlinedButton(onClick = { onVolume(volume.dir) }) {
+                            Icon(Icons.Outlined.SdStorage, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text(volume.label)
+                        }
+                    }
+                }
             }
             null -> {
                 Icon(
@@ -385,6 +433,10 @@ fun FolderEmptyState(state: ExplorerUiState, onSettings: () -> Unit) {
                 val text = when {
                     state.entries.isEmpty() -> stringResource(R.string.folder_empty)
                     state.query.isNotBlank() -> stringResource(R.string.folder_no_match, state.query)
+                    state.filteredOut -> stringResource(
+                        R.string.folder_no_compatible,
+                        state.extensions.orEmpty().sorted().joinToString(", ") { ".$it" },
+                    )
                     else -> stringResource(R.string.folder_only_hidden)
                 }
                 Text(text, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)

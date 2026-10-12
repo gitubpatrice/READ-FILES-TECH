@@ -46,9 +46,13 @@
     <string name="explorer_search_hint">Search…</string>
     <string name="folder_empty">Empty folder</string>
     <string name="folder_unreadable">This folder cannot be read</string>
+    <string name="folder_pick_volume">Open one of the volumes it holds:</string>
     <string name="folder_no_match">Nothing here matches \"%1$s\"</string>
     <string name="folder_only_hidden">Only hidden items here</string>
     <string name="pick_folder_title">Choose a folder</string>
+    <string name="pick_file_title">Choose a file</string>
+    <string name="pick_files_title">Choose files</string>
+    <string name="folder_no_compatible">No compatible file here (%1$s)</string>
     <string name="action_choose_this_folder">Choose this folder</string>
     <string name="action_new_folder">New folder</string>
     <string name="new_folder_hint">Folder name</string>
@@ -86,6 +90,10 @@
     <plurals name="item_count">
         <item quantity="one">%d item</item>
         <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="action_confirm_files">
+        <item quantity="one">Confirm (%d file)</item>
+        <item quantity="other">Confirm (%d files)</item>
     </plurals>
     <plurals name="selected_count">
         <item quantity="one">%d selected</item>
