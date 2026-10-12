@@ -8,8 +8,11 @@ MIB = 1024 * 1024
 TEXT_VIEWER_CAP = 50 * MIB  # FileCaps.TEXT_VIEWER
 
 
-def _write(path, chunk, total):
+def _write(path, chunk, total, prefix=b""):
+    """[prefix] once (a BOM), then [chunk] repeated: [total] bytes in all."""
     with open(path, "wb") as handle:
+        handle.write(prefix)
+        total -= len(prefix)
         while total > 0:
             piece = chunk[: min(len(chunk), total)]
             handle.write(piece)
@@ -28,9 +31,19 @@ def generate(out):
     # The cap exactly, one endless line (a minified script): 12 800 rows, nothing laid out whole.
     _write(out / "text-at-cap-one-line.js", b"var a=1;" * 4096, TEXT_VIEWER_CAP)
     case("text-at-cap-one-line.js", "ok")
-    # Ten million empty lines: the index costs 40 MB, counted before it is written.
+    # Ten million empty lines, then the cap's worst index: 52 million rows of one line feed each — an
+    # index of every row took 200 MB (Claude review R9); one start in 16 takes 13.
     _write(out / "text-ten-million-lines.txt", b"\n" * 65536, 10_000_000)
     case("text-ten-million-lines.txt", "ok")
+    _write(out / "text-cap-of-line-feeds.txt", b"\n" * 65536, TEXT_VIEWER_CAP)
+    case("text-cap-of-line-feeds.txt", "ok")
+    _write(out / "text-cap-of-crlf.txt", b"\r\n" * 32768, TEXT_VIEWER_CAP)
+    case("text-cap-of-crlf.txt", "ok")
+    # UTF-16 made only of lone low surrogates: no row boundary was ever found, one row of 50 MiB (R9).
+    _write(out / "text-utf16-lone-surrogates.txt", b"\x00\xdc" * 32768, TEXT_VIEWER_CAP, prefix=b"\xff\xfe")
+    case("text-utf16-lone-surrogates.txt", "ok")
+    _write(out / "text-utf16be-lone-surrogates.txt", b"\xdc\x00" * 32768, TEXT_VIEWER_CAP, prefix=b"\xfe\xff")
+    case("text-utf16be-lone-surrogates.txt", "ok")
     # Not text at all, under a text name: shown as Windows-1252, never a crash.
     with open(out / "text-random-bytes.txt", "wb") as handle:
         handle.write(os.urandom(MIB))

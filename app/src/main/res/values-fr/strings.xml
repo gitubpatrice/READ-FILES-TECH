@@ -331,5 +331,12 @@
     <string name="text_colors">Couleurs</string>
     <string name="text_size">Taille du texte</string>
     <string name="text_size_value">%1$d pt</string>
-    <string name="color_copied">Copié : %1$s</string>
+    <string name="value_copied">Copié : %1$s</string>
+    <string name="action_choose_file">Choisir un fichier</string>
+    <string name="action_change">Changer</string>
+    <string name="action_copy">Copier</string>
+    <string name="hash_intro">MD5, SHA-1, SHA-256 et SHA-512 de n\'importe quel fichier</string>
+    <string name="hash_digests">Empreintes</string>
+    <string name="hash_computing">Calcul en cours… %1$d %%</string>
+    <string name="hash_failed">Impossible de calculer les empreintes : %1$s</string>
 </resources>

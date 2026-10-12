@@ -1,11 +1,14 @@
 package com.readfilestech.read_files_tech
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
@@ -52,7 +55,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Followed, not read once: the home's theme menu applies at once.
             val theme by themes.current.collectAsStateWithLifecycle()
-            ReadFilesTechTheme(darkTheme = theme.isDark(isSystemInDarkTheme())) {
+            val dark = theme.isDark(isSystemInDarkTheme())
+            // The bars' icons follow the APP's theme: left to the system's, a dark theme chosen on a light
+            // system drew dark clock and battery icons on the dark app (seen on emulator 36, phase 4).
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(LIGHT_SCRIM, DARK_SCRIM) { dark },
+                )
+                onDispose { }
+            }
+            ReadFilesTechTheme(darkTheme = dark) {
                 AppRoot(access, messages, shortcut, onShortcutHandled = { shortcut.value = null })
             }
         }
@@ -104,5 +117,11 @@ class MainActivity : ComponentActivity() {
         }
         runCatching { intent.removeExtra(Shortcuts.EXTRA) }
         Shortcuts.featureOf(value)?.let { shortcut.value = it }
+    }
+
+    private companion object {
+        /** The scrims `enableEdgeToEdge` draws by default behind a three-button navigation bar. */
+        val LIGHT_SCRIM = Color.argb(0xE6, 0xFF, 0xFF, 0xFF)
+        val DARK_SCRIM = Color.argb(0x80, 0x1B, 0x1B, 0x1B)
     }
 }

@@ -11,7 +11,7 @@ import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.ViewerResources
-import kotlinx.coroutines.CancellationException
+import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import org.json.JSONArray
 import java.io.File
 import java.io.IOException
@@ -35,38 +35,21 @@ class CorpusCheck(private val sandbox: File) {
         return linkedMapOf("results" to cases.map { case -> check(dir, case) })
     }
 
-    // Every failure is the corpus's datum, whatever its class: it is reported, never thrown.
-    @Suppress("TooGenericExceptionCaught")
+    /** Every failure is the corpus's datum, whatever its class: reported through the screens' own guard. */
     private suspend fun check(dir: File, case: CorpusCase): Map<String, Any?> {
         val before = Sandbox.list(sandbox) to Sandbox.list(dir)
         val resources = ViewerResources()
         val heapBefore = usedHeap()
         val nativeBefore = Debug.getNativeHeapAllocatedSize()
         val start = SystemClock.elapsedRealtime()
-        var outcome: String
-        var detail: String? = null
-        var kept: Any? = null
-        try {
-            kept = load(case.viewer, StorageFileSource(File(dir, case.file)), resources)
-            outcome = OK
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            outcome = outcomeOf(e)
-            detail = e.javaClass.name
-        } catch (e: OutOfMemoryError) {
-            outcome = OUT_OF_MEMORY
-            detail = e.javaClass.name
-        } catch (e: StackOverflowError) {
-            // What the screen says "unreadable" for (ViewerErrors).
-            outcome = UNREADABLE
-            detail = e.javaClass.name
-        }
+        val result = loadOrFailure { load(case.viewer, StorageFileSource(File(dir, case.file)), resources) }
         val millis = SystemClock.elapsedRealtime() - start
         val heapKept = usedHeap() - heapBefore
         val nativeKept = Debug.getNativeHeapAllocatedSize() - nativeBefore
+        val failure = result.exceptionOrNull()
+        val outcome = failure?.let(::outcomeOf) ?: OK
         // Read once the heap is measured: the result stays reachable until then.
-        check(outcome != OK || kept != null)
+        check(failure != null || result.getOrNull() != null)
         resources.close()
         val after = Sandbox.list(sandbox) to Sandbox.list(dir)
         return linkedMapOf(
@@ -74,7 +57,7 @@ class CorpusCheck(private val sandbox: File) {
             "viewer" to case.viewer.name,
             "expect" to case.expect,
             "outcome" to outcome,
-            "detail" to detail,
+            "detail" to failure?.javaClass?.name,
             "millis" to millis,
             "maxMillis" to case.maxMillis,
             "heapKeptBytes" to heapKept,
@@ -91,15 +74,22 @@ class CorpusCheck(private val sandbox: File) {
      */
     @Suppress("UnusedParameter") // the text viewer opens nothing to close; the ZIP and PDF viewers will
     private suspend fun load(kind: ViewerKind, source: ViewerSource, resources: ViewerResources): Any = when (kind) {
-        ViewerKind.TEXT -> TextDocument.read(source).also { TextColors.extract(it) }
+        // Strictly here, where the screen tolerates it: a failure of the colours is the corpus's to see.
+        ViewerKind.TEXT -> TextDocument.read(source).also { document ->
+            TextColors.extract(document)
+            // The rows the screen decodes first, on its main thread, and the last one.
+            for (index in 0 until minOf(document.rowCount, FIRST_SCREEN_ROWS)) document.row(index)
+            document.row(document.rowCount - 1)
+        }
     }
 
-    private fun outcomeOf(error: Exception): String = when (error) {
+    private fun outcomeOf(error: Throwable): String = when (error) {
+        is OutOfMemoryError -> OUT_OF_MEMORY
         is FileTooLargeException -> "too_large"
         is UnsupportedFormatException -> "unsupported"
         is UnreadableFileException -> UNREADABLE
         is IOException -> "cannot_open"
-        // What the screen says "unreadable" for: a parser's own exception on a hostile file.
+        // What the screen says "unreadable" for: a parser's own exception on a hostile file, a stack overflow.
         else -> UNREADABLE
     }
 
@@ -128,5 +118,8 @@ class CorpusCheck(private val sandbox: File) {
         const val UNREADABLE = "unreadable"
         const val OUT_OF_MEMORY = "out_of_memory"
         const val DEFAULT_MAX_MILLIS = 15_000L
+
+        /** About what a phone shows of a text at once, and then some. */
+        const val FIRST_SCREEN_ROWS = 100
     }
 }

@@ -14,6 +14,7 @@ import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.viewer.ViewerContent
 import com.readfilestech.read_files_tech.ui.viewer.ViewerSources
 import com.readfilestech.read_files_tech.ui.viewer.ViewerState
+import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,9 +45,10 @@ class TextViewerViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val document = content.state.filterIsInstance<ViewerState.Ready<TextDocument>>().first().content
-            found.value = withContext(io) { TextColors.extract(document) }
+            // Without colours rather than without the app: its failure was uncaught (Claude review R9).
+            found.value = loadOrFailure { withContext(io) { TextColors.extract(document) } }.getOrDefault(emptyList())
         }
     }
 
-    fun copied(code: String) = messages.info(uiText(R.string.color_copied, code))
+    fun copied(code: String) = messages.info(uiText(R.string.value_copied, code))
 }

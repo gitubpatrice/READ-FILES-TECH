@@ -326,5 +326,13 @@
     <string name="text_colors">Colours</string>
     <string name="text_size">Text size</string>
     <string name="text_size_value">%1$d pt</string>
-    <string name="color_copied">Copied: %1$s</string>
+    <string name="value_copied">Copied: %1$s</string>
+    <!-- Tools (phase 5) -->
+    <string name="action_choose_file">Choose a file</string>
+    <string name="action_change">Change</string>
+    <string name="action_copy">Copy</string>
+    <string name="hash_intro">MD5, SHA-1, SHA-256 and SHA-512 of any file</string>
+    <string name="hash_digests">Digests</string>
+    <string name="hash_computing">Computing… %1$d %%</string>
+    <string name="hash_failed">Cannot compute the digests: %1$s</string>
 </resources>

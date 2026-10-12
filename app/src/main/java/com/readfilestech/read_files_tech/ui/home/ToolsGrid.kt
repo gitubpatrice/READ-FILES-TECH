@@ -50,29 +50,29 @@ import com.readfilestech.read_files_tech.ui.navigation.Routes
 /** A tool of the grid: where it leads — its screen, or "not available yet" until its phase. */
 private class Tool(@param:StringRes val label: Int, @param:StringRes val hint: Int, val icon: ImageVector, val route: String)
 
-private fun pending(feature: Feature, @StringRes hint: Int, icon: ImageVector) = Tool(feature.title, hint, icon, Routes.pending(feature))
+private fun tool(feature: Feature, @StringRes hint: Int, icon: ImageVector) = Tool(feature.title, hint, icon, Routes.feature(feature))
 
 /** The 20 tools of the 2.15.3 (`_ToolsTab`), in its order. */
 private val TOOLS = listOf(
-    pending(Feature.COLOR_PICKER, R.string.tool_hint_color_picker, Icons.Outlined.Palette),
-    pending(Feature.TXT_TOOLS, R.string.tool_hint_txt_tools, Icons.AutoMirrored.Outlined.TextSnippet),
-    pending(Feature.CSV_TOOLS, R.string.tool_hint_csv_tools, Icons.Outlined.TableChart),
-    pending(Feature.DIFF, R.string.tool_hint_diff, Icons.Outlined.Difference),
-    pending(Feature.HASH, R.string.tool_hint_hash, Icons.Outlined.Fingerprint),
-    pending(Feature.ENCODE, R.string.tool_hint_encode, Icons.Outlined.Lock),
-    pending(Feature.FORMAT, R.string.tool_hint_format, Icons.Outlined.AutoFixHigh),
-    pending(Feature.EDITOR, R.string.tool_hint_editor, Icons.Outlined.Edit),
-    pending(Feature.CONTENT_SEARCH, R.string.tool_hint_content_search, Icons.AutoMirrored.Outlined.ManageSearch),
-    pending(Feature.CSV_EDITOR, R.string.tool_hint_csv_editor, Icons.Outlined.TableView),
-    pending(Feature.ZIP_CREATOR, R.string.tool_hint_zip_creator, Icons.Outlined.FolderZip),
-    pending(Feature.CONVERT, R.string.tool_hint_convert, Icons.Outlined.Transform),
-    pending(Feature.OCR, R.string.tool_hint_ocr, Icons.Outlined.DocumentScanner),
-    pending(Feature.COMPRESS, R.string.tool_hint_compress, Icons.Outlined.Compress),
-    pending(Feature.VAULT, R.string.tool_hint_vault, Icons.Outlined.Shield),
-    pending(Feature.SCANNER, R.string.tool_hint_scanner, Icons.Outlined.CameraAlt),
-    pending(Feature.EXIF, R.string.tool_hint_exif, Icons.Outlined.CleaningServices),
+    tool(Feature.COLOR_PICKER, R.string.tool_hint_color_picker, Icons.Outlined.Palette),
+    tool(Feature.TXT_TOOLS, R.string.tool_hint_txt_tools, Icons.AutoMirrored.Outlined.TextSnippet),
+    tool(Feature.CSV_TOOLS, R.string.tool_hint_csv_tools, Icons.Outlined.TableChart),
+    tool(Feature.DIFF, R.string.tool_hint_diff, Icons.Outlined.Difference),
+    tool(Feature.HASH, R.string.tool_hint_hash, Icons.Outlined.Fingerprint),
+    tool(Feature.ENCODE, R.string.tool_hint_encode, Icons.Outlined.Lock),
+    tool(Feature.FORMAT, R.string.tool_hint_format, Icons.Outlined.AutoFixHigh),
+    tool(Feature.EDITOR, R.string.tool_hint_editor, Icons.Outlined.Edit),
+    tool(Feature.CONTENT_SEARCH, R.string.tool_hint_content_search, Icons.AutoMirrored.Outlined.ManageSearch),
+    tool(Feature.CSV_EDITOR, R.string.tool_hint_csv_editor, Icons.Outlined.TableView),
+    tool(Feature.ZIP_CREATOR, R.string.tool_hint_zip_creator, Icons.Outlined.FolderZip),
+    tool(Feature.CONVERT, R.string.tool_hint_convert, Icons.Outlined.Transform),
+    tool(Feature.OCR, R.string.tool_hint_ocr, Icons.Outlined.DocumentScanner),
+    tool(Feature.COMPRESS, R.string.tool_hint_compress, Icons.Outlined.Compress),
+    tool(Feature.VAULT, R.string.tool_hint_vault, Icons.Outlined.Shield),
+    tool(Feature.SCANNER, R.string.tool_hint_scanner, Icons.Outlined.CameraAlt),
+    tool(Feature.EXIF, R.string.tool_hint_exif, Icons.Outlined.CleaningServices),
     Tool(R.string.search_title, R.string.tool_hint_global_search, Icons.Outlined.TravelExplore, Routes.SEARCH),
-    pending(Feature.DUPLICATES, R.string.tool_hint_duplicates, Icons.Outlined.ContentCopy),
+    tool(Feature.DUPLICATES, R.string.tool_hint_duplicates, Icons.Outlined.ContentCopy),
     Tool(R.string.trash_title, R.string.tool_hint_trash, Icons.Outlined.Delete, Routes.TRASH),
 )
 

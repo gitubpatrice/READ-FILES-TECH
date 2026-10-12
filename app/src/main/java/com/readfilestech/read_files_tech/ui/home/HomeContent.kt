@@ -131,9 +131,9 @@ private class QuickTile(val label: String, val icon: ImageVector, val onClick: (
 @Composable
 private fun featureTiles(onNavigate: (String) -> Unit) = listOf(
     QuickTile(stringResource(R.string.feature_scanner), Icons.Outlined.CameraAlt) {
-        onNavigate(Routes.pending(Feature.SCANNER))
+        onNavigate(Routes.feature(Feature.SCANNER))
     },
-    QuickTile(stringResource(R.string.feature_vault), Icons.Outlined.Shield) { onNavigate(Routes.pending(Feature.VAULT)) },
+    QuickTile(stringResource(R.string.feature_vault), Icons.Outlined.Shield) { onNavigate(Routes.feature(Feature.VAULT)) },
 )
 
 @Composable

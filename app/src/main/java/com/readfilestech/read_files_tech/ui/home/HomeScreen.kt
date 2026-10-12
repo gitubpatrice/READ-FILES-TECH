@@ -216,10 +216,10 @@ private fun HomeTopBar(
                     Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
                 }
             }
-            IconButton(onClick = { onNavigate(Routes.pending(Feature.SETTINGS)) }) {
+            IconButton(onClick = { onNavigate(Routes.feature(Feature.SETTINGS)) }) {
                 Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.feature_settings))
             }
-            IconButton(onClick = { onNavigate(Routes.pending(Feature.ABOUT)) }) {
+            IconButton(onClick = { onNavigate(Routes.feature(Feature.ABOUT)) }) {
                 Icon(Icons.Outlined.Info, contentDescription = stringResource(R.string.feature_about))
             }
             ThemeMenu(theme, onTheme)

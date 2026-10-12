@@ -85,7 +85,7 @@ fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<F
     LaunchedEffect(shortcut) {
         shortcut.collect { feature ->
             if (feature != null) {
-                navController.navigate(Routes.pending(feature)) { launchSingleTop = true }
+                navController.navigate(Routes.feature(feature)) { launchSingleTop = true }
                 onShortcutHandled()
             }
         }
@@ -191,9 +191,15 @@ private fun Destinations(navController: NavHostController) {
                 onOpenFolder = { navController.navigate(Routes.explorer(it)) },
             )
         }
-        composable(Routes.PENDING, arguments = listOf(navArgument(Routes.ARG_FEATURE) { type = NavType.StringType })) { entry ->
+        composable(Routes.FEATURE, arguments = listOf(navArgument(Routes.ARG_FEATURE) { type = NavType.StringType })) { entry ->
             val feature = entry.arguments?.getString(Routes.ARG_FEATURE)?.let { name -> Feature.entries.find { it.name == name } }
-            PendingScreen(feature, onBack = { navController.leave(entry) })
+            val files = entry.picked<ArrayList<String>>(Routes.RESULT_PICKED_FILES)
+            val folder = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
+            val picked = PickedResults(files.value, folder.value) {
+                files.consume()
+                folder.consume()
+            }
+            FeatureHost(feature, picked, onNavigate = { navController.navigate(it) }, onBack = { navController.leave(entry) })
         }
     }
 }

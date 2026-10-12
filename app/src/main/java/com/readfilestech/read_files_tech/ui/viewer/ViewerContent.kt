@@ -52,9 +52,31 @@ object ViewerSources {
 }
 
 /**
+ * [block]'s value, or what a hostile file made it throw — an OutOfMemoryError and a StackOverflowError (a
+ * JSON or an XML nested a million deep) included: the allocation or the stack that failed is given back
+ * at once, and the app lives on (inventory §6.9). A cancellation goes through, never swallowed. Every
+ * viewer's work on a file goes through here: its load ([ViewerContent]) and what it does after (the text
+ * viewer's colours, whose failure ended the app — Claude review R9).
+ */
+@Suppress("TooGenericExceptionCaught")
+suspend fun <T> loadOrFailure(block: suspend () -> T): Result<T> = try {
+    Result.success(block())
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Result.failure(e)
+} catch (e: OutOfMemoryError) {
+    Result.failure(e)
+} catch (e: StackOverflowError) {
+    Result.failure(e)
+}
+
+/**
  * A viewer's content, loaded once off the main thread, from a view model's scope. Whatever the load
  * opens that must be closed is handed to [ViewerResources.keep] the moment it is opened: [close] (the
- * view model's, through addCloseable) closes it even when the screen left while the load ran.
+ * view model's, through addCloseable) closes it once the load has stopped — not before, while a parser
+ * may still use it (a PdfRenderer refuses to close with a page open — R9) — even when the screen left
+ * while the load ran.
  */
 class ViewerContent<T : Any>(
     scope: CoroutineScope,
@@ -64,27 +86,15 @@ class ViewerContent<T : Any>(
     private val resources = ViewerResources()
     private val mutableState = MutableStateFlow<ViewerState<T>>(ViewerState.Loading)
     val state: StateFlow<ViewerState<T>> = mutableState.asStateFlow()
-    private val job: Job = scope.launch { mutableState.value = loaded() }
-
-    // Every failure of a parser fed a hostile file becomes a refusal in words, an OutOfMemoryError and a
-    // StackOverflowError (a JSON or an XML nested a million deep) included: the allocation or the stack
-    // that failed is given back at once, and the app lives on (inventory §6.9).
-    @Suppress("TooGenericExceptionCaught")
-    private suspend fun loaded(): ViewerState<T> = try {
-        ViewerState.Ready(withContext(io) { resources.load() })
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        ViewerState.Failed(ViewerErrors.failureOf(e))
-    } catch (e: OutOfMemoryError) {
-        ViewerState.Failed(ViewerErrors.failureOf(e))
-    } catch (e: StackOverflowError) {
-        ViewerState.Failed(ViewerErrors.failureOf(e))
+    private val job: Job = scope.launch {
+        mutableState.value = loadOrFailure { withContext(io) { resources.load() } }
+            .fold({ ViewerState.Ready(it) }, { ViewerState.Failed(ViewerErrors.failureOf(it)) })
     }
 
     override fun close() {
         job.cancel()
-        resources.close()
+        // At once when the job is over; else when the blocking call it is in returns.
+        job.invokeOnCompletion { resources.close() }
     }
 }
 

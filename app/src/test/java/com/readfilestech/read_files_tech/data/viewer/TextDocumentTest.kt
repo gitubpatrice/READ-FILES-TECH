@@ -77,6 +77,69 @@ class TextDocumentTest {
         assertThat(windows.row(0).length).isEqualTo(TextDocument.ROW_BYTES)
     }
 
+    /** Claude review R9: a file of lone low surrogates never found a boundary — one row of 50 MiB. */
+    @Test
+    fun `lone UTF-16 surrogates are cut like any character, a real pair never`() {
+        val loneLe = byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + ByteArray(20_000) { if (it % 2 == 0) 0 else 0xDC.toByte() }
+        val loneBe = byteArrayOf(0xFE.toByte(), 0xFF.toByte()) + ByteArray(20_000) { if (it % 2 == 0) 0xDC.toByte() else 0 }
+        listOf(loneLe, loneBe).forEach { bytes ->
+            val document = document(bytes)
+            assertThat(document.rowCount).isAtLeast(4)
+            rows(document).forEach { assertThat(it.length).isAtMost(TextDocument.ROW_BYTES / 2 + 1) }
+        }
+    }
+
+    /** R9: a CR at the cut made the LF a row of its own — an empty line that is not in the file. */
+    @Test
+    fun `a line break is never split between its CR and its LF`() {
+        val windows = charset("windows-1252")
+        listOf(Charsets.UTF_8, windows, Charsets.UTF_16LE).forEach { charset ->
+            // A line of the row size exactly, in bytes (`é` takes one in Windows-1252, two in the others):
+            // its CR falls where a row would be cut.
+            val line = "é".repeat(if (charset == windows) TextDocument.ROW_BYTES else TextDocument.ROW_BYTES / 2)
+            val prefix = if (charset == Charsets.UTF_16LE) byteArrayOf(0xFF.toByte(), 0xFE.toByte()) else byteArrayOf()
+            val document = document(prefix + "$line\r\nnext\r\n".toByteArray(charset))
+            assertThat(rows(document)).containsExactly(line, "next").inOrder()
+        }
+    }
+
+    /**
+     * One start kept in 16 (R9: an index of every row took 200 MB at the cap): rows, continuations and
+     * [TextDocument.rowAfter] checked against a split made here, independently, on lines of every length.
+     */
+    @Test
+    fun `the sparse index finds every row, as a plain split does`() {
+        val lines = (0 until 300).map { "y".repeat((it * 37) % (TextDocument.ROW_BYTES * 2 + 50)) }
+        val document = document(lines.joinToString("\n").toByteArray())
+        val expected = lines.flatMap { line -> if (line.isEmpty()) listOf("") else line.chunked(TextDocument.ROW_BYTES) }
+        assertThat(rows(document)).containsExactlyElementsIn(expected).inOrder()
+        // The rows' starts, as bytes, from the same split: each row is its length plus a line feed when it ends a line.
+        val ends = lines.flatMap { line ->
+            val pieces = if (line.isEmpty()) listOf("") else line.chunked(TextDocument.ROW_BYTES)
+            pieces.mapIndexed { i, piece -> piece.length + if (i == pieces.lastIndex) 1 else 0 }
+        }
+        val starts = ends.runningFold(0, Int::plus).dropLast(1)
+        (0 until document.rowCount - 1).forEach { i ->
+            assertThat(document.continues(i)).isEqualTo(ends[i] == expected[i].length)
+        }
+        listOf(0, 1, 15, 16, 17, 100, 299).filter { it < document.rowCount }.forEach { from ->
+            listOf(0, 1, 4096, 10_000, 100_000).forEach { bytes ->
+                val reference = (from until document.rowCount).firstOrNull { starts[it] >= starts[from] + bytes } ?: document.rowCount
+                assertThat(document.rowAfter(from, bytes)).isEqualTo(reference)
+            }
+        }
+    }
+
+    /** R9: a UTF-8 log cut short in its last `é` went to Windows-1252 whole; `café` in Windows-1252 must not go the other way. */
+    @Test
+    fun `a last character cut short keeps a UTF-8 text in UTF-8`() {
+        val cut = "été\n".repeat(100).toByteArray() + byteArrayOf(0xC3.toByte())
+        assertThat(document(cut).encoding).isEqualTo(TextEncoding.UTF_8)
+        assertThat(document(cut).row(0)).isEqualTo("été")
+        assertThat(document("café".toByteArray(charset("windows-1252"))).encoding).isEqualTo(TextEncoding.WINDOWS_1252)
+        assertThat(document("café".toByteArray(charset("windows-1252"))).row(0)).isEqualTo("café")
+    }
+
     @Test
     fun `a source read through its cap, a file larger than the cap refused, a file that grew too`() {
         val file = File(dir, "a.txt").apply { writeText("hello\nworld") }

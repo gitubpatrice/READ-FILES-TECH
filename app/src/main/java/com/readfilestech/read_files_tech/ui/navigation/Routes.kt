@@ -39,8 +39,8 @@ object Routes {
 
     fun viewer(kind: ViewerKind, path: String): String = "viewer/${kind.name}?$ARG_PATH=${encode(path)}"
 
-    /** A screen of a later phase of the port: says so instead of failing (see [Feature]). */
-    const val PENDING = "pending/{$ARG_FEATURE}"
+    /** A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. */
+    const val FEATURE = "feature/{$ARG_FEATURE}"
 
     /**
      * @param extensions only files of these extensions shown (lower case, no dot); folders always.
@@ -96,7 +96,7 @@ object Routes {
     private const val NIBBLE = 4
     private const val NIBBLE_MASK = 0xF
 
-    fun pending(feature: Feature): String = "pending/${feature.name}"
+    fun feature(feature: Feature): String = "feature/${feature.name}"
 }
 
 /**

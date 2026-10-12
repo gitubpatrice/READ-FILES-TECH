@@ -10,6 +10,7 @@ import com.readfilestech.read_files_tech.startup.AppProcess
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
 import java.nio.file.AccessDeniedException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** The frame every viewer of phase 4 is plugged into: the table of extensions, the caps, the failures, the processes. */
 class ViewerTest {
@@ -90,6 +93,29 @@ class ViewerTest {
         val ready = ViewerContent(this, Dispatchers.Unconfined) { "text" }
         assertThat(ready.state.first { it !is ViewerState.Loading }).isEqualTo(ViewerState.Ready("text"))
         ready.close()
+    }
+
+    /**
+     * Claude review R9: the screen left while a parser was blocked in its call, and what the load had kept
+     * was closed under it (a PdfRenderer with a page open refuses, and stays open). Closed once it returns.
+     */
+    @Test
+    fun `what a running load kept is closed when the load stops, not before`() {
+        val opened = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val closed = CountDownLatch(1)
+        // A scope of its own: this thread only waits, as the main thread does while the load runs.
+        val content = ViewerContent(CoroutineScope(Dispatchers.Default), Dispatchers.IO) {
+            keep(AutoCloseable { closed.countDown() })
+            opened.countDown()
+            release.await() // a blocking parser: deaf to the cancellation
+            "late"
+        }
+        assertThat(opened.await(5, TimeUnit.SECONDS)).isTrue()
+        content.close()
+        assertThat(closed.await(200, TimeUnit.MILLISECONDS)).isFalse()
+        release.countDown()
+        assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue()
     }
 
     /** What a load opened is closed with the viewer — even what it opens after the viewer left. */
