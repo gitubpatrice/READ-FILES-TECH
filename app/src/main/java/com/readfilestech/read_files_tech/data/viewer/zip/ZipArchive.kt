@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.viewer.zip
 
+import com.readfilestech.read_files_tech.data.files.BoundedInputStream
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.SourceFile
@@ -49,11 +50,27 @@ class ZipArchive private constructor(
      * @throws FileTooLargeException its declared size is above [cap].
      */
     fun read(item: ZipItem, cap: Long = FileCaps.ZIP_ENTRY_DECOMPRESSED): InputStream {
-        require(item.index in entries.indices && entries[item.index] === item) { "not an entry of this archive" }
-        require(!item.isDirectory) { "a folder has no content" }
+        requireEntry(item)
         item.problem?.let { throw ZipEntryException(item, it) }
         if (item.size > cap) throw FileTooLargeException(cap)
         return EntryInput(item, bytes, dataStart(item))
+    }
+
+    /**
+     * The start of [item]'s content, [cap] bytes of it at most, for a reader that stops on its own — the
+     * spreadsheet viewer reads a sheet up to the last row it shows. An entry larger than an entry may be
+     * ([ZipProblem.TOO_LARGE]) is read that far too; past [cap] the read is a [FileTooLargeException]. Every
+     * other check of [read] holds, and its checksum when it is read to its end.
+     */
+    fun readStart(item: ZipItem, cap: Long): InputStream {
+        requireEntry(item)
+        item.problem?.takeIf { it != ZipProblem.TOO_LARGE }?.let { throw ZipEntryException(item, it) }
+        return BoundedInputStream(EntryInput(item, bytes, dataStart(item)), cap)
+    }
+
+    private fun requireEntry(item: ZipItem) {
+        require(item.index in entries.indices && entries[item.index] === item) { "not an entry of this archive" }
+        require(!item.isDirectory) { "a folder has no content" }
     }
 
     /**
@@ -79,21 +96,22 @@ class ZipArchive private constructor(
 
     companion object {
         /**
-         * The archive of [source], within the 2.15.3's cap (`FileCaps.ZIP_VIEWER`), its directory read:
-         * whatever it opened is closed if it fails, cancellation included.
+         * The archive of [source], within [cap] — the 2.15.3's for the ZIP viewer (`FileCaps.ZIP_VIEWER`) by
+         * default, a workbook's for the spreadsheet viewer — its directory read: whatever it opened is closed
+         * if it fails, cancellation included.
          *
          * @throws com.readfilestech.read_files_tech.data.viewer.UnreadableFileException no archive there.
          * @throws com.readfilestech.read_files_tech.data.viewer.TooManyItemsException a listing above its bounds.
          */
-        suspend fun open(source: ViewerSource): ZipArchive {
-            val file = source.acquireFile(FileCaps.ZIP_VIEWER)
+        suspend fun open(source: ViewerSource, cap: Long = FileCaps.ZIP_VIEWER): ZipArchive {
+            val file = source.acquireFile(cap)
             var archive: ZipArchive? = null
             var channel: FileChannel? = null
             try {
                 channel = FileChannel.open(file.file.toPath(), StandardOpenOption.READ)
                 // Its size now, read through the channel that will be read: the file may have grown.
                 val size = channel.size()
-                if (size > FileCaps.ZIP_VIEWER) throw FileTooLargeException(FileCaps.ZIP_VIEWER)
+                if (size > cap) throw FileTooLargeException(cap)
                 val bytes = ArchiveBytes(channel, size)
                 archive = ZipArchive(file, channel, bytes, ZipDirectory.read(bytes))
                 return archive

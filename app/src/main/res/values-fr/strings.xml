@@ -368,6 +368,21 @@
     <string name="csv_column_number">Colonne %1$d</string>
 
     <string name="document_no_text">Ce document ne contient aucun texte.</string>
+
+    <!-- Visionneuse de tableur -->
+    <string name="sheet_no_sheet">Ce classeur ne contient aucune feuille.</string>
+    <string name="sheet_empty">Cette feuille est vide.</string>
+    <string name="sheet_number">Feuille %1$d</string>
+    <plurals name="sheet_rows_cut">
+        <item quantity="one">Seule %d ligne est affichée.</item>
+        <item quantity="many">Seules les %d premières lignes sont affichées.</item>
+        <item quantity="other">Seules les %d premières lignes sont affichées.</item>
+    </plurals>
+    <plurals name="sheet_columns_cut">
+        <item quantity="one">Seule %d colonne est affichée.</item>
+        <item quantity="many">Seules les %d premières colonnes sont affichées.</item>
+        <item quantity="other">Seules les %d premières colonnes sont affichées.</item>
+    </plurals>
     <string name="action_choose_file">Choisir un fichier</string>
     <string name="action_change">Changer</string>
     <string name="action_copy">Copier</string>

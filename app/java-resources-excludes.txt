@@ -1,0 +1,17 @@
+# Java resources of Apache POI's dependencies that reading an .xls never uses: left out of the APK.
+# The ONLY list, read by app/build.gradle.kts (packaging.resources.excludes). Format:
+# <AGP pattern>  <-  <the classes that load these resources>, read in the bytecode of the jars.
+# Measured by the prototype (rft_kotlin_proto_xls, RAPPORT-XLS.md, "minSdk 26"; docs D-006): 132 entries,
+# -208 877 bytes, none of the loaders kept by R8, the dex identical with and without the exclusions.
+#
+# Beider-Morse (bm/*.txt) and Daitch-Mokotoff (dmrules.txt) of commons-codec: no class of POI references
+# org/apache/commons/codec/language (of commons-codec, POI only uses DigestUtils).
+/org/apache/commons/codec/language/**  <-  org.apache.commons.codec.Resources, org.apache.commons.codec.language.bm.Lang, org.apache.commons.codec.language.bm.Languages, org.apache.commons.codec.language.bm.Rule, org.apache.commons.codec.language.DaitchMokotoffSoundex
+# Preset shape geometries (DrawingML): PresetGeometries, which nothing in the poi jar references (used by
+# poi-ooxml and HSLF).
+/org/apache/poi/sl/draw/geom/presetShapeDefinitions.xml  <-  org.apache.poi.sl.draw.geom.PresetGeometries
+# commons-math3: the Sobol table and localised error messages. Referenced by POI only from
+# org/apache/poi/ss/formula (formula evaluation), never run: a cell shows the value cached in the file.
+/assets/org/apache/commons/math3/**  <-  org.apache.commons.math3.random.SobolSequenceGenerator, org.apache.commons.math3.exception.util.LocalizedFormats
+# Font metrics: StaticFontMetrics, called only by EscherGraphics (drawing in a shape).
+/font_metrics.properties  <-  org.apache.poi.hssf.usermodel.StaticFontMetrics, org.apache.poi.util.FontMetricsDumper

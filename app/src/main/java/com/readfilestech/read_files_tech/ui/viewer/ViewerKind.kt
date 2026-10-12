@@ -27,6 +27,9 @@ enum class ViewerKind(val extensions: Set<String>) {
      * when it is in fact a .docx.
      */
     DOCUMENT(setOf("docx", "doc", "odt", "odp")),
+
+    /** `XlsxViewerScreen` of the 2.15.3: the sheets of a workbook, told by its content as the documents are. */
+    SHEET(setOf("xlsx", "xls", "ods")),
     ;
 
     companion object {

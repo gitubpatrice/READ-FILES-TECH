@@ -11,6 +11,7 @@ import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.document.DocumentText
+import com.readfilestech.read_files_tech.data.viewer.sheet.Workbook
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipArchive
@@ -96,6 +97,20 @@ class CorpusCheck(private val sandbox: File) {
         ViewerKind.ZIP -> resources.keep(ZipArchive.open(source))
         // A document's text is shown by the text viewer's rows.
         ViewerKind.DOCUMENT -> DocumentText.read(source).also { decodeScreenRows(it.document) }
+        ViewerKind.SHEET -> resources.keep(Workbook.open(source)).also { formatScreenCells(it) }
+    }
+
+    /**
+     * The workbook's first sheet, as the spreadsheet viewer opens it, and what it formats first on its main
+     * thread: the header, the first rows, the last one.
+     */
+    private suspend fun formatScreenCells(workbook: Workbook) {
+        if (workbook.sheetNames.isEmpty()) return
+        val sheet = workbook.sheet(0)
+        val columns = minOf(sheet.columns, FIRST_SCREEN_COLUMNS)
+        sheet.header(0, columns)
+        for (row in 0 until minOf(sheet.rows, FIRST_SCREEN_ROWS)) sheet.cells(row, 0, columns)
+        if (sheet.rows > 0) sheet.cells(sheet.rows - 1, 0, columns)
     }
 
     /** The rows the screen decodes first, on its main thread, and the last one. */

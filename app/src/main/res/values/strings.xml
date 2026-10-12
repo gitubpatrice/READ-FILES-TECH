@@ -361,6 +361,20 @@
     <string name="csv_column_number">Column %1$d</string>
 
     <string name="document_no_text">This document contains no text.</string>
+
+    <!-- Spreadsheet viewer -->
+    <string name="sheet_no_sheet">This workbook contains no sheet.</string>
+    <string name="sheet_empty">This sheet is empty.</string>
+    <!-- A sheet saved without a name. -->
+    <string name="sheet_number">Sheet %1$d</string>
+    <plurals name="sheet_rows_cut">
+        <item quantity="one">Only %d row is shown.</item>
+        <item quantity="other">Only the first %d rows are shown.</item>
+    </plurals>
+    <plurals name="sheet_columns_cut">
+        <item quantity="one">Only %d column is shown.</item>
+        <item quantity="other">Only the first %d columns are shown.</item>
+    </plurals>
     <!-- Tools (phase 5) -->
     <string name="action_choose_file">Choose a file</string>
     <string name="action_change">Change</string>

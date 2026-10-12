@@ -192,6 +192,16 @@ android {
         }
     }
 
+    // Java resources of POI's dependencies that reading an .xls never loads (docs D-006: 208 877 bytes of
+    // APK): the list, the classes that would load each and the proof are in java-resources-excludes.txt.
+    packaging {
+        resources {
+            excludes += file("java-resources-excludes.txt").readLines()
+                .map { it.substringBefore("<-").trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+        }
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -294,6 +304,9 @@ dependencies {
 
     // Argon2id and PBKDF2 of the vault, byte-compatible with the pointycastle the Flutter app used.
     implementation(libs.bcprov)
+
+    // The .xls, by HSSF alone (docs D-006): read from a stream, its awkward formats never given to CellFormat.
+    implementation(libs.poi)
 
     debugImplementation(libs.compose.ui.tooling)
 

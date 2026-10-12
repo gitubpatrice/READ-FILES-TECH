@@ -30,6 +30,12 @@ hiltNavigationCompose   = "1.4.0"
 # --- Coroutines ---
 coroutines              = "1.11.0"
 
+# --- Spreadsheets (docs D-006): the .xls (BIFF8) read by Apache POI's HSSF, the `poi` module ALONE —
+# never poi-ooxml (+12 MB of jars, StAX absent from Android, java.awt through XSSFColor: D-015; the .xlsx
+# has a reader of its own). Apache-2.0, as its dependencies (commons-codec, -collections4, -io, -math3,
+# SparseBitSet, log4j-api), read in their POMs. 5.5.1 published 2025-11-26, measured by the prototype.
+poi                     = "5.5.1"
+
 # --- Crypto (docs D-005): ONE BouncyCastle family for the vault KDFs and, later, PdfBox ---
 bouncycastle            = "1.86"
 
@@ -73,6 +79,8 @@ hilt-navigation-compose                 = { group = "androidx.hilt",            
 
 coroutines-android                      = { group = "org.jetbrains.kotlinx",           name = "kotlinx-coroutines-android",        version.ref = "coroutines" }
 coroutines-test                         = { group = "org.jetbrains.kotlinx",           name = "kotlinx-coroutines-test",           version.ref = "coroutines" }
+
+poi                                     = { group = "org.apache.poi",                  name = "poi",                               version.ref = "poi" }
 
 bcprov                                  = { group = "org.bouncycastle",                name = "bcprov-jdk18on",                    version.ref = "bouncycastle" }
 

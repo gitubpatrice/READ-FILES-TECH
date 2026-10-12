@@ -35,6 +35,27 @@ object FileCaps {
     const val CSV_ROWS = 1_048_576
     const val CSV_COLUMNS = 16_384
     const val CSV_CELL_CHARS = 32_767
+
+    /**
+     * Rows and columns one sheet of a workbook (.xlsx, .xls, .ods) shows, its first row included: the
+     * 2.15.3's (`xlsx_viewer_screen.dart:36-37`, `ods_service.dart:46, 53`). Past them nothing more is read
+     * of an .xlsx sheet, and the screen says what is not shown — the 2.15.3 cut silently.
+     */
+    const val SHEET_ROWS = 5_000
+    const val SHEET_COLUMNS = 200
+
+    /** Chars kept of one cell's text: the grid shows two lines of a column 120 dp wide. No 2.15.3 counterpart. */
+    const val SHEET_CELL_CHARS = 256
+
+    /**
+     * Chars of text one sheet keeps once read — its cells' texts and its workbook's number formats: past it,
+     * the sheet is refused. 5 000 rows of 200 cells reach it at 32 chars a cell; it is 64 MiB of heap at
+     * most. No 2.15.3 counterpart: it held every sheet of the workbook whole (inventory D21).
+     */
+    const val SHEET_TEXT_CHARS = 32 * MIB
+
+    /** The longest number format, Excel's own limit: a longer one is shown as "General", never parsed. */
+    const val SHEET_FORMAT_CHARS = 255
     const val IMAGE_FILE = 100 * MIB
     const val IMAGES_TO_PDF_TOTAL = 200 * MIB
     const val ZIP_CREATE_TOTAL = 200 * MIB
