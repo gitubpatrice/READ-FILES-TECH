@@ -149,7 +149,7 @@ object FileMoves {
     }
 
     /** Nothing at [file], or an empty regular file, or an empty folder — a link is never "empty". */
-    private fun isFreeOrEmpty(file: File): Boolean {
+    internal fun isFreeOrEmpty(file: File): Boolean {
         val path = file.toPath()
         if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return true
         val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
