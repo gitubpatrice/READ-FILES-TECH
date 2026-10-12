@@ -1,6 +1,8 @@
 package com.readfilestech.read_files_tech.ui.navigation
 
 import android.net.Uri
+import androidx.annotation.StringRes
+import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 
 /** The app's destinations. Paths travel URI-encoded: a file name may hold `?`, `&`, `#` or `%`. */
@@ -18,6 +20,9 @@ object Routes {
     const val RESULT_PICKED_FILES = "picked_files"
 
     const val EXPLORER = "explorer?$ARG_PATH={$ARG_PATH}&$ARG_PICK={$ARG_PICK}&$ARG_EXTENSIONS={$ARG_EXTENSIONS}&$ARG_TITLE={$ARG_TITLE}"
+
+    /** The start: home, tools, explorer (`HomeScreen` of the 2.15.x). */
+    const val HOME = "home"
     const val PICKER = "picker?$ARG_PICK={$ARG_PICK}&$ARG_EXTENSIONS={$ARG_EXTENSIONS}&$ARG_TITLE={$ARG_TITLE}"
     const val TRASH = "trash"
     const val SEARCH = "search"
@@ -60,7 +65,29 @@ object Routes {
 }
 
 /**
- * The destinations reached from phase 3 whose screens come with a later phase: the three quick-settings
- * tiles (scanner, OCR, vault) and installing an APK (phase 3b).
+ * The destinations whose screens come with a later phase: the three quick-settings tiles, the tools of
+ * the home's grid, its settings and about (phase 8), and installing an APK until its lot of phase 3b.
  */
-enum class Feature { SCANNER, OCR, VAULT, APK_INSTALL }
+enum class Feature(@param:StringRes val title: Int) {
+    SCANNER(R.string.feature_scanner),
+    OCR(R.string.feature_ocr),
+    VAULT(R.string.feature_vault),
+    APK_INSTALL(R.string.feature_apk_install),
+    COLOR_PICKER(R.string.feature_color_picker),
+    TXT_TOOLS(R.string.feature_txt_tools),
+    CSV_TOOLS(R.string.feature_csv_tools),
+    DIFF(R.string.feature_diff),
+    HASH(R.string.feature_hash),
+    ENCODE(R.string.feature_encode),
+    FORMAT(R.string.feature_format),
+    EDITOR(R.string.feature_editor),
+    CONTENT_SEARCH(R.string.feature_content_search),
+    CSV_EDITOR(R.string.feature_csv_editor),
+    ZIP_CREATOR(R.string.feature_zip_creator),
+    CONVERT(R.string.feature_convert),
+    COMPRESS(R.string.feature_compress),
+    EXIF(R.string.feature_exif),
+    DUPLICATES(R.string.feature_duplicates),
+    SETTINGS(R.string.feature_settings),
+    ABOUT(R.string.feature_about),
+}

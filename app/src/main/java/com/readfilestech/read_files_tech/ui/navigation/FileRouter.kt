@@ -23,6 +23,17 @@ sealed interface FileTarget {
 object FileRouter {
     private val INSTALLER = FileTarget.Internal(Routes.pending(Feature.APK_INSTALL))
 
+    /**
+     * What the app's viewers open (`FileViewerRouter` of the 2.15.3, the table that disagreed with the
+     * home's copy — S6): the home's "Open a file" offers these, `heic` no more — it was offered, then
+     * refused (F17). Until phase 4, they open in another app.
+     */
+    val VIEWABLE: Set<String> = setOf(
+        "jpg", "jpeg", "png", "gif", "webp", "bmp",
+        "txt", "md", "csv", "xml", "json", "html", "htm", "css", "js", "php", "dart", "yaml", "yml", "log", "ini", "conf",
+        "docx", "doc", "odt", "odp", "xlsx", "xls", "ods", "pdf", "zip", "epub",
+    )
+
     fun targetFor(entry: FileEntry): FileTarget = when (entry.extension) {
         "apk" -> INSTALLER
         else -> FileTarget.External

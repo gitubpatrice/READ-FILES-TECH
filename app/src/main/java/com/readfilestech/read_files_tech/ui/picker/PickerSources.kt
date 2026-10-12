@@ -4,6 +4,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.recents.RecentFiles
+import com.readfilestech.read_files_tech.data.storage.CommonFolders
 import com.readfilestech.read_files_tech.data.storage.VolumeRoot
 import java.io.File
 import java.nio.file.Files
@@ -70,15 +71,14 @@ class PickerSources(
      */
     fun shortcuts(extensions: Set<String>?, folderMode: Boolean): List<PickerShortcut> {
         val root = primary()
-        val screenshots = SCREENSHOTS.map { File(root, it) }.firstOrNull(File::isDirectory) ?: File(root, SCREENSHOTS.first())
-        val folders = listOf(
+        val folders = listOfNotNull(
             PickerShortcut(ShortcutKind.DOWNLOADS, File(root, "Download")),
             PickerShortcut(ShortcutKind.DOCUMENTS, File(root, "Documents")),
             PickerShortcut(ShortcutKind.CAMERA, File(root, "DCIM/Camera")),
             PickerShortcut(ShortcutKind.PICTURES, File(root, "Pictures")),
             PickerShortcut(ShortcutKind.MOVIES, File(root, "Movies")),
             PickerShortcut(ShortcutKind.MUSIC, File(root, "Music")),
-            PickerShortcut(ShortcutKind.SCREENSHOTS, screenshots),
+            CommonFolders.screenshots(root)?.let { PickerShortcut(ShortcutKind.SCREENSHOTS, it) },
             PickerShortcut(ShortcutKind.WHATSAPP, File(root, WHATSAPP_DOCUMENTS)),
         ).filter { it.dir.isDirectory }
         val apks = if (!folderMode && (extensions == null || APK in extensions)) {
@@ -108,9 +108,6 @@ class PickerSources(
     private companion object {
         const val APK = "apk"
         const val MICROS_PER_MILLI = 1_000L
-
-        /** Pixel and AOSP first, then Samsung: the home and the picker of the 2.15.x each had one. */
-        val SCREENSHOTS = listOf("Pictures/Screenshots", "DCIM/Screenshots")
         const val WHATSAPP_DOCUMENTS = "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents"
     }
 }

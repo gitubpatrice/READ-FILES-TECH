@@ -16,6 +16,9 @@ enum class ThemeMode {
         DARK -> true
     }
 
+    /** What the 2.15.x writes: Flutter's `ThemeMode.name` (`light`, `dark`, `system`). */
+    val prefValue: String get() = name.lowercase()
+
     companion object {
         const val PREF_KEY = "theme_mode"
 

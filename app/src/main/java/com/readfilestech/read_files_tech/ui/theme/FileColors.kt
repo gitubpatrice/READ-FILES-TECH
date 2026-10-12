@@ -12,6 +12,15 @@ object BrandColors {
     val PdfTech = Color(0xFFF44336)
 }
 
+/** The home's colours of the 2.15.x (`HomeScreen`): Flutter's Material 2 palette. */
+object HomeColors {
+    /** `Colors.orange`: the storage bar past three quarters. */
+    val AlmostFull = Color(0xFFFF9800)
+
+    /** `Colors.amber`: a favourite's star. */
+    val Favorite = Color(0xFFFFC107)
+}
+
 /** The colour of a row's icon (`colorFor` of the 2.15.x): Flutter's Material 2 palette, by name. */
 object FileColors {
     /** `Colors.amber`. */

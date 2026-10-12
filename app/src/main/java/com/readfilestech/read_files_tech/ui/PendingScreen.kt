@@ -21,19 +21,14 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 
 /**
- * A destination whose screen comes with a later phase of the port (scanner, OCR, vault): it says so.
- * Reached from the quick-settings tiles, which must keep working from the first build (docs D-012).
+ * A destination whose screen comes with a later phase of the port (scanner, OCR, vault, the tools): it
+ * says so. Reached from the quick-settings tiles, which must keep working from the first build (docs
+ * D-012), and from the home.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PendingScreen(feature: Feature?, onBack: () -> Unit) {
-    val title = when (feature) {
-        Feature.SCANNER -> R.string.feature_scanner
-        Feature.OCR -> R.string.feature_ocr
-        Feature.VAULT -> R.string.feature_vault
-        Feature.APK_INSTALL -> R.string.feature_apk_install
-        null -> R.string.app_name
-    }
+    val title = feature?.title ?: R.string.app_name
     Scaffold(
         topBar = {
             TopAppBar(

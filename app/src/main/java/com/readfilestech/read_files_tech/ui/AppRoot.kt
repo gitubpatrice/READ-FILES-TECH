@@ -43,6 +43,7 @@ import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.ExplorerScreen
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
+import com.readfilestech.read_files_tech.ui.home.HomeScreen
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.picker.PickerScreen
@@ -94,7 +95,19 @@ fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<F
 
 @Composable
 private fun Destinations(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Routes.EXPLORER) {
+    NavHost(navController = navController, startDestination = Routes.HOME) {
+        composable(Routes.HOME) { entry ->
+            // "Open a file" (the picker), and the explorer tab's copy / move destination.
+            val files = entry.picked<ArrayList<String>>(Routes.RESULT_PICKED_FILES)
+            val folder = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
+            HomeScreen(
+                pickedFiles = files.value,
+                onPickedFilesUsed = files.consume,
+                pickedFolder = folder.value,
+                onPickedFolderUsed = folder.consume,
+                onNavigate = { navController.navigate(it) },
+            )
+        }
         composable(
             Routes.EXPLORER,
             arguments = listOf(Routes.ARG_PATH, Routes.ARG_PICK, Routes.ARG_EXTENSIONS, Routes.ARG_TITLE).map { name ->

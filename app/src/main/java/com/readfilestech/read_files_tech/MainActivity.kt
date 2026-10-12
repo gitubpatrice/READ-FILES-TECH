@@ -6,14 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.ui.AppRoot
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
 import com.readfilestech.read_files_tech.ui.theme.ReadFilesTechTheme
-import com.readfilestech.read_files_tech.ui.theme.ThemeMode
+import com.readfilestech.read_files_tech.ui.theme.ThemeSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
@@ -36,7 +37,7 @@ class MainActivity : ComponentActivity() {
     lateinit var messages: UserMessages
 
     @Inject
-    lateinit var prefs: FlutterPreferences
+    lateinit var themes: ThemeSettings
 
     private val shortcut = MutableStateFlow<Feature?>(null)
     private var accessGranted = false
@@ -47,8 +48,9 @@ class MainActivity : ComponentActivity() {
         accessGranted = access.isGranted()
         // Once: a recreated activity (rotation) must not replay the tile that opened it.
         if (savedInstanceState == null) takeShortcut(intent)
-        val theme = ThemeMode.read(prefs)
         setContent {
+            // Followed, not read once: the home's theme menu applies at once.
+            val theme by themes.current.collectAsStateWithLifecycle()
             ReadFilesTechTheme(darkTheme = theme.isDark(isSystemInDarkTheme())) {
                 AppRoot(access, messages, shortcut, onShortcutHandled = { shortcut.value = null })
             }

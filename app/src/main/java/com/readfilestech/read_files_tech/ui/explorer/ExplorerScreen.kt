@@ -68,6 +68,7 @@ private sealed interface ExplorerDialog {
  * @param onChooseFolder opens this screen in folder-choosing mode, starting at the given folder.
  * @param onFolderChosen the folder chosen, in folder-choosing mode.
  * @param onFilesChosen the files chosen, in file-choosing mode ([PickMode.FILE], [PickMode.FILES]).
+ * @param navigationBar the home's tabs, when this screen is the home's explorer tab.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +83,7 @@ fun ExplorerScreen(
     onNavigate: (String) -> Unit,
     onLeave: () -> Unit,
     viewModel: ExplorerViewModel = hiltViewModel(),
+    navigationBar: @Composable () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -185,7 +187,9 @@ fun ExplorerScreen(
                 }
             }
         },
-        bottomBar = { PickBottomBar(state, onFolderChosen, onFilesChosen) },
+        // The home's tabs, when this is its third: ONE scaffold, so one bar, one button and one message
+        // host — the 2.15.x stacked two of each (inventory F29).
+        bottomBar = { if (state.pick == null) navigationBar() else PickBottomBar(state, onFolderChosen, onFilesChosen) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Breadcrumb(state.dir) { browser.open(it) }

@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.data.storage
 import android.content.Context
 import android.os.Build
 import android.os.Environment
+import android.os.StatFs
 import android.os.storage.StorageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -11,6 +12,11 @@ import javax.inject.Singleton
 
 /** A mounted volume the explorer can open: the phone's storage, an SD card, a USB key. */
 data class VolumeRoot(val dir: File, val label: String, val isPrimary: Boolean)
+
+/** The size of a volume and what is left on it, in bytes. */
+data class StorageSpace(val total: Long, val free: Long) {
+    val used: Long get() = total - free
+}
 
 /**
  * The mounted volumes, from `StorageManager` (plan, point 17). The 2.15.x opened
@@ -34,6 +40,14 @@ class StorageVolumes @Inject constructor(@ApplicationContext private val context
 
     /** The primary volume (`/storage/emulated/0` for the owner), where the explorer starts. */
     fun primary(): File = Environment.getExternalStorageDirectory()
+
+    /** The primary volume's size and free space (`getStorageInfo` of the 2.15.x), null when unreadable. */
+    @Suppress("SwallowedException") // no figure is shown then, as the 2.15.x hid the bar
+    fun primarySpace(): StorageSpace? = try {
+        StatFs(primary().path).let { StorageSpace(total = it.totalBytes, free = it.availableBytes) }.takeIf { it.total > 0 }
+    } catch (expected: IllegalArgumentException) {
+        null
+    }
 
     /**
      * Every volume's folder. `StorageVolume.getDirectory` exists from Android 11 only; below, each
