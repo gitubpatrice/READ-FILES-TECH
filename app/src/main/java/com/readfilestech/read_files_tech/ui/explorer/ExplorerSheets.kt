@@ -213,10 +213,15 @@ private fun TextLines(lines: List<String>) {
     }
 }
 
-/** The first ten rows of a CSV, header shaded (the 2.15.x `_CsvPreview`). */
+/**
+ * The first ten rows of a CSV, header shaded (the 2.15.x `_CsvPreview`), split on the separator the file
+ * uses — the 2.15.x's `csv` package detected it, and Excel's French CSV is separated by `;`.
+ */
 @Composable
 private fun CsvPreview(lines: List<String>) {
-    val rows = CsvRows.parse(lines.take(CSV_LINES).joinToString("\n"), maxRows = CSV_ROWS)
+    val text = lines.take(CSV_LINES).joinToString("\n")
+    val dialect = CsvRows.dialectOf(text)
+    val rows = CsvRows.parse(text.substring(dialect.start), dialect.separator, maxRows = CSV_ROWS)
     if (rows.isEmpty()) {
         Text(stringResource(R.string.preview_empty))
         return

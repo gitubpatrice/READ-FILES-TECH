@@ -115,11 +115,17 @@ class BrowseTest {
     }
 
     @Test
-    fun `the preview of a small file and of malformed UTF-8`() {
+    fun `the preview of a small file, read in the encoding the text viewer finds`() {
         val f = File(tmp, "latin.txt").apply {
             writeBytes(byteArrayOf('c'.code.toByte(), 0xE9.toByte(), '\n'.code.toByte(), 'z'.code.toByte()))
         }
-        assertThat(TextPreview.firstLines(f)).containsExactly("c�", "z").inOrder()
+        // Not UTF-8: Windows-1252, as the viewer reads it — not "c�".
+        assertThat(TextPreview.firstLines(f)).containsExactly("cé", "z").inOrder()
+        val bom = byteArrayOf(0xFF.toByte(), 0xFE.toByte())
+        val utf16 = File(tmp, "utf16.txt").apply { writeBytes(bom + "é\r\nz".toByteArray(Charsets.UTF_16LE)) }
+        assertThat(TextPreview.firstLines(utf16)).containsExactly("é", "z").inOrder()
+        val utf8 = File(tmp, "utf8.txt").apply { writeText("é\nz") }
+        assertThat(TextPreview.firstLines(utf8)).containsExactly("é", "z").inOrder()
         assertThat(TextPreview.firstLines(File(tmp, "empty.txt").apply { writeText("") })).isEmpty()
     }
 }
