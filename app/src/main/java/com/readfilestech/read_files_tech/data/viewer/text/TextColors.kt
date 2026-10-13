@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.viewer.text
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import java.util.regex.Matcher
 
 /** A colour written in a text, as written ([code]) and as an opaque ARGB value. */
 data class TextColor(val code: String, val argb: Int)
@@ -36,6 +37,7 @@ object TextColors {
     /** Enough bytes for [OVERLAP] characters in any encoding (UTF-8 and UTF-16 take at most 4). */
     private const val OVERLAP_BYTES = OVERLAP * 4
     private const val MAX_COMPONENT = 255
+    private const val RGB_GROUPS = 3
 
     /** `#RGB`, each digit doubled into `#RRGGBB`. */
     private const val SHORT_HEX = 3
@@ -53,13 +55,15 @@ object TextColors {
             val to = document.rowAfter(from, CHUNK_BYTES).coerceAtLeast(from + 1)
             val own = document.text(from, to)
             val window = if (to < document.rowCount) own + borrowed(document, to) else own
-            HEX.findAll(window).filter { it.range.first < own.length }.forEach { match ->
-                if (hex.size < max) hex.getOrPut(match.value) { TextColor(match.value, hexArgb(match.groupValues[1])) }
+            HEX.forEachMatch(window) { match ->
+                if (match.start() < own.length && hex.size < max) {
+                    hex.getOrPut(match.group()) { TextColor(match.group(), hexArgb(match.group(1))) }
+                }
             }
-            RGB.findAll(window).filter { it.range.first < own.length }.forEach { match ->
-                val code = match.value + ")"
-                if (rgb.size < max && code !in rgb) {
-                    val (r, g, b) = match.groupValues.drop(1).map { it.toInt().coerceAtMost(MAX_COMPONENT) }
+            RGB.forEachMatch(window) { match ->
+                val code = match.group() + ")"
+                if (match.start() < own.length && rgb.size < max && code !in rgb) {
+                    val (r, g, b) = (1..RGB_GROUPS).map { match.group(it).toInt().coerceAtMost(MAX_COMPONENT) }
                     rgb[code] = TextColor(code, OPAQUE or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b)
                 }
             }
@@ -76,4 +80,14 @@ object TextColors {
         val six = if (digits.length == SHORT_HEX) digits.map { "$it$it" }.joinToString("") else digits
         return OPAQUE or six.toInt(radix = 16)
     }
+}
+
+/**
+ * Every match of this regex in [input], in order, found by ONE matcher. Kotlin's `findAll` makes a new
+ * Matcher for each match, and Android's Matcher copies its whole input into ICU when it is made: a copy
+ * per match — the colours of one HTML line of 20 MiB took 175 s on an emulator (TextColorsSpeedTest).
+ */
+internal inline fun Regex.forEachMatch(input: CharSequence, action: (Matcher) -> Unit) {
+    val matcher = toPattern().matcher(input)
+    while (matcher.find()) action(matcher)
 }

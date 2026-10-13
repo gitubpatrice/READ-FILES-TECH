@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.viewer.html
 
+import com.readfilestech.read_files_tech.data.viewer.text.forEachMatch
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -85,10 +86,10 @@ object HtmlLinks {
         if (BAD_PERCENT.containsMatchIn(path)) return null
         val bytes = ByteArrayOutputStream(path.length)
         var last = 0
-        PERCENT.findAll(path).forEach { escape ->
-            bytes.write(path.substring(last, escape.range.first).toByteArray(Charsets.UTF_8))
-            bytes.write(escape.value.substring(1).toInt(HEX_RADIX))
-            last = escape.range.last + 1
+        PERCENT.forEachMatch(path) { escape ->
+            bytes.write(path.substring(last, escape.start()).toByteArray(Charsets.UTF_8))
+            bytes.write(escape.group().substring(1).toInt(HEX_RADIX))
+            last = escape.end()
         }
         bytes.write(path.substring(last).toByteArray(Charsets.UTF_8))
         return try {

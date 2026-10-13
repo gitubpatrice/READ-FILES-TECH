@@ -1,9 +1,12 @@
 package com.readfilestech.read_files_tech.check
 
 import androidx.core.net.toUri
+import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.html.HtmlLinks
 import com.readfilestech.read_files_tech.data.viewer.html.HtmlPage
 import com.readfilestech.read_files_tech.data.viewer.html.HtmlResource
+import com.readfilestech.read_files_tech.data.viewer.text.TextColors
+import com.readfilestech.read_files_tech.data.viewer.text.forEachMatch
 import com.readfilestech.read_files_tech.ui.viewer.html.HtmlAssets
 import java.io.File
 import java.net.URI
@@ -13,11 +16,19 @@ import java.net.URISyntaxException
  * What the HTML viewer's loader WOULD serve (the corpus runs no WebView): the page at its address, then
  * every address the page names — `src`, `href`, `srcset`, CSS `url()` and `@import` — and the private
  * files of the app by the three ways of inventory D20: a path above the folder, `file:`, its FileProvider.
- * The page must be served; anything else served must be a file of [folder], outside the app's [sandbox].
+ * The page must be served; anything else served must be a file of its folder, outside the app's [sandbox].
  * A breach throws: the corpus then reports the page `unreadable`, never `ok`.
  */
-class HtmlProbe(private val sandbox: File, private val folder: File) {
-    fun probe(page: HtmlPage) {
+class HtmlProbe(private val sandbox: File) {
+    /** The page and its colours as the screen reads them (the WebView first, the source on demand); then the probe. */
+    suspend fun load(source: ViewerSource): HtmlPage {
+        val page = HtmlPage.read(source)
+        TextColors.extract(page.source)
+        probe(page, requireNotNull(source.shareable?.parentFile))
+        return page
+    }
+
+    private fun probe(page: HtmlPage, folder: File) {
         val assets = HtmlAssets(page)
         check(assets.serve(assets.pageUrl.toUri(), GET).statusCode == OK) { "the page itself is not served" }
         val text = page.source.text(0, page.source.rowCount)
@@ -32,12 +43,12 @@ class HtmlProbe(private val sandbox: File, private val folder: File) {
         )
         for (reference in references(text) + d20) {
             val url = resolve(assets.pageUrl, reference)
-            if (url != null && assets.serve(url.toUri(), GET).statusCode == OK) checkServed(page, url)
+            if (url != null && assets.serve(url.toUri(), GET).statusCode == OK) checkServed(page, folder, url)
         }
     }
 
     /** What the loader served at [url] is the page, or a file of the folder outside the sandbox. */
-    private fun checkServed(page: HtmlPage, url: String) {
+    private fun checkServed(page: HtmlPage, folder: File, url: String) {
         check(url.startsWith("https://${HtmlLinks.HOST}${HtmlLinks.PREFIX}")) { "served outside the loader: $url" }
         val served = page.resource(url.toUri().path.orEmpty().removePrefix(HtmlLinks.PREFIX))
         if (served is HtmlResource.Sibling) {
@@ -51,9 +62,10 @@ class HtmlProbe(private val sandbox: File, private val folder: File) {
     private fun references(text: String): List<String> {
         val found = mutableListOf<String>()
         for (pattern in listOf(ATTRIBUTE, CSS_URL, IMPORT)) {
-            pattern.findAll(text).forEach { match ->
-                val value = match.groupValues.drop(1).firstOrNull(String::isNotEmpty) ?: return@forEach
-                if (match.value.startsWith("srcset", ignoreCase = true)) {
+            pattern.forEachMatch(text) { match ->
+                val value = (1..match.groupCount()).firstNotNullOfOrNull { group -> match.group(group)?.takeIf(String::isNotEmpty) }
+                    ?: return@forEachMatch
+                if (match.group().startsWith("srcset", ignoreCase = true)) {
                     value.split(',').mapNotNullTo(found) { it.trim().substringBefore(' ').takeIf(String::isNotEmpty) }
                 } else {
                     found += value.trim()
