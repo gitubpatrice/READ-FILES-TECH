@@ -91,15 +91,7 @@ fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltVi
         state = state,
         onBack = onBack,
         actions = {
-            if (colors.isNotEmpty()) {
-                IconButton(onClick = { colorsHidden = !colorsHidden }) {
-                    Icon(
-                        Icons.Outlined.Palette,
-                        contentDescription = stringResource(R.string.text_colors),
-                        tint = if (colorsHidden) LocalContentColor.current else MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
+            if (colors.isNotEmpty()) ColorsToggle(colorsHidden) { colorsHidden = !colorsHidden }
             FontSizeMenu(fontSize) { fontSize = it }
         },
     ) { document, padding ->
@@ -158,8 +150,21 @@ internal fun FontSizeMenu(current: Int, sizes: List<Int> = FONT_SIZES, onChoose:
     }
 }
 
+/** Shows or hides the [ColorBar] — also the HTML viewer's. */
 @Composable
-private fun ColorBar(colors: List<TextColor>, onCopied: (String) -> Unit) {
+internal fun ColorsToggle(hidden: Boolean, onToggle: () -> Unit) {
+    IconButton(onClick = onToggle) {
+        Icon(
+            Icons.Outlined.Palette,
+            contentDescription = stringResource(R.string.text_colors),
+            tint = if (hidden) LocalContentColor.current else MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** The colours of a text, a tap copying one's code — also the HTML viewer's, from the page's source. */
+@Composable
+internal fun ColorBar(colors: List<TextColor>, onCopied: (String) -> Unit) {
     val clipboard = LocalClipboard.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()

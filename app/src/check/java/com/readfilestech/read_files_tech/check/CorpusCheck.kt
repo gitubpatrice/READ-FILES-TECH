@@ -11,6 +11,7 @@ import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.document.DocumentText
+import com.readfilestech.read_files_tech.data.viewer.html.HtmlPage
 import com.readfilestech.read_files_tech.data.viewer.json.JsonContent
 import com.readfilestech.read_files_tech.data.viewer.json.JsonDocument
 import com.readfilestech.read_files_tech.data.viewer.json.JsonFile
@@ -108,6 +109,7 @@ class CorpusCheck(private val sandbox: File) {
         // The rendering (its blocks are laid out as they show), and the first rows of the source.
         ViewerKind.MARKDOWN -> MarkdownFile.read(source).also { decodeScreenRows(it.source) }
         ViewerKind.JSON -> loadJson(source)
+        ViewerKind.HTML -> loadHtml(source)
     }
 
     /** The tree's rows with the document's value opened, and the texts of the first ones; or the text. */
@@ -124,6 +126,15 @@ class CorpusCheck(private val sandbox: File) {
             document.keyLiteral(value, TextDocument.ROW_BYTES)
             if (document.isContainer(value)) tree.childCount(value) else document.literal(value, TextDocument.ROW_BYTES)
         }
+    }
+
+    /** The page and its colours as the screen reads them; then what its loader would serve (no WebView here). */
+    private suspend fun loadHtml(source: ViewerSource): HtmlPage {
+        val page = HtmlPage.read(source)
+        TextColors.extract(page.source)
+        decodeScreenRows(page.source)
+        HtmlProbe(sandbox, requireNotNull(source.shareable?.parentFile)).probe(page)
+        return page
     }
 
     /**

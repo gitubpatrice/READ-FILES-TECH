@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.readfilestech.read_files_tech.ui.PendingScreen
 import com.readfilestech.read_files_tech.ui.viewer.csv.CsvViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.document.DocumentViewerScreen
+import com.readfilestech.read_files_tech.ui.viewer.html.HtmlViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.image.ImageViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.json.JsonViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.markdown.MarkdownViewerScreen
@@ -26,6 +27,7 @@ fun ViewerHost(kind: ViewerKind?, onBack: () -> Unit, onNavigate: (String) -> Un
         ViewerKind.SHEET -> SheetViewerScreen(onBack)
         ViewerKind.MARKDOWN -> MarkdownViewerScreen(onBack)
         ViewerKind.JSON -> JsonViewerScreen(onBack)
+        ViewerKind.HTML -> HtmlViewerScreen(onBack, onNavigate)
         // A route naming no viewer (an old one restored after an update): said, not a crash.
         null -> PendingScreen(null, onBack)
     }

@@ -22,6 +22,10 @@ composeBom              = "2026.09.00"
 # Not the framework's android.media.ExifInterface: lint flags its known security bugs on old Android
 # versions, and Android 8 is exactly where this one runs, on any file opened. Apache-2.0 (its POM).
 androidxExifInterface   = "1.4.2"
+# Phase 4, the HTML viewer: WebViewAssetLoader, so that a page reaches the WebView through the app — its
+# own bytes and its own folder only — never through file:// (inventory D20). No permission in its manifest
+# (read in the AAR); Apache-2.0 (its POM). 1.17.1, published 2026-09-23: the latest stable, as lint wants.
+androidxWebkit          = "1.17.1"
 
 # --- Hilt ---
 hilt                    = "2.60.1"
@@ -70,6 +74,7 @@ androidx-lifecycle-runtime-compose      = { group = "androidx.lifecycle",       
 androidx-lifecycle-viewmodel-compose    = { group = "androidx.lifecycle",              name = "lifecycle-viewmodel-compose",       version.ref = "androidxLifecycle" }
 androidx-navigation-compose             = { group = "androidx.navigation",             name = "navigation-compose",                version.ref = "androidxNavigation" }
 androidx-exifinterface                  = { group = "androidx.exifinterface",          name = "exifinterface",                     version.ref = "androidxExifInterface" }
+androidx-webkit                         = { group = "androidx.webkit",                 name = "webkit",                            version.ref = "androidxWebkit" }
 
 compose-bom                             = { group = "androidx.compose",                name = "compose-bom",                       version.ref = "composeBom" }
 compose-ui                              = { group = "androidx.compose.ui",             name = "ui" }

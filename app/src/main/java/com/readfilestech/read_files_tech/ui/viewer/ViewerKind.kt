@@ -36,6 +36,9 @@ enum class ViewerKind(val extensions: Set<String>) {
 
     /** `JsonViewerScreen` of the 2.15.3: the values as a tree, or as indented text. */
     JSON(setOf("json")),
+
+    /** `HtmlViewerScreen` of the 2.15.3: the page in a locked WebView, served by the app (D20), or its source. */
+    HTML(setOf("html", "htm")),
     ;
 
     companion object {

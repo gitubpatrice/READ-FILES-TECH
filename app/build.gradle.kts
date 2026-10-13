@@ -287,6 +287,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     // The EXIF orientation of a photo below API 28 (docs: libs.versions.toml).
     implementation(libs.androidx.exifinterface)
+    // The HTML viewer's WebViewAssetLoader: a page and its folder served by the app, never by file:// (D20).
+    implementation(libs.androidx.webkit)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

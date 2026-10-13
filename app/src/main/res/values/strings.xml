@@ -362,6 +362,13 @@
 
     <string name="document_no_text">This document contains no text.</string>
 
+    <!-- HTML viewer -->
+    <string name="html_view_source">Source code</string>
+    <string name="html_view_page">Rendered page</string>
+    <string name="html_link_refused">This link cannot be opened.</string>
+    <!-- The WebView's renderer stopped on this page: the app goes on. -->
+    <string name="html_render_gone">This page could not be displayed.</string>
+
     <!-- Spreadsheet viewer -->
     <string name="sheet_no_sheet">This workbook contains no sheet.</string>
     <string name="sheet_empty">This sheet is empty.</string>
