@@ -20,7 +20,7 @@ import kotlin.math.sin
 @Timeout(value = 60, unit = TimeUnit.SECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 class DocumentDetectorTest {
     /**
-     * The bench's retained detector (`pure+oc30+fb4+refine`, tools/scanner-bench, scratch export of
+     * The bench's retained detector (`pure+oc30+fb4+refine` then, `fb4` since dropped; tools/scanner-bench, scratch export of
      * 2026-10-12) on its synthetic photos syn000 (text on wood), syn012 (a page that is mostly a photo, on a
      * white desk: the base detector picked the photo, IoU 0.36), syn022 (a corner out of the frame), syn010
      * (a finger over a corner on a white desk: nothing). Same image, same corners, to the pixel.
@@ -78,19 +78,21 @@ class DocumentDetectorTest {
         assertThat(ScanTestImages.cornerError(found, landscape)).isLessThan(0.005)
     }
 
-    /** RAPPORT-SCANNER §5, `fb4`: between 4 % and 10 % of the photo, a document is found when it is alone. */
+    /**
+     * Under 10 % of the photo nothing is a document (the bench's `fb4` pass dropped: on real S9 photos it only
+     * ever chose a label inside a document filling the photo). A receipt far away is left to the user.
+     */
     @Test
-    fun `a small receipt far away is found when nothing larger is there`() {
+    fun `a small receipt far away is left to the user`() {
         // 260 × 440 pixels of 1600 × 1200: 6 % of the photo.
         val small = rotated(Point(800.0, 600.0), 260.0, 440.0, 0.12)
         val photo = ScanTestImages.scene(1600, 1200, small, ScanTestImages.textPage(), ScanTestImages.dark())
-        val found = requireNotNull(DocumentDetector.locate(photo)).map { Point(it.x * 1600, it.y * 1200) }
-        assertThat(ScanTestImages.cornerError(found, small)).isLessThan(0.01)
+        assertThat(DocumentDetector.locate(photo)).isNull()
     }
 
     /**
-     * The two-stage rule cuts both ways: a small, perfectly square card would outrank a page in perspective
-     * (the angle outweighs the area), so it is considered only when nothing of 10 % or more exists.
+     * A small, perfectly square card would outrank a page in perspective (the angle outweighs the area): under
+     * 10 % of the photo it is never a candidate.
      */
     @Test
     fun `a large page wins over a small square card beside it`() {

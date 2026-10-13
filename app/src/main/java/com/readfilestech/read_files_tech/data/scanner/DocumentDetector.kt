@@ -7,7 +7,7 @@ package com.readfilestech.read_files_tech.data.scanner
 /**
  * Finds a document's four corners in a small image — OSS Document Scanner's still-photo detection
  * (`cpp/src/DocumentDetector.cpp`, MIT) rewritten in pure Kotlin, with the improvements the bench kept
- * (`pure+oc30+fb4+refine`, RAPPORT-SCANNER §5: 33 % → 64 % good frames on SmartDoc's real photos).
+ * (`pure+oc30+refine`, RAPPORT-SCANNER §5).
  *
  * Upstream: a 10-pixel black border, a 3×3 median; for each of the blue, green and red channels a
  * binary threshold at 160 (closed 4×4, dilated 3×3), then Canny at (2t, 4t) for t = 60, 50 … 10 (dilated
@@ -19,11 +19,13 @@ package com.readfilestech.read_files_tech.data.scanner
  * - every pass is run (no early exit), then the choice climbs to an ENCLOSING quadrilateral at least
  *   1.12 × larger, containing 92 % of it, with max|cos| below 0.30: an inner photo or table, or the lit
  *   part of a page crossed by a shadow, was the commonest wrong answer (19 of the base's 20);
- * - a document between 4 % and 10 % of the image (far away, a receipt) only when nothing larger exists;
  * - the corners are then snapped to the gradients of a larger image ([EdgeRefiner]).
  *
- * One change for speed, none for the result: the 4 % candidates are gathered in the same sweep as the
- * 10 % ones (the bench swept again), since nothing else differs between the two.
+ * The bench also kept a second pass down to 4 % of the image when nothing of 10 % was found (`fb4`,
+ * 33 % → 64 % good frames on SmartDoc, whose documents are filmed from afar). Dropped on real photos
+ * taken with the Galaxy S9 (2026-10-13): of 7, it chose 3 times — 3 times wrong, a label or an address
+ * window INSIDE a document that filled the photo, where the whole photo was the answer. A document is
+ * photographed close; one far away is left to the user, on the whole photo.
  */
 object DocumentDetector {
     /** The long side of the image the detection works on (OSS Document Scanner's `resizeThreshold` for a photo). */
@@ -39,7 +41,6 @@ object DocumentDetector {
     private const val CANNY_LOW_FACTOR = 2.0
     private const val CANNY_HIGH_FACTOR = 4.0
     private const val MIN_AREA = 0.10
-    private const val FALLBACK_MIN_AREA = 0.04
     private const val MAX_AREA = 0.92
     private const val MIN_PERIMETER = 100.0
     private const val APPROX_EPSILON = 0.02
@@ -85,7 +86,6 @@ object DocumentDetector {
      */
     fun detect(work: RgbImage, checkpoint: () -> Unit = {}): List<Point>? {
         val padded = pad(work)
-        val frameArea = padded.width.toDouble() * padded.height
         val found = ArrayList<Candidate>()
         var weight = ANGLE_WEIGHT
         for (channel in CHANNELS) {
@@ -99,11 +99,8 @@ object DocumentDetector {
                 checkpoint()
             }
         }
-        // Two-stage area rule: a small document only when nothing of 10 % or more was found.
-        val large = found.filter { it.area >= frameArea * MIN_AREA }
-        val pool = large.ifEmpty { found }
-        if (pool.isEmpty()) return null
-        val pick = climbToEnclosing(pool.sortedByDescending { it.rank })
+        if (found.isEmpty()) return null
+        val pick = climbToEnclosing(found.sortedByDescending { it.rank })
         val corners = pick.corners.map {
             Point((it.x - BORDER).coerceIn(0.0, work.width.toDouble()), (it.y - BORDER).coerceIn(0.0, work.height.toDouble()))
         }
@@ -144,12 +141,12 @@ object DocumentDetector {
         return RgbImage(w, h, px)
     }
 
-    /** OSS Document Scanner's `findSquares`, down to the fallback area: every acceptable quadrilateral of [binary]. */
+    /** OSS Document Scanner's `findSquares`: every acceptable quadrilateral of [binary]. */
     private fun collect(binary: GrayImage, frame: RgbImage, out: MutableList<Candidate>, weight: Int) {
         val w = frame.width.toDouble()
         val h = frame.height.toDouble()
         val maxArea = (w - 2 * BORDER) * (h - 2 * BORDER) * MAX_AREA
-        val minArea = w * h * FALLBACK_MIN_AREA
+        val minArea = w * h * MIN_AREA
         for (c in ScanContours.find(binary)) {
             val area = c.area()
             val q = if (area >= minArea && area < maxArea && c.arcLength() >= MIN_PERIMETER) quadrilateralOf(c, w, h) else null
