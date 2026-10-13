@@ -1,14 +1,19 @@
 package com.readfilestech.read_files_tech.ui.viewer.markdown
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,15 +37,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -69,6 +78,7 @@ import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownBlock
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownCell
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownCode
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownContent
+import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownImage
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownRendering
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownRule
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownRun
@@ -131,7 +141,7 @@ fun MarkdownViewerScreen(onBack: () -> Unit, viewModel: MarkdownViewerViewModel 
                 is MarkdownRendering.Rendered -> if (showSource) {
                     TextRows(content.source, fontSize, code = true)
                 } else {
-                    RenderedBlocks(rendering.blocks) { viewModel.open(context, it) }
+                    RenderedBlocks(rendering.blocks, viewModel::image) { viewModel.open(context, it) }
                 }
                 else -> SourceOnly(content, rendering, fontSize)
             }
@@ -160,7 +170,7 @@ private fun SourceOnly(content: MarkdownContent, rendering: MarkdownRendering, f
 }
 
 @Composable
-private fun RenderedBlocks(blocks: List<MarkdownBlock>, onLink: (String) -> Unit) {
+private fun RenderedBlocks(blocks: List<MarkdownBlock>, decode: suspend (MarkdownImage, Int) -> Bitmap?, onLink: (String) -> Unit) {
     // One horizontal scroll per table, shared by its rows: they scroll as one.
     val tableScrolls = remember(blocks) { HashMap<Int, ScrollState>() }
     val quoteColor = MaterialTheme.colorScheme.outlineVariant
@@ -183,7 +193,11 @@ private fun RenderedBlocks(blocks: List<MarkdownBlock>, onLink: (String) -> Unit
                         }
                         .padding(start = indent),
                 ) {
-                    Block(block, onLink) { table -> tableScrolls.getOrPut(table) { ScrollState(0) } }
+                    if (block is MarkdownImage) {
+                        ImageBlock(block, decode, onLink)
+                    } else {
+                        Block(block, onLink) { table -> tableScrolls.getOrPut(table) { ScrollState(0) } }
+                    }
                 }
             }
         }
@@ -195,7 +209,7 @@ private fun startsItem(block: MarkdownBlock, previous: MarkdownBlock): Boolean =
     is MarkdownText -> !block.continued
     is MarkdownCode -> !block.continued
     is MarkdownTableRow -> previous !is MarkdownTableRow || previous.table != block.table
-    is MarkdownRule -> true
+    is MarkdownRule, is MarkdownImage -> true
 }
 
 @Composable
@@ -208,7 +222,37 @@ private fun Block(block: MarkdownBlock, onLink: (String) -> Unit, tableScroll: (
             style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
         )
         is MarkdownRule -> HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        // Drawn by ImageBlock, which decodes it.
+        is MarkdownImage -> Unit
         is MarkdownTableRow -> TableRowBlock(block, onLink, tableScroll(block.table))
+    }
+}
+
+/**
+ * An image of the document's folder, decoded when it comes into view at the width it may take; shown at its
+ * pixels as dp, never wider. Its icon and description until then, or when it cannot be decoded.
+ */
+@Composable
+private fun ImageBlock(block: MarkdownImage, decode: suspend (MarkdownImage, Int) -> Bitmap?, onLink: (String) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val width = constraints.maxWidth
+        val bitmap by produceState<Bitmap?>(null, block, width) { value = decode(block, width) }
+        val description = block.description.ifEmpty { stringResource(R.string.markdown_image) }
+        val tap = block.link?.let { link -> Modifier.clickable { onLink(link) } } ?: Modifier
+        val shown = bitmap
+        if (shown == null) {
+            Row(tap, verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Image, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
+                Text(description, Modifier.padding(start = 4.dp), style = MaterialTheme.typography.bodySmall)
+            }
+        } else {
+            Image(
+                shown.asImageBitmap(),
+                contentDescription = description,
+                modifier = tap.width(minOf(shown.width.dp, maxWidth)).aspectRatio(shown.width.toFloat() / shown.height),
+                contentScale = ContentScale.Fit,
+            )
+        }
     }
 }
 

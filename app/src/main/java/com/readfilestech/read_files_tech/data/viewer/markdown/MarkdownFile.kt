@@ -28,22 +28,23 @@ class MarkdownContent(val source: TextDocument, val rendering: MarkdownRendering
  * them, the source alone, which costs what the text viewer's does.
  */
 object MarkdownFile {
+    /** [source]'s content; its images from the folder of its file — none for the vault's, which has no file (D-028). */
     suspend fun read(source: ViewerSource): MarkdownContent {
         val (bytes, size) = source.open(FileCaps.TEXT_VIEWER).use {
             TextDocument.readAll(it, source.length(), FileCaps.TEXT_VIEWER)
         }
-        return of(bytes, size)
+        return of(bytes, size, MarkdownImages(source.shareable?.parentFile))
     }
 
     /** The content of the first [size] bytes of [bytes] — kept, not copied. */
-    internal suspend fun of(bytes: ByteArray, size: Int = bytes.size): MarkdownContent {
+    internal suspend fun of(bytes: ByteArray, size: Int = bytes.size, images: MarkdownImages = MarkdownImages(null)): MarkdownContent {
         val document = TextDocument.of(bytes, size)
         if (size > FileCaps.MARKDOWN_RENDERED) return MarkdownContent(document, MarkdownRendering.TooLong(FileCaps.MARKDOWN_RENDERED))
         val text = document.text(0, document.rowCount)
         val rendering = when {
             tableCells(text) > FileCaps.MARKDOWN_TABLE_CELLS -> MarkdownRendering.TooManyCells(FileCaps.MARKDOWN_TABLE_CELLS)
             openBrackets(text) > FileCaps.MARKDOWN_OPEN_BRACKETS -> MarkdownRendering.TooManyBrackets(FileCaps.MARKDOWN_OPEN_BRACKETS)
-            else -> MarkdownRendering.Rendered(MarkdownRenderer.render(text))
+            else -> MarkdownRendering.Rendered(MarkdownRenderer.render(text, images))
         }
         return MarkdownContent(document, rendering)
     }

@@ -37,14 +37,16 @@ import org.commonmark.parser.Parser
 /**
  * A Markdown text as the items of the rendered view (`MdViewerScreen` of the 2.15.3, gpt_markdown): CommonMark
  * and GFM's tables and strikethrough, parsed by commonmark-java with its nesting bounded
- * ([FileCaps.MARKDOWN_NESTING]), then walked WITHOUT recursion. Nothing is fetched: an image is its place
- * and its description, and a link is a destination the screen opens only when tapped, if its scheme allows.
+ * ([FileCaps.MARKDOWN_NESTING]), then walked WITHOUT recursion. Nothing is fetched: an image is shown only
+ * from the document's own folder ([MarkdownImages]), any other is its place and its description; a link is
+ * a destination the screen opens only when tapped, if its scheme allows.
  * Raw HTML is shown as written, never interpreted.
  */
 // TooManyFunctions: a visitor without recursion — what entering and leaving each kind of node does.
 @Suppress("TooManyFunctions")
-internal class MarkdownRenderer private constructor() {
+internal class MarkdownRenderer private constructor(private val images: MarkdownImages) {
     private val blocks = ArrayList<MarkdownBlock>()
+    private val shownImages = ArrayList<MarkdownImage>()
     private var quotes = 0
     private val lists = ArrayList<ListState>()
     private var marker: String? = null
@@ -67,7 +69,8 @@ internal class MarkdownRenderer private constructor() {
     /** A list open around the walk: the number of its next item, or [BULLET]. */
     private class ListState(var number: Int, val delimiter: String)
 
-    private fun enter(node: Node) {
+    /** What entering [node] does; false when its children are not to be walked, nor its exit. */
+    private fun enter(node: Node): Boolean {
         when (node) {
             is Block -> enterBlock(node)
             is TableRow -> {
@@ -75,8 +78,49 @@ internal class MarkdownRenderer private constructor() {
                 header = node.parent is TableHead
             }
             is TableCell -> startCell(node.alignment)
+            is Image -> return enterImage(node)
             else -> enterInline(node)
         }
+        return true
+    }
+
+    /**
+     * An image of the document's folder is shown after the text holding it, its description its own; any
+     * other keeps its place in the text, an icon and its description. In a table cell, always the icon.
+     */
+    private fun enterImage(node: Image): Boolean {
+        val file = if (row == null && text != null) images.resolve(node.destination) else null
+        if (file != null) {
+            shownImages += MarkdownImage(file, altText(node), links.lastOrNull(), quotes, lists.size)
+            return false
+        }
+        append(MarkdownStyle.IMAGE_MARK.toString(), MarkdownStyle.IMAGE)
+        image++
+        return true
+    }
+
+    /** The text of [image]'s description, without recursion. */
+    private fun altText(image: Image): String {
+        val alt = StringBuilder()
+        var node: Node? = image.firstChild
+        while (node != null && alt.length < PIECE) {
+            when (node) {
+                is Text -> alt.append(node.literal)
+                is Code -> alt.append(node.literal)
+            }
+            node = node.firstChild ?: after(node, image)
+        }
+        return alt.take(PIECE).toString()
+    }
+
+    /** The node after [node] and its children, inside [root]; null past it. */
+    private fun after(node: Node, root: Node): Node? {
+        var current = node
+        while (current.next == null) {
+            current = current.parent
+            if (current === root) return null
+        }
+        return current.next
     }
 
     private fun enterBlock(node: Block) {
@@ -106,10 +150,6 @@ internal class MarkdownRenderer private constructor() {
             is StrongEmphasis -> bold++
             is Strikethrough -> strike++
             is Link -> links += node.destination
-            is Image -> {
-                append(MarkdownStyle.IMAGE_MARK.toString(), MarkdownStyle.IMAGE)
-                image++
-            }
         }
     }
 
@@ -152,7 +192,12 @@ internal class MarkdownRenderer private constructor() {
 
     private fun flushText() {
         val built = text ?: return
-        blocks += MarkdownText(built.toString(), runs.toList(), heading, marker, continued, quotes, lists.size)
+        // A paragraph that held only images shown is these images.
+        if (built.isNotBlank() || shownImages.isEmpty() || marker != null) {
+            blocks += MarkdownText(built.toString(), runs.toList(), heading, marker, continued, quotes, lists.size)
+        }
+        blocks += shownImages
+        shownImages.clear()
         marker = null
         built.setLength(0)
         runs.clear()
@@ -249,13 +294,13 @@ internal class MarkdownRenderer private constructor() {
         var visited = 0
         while (true) {
             if (++visited % CANCEL_CHECK_NODES == 0) currentCoroutineContext().ensureActive()
-            enter(node)
+            val entered = enter(node)
             val child = node.firstChild
-            if (child != null) {
+            if (entered && child != null) {
                 node = child
                 continue
             }
-            exit(node)
+            if (entered) exit(node)
             while (node.next == null) {
                 node = node.parent
                 if (node === root) return
@@ -279,9 +324,10 @@ internal class MarkdownRenderer private constructor() {
             .maxInlineNesting(FileCaps.MARKDOWN_NESTING)
             .build()
 
-        suspend fun render(markdown: String): List<MarkdownBlock> {
+        /** The items of [markdown]; its images of the document's folder as [images] resolves them. */
+        suspend fun render(markdown: String, images: MarkdownImages = MarkdownImages(null)): List<MarkdownBlock> {
             val document = parser.parse(markdown)
-            return MarkdownRenderer().apply { walk(document) }.blocks
+            return MarkdownRenderer(images).apply { walk(document) }.blocks
         }
     }
 }

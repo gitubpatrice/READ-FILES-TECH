@@ -140,6 +140,20 @@ object FileCaps {
     const val MARKDOWN_OPEN_BRACKETS = 1_000
 
     /**
+     * Local images a Markdown text may show: the first ones it names by a path in its own folder are looked
+     * up on the storage when it is rendered, and decoded when they come into view; the others keep their
+     * icon. The 2.15.3 had no bound: `Image.file` for each (`md_viewer_screen.dart:87`).
+     */
+    const val MARKDOWN_IMAGES = 64
+
+    /**
+     * Bytes of decoded images the Markdown viewer keeps: past it, the image shown least recently is
+     * dropped, decoded again if it comes back into view. Each is decoded at the width it is shown at, at
+     * most four widths tall (ImageScale): a phone's screenshot is about 10 MB. No 2.15.3 counterpart.
+     */
+    const val MARKDOWN_IMAGE_BYTES = 32 * MIB
+
+    /**
      * Values of a JSON file — each scalar, array and object: past it, the file is shown as its text. The
      * viewer keeps 10 bytes per value beside the file's bytes, and 8 per row of its tree: a file of 50 MiB
      * holding this many values in one array keeps 87 MB once opened (measured on the JVM; 3.7 million kept

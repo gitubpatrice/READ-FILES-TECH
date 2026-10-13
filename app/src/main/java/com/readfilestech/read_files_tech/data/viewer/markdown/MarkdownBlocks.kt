@@ -1,5 +1,7 @@
 package com.readfilestech.read_files_tech.data.viewer.markdown
 
+import java.io.File
+
 /** How a run of text is drawn: [BOLD], [ITALIC], [STRIKE] and [CODE] combined; [IMAGE] alone. */
 object MarkdownStyle {
     const val BOLD = 1
@@ -7,7 +9,7 @@ object MarkdownStyle {
     const val STRIKE = 4
     const val CODE = 8
 
-    /** The image's place, one [IMAGE_MARK] character: drawn as an icon, never loaded. */
+    /** The place of an image not shown, one [IMAGE_MARK] character: drawn as an icon, never loaded. */
     const val IMAGE = 16
 
     const val IMAGE_MARK = '\uFFFC'
@@ -49,6 +51,18 @@ data class MarkdownCode(
 ) : MarkdownBlock
 
 data class MarkdownRule(override val quotes: Int = 0, override val lists: Int = 0) : MarkdownBlock
+
+/**
+ * An image of the document's folder ([MarkdownImages]), shown after the text that names it: [file] is its
+ * real path, [description] its alternative text, [link] where a tap leads when it sits in a link.
+ */
+data class MarkdownImage(
+    val file: File,
+    val description: String,
+    val link: String? = null,
+    override val quotes: Int = 0,
+    override val lists: Int = 0,
+) : MarkdownBlock
 
 /** A cell of a table, aligned [alignment] (null: the start). */
 data class MarkdownCell(val text: String, val runs: List<MarkdownRun>, val alignment: MarkdownAlignment? = null)
