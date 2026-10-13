@@ -396,7 +396,7 @@
     <string name="zip_problem_overlapping">Overlaps another entry: forged or damaged archive</string>
     <string name="zip_problem_too_large">Over %1$s once decompressed</string>
     <string name="zip_problem_damaged">Damaged</string>
-    <string name="zip_unsafe_name">Its name leads outside the folder: not extracted</string>
+    <string name="zip_unsafe_name">Its name leaves the folder or is not a valid file name</string>
     <string name="zip_name_taken">Another entry has the same name</string>
     <string name="zip_over_total">Over the %1$s an extraction may write</string>
     <string name="zip_extracting">Extracting…</string>

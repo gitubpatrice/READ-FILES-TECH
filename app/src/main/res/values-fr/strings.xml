@@ -400,7 +400,7 @@
     <string name="zip_problem_overlapping">Chevauche une autre entrée : archive forgée ou endommagée</string>
     <string name="zip_problem_too_large">Plus de %1$s une fois décompressé</string>
     <string name="zip_problem_damaged">Endommagé</string>
-    <string name="zip_unsafe_name">Son nom mène hors du dossier : non extrait</string>
+    <string name="zip_unsafe_name">Son nom sort du dossier ou n\'est pas un nom de fichier valide</string>
     <string name="zip_name_taken">Une autre entrée porte le même nom</string>
     <string name="zip_over_total">Au-delà des %1$s qu\'une extraction peut écrire</string>
     <string name="zip_extracting">Extraction…</string>

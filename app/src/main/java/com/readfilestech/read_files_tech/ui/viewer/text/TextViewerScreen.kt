@@ -49,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -115,7 +116,13 @@ internal fun TextRows(document: TextDocument, fontSize: Int, code: Boolean) {
     val style = if (code) {
         TextStyle(fontSize = fontSize.sp, fontFamily = FontFamily.Monospace)
     } else {
-        TextStyle(fontSize = fontSize.sp, lineHeight = (fontSize * PLAIN_LINE_HEIGHT).sp)
+        // Untrimmed: each row is its own Text, and Compose trims the line height above a Text's first line
+        // and below its last — two rows sat closer than two lines of one wrapped row (seen on an .odt).
+        TextStyle(
+            fontSize = fontSize.sp,
+            lineHeight = (fontSize * PLAIN_LINE_HEIGHT).sp,
+            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+        )
     }
     SelectionContainer {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
