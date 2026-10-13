@@ -11,6 +11,11 @@ import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.document.DocumentText
+import com.readfilestech.read_files_tech.data.viewer.json.JsonContent
+import com.readfilestech.read_files_tech.data.viewer.json.JsonDocument
+import com.readfilestech.read_files_tech.data.viewer.json.JsonFile
+import com.readfilestech.read_files_tech.data.viewer.json.JsonTree
+import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownFile
 import com.readfilestech.read_files_tech.data.viewer.sheet.Workbook
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
@@ -79,6 +84,8 @@ class CorpusCheck(private val sandbox: File) {
      * load that opens what must be closed (a ZipFile, a PdfRenderer) keeps it in [resources], as its
      * screen does.
      */
+    // CyclomaticComplexMethod: one branch per viewer, the `when` exhaustive on purpose (a viewer added fails the build).
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun load(kind: ViewerKind, source: ViewerSource, resources: ViewerResources): Any = when (kind) {
         // Strictly here, where the screen tolerates it: a failure of the colours is the corpus's to see.
         ViewerKind.TEXT -> TextDocument.read(source).also { document ->
@@ -98,6 +105,25 @@ class CorpusCheck(private val sandbox: File) {
         // A document's text is shown by the text viewer's rows.
         ViewerKind.DOCUMENT -> DocumentText.read(source).also { decodeScreenRows(it.document) }
         ViewerKind.SHEET -> resources.keep(Workbook.open(source)).also { formatScreenCells(it) }
+        // The rendering (its blocks are laid out as they show), and the first rows of the source.
+        ViewerKind.MARKDOWN -> MarkdownFile.read(source).also { decodeScreenRows(it.source) }
+        ViewerKind.JSON -> loadJson(source)
+    }
+
+    /** The tree's rows with the document's value opened, and the texts of the first ones; or the text. */
+    private suspend fun loadJson(source: ViewerSource): Any = when (val content = JsonFile.read(source)) {
+        is JsonContent.Tree -> JsonTree(content.document).also { decodeTreeRows(content.document, it) }
+        is JsonContent.Text -> content.also { decodeScreenRows(it.text) }
+    }
+
+    /** The texts of the tree rows the screen shows first, on its main thread, and of the last one. */
+    private fun decodeTreeRows(document: JsonDocument, tree: JsonTree) {
+        val rows = (0 until minOf(tree.rowCount, FIRST_SCREEN_ROWS)) + (tree.rowCount - 1)
+        for (row in rows) {
+            val value = tree.value(row)
+            document.keyLiteral(value, TextDocument.ROW_BYTES)
+            if (document.isContainer(value)) tree.childCount(value) else document.literal(value, TextDocument.ROW_BYTES)
+        }
     }
 
     /**

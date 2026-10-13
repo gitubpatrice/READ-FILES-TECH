@@ -308,6 +308,11 @@ dependencies {
     // The .xls, by HSSF alone (docs D-006): read from a stream, its awkward formats never given to CellFormat.
     implementation(libs.poi)
 
+    // The Markdown viewer's parser, to a tree laid out by the app (never HTML, never an image fetched).
+    implementation(libs.commonmark)
+    implementation(libs.commonmark.ext.gfm.tables)
+    implementation(libs.commonmark.ext.gfm.strikethrough)
+
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(platform(libs.junit.bom))

@@ -476,4 +476,30 @@
         <item quantity="other">Its %d pages have not been saved as a PDF.</item>
     </plurals>
     <string name="scanner_discard">Discard</string>
+    <string name="markdown_show_rendered">Rendered view</string>
+    <string name="markdown_show_source">Markdown source</string>
+    <string name="markdown_too_long">Over %1$s: shown as text, not rendered.</string>
+    <string name="markdown_too_many_cells">Its tables could hold too many cells (over %1$,d): shown as text, not rendered.</string>
+    <string name="markdown_too_many_brackets">Too many brackets open at once (over %1$,d): shown as text, not rendered.</string>
+    <string name="markdown_image">Image, not loaded</string>
+    <string name="markdown_no_app">No app found to open this link.</string>
+    <string name="markdown_link_refused">This link is not opened: only web and e-mail links are.</string>
+    <string name="json_show_pretty">Indented text</string>
+    <string name="json_show_tree">Tree</string>
+    <plurals name="json_keys">
+        <item quantity="one">{%d key}</item>
+        <item quantity="other">{%d keys}</item>
+    </plurals>
+    <plurals name="json_items">
+        <item quantity="one">[%d item]</item>
+        <item quantity="other">[%d items]</item>
+    </plurals>
+    <string name="json_not_json">Not valid JSON from line %1$,d, column %2$,d: shown as text.</string>
+    <string name="json_too_deep">Arrays and objects nested too deep (the limit is %1$,d): shown as text.</string>
+    <string name="json_too_many_values">Too many values (over %1$,d): shown as text.</string>
+    <string name="json_copied">Copied</string>
+    <plurals name="json_too_long_to_copy">
+        <item quantity="one">Too long to copy (over %1$,d character).</item>
+        <item quantity="other">Too long to copy (over %1$,d characters).</item>
+    </plurals>
 </resources>

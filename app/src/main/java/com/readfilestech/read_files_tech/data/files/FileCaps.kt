@@ -107,6 +107,55 @@ object FileCaps {
     const val XML_ELEMENTS = 4_000_000
 
     /**
+     * Bytes of a Markdown file shown rendered; a longer one opens on its source, laid out lazily as the text
+     * viewer's. No 2.15.3 counterpart: it rendered the whole file in one widget (`md_viewer_screen.dart`,
+     * gpt_markdown), and 50 MiB froze it long before its cap. A README of a large project is under 100 KB;
+     * commonmark-java's worst case measured at 1 MiB on the JVM (a link every 7 bytes, a table row every
+     * 10) held under 60 MB while it parsed, and took under half a second.
+     */
+    const val MARKDOWN_RENDERED = 1 * MIB
+
+    /**
+     * Blocks nested in a Markdown text (quotes, lists), and inline nodes nested in one paragraph (emphasis,
+     * images): deeper markers are shown as text (commonmark-java's maxOpenBlockParsers and maxInlineNesting).
+     * No 2.15.3 counterpart; a real document nests a few levels.
+     */
+    const val MARKDOWN_NESTING = 32
+
+    /**
+     * Cells of a Markdown text's tables, counted before it is parsed: the columns of each delimiter row
+     * times the lines after it until a blank one, an upper bound. Past it, the text opens on its source.
+     * GFM pads every row to the header's columns (commonmark-java's TableBlockParser), so 1 MiB holding a
+     * header of 60 000 columns over 100 000 one-character lines would be six billion cells. A cell costs
+     * about 140 bytes once parsed (measured): 14 MB here. No 2.15.3 counterpart.
+     */
+    const val MARKDOWN_TABLE_CELLS = 100_000
+
+    /**
+     * Brackets (`[`, `![`) open at once in one paragraph, counted before it is parsed: past it, the text opens
+     * on its source. commonmark-java 0.30 takes a time in the square of the images nested in one another —
+     * measured on the JVM, 80 000 of them (480 KB) took 4.2 s, 150 000 took 15.5 s; 1 000 take a millisecond.
+     * A real text opens a few at once. No 2.15.3 counterpart.
+     */
+    const val MARKDOWN_OPEN_BRACKETS = 1_000
+
+    /**
+     * Values of a JSON file — each scalar, array and object: past it, the file is shown as its text. The
+     * viewer keeps 10 bytes per value beside the file's bytes, and 8 per row of its tree: a file of 50 MiB
+     * holding this many values in one array keeps 87 MB once opened (measured on the JVM; 3.7 million kept
+     * 119 MB). No 2.15.3 counterpart: it decoded the whole file into Dart objects
+     * (`json_viewer_screen.dart:41`), then laid out every child of an opened node at once.
+     */
+    const val JSON_VALUES = 2_000_000
+
+    /**
+     * Arrays and objects nested in a JSON file: deeper, it is shown as its text. The default limit of Jackson
+     * and of Python's json module (its recursion limit); the 2.15.3's recursive decoder had none, and a file
+     * of a million `[` was a stack overflow.
+     */
+    const val JSON_DEPTH = 1_000
+
+    /**
      * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
      * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
      * (Claude review R8).

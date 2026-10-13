@@ -488,4 +488,33 @@
         <item quantity="other">Ses %d pages n\'ont pas été enregistrées en PDF.</item>
     </plurals>
     <string name="scanner_discard">Abandonner</string>
+    <string name="markdown_show_rendered">Aperçu rendu</string>
+    <string name="markdown_show_source">Source Markdown</string>
+    <string name="markdown_too_long">Plus de %1$s : affiché en texte, sans mise en forme.</string>
+    <string name="markdown_too_many_cells">Ses tableaux pourraient compter trop de cellules (plus de %1$,d) : affiché en texte, sans mise en forme.</string>
+    <string name="markdown_too_many_brackets">Trop de crochets ouverts à la fois (plus de %1$,d) : affiché en texte, sans mise en forme.</string>
+    <string name="markdown_image">Image non chargée</string>
+    <string name="markdown_no_app">Aucune application trouvée pour ouvrir ce lien.</string>
+    <string name="markdown_link_refused">Ce lien n\'est pas ouvert : seuls les liens web et e-mail le sont.</string>
+    <string name="json_show_pretty">Texte indenté</string>
+    <string name="json_show_tree">Arbre</string>
+    <plurals name="json_keys">
+        <item quantity="one">{%d clé}</item>
+        <item quantity="many">{%d clés}</item>
+        <item quantity="other">{%d clés}</item>
+    </plurals>
+    <plurals name="json_items">
+        <item quantity="one">[%d élément]</item>
+        <item quantity="many">[%d éléments]</item>
+        <item quantity="other">[%d éléments]</item>
+    </plurals>
+    <string name="json_not_json">JSON non valide à partir de la ligne %1$,d, colonne %2$,d : affiché en texte.</string>
+    <string name="json_too_deep">Tableaux et objets imbriqués trop profondément (la limite est de %1$,d) : affiché en texte.</string>
+    <string name="json_too_many_values">Trop de valeurs (plus de %1$,d) : affiché en texte.</string>
+    <string name="json_copied">Copié</string>
+    <plurals name="json_too_long_to_copy">
+        <item quantity="one">Trop long pour être copié (plus de %1$,d caractère).</item>
+        <item quantity="many">Trop long pour être copié (plus de %1$,d caractères).</item>
+        <item quantity="other">Trop long pour être copié (plus de %1$,d caractères).</item>
+    </plurals>
 </resources>

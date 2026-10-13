@@ -30,6 +30,12 @@ enum class ViewerKind(val extensions: Set<String>) {
 
     /** `XlsxViewerScreen` of the 2.15.3: the sheets of a workbook, told by its content as the documents are. */
     SHEET(setOf("xlsx", "xls", "ods")),
+
+    /** `MdViewerScreen` of the 2.15.3: the text rendered, or its source. */
+    MARKDOWN(setOf("md")),
+
+    /** `JsonViewerScreen` of the 2.15.3: the values as a tree, or as indented text. */
+    JSON(setOf("json")),
     ;
 
     companion object {
