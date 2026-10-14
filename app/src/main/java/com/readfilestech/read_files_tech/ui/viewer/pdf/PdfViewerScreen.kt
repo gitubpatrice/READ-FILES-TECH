@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -149,9 +150,10 @@ private fun PdfDocumentView(pages: PdfPageImages, list: LazyListState, padding: 
     val jump: (Int) -> Unit = { page -> scope.launch { list.scrollToItem(page.coerceIn(0, count - 1)) } }
     Column(Modifier.padding(padding).fillMaxSize()) {
         PdfPages(pages, list, zoom, Modifier.weight(1f)) { screenHeight = it }
-        // As the 2.15.3: the bar of pages from two pages on.
+        // As the 2.15.3: the bar of pages from two pages on. No insets of its own: the scaffold's padding holds
+        // the navigation bar already — with both, an empty band of its height sat under the buttons (S9).
         if (count > 1) {
-            BottomAppBar {
+            BottomAppBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,

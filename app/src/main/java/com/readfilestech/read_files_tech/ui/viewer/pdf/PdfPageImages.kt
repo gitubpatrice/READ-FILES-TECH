@@ -8,12 +8,16 @@ import com.readfilestech.read_files_tech.data.viewer.pdf.OutlineEntry
 import com.readfilestech.read_files_tech.data.viewer.pdf.PageSize
 import com.readfilestech.read_files_tech.data.viewer.pdf.PdfDocument
 import com.readfilestech.read_files_tech.data.viewer.pdf.RecyclingCache
+import com.readfilestech.read_files_tech.data.viewer.pdf.RenderedPage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 /**
  * The pages of an open PDF as the screen draws them: rendered by the `:pdf` process one at a time, only
@@ -44,10 +48,7 @@ class PdfPageImages(val document: PdfDocument, io: CoroutineDispatcher) : AutoCl
     /** Page [index] in a column [width] pixels wide, in at most [maxPixels]: the caller owns it, then [give]s it back. */
     suspend fun take(index: Int, width: Int, maxPixels: Long): Bitmap {
         cache.take(index to width)?.let { return it }
-        val rendered = withContext(renders) {
-            ensureActive()
-            document.render(index, width, null, maxPixels)
-        }
+        val rendered = rendered { document.render(index, width, null, maxPixels) }
         sizes[index] = rendered.size
         return rendered.bitmap
     }
@@ -56,10 +57,15 @@ class PdfPageImages(val document: PdfDocument, io: CoroutineDispatcher) : AutoCl
     fun give(index: Int, width: Int, bitmap: Bitmap) = cache.give(index to width, bitmap)
 
     /** A sharper render of the part of a page on screen (PdfView.tiles); the caller recycles it. */
-    suspend fun tile(request: TileRequest, maxPixels: Long): Bitmap = withContext(renders) {
-        ensureActive()
-        document.render(request.index, request.width, request.region, maxPixels).bitmap
-    }
+    suspend fun tile(request: TileRequest, maxPixels: Long): Bitmap =
+        rendered { document.render(request.index, request.width, request.region, maxPixels) }.bitmap
+
+    /** [render] on the one rendering thread; a page scrolled away meanwhile has its render recycled, not dropped. */
+    private suspend fun rendered(render: () -> RenderedPage): RenderedPage =
+        withContextOrDiscard(renders, { it.bitmap.recycle() }) {
+            ensureActive()
+            render()
+        }
 
     /** Reads the outline in the `:pdf` process; blocking. */
     fun readOutline() {
@@ -67,4 +73,23 @@ class PdfPageImages(val document: PdfDocument, io: CoroutineDispatcher) : AutoCl
     }
 
     override fun close() = cache.clear()
+}
+
+/**
+ * [block] in [context], its result given to [discard] when the caller was cancelled while it ran:
+ * `withContext` then throws, and the result — a bitmap of several megabytes — would be dropped unreleased
+ * (Claude review R14).
+ */
+internal suspend fun <T : Any> withContextOrDiscard(
+    context: CoroutineContext,
+    discard: (T) -> Unit,
+    block: suspend CoroutineScope.() -> T,
+): T {
+    var produced: T? = null
+    try {
+        return withContext(context) { block().also { produced = it } }
+    } catch (e: CancellationException) {
+        produced?.let(discard)
+        throw e
+    }
 }

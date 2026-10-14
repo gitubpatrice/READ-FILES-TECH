@@ -134,23 +134,26 @@ internal class PdfBinder(private val context: Context) : Binder() {
     }
 
     private fun unlock(data: Parcel, reply: Parcel) {
-        val source = requireNotNull(data.readFileDescriptor()) { "no file" }
-        val password = data.readString().orEmpty()
-        val target = requireNotNull(data.readFileDescriptor()) { "no target" }
-        PdfBox.ready(context)
-        // PdfBox's scratch beside the decrypted copies: the main process purges that folder at its start.
-        val memory = MemoryUsageSetting.setupMixed(UNLOCK_MEMORY).setTempDir(PdfUnlocked.under(context.cacheDir).folder)
-        val outcome = ParcelFileDescriptor.AutoCloseOutputStream(target).buffered().use { out ->
-            PdfUnlock.decrypt(ChannelRandomAccess(ParcelFileDescriptor.AutoCloseInputStream(source).channel), password, out, memory)
+        // Each descriptor owned by its stream the moment it is read: whatever throws after, neither stays open in
+        // this process (Claude review R14).
+        ParcelFileDescriptor.AutoCloseInputStream(requireNotNull(data.readFileDescriptor()) { "no file" }).use { source ->
+            val password = data.readString().orEmpty()
+            val target = requireNotNull(data.readFileDescriptor()) { "no target" }
+            val outcome = ParcelFileDescriptor.AutoCloseOutputStream(target).buffered().use { out ->
+                PdfBox.ready(context)
+                // PdfBox's scratch beside the decrypted copies: the main process purges that folder at its start.
+                val memory = MemoryUsageSetting.setupMixed(UNLOCK_MEMORY).setTempDir(PdfUnlocked.under(context.cacheDir).folder)
+                PdfUnlock.decrypt(ChannelRandomAccess(source.channel), password, out, memory)
+            }
+            reply.writeInt(
+                when (outcome) {
+                    UnlockOutcome.DECRYPTED -> PdfProtocol.OK
+                    UnlockOutcome.WRONG_PASSWORD -> PdfProtocol.WRONG_PASSWORD
+                    UnlockOutcome.CERTIFICATE -> PdfProtocol.CERTIFICATE
+                    UnlockOutcome.UNSUPPORTED -> PdfProtocol.UNSUPPORTED
+                },
+            )
         }
-        reply.writeInt(
-            when (outcome) {
-                UnlockOutcome.DECRYPTED -> PdfProtocol.OK
-                UnlockOutcome.WRONG_PASSWORD -> PdfProtocol.WRONG_PASSWORD
-                UnlockOutcome.CERTIFICATE -> PdfProtocol.CERTIFICATE
-                UnlockOutcome.UNSUPPORTED -> PdfProtocol.UNSUPPORTED
-            },
-        )
     }
 
     private fun sessionOf(id: Int): PdfSession = sessions[id] ?: throw IOException("no session $id")
