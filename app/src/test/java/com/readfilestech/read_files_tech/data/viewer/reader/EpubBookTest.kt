@@ -87,6 +87,45 @@ class EpubBookTest {
         open(file).use { book -> assertThat((0 until 2).map(book::title)).containsExactly("The first", "Second").inOrder() }
     }
 
+    /** Claude review R13: a nav nested in the toc ended it, and the chapters after it lost their titles. */
+    @Test
+    fun `a nav nested in the toc neither ends it nor gives it its links`() {
+        val nav = xhtml(
+            "<nav epub:type=\"toc\"><ol><li><a href=\"c1.xhtml\">One</a></li></ol>" +
+                "<nav epub:type=\"landmarks\"><ol><li><a href=\"c2.xhtml\">Landmark</a></li></ol></nav>" +
+                "<ol><li><a href=\"c2.xhtml\">Two</a></li></ol></nav>",
+        )
+        val file = book(
+            mapOf(
+                OPF to opf(listOf("c1" to "c1.xhtml", "c2" to "c2.xhtml", "nav" to "nav.xhtml"), listOf("c1", "c2"), navId = "nav"),
+                "OEBPS/c1.xhtml" to xhtml("<p>one</p>"),
+                "OEBPS/c2.xhtml" to xhtml("<p>two</p>"),
+                "OEBPS/nav.xhtml" to nav,
+            ),
+        )
+        open(file).use { book -> assertThat((0 until 2).map(book::title)).containsExactly("One", "Two").inOrder() }
+    }
+
+    /** Claude review R13: a title cut at its cap could keep half of a character outside the BMP. */
+    @Test
+    fun `a title is never cut in the middle of a surrogate pair, from the nav or from a heading`() {
+        val long = "a".repeat(EpubBook.TITLE_CHARS - 1) + String(Character.toChars(EMOJI))
+        val file = book(
+            mapOf(
+                OPF to opf(listOf("c1" to "c1.xhtml", "c2" to "c2.xhtml", "nav" to "nav.xhtml"), listOf("c1", "c2"), navId = "nav"),
+                "OEBPS/c1.xhtml" to xhtml("<p>one</p>"),
+                "OEBPS/c2.xhtml" to xhtml("<h1>$long</h1>"),
+                "OEBPS/nav.xhtml" to xhtml("<nav epub:type=\"toc\"><ol><li><a href=\"c1.xhtml\">$long</a></li></ol></nav>"),
+            ),
+        )
+        open(file).use { book ->
+            val read = runBlocking { book.chapter(1) }.title
+            for (title in listOf(book.title(0), read)) {
+                assertThat(title).isEqualTo("a".repeat(EpubBook.TITLE_CHARS - 1))
+            }
+        }
+    }
+
     /** The 2.15.3's titles: the first h1 or h2, else the file's name — found here once the chapter is read. */
     @Test
     fun `without a table of contents a chapter is titled by its first heading once read, else by its file's name`() {
@@ -273,6 +312,8 @@ class EpubBookTest {
     }
 
     private companion object {
+        /** 😀, outside the BMP: two chars, a surrogate pair. */
+        const val EMOJI = 0x1F600
         const val CONTAINER_NAME = "META-INF/container.xml"
         const val ENCRYPTION_NAME = "META-INF/encryption.xml"
         const val OPF = "OEBPS/content.opf"

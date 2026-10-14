@@ -8,6 +8,7 @@ import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import java.io.ByteArrayInputStream
 import java.io.Closeable
+import java.io.IOException
 import java.io.InputStreamReader
 import java.nio.charset.Charset
 
@@ -27,6 +28,26 @@ interface ReaderDocument : Closeable {
 
     /** Chapter [index], read the first time it is asked for, off the main thread; cancellable. */
     suspend fun chapter(index: Int): ReaderChapter
+}
+
+/** The chapters looked at for one with text when a book is opened: a cover, a title page, a dedication… */
+private const val OPENING_LOOKAHEAD = 8
+
+/**
+ * The chapter a book opens on: its first with text among the first [lookahead] — a cover or a title page
+ * made of images has nothing to read, and every Project Gutenberg book begins with one. A chapter that
+ * cannot be read ends the search: it is opened, and says why. None with text: the first.
+ */
+suspend fun ReaderDocument.openingChapter(lookahead: Int = OPENING_LOOKAHEAD): Int {
+    for (index in 0 until minOf(chapterCount, lookahead)) {
+        val opensHere = try {
+            chapter(index).blocks.size > 0
+        } catch (expected: IOException) {
+            true
+        }
+        if (opensHere) return index
+    }
+    return 0
 }
 
 /**

@@ -9,6 +9,7 @@ import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.document.DocumentXml
 import com.readfilestech.read_files_tech.data.viewer.document.XmlEvents
 import com.readfilestech.read_files_tech.data.viewer.sheet.TextBudget
+import com.readfilestech.read_files_tech.data.viewer.sheet.cut
 import com.readfilestech.read_files_tech.data.viewer.sheet.damagedAsUnreadable
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipArchive
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipItem
@@ -66,7 +67,7 @@ class EpubBook private constructor(private val parts: BookParts, private val cha
         val blocks = parts.text(chapters[index], limits.chapterBytes) { text ->
             BlockReader(ReadingMode.CHAPTER, TextBudget(limits.textChars), limits.depth).read(HtmlTokenizer(text))
         }
-        blocks.firstHeading?.let { titles.compareAndSet(index, null, it.take(TITLE_CHARS)) }
+        blocks.firstHeading?.let { titles.compareAndSet(index, null, cut(it, TITLE_CHARS)) }
         return ReaderChapter(title(index), blocks)
     }
 
@@ -185,7 +186,7 @@ internal class BookParts(val archive: ZipArchive, val limits: EpubLimits) {
         spine.forEachIndexed { index, chapter -> chapterOf[key(chapter)] = index }
         val contents = EpubContents { href, title ->
             val chapter = EpubPaths.resolve(folder, href)?.let(chapterOf::get)
-            if (chapter != null && titles[chapter] == null) titles[chapter] = title.take(EpubBook.TITLE_CHARS)
+            if (chapter != null && titles[chapter] == null) titles[chapter] = cut(title, EpubBook.TITLE_CHARS)
         }
         try {
             spend(minOf(item.size, limits.packageBytes))

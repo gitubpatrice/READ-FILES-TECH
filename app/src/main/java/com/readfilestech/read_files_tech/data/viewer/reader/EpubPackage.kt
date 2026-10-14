@@ -126,8 +126,12 @@ internal class EpubPackage private constructor(
 internal class EpubContents(private val found: (href: String, title: String) -> Unit) {
     private val label = StringBuilder()
 
-    /** In a nav's `<nav epub:type="toc">`, and the href of its link being read. */
-    private var inToc = false
+    /**
+     * The depth of `<nav>` elements, and that of the `<nav epub:type="toc">` (0 out of it): a nav nested in
+     * it (landmarks) neither ends it nor gives it its links (Claude review R13). Then the href being read.
+     */
+    private var navDepth = 0
+    private var tocDepth = 0
     private var href: String? = null
 
     /** In an NCX point's label, and in its `<text>`. */
@@ -148,20 +152,36 @@ internal class EpubContents(private val found: (href: String, title: String) -> 
         }
     }
 
+    /** Directly in the toc: not out of it, nor in a nav nested in it. */
+    private val inToc: Boolean get() = tocDepth > 0 && navDepth == tocDepth
+
     private fun navToken(token: Token, tokens: HtmlTokenizer) {
         when {
-            token == Token.START && tokens.name == "nav" -> inToc = tokens.attribute(TYPE)?.let { "toc" in it.split(' ') } ?: true
+            token == Token.START && tokens.name == "nav" -> navStarted(tokens.attribute(TYPE))
+            token == Token.END && tokens.name == "nav" -> navEnded()
             token == Token.START && tokens.name == "a" && inToc -> {
                 href = tokens.attribute(HREF)
                 label.setLength(0)
             }
-            token == Token.END && tokens.name == "nav" -> inToc = false
             token == Token.END && tokens.name == "a" -> {
                 href?.let(::give)
                 href = null
             }
             token == Token.TEXT && href != null -> collect(tokens.text)
         }
+    }
+
+    /** A `<nav>` of [type] opens: the toc when it says so, or says no type, and none is open. */
+    private fun navStarted(type: String?) {
+        navDepth++
+        if (tocDepth == 0 && (type?.let { "toc" in it.split(' ') } ?: true)) tocDepth = navDepth
+    }
+
+    /** A `<nav>` closes — an end tag with none open is ignored. */
+    private fun navEnded() {
+        if (navDepth == 0) return
+        if (navDepth == tocDepth) tocDepth = 0
+        navDepth--
     }
 
     private fun ncxToken(token: Token, tokens: HtmlTokenizer) {
@@ -178,8 +198,11 @@ internal class EpubContents(private val found: (href: String, title: String) -> 
         }
     }
 
+    /** Appends [text] up to [MAX_LABEL] in all — never half of a surrogate pair (Claude review R13). */
     private fun collect(text: CharSequence) {
-        if (label.length < MAX_LABEL) label.append(text, 0, minOf(text.length, MAX_LABEL - label.length))
+        var end = minOf(text.length, MAX_LABEL - label.length)
+        if (end in 1 until text.length && text[end - 1].isHighSurrogate()) end--
+        if (end > 0) label.append(text, 0, end)
     }
 
     /** Hands [href] and the label collected, white space collapsed, when there is one. */

@@ -8,6 +8,7 @@ import com.readfilestech.read_files_tech.data.viewer.reader.EpubBook
 import com.readfilestech.read_files_tech.data.viewer.reader.ReaderChapter
 import com.readfilestech.read_files_tech.data.viewer.reader.ReaderDocument
 import com.readfilestech.read_files_tech.data.viewer.reader.ReaderPage
+import com.readfilestech.read_files_tech.data.viewer.reader.openingChapter
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.viewer.ViewerContent
 import com.readfilestech.read_files_tech.ui.viewer.ViewerErrors
@@ -49,6 +50,9 @@ class ReaderViewerViewModel @Inject constructor(
     }
         .also(::addCloseable)
 
+    /** Read before [selected] writes its first value: a book reopened after a process death stays where it was. */
+    private val firstOpening = KEY_CHAPTER !in handle
+
     /** The chapter shown, kept as the route is: across a process death too. */
     val selected: StateFlow<Int> = handle.getStateFlow(KEY_CHAPTER, 0)
 
@@ -61,6 +65,11 @@ class ReaderViewerViewModel @Inject constructor(
         viewModelScope.launch {
             val document = content.state.filterIsInstance<ViewerState.Ready<ReaderDocument>>().first().content
             if (document.chapterCount == 0) return@launch
+            if (firstOpening) {
+                val opening = loadOrFailure { withContext(io) { document.openingChapter() } }.getOrDefault(0)
+                // A chapter the user chose meanwhile wins.
+                if (selected.value == 0) show(opening)
+            }
             // A chapter chosen while the one before is read: that one is dropped, cancelled where it is.
             selected.collectLatest { index ->
                 shown.value = ViewerState.Loading
