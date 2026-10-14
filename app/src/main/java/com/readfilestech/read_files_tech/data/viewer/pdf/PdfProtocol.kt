@@ -8,7 +8,8 @@ import android.os.Parcel
  * a few messages, typed here once for both sides — no AIDL to generate, no Bundle to trust. Every answer
  * starts with a status; the `:pdf` side never lets an exception cross (Binder would carry only a few kinds,
  * and kill the process for the others), and the main side never sees the file's bytes — only a page count,
- * page sizes, bitmaps (through ashmem, outside the Binder buffer) and outline entries.
+ * page sizes, bitmaps (through ashmem, outside the Binder buffer), outline entries and, for PDF → TXT, the
+ * pages' texts. The conversions TO a PDF go the other way: images handed over, a PDF written back.
  */
 internal object PdfProtocol {
     const val DESCRIPTOR = "com.readfilestech.read_files_tech.pdf"
@@ -28,8 +29,35 @@ internal object PdfProtocol {
     /** In: the encrypted file's descriptor, the password, the descriptor to write the decrypted file to. Out: status. */
     const val UNLOCK = OPEN + 3
 
-    /** One way, no answer: the session is closed, after the render it may be in. */
+    /** One way, no answer: the session — of any kind — is closed, after the call it may be in. */
     const val CLOSE = OPEN + 4
+
+    /**
+     * PDF → TXT. In: the file's descriptor, the password (empty: none). Out: status — WRONG_PASSWORD for one
+     * that is not it — then the session and the page count.
+     */
+    const val TEXT_OPEN = OPEN + 5
+
+    /** In: session, page, the first character wanted. Out: status; then up to [TEXT_CHUNK] characters, and whether more follow. */
+    const val TEXT_PAGE = OPEN + 6
+
+    /** Images → PDF. In: nothing. Out: status; then the session of a new document. */
+    const val IMAGES_START = OPEN + 7
+
+    /**
+     * In: session, then [IMAGE_JPEG] with the file's descriptor, mirrored and degrees of its EXIF orientation,
+     * or [IMAGE_PIXELS] with a bitmap (over ashmem). Out: status.
+     */
+    const val IMAGES_ADD = OPEN + 8
+
+    /** In: session, the descriptor to write the PDF to (a pipe the main process drains). Out: status. */
+    const val IMAGES_SAVE = OPEN + 9
+
+    /** The last call: the service answers OPEN until it. */
+    const val LAST = IMAGES_SAVE
+
+    const val IMAGE_JPEG = 0
+    const val IMAGE_PIXELS = 1
 
     const val OK = 0
 
@@ -46,6 +74,9 @@ internal object PdfProtocol {
      * calls in flight. An entry is at most 256 chars of title and two ints: 500 of them, about 260 KB.
      */
     const val OUTLINE_CHUNK = 500
+
+    /** Characters of a page's text per answer: 128 Ki characters, 256 KB in a Parcel (UTF-16), as [OUTLINE_CHUNK]. */
+    const val TEXT_CHUNK = 128 * 1024
 
     fun writeEntry(parcel: Parcel, entry: OutlineEntry) {
         parcel.writeString(entry.title)

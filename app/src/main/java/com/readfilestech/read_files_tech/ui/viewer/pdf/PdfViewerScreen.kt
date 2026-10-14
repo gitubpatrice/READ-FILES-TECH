@@ -221,9 +221,10 @@ private fun GoToPageDialog(count: Int, onGo: (Int) -> Unit, onDismiss: () -> Uni
 /**
  * The password of an encrypted file (Syncfusion's own dialog in the 2.15.3). The field lives in this
  * dialog only — never in a saved state — and is emptied once sent; a wrong password asks again, saying so.
+ * PDF → TXT of the Convert tool asks with it too.
  */
 @Composable
-private fun PasswordDialog(phase: PdfPhase.Locked, onUnlock: (String) -> Unit, onCancel: () -> Unit) {
+internal fun PasswordDialog(phase: PdfPhase.Locked, onUnlock: (String) -> Unit, onCancel: () -> Unit) {
     var password by remember { mutableStateOf("") }
     val send = {
         if (password.isNotEmpty() && !phase.busy) {

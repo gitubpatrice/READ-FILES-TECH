@@ -94,6 +94,15 @@ object FileCaps {
     const val SHEET_FORMAT_CHARS = 255
     const val IMAGE_FILE = 100 * MIB
     const val IMAGES_TO_PDF_TOTAL = 200 * MIB
+
+    /**
+     * Bytes of a text file Text → PDF lays out, and pages it makes: Android's PdfDocument keeps every page
+     * drawn in memory until it writes the file, so both bound it — 2 MiB of prose is some 400 pages, and a
+     * text of 2 MiB of empty lines would be 35 000 without the page bound. No 2.15.3 counterpart: it read
+     * any text whole and laid it out at once (`convert_screen.dart:172`, inventory F6).
+     */
+    const val TEXT_TO_PDF = 2 * MIB
+    const val TEXT_TO_PDF_PAGES = 1_000
     const val ZIP_CREATE_TOTAL = 200 * MIB
     const val ZIP_VIEWER = 500 * MIB
 

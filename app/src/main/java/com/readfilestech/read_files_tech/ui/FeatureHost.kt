@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui
 import androidx.compose.runtime.Composable
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.tools.color.ColorPickerScreen
+import com.readfilestech.read_files_tech.ui.tools.convert.ConvertScreen
 import com.readfilestech.read_files_tech.ui.tools.diff.DiffScreen
 import com.readfilestech.read_files_tech.ui.tools.encode.EncodeScreen
 import com.readfilestech.read_files_tech.ui.tools.format.FormatScreen
@@ -25,6 +26,7 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.FORMAT -> FormatScreen(picked, onNavigate, onBack)
         Feature.DIFF -> DiffScreen(picked, onNavigate, onBack)
         Feature.COLOR_PICKER -> ColorPickerScreen(onBack)
+        Feature.CONVERT -> ConvertScreen(picked, onNavigate, onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

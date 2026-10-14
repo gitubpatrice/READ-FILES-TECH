@@ -66,6 +66,19 @@ object ImageDecoding {
         }
     }
 
+    /**
+     * The EXIF orientation of [file] (a JPEG, a PNG, a WebP), upright when it has none — for the decoder
+     * below API 28, and for Images → PDF, which embeds a JPEG as it is and turns its page instead.
+     */
+    // An EXIF parser fed a malformed file may throw more than IOException (an index out of bounds, a
+    // number that is not one): the orientation is a comfort, the image shows without it.
+    @Suppress("TooGenericExceptionCaught")
+    fun orientationOf(file: File): ExifOrientation = try {
+        ExifOrientation.of(ExifInterface(file).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
+    } catch (expected: Exception) {
+        ExifOrientation.UPRIGHT
+    }
+
     /** The size [file]'s header announces, checked; null when the probe cannot tell (the decoder's is checked after). */
     private fun checkHeader(file: File): ImageSize? {
         FileCaps.check(file, FileCaps.IMAGE_FILE)
@@ -118,15 +131,6 @@ object ImageDecoding {
             val options = BitmapFactory.Options().apply { inSampleSize = sampleFor(width, height) }
             val stored = BitmapFactory.decodeFile(file.path, options) ?: throw UnreadableFileException("not decoded")
             return upright(stored, orientation)
-        }
-
-        // An EXIF parser fed a malformed file may throw more than IOException (an index out of bounds, a
-        // number that is not one): the orientation is a comfort, the image shows without it.
-        @Suppress("TooGenericExceptionCaught")
-        private fun orientationOf(file: File): ExifOrientation = try {
-            ExifOrientation.of(ExifInterface(file).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
-        } catch (expected: Exception) {
-            ExifOrientation.UPRIGHT
         }
 
         private fun upright(stored: Bitmap, orientation: ExifOrientation): Bitmap {

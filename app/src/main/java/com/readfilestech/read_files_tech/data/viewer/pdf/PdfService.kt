@@ -13,9 +13,11 @@ import android.os.Parcel
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import androidx.core.graphics.createBitmap
+import com.readfilestech.read_files_tech.data.convert.PdfConversionCalls
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import java.io.IOException
+import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -45,13 +47,35 @@ class PdfService : Service() {
     }
 }
 
-/** The calls of [PdfProtocol], answered in the `:pdf` process; one session per document a viewer opened. */
-internal class PdfBinder(private val context: Context) : Binder() {
-    private val sessions = ConcurrentHashMap<Int, PdfSession>()
+/**
+ * The documents the main process holds open in this process — a viewer's, a conversion's — by the id it
+ * knows them by: a CLOSE closes any of them, the last unbinding closes them all.
+ */
+internal class PdfSessions {
+    private val sessions = ConcurrentHashMap<Int, AutoCloseable>()
     private val ids = AtomicInteger()
 
+    fun add(session: AutoCloseable): Int = ids.incrementAndGet().also { sessions[it] = session }
+
+    fun find(id: Int): AutoCloseable? = sessions[id]
+
+    fun close(id: Int) {
+        sessions.remove(id)?.close()
+    }
+
+    fun closeAll() = sessions.keys.toList().forEach(::close)
+}
+
+/** Session [id], of the kind the call expects. */
+internal inline fun <reified T : AutoCloseable> PdfSessions.of(id: Int): T = find(id) as? T ?: throw IOException("no session $id")
+
+/** The calls of [PdfProtocol], answered in the `:pdf` process; one session per document a viewer or a conversion opened. */
+internal class PdfBinder(private val context: Context) : Binder() {
+    private val sessions = PdfSessions()
+    private val conversions = PdfConversionCalls(context, sessions)
+
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean = when {
-        code !in PdfProtocol.OPEN..PdfProtocol.CLOSE -> super.onTransact(code, data, reply, flags)
+        code !in PdfProtocol.OPEN..PdfProtocol.LAST -> super.onTransact(code, data, reply, flags)
         // Not exported already; and only this app's own processes, whatever a later manifest says.
         getCallingUid() != Process.myUid() -> false
         else -> {
@@ -63,7 +87,7 @@ internal class PdfBinder(private val context: Context) : Binder() {
 
     private fun serve(code: Int, data: Parcel, reply: Parcel?) {
         if (code == PdfProtocol.CLOSE) {
-            sessions.remove(data.readInt())?.close()
+            sessions.close(data.readInt())
             return
         }
         val answer = requireNotNull(reply) { "call $code without an answer" }
@@ -72,14 +96,13 @@ internal class PdfBinder(private val context: Context) : Binder() {
                 PdfProtocol.OPEN -> open(data, answer)
                 PdfProtocol.RENDER -> render(data, answer)
                 PdfProtocol.OUTLINE -> outline(data, answer)
-                else -> unlock(data, answer)
+                PdfProtocol.UNLOCK -> unlock(data, answer)
+                else -> conversions.serve(code, data, answer)
             }
         }
     }
 
-    fun closeAll() {
-        sessions.keys.toList().forEach { id -> sessions.remove(id)?.close() }
-    }
+    fun closeAll() = sessions.closeAll()
 
     private fun open(data: Parcel, reply: Parcel) {
         val file = requireNotNull(data.readFileDescriptor()) { "no file" }
@@ -93,8 +116,7 @@ internal class PdfBinder(private val context: Context) : Binder() {
         var kept = false
         try {
             val first = session.firstPage()
-            val id = ids.incrementAndGet()
-            sessions[id] = session
+            val id = sessions.add(session)
             kept = true
             reply.writeInt(PdfProtocol.OK)
             reply.writeInt(id)
@@ -106,7 +128,7 @@ internal class PdfBinder(private val context: Context) : Binder() {
     }
 
     private fun render(data: Parcel, reply: Parcel) {
-        val session = sessionOf(data.readInt())
+        val session = sessions.of<PdfSession>(data.readInt())
         val index = data.readInt()
         val width = data.readInt()
         val region = if (data.readInt() == 0) null else PixelRect(data.readInt(), data.readInt(), data.readInt(), data.readInt())
@@ -123,7 +145,7 @@ internal class PdfBinder(private val context: Context) : Binder() {
     }
 
     private fun outline(data: Parcel, reply: Parcel) {
-        val session = sessionOf(data.readInt())
+        val session = sessions.of<PdfSession>(data.readInt())
         val from = data.readInt()
         val entries = session.outline { PdfBox.ready(context) }
         val chunk = entries.drop(from).take(PdfProtocol.OUTLINE_CHUNK)
@@ -141,9 +163,7 @@ internal class PdfBinder(private val context: Context) : Binder() {
             val target = requireNotNull(data.readFileDescriptor()) { "no target" }
             val outcome = ParcelFileDescriptor.AutoCloseOutputStream(target).buffered().use { out ->
                 PdfBox.ready(context)
-                // PdfBox's scratch beside the decrypted copies: the main process purges that folder at its start.
-                val memory = MemoryUsageSetting.setupMixed(UNLOCK_MEMORY).setTempDir(PdfUnlocked.under(context.cacheDir).folder)
-                PdfUnlock.decrypt(ChannelRandomAccess(source.channel), password, out, memory)
+                PdfUnlock.decrypt(ChannelRandomAccess(source.channel), password, out, PdfBox.scratch(context))
             }
             reply.writeInt(
                 when (outcome) {
@@ -155,8 +175,6 @@ internal class PdfBinder(private val context: Context) : Binder() {
             )
         }
     }
-
-    private fun sessionOf(id: Int): PdfSession = sessions[id] ?: throw IOException("no session $id")
 
     /**
      * [block]'s answer, or its status when it throws: the answer written so far is dropped. Whatever a
@@ -181,15 +199,13 @@ internal class PdfBinder(private val context: Context) : Binder() {
         reply.setDataPosition(start)
         reply.writeInt(status)
     }
-
-    private companion object {
-        /** What PdfBox holds in memory while it decrypts; past it, its scratch goes to a file. */
-        const val UNLOCK_MEMORY = 8L * 1024 * 1024
-    }
 }
 
 /** PdfBox's resources (its fonts, glyph lists), loaded once, and only in the `:pdf` process (docs D-029). */
-private object PdfBox {
+internal object PdfBox {
+    /** What PdfBox holds in memory of a document it reads or writes; past it, its scratch goes to a file. */
+    private const val SCRATCH_MEMORY = 8L * 1024 * 1024
+
     @Volatile
     private var ready = false
 
@@ -199,6 +215,17 @@ private object PdfBox {
         PDFBoxResourceLoader.init(context)
         ready = true
     }
+
+    /**
+     * PdfBox's scratch: [SCRATCH_MEMORY] in memory, then files beside the decrypted copies of the viewer —
+     * a folder the main process purges at its start, and no FileProvider serves (PdfUnlocked). Created
+     * here: a conversion may come before any viewer made it.
+     */
+    fun scratch(context: Context): MemoryUsageSetting {
+        val folder = PdfUnlocked.under(context.cacheDir).folder
+        Files.createDirectories(folder.toPath())
+        return MemoryUsageSetting.setupMixed(SCRATCH_MEMORY).setTempDir(folder)
+    }
 }
 
 /**
@@ -206,7 +233,7 @@ private object PdfBox {
  * time, and refuses to close with one open: renders and the close take the same lock. The outline is read
  * by PdfBox, from a duplicate of the descriptor read by position, under a lock of its own.
  */
-private class PdfSession(private val file: ParcelFileDescriptor) {
+private class PdfSession(private val file: ParcelFileDescriptor) : AutoCloseable {
     // PdfRenderer owns the descriptor it is given: closing it closes [file].
     private val renderer = PdfRenderer(file)
     val pageCount: Int = renderer.pageCount
@@ -250,7 +277,7 @@ private class PdfSession(private val file: ParcelFileDescriptor) {
     }
 
     @Synchronized
-    fun close() {
+    override fun close() {
         if (closed) return
         closed = true
         renderer.close()

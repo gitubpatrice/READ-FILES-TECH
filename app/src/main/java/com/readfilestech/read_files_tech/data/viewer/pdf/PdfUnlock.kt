@@ -4,6 +4,7 @@ import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.io.RandomAccessRead
 import com.tom_roush.pdfbox.io.ScratchFile
 import com.tom_roush.pdfbox.pdfparser.PDFParser
+import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.encryption.InvalidPasswordException
 import java.io.IOException
 import java.io.OutputStream
@@ -51,26 +52,66 @@ object PdfUnlock {
      * @throws IOException the file is damaged, or not a PDF.
      */
     fun decrypt(source: RandomAccessRead, password: String, out: OutputStream, memory: MemoryUsageSetting): UnlockOutcome {
+        val opened = try {
+            open(source, password, memory)
+        } catch (e: LockedPdfException) {
+            return e.outcome
+        }
+        opened.use {
+            it.document.isAllSecurityToBeRemoved = true
+            it.document.save(out)
+        }
+        return UnlockOutcome.DECRYPTED
+    }
+
+    /**
+     * [source] opened by PdfBox with [password] — decrypted as it is read when it is encrypted, as it is
+     * otherwise — for the conversions that read a PDF in the `:pdf` process (PDF → TXT). The caller owns
+     * what it gets: closing it closes [source] and the scratch; on a refusal both are closed here.
+     *
+     * @throws LockedPdfException not the password, encrypted for certificates, or by an unknown handler.
+     * @throws IOException the file is damaged, or not a PDF.
+     */
+    fun open(source: RandomAccessRead, password: String, memory: MemoryUsageSetting): OpenedPdf {
         val scratch = ScratchFile(memory)
+        var handed = false
         try {
             val parser = FilterRecordingParser(source, password, scratch)
-            val refused = try {
+            val refusal = try {
                 parser.parse()
                 null
             } catch (expected: InvalidPasswordException) {
-                UnlockOutcome.WRONG_PASSWORD
+                LockedPdfException(UnlockOutcome.WRONG_PASSWORD)
             } catch (e: IOException) {
                 when (parser.filter) {
-                    null, STANDARD -> throw e
-                    PUBLIC_KEY -> UnlockOutcome.CERTIFICATE
-                    else -> UnlockOutcome.UNSUPPORTED
+                    null, STANDARD -> e
+                    PUBLIC_KEY -> LockedPdfException(UnlockOutcome.CERTIFICATE)
+                    else -> LockedPdfException(UnlockOutcome.UNSUPPORTED)
                 }
             }
-            return refused ?: parser.pdDocument.use { document ->
-                document.isAllSecurityToBeRemoved = true
-                document.save(out)
-                UnlockOutcome.DECRYPTED
+            if (refusal != null) throw refusal
+            return OpenedPdf(parser.pdDocument, source, scratch).also { handed = true }
+        } finally {
+            if (!handed) {
+                source.close()
+                scratch.close()
             }
+        }
+    }
+}
+
+/** PdfBox did not open the file with the password it was given: [outcome] says why (never DECRYPTED). */
+class LockedPdfException(val outcome: UnlockOutcome) : IOException(outcome.name)
+
+/** A document PdfBox opened, with its source and the scratch its streams are read into: closed together. */
+class OpenedPdf internal constructor(
+    val document: PDDocument,
+    private val source: RandomAccessRead,
+    private val scratch: ScratchFile,
+) : AutoCloseable {
+    override fun close() {
+        try {
+            document.close()
         } finally {
             source.close()
             scratch.close()
