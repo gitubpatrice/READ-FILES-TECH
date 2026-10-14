@@ -2,13 +2,16 @@ package com.readfilestech.read_files_tech.ui.tools.encode
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.tools.DecodeRefusal
 import com.readfilestech.read_files_tech.data.tools.Decoded
 import com.readfilestech.read_files_tech.data.tools.TextCodec
 import com.readfilestech.read_files_tech.data.tools.TextCodecs
 import com.readfilestech.read_files_tech.ui.common.UserMessages
+import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.tools.copyableResult
 import com.readfilestech.read_files_tech.ui.tools.resultCopied
+import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -63,8 +66,14 @@ class EncodeViewModel @Inject constructor(private val messages: UserMessages) : 
         // Cancelled by the next change before it shows: a result is never older than the text.
         job?.cancel()
         job = viewModelScope.launch {
-            val result = withContext(Dispatchers.Default) { resultOf(asked) }
-            mutableState.update { it.copy(output = result.first, refusal = result.second) }
+            // A pasted text of many megabytes may not fit in memory: said in words, never the end of the app
+            // (Claude review R17 — the other tools' results already went through loadOrFailure).
+            loadOrFailure { withContext(Dispatchers.Default) { resultOf(asked) } }
+                .onSuccess { result -> mutableState.update { it.copy(output = result.first, refusal = result.second) } }
+                .onFailure {
+                    mutableState.update { it.copy(output = "", refusal = null) }
+                    messages.error(uiText(R.string.error_unexpected))
+                }
         }
     }
 
