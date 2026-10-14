@@ -81,6 +81,15 @@ object FileCaps {
     const val IMAGE_PIXELS = 64_000_000L
 
     /**
+     * Pixels of an animated GIF or WebP the image viewer plays. Android decodes an animation's frames at
+     * full size whatever subsampling is asked — on a Galaxy S9 an 8 000 × 8 000 GIF held 256 MB of native
+     * memory at its first frame — and keeps more than one frame while it plays. Larger, its first frame
+     * shows, subsampled as a still image. 4K UHD: the largest a screen recording or a camera makes. No
+     * 2.15.3 counterpart.
+     */
+    const val ANIMATION_PIXELS = 3840L * 2160
+
+    /**
      * Elements nested in one XML part of a document (docx, odt, odp): deeper, the file is refused. No
      * 2.15.3 counterpart — its regex scan built no tree. Word's deepest real nesting, a text box in a
      * table cell, stays under 30; a million nested elements is refused here instead of being held.

@@ -185,6 +185,24 @@ class ImageBoundsTest {
         }
     }
 
+    /** The port's: an animation is decoded at full size whatever the subsampling, so only up to 4K is played. */
+    @Nested
+    inner class Playable {
+        @Test
+        fun `an animation up to 4K UHD plays, one pixel more shows its first frame`() {
+            assertThat(ImageBounds.playable(ImageSize(3840, 2160))).isTrue()
+            assertThat(ImageBounds.playable(ImageSize(2160, 3840))).isTrue()
+            assertThat(ImageBounds.playable(ImageSize(3840, 2161))).isFalse()
+            // Measured on a Galaxy S9: played, this one held 256 MB of native memory at its first frame.
+            assertThat(ImageBounds.playable(ImageSize(8000, 8000))).isFalse()
+        }
+
+        @Test
+        fun `an animation of unknown size is not played`() {
+            assertThat(ImageBounds.playable(null)).isFalse()
+        }
+    }
+
     /** "plafond en PIXELS — le contrôle par côté ne suffit pas". */
     @Nested
     inner class PixelCap {

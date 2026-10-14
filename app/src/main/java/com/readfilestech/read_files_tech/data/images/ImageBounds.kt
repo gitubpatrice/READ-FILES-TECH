@@ -76,4 +76,7 @@ object ImageBounds {
      * without decoding a pixel; null for another format, or for too few bytes to read them.
      */
     fun probe(bytes: ByteArray): ImageSize? = HeaderProbe.of(bytes)
+
+    /** An animation of [size] is played; larger, or of unknown size, its first frame shows ([FileCaps.ANIMATION_PIXELS]). */
+    fun playable(size: ImageSize?): Boolean = size != null && size.width * size.height <= FileCaps.ANIMATION_PIXELS
 }

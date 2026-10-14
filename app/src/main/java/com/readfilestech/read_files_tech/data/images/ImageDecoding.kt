@@ -36,15 +36,18 @@ sealed interface DecodedImage {
  */
 object ImageDecoding {
     /**
-     * The image of [file], animated when it is an animation Android plays and [animate] asks it — the
-     * viewer. Its pixels may sit in graphics memory (`ImageDecoder`'s default): a page shows one at a time.
+     * The image of [file], animated when it is an animation Android plays, [animate] asks it, and it is
+     * [ImageBounds.playable] — the viewer. Its pixels may sit in graphics memory (`ImageDecoder`'s
+     * default): a page shows one at a time.
      *
      * @param sampleFor the power of two to subsample by, for the upright width and height.
      */
     fun decode(file: File, animate: Boolean, sampleFor: (width: Int, height: Int) -> Int): DecodedImage {
-        checkHeader(file)
+        val size = checkHeader(file)
+        // An animation is decoded at full size whatever the subsampling: past the cap, its first frame only.
+        val play = animate && ImageBounds.playable(size)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Platform.decode(file, animate, inSoftware = false, sampleFor)
+            Platform.decode(file, play, inSoftware = false, sampleFor)
         } else {
             DecodedImage.Still(Legacy.decode(file, sampleFor))
         }
@@ -63,11 +66,12 @@ object ImageDecoding {
         }
     }
 
-    private fun checkHeader(file: File) {
+    /** The size [file]'s header announces, checked; null when the probe cannot tell (the decoder's is checked after). */
+    private fun checkHeader(file: File): ImageSize? {
         FileCaps.check(file, FileCaps.IMAGE_FILE)
         val header = CappedInputStream(FileInputStream(file), ImageBounds.HEADER_BYTES.toLong()).use { it.readBytes() }
         if (header.isEmpty()) throw UnreadableFileException("empty image")
-        ImageBounds.probe(header)?.let { ImageBounds.check(it.width, it.height) }
+        return ImageBounds.probe(header)?.also { ImageBounds.check(it.width, it.height) }
     }
 
     /** API 28+: `ImageDecoder`, which applies the EXIF orientation and plays GIF and WebP animations. */
