@@ -2,9 +2,11 @@ package com.readfilestech.read_files_tech.data.editor
 
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import java.io.BufferedOutputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
@@ -57,7 +59,35 @@ object CsvSaving {
         }
     }
 
+    /**
+     * What [write] gives — the editor's rows, not saved — into [file]'s history, before a version of the
+     * history replaces them in the editor: restoring is undone by restoring them, as in the code editor.
+     *
+     * @throws FileTooLargeException over [FileCaps.EDITOR_HISTORY_COPY], the history's cap: kept nowhere.
+     */
+    fun keep(file: File, history: EditorHistory, write: (OutputStream) -> Unit) {
+        val bytes = CappedBytes(FileCaps.EDITOR_HISTORY_COPY).also(write).toByteArray()
+        history.saveBefore(file.absolutePath, bytes)
+    }
+
     private fun checkUnchanged(file: File, opened: FileStamp) {
         if (!file.isFile || FileStamp.of(file) != opened) throw FileChangedException()
+    }
+
+    /** Bytes in memory, up to [cap]: one more is refused before it is held. */
+    private class CappedBytes(private val cap: Long) : ByteArrayOutputStream() {
+        override fun write(b: Int) {
+            room(1)
+            super.write(b)
+        }
+
+        override fun write(b: ByteArray, off: Int, len: Int) {
+            room(len)
+            super.write(b, off, len)
+        }
+
+        private fun room(len: Int) {
+            if (count + len.toLong() > cap) throw FileTooLargeException(cap)
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.history
 
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
+import com.readfilestech.read_files_tech.data.files.FileBytes
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import java.io.File
 import java.security.MessageDigest
@@ -64,13 +65,19 @@ class EditorHistory(
      * Named after the newest copy when the clock went back (Claude review R20): named from [nowMs] alone,
      * it sorted below the ten newest and the rotation deleted it at once. A copy that fails to be written
      * leaves no empty name behind, which would count as a version and push a real one out (R20).
+     *
+     * A version already kept, to the byte, is not kept twice: the copy would push a real version out, as
+     * when restores browse the history — each one kept the text it replaced, a version already there, and
+     * the rotation deleted the oldest (Claude review R22). The first copy keeps its date.
      */
     @Synchronized
     fun saveBefore(path: String, current: ByteArray, nowMs: Long = System.currentTimeMillis()) {
         val dir = folderOf(path)
         dir.mkdirs()
         AtomicFiles.writeBytes(File(dir, PATH_FILE), path.toByteArray(Charsets.UTF_8))
-        val first = maxOf(nowMs, (versions(path).firstOrNull()?.savedAtMs ?: -1) + 1)
+        val kept = versions(path)
+        if (kept.any { FileBytes.holds(it.file, current) }) return
+        val first = maxOf(nowMs, (kept.firstOrNull()?.savedAtMs ?: -1) + 1)
         val copy = generateSequence(first) { it + 1 }.map { File(dir, "$it$BAK") }.first { it.createNewFile() }
         var written = false
         try {

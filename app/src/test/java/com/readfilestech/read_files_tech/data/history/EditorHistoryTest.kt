@@ -106,6 +106,19 @@ class EditorHistoryTest {
         assertThat(versions.map { it.writtenAtMs }).containsExactly(now, ahead).inOrder()
     }
 
+    /** Claude review R22: restores browsing the history each kept a version already there, and the oldest went. */
+    @Test
+    fun `a version already kept is not kept twice, and the oldest stays`() {
+        repeat(EditorHistory.KEPT) { history.saveBefore("/a.csv", "v$it".toByteArray(), nowMs = 1_000L + it) }
+        history.saveBefore("/a.csv", "v5".toByteArray(), nowMs = 5_000)
+        val versions = history.versions("/a.csv")
+        assertThat(versions.map { it.file.readText() }).containsExactlyElementsIn((9 downTo 0).map { "v$it" }).inOrder()
+        assertThat(versions.single { it.file.readText() == "v5" }.savedAtMs).isEqualTo(1_005L)
+        // The same size, other bytes: a new version, the oldest out.
+        history.saveBefore("/a.csv", "vX".toByteArray(), nowMs = 6_000)
+        assertThat(history.versions("/a.csv").map { it.file.readText() }).containsExactlyElementsIn(listOf("vX") + (9 downTo 1).map { "v$it" })
+    }
+
     /** Claude review R20: a copy that failed left an empty name, listed as a version and pushing a real one out. */
     @Test
     fun `a copy that fails to be written leaves no version behind`() {

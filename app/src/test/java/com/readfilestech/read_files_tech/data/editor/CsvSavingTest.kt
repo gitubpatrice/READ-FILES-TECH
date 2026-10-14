@@ -1,6 +1,8 @@
 package com.readfilestech.read_files_tech.data.editor
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import kotlinx.coroutines.runBlocking
@@ -62,5 +64,25 @@ class CsvSavingTest {
         }
         assertThat(file.readText()).isEqualTo("a,b\n1,2\nfrom another app\n")
         assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+    }
+
+    /** Cells not saved, kept before a restore: up to the history's cap, and past it nowhere — the restore refused. */
+    @Test
+    fun `cells not saved are kept up to the history's cap`() {
+        val file = File(dir, "data.csv").apply { writeText("a\n") }
+        val cap = FileCaps.EDITOR_HISTORY_COPY.toInt()
+        assertThrows<FileTooLargeException> { CsvSaving.keep(file, history) { it.write(ByteArray(cap + 1)) } }
+        assertThat(history.versions(file.absolutePath)).isEmpty()
+        CsvSaving.keep(file, history) { out ->
+            out.write(ByteArray(cap - 1))
+            out.write(0)
+        }
+        assertThat(history.versions(file.absolutePath).single().size).isEqualTo(cap.toLong())
+        assertThrows<FileTooLargeException> {
+            CsvSaving.keep(file, history) { out ->
+                out.write(ByteArray(cap))
+                out.write(1)
+            }
+        }
     }
 }

@@ -9,6 +9,7 @@ import com.readfilestech.read_files_tech.data.editor.CsvEdits
 import com.readfilestech.read_files_tech.data.editor.CsvSaving
 import com.readfilestech.read_files_tech.data.editor.FileChangedException
 import com.readfilestech.read_files_tech.data.editor.FileStamp
+import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
@@ -34,6 +35,8 @@ import javax.inject.Inject
 /**
  * The CSV editor's screen. [edits] is changed in place: [version] says when to read it again.
  *
+ * @param saving the file being written, or the cells not saved into the history before a restore: nothing
+ *   changes meanwhile.
  * @param saveFailure why the last save wrote nothing — said in the leave dialog, which stays (D3).
  * @param left saved from the leave dialog: the screen goes.
  */
@@ -183,31 +186,55 @@ class CsvEditorViewModel @Inject constructor(
     fun hideHistory() = mutableState.update { it.copy(versions = null) }
 
     /**
-     * Loads [copy] in the editor (D-021): nothing is written until the user saves. Never while a file is
-     * written or opened: it would drop the open's result, the screen left loading, with no stamp to save (R21).
+     * Loads [copy] in the editor (D-021): nothing is written to the file until the user saves. Cells typed
+     * and not saved go to the history first, as in the code editor — the screen held while they are
+     * written: restoring is undone by restoring them; when they cannot be kept, nothing is restored.
+     *
+     * Never while a file is written or opened: it would drop the open's result, the screen left loading,
+     * with no stamp to save (Claude review R21).
      */
     fun restore(copy: HistoryCopy) {
-        if (mutableState.value.let { it.saving || it.loading }) return
+        val current = mutableState.value
+        val target = file
+        if (current.saving || current.loading || target == null) return
         val serial = ++loads
-        val previous = mutableState.value.edits
-        mutableState.update { it.copy(versions = null) }
+        val previous = current.edits
+        val unsaved = previous?.takeIf { it.modified }
+        mutableState.value = current.copy(versions = null, saving = unsaved != null)
         viewModelScope.launch {
-            val result = loadOrFailure { withContext(io) { CsvEdits.read(StorageFileSource(copy.file)) } }
+            val read = loadOrFailure { withContext(io) { CsvEdits.read(StorageFileSource(copy.file)) } }
+            val kept = if (unsaved == null || read.isFailure) {
+                Result.success(Unit)
+            } else {
+                loadOrFailure { withContext(io) { CsvSaving.keep(target, history, unsaved::writeTo) } }
+            }
+            if (unsaved != null) mutableState.update { it.copy(saving = false) }
             if (serial != loads) return@launch
-            result.fold(
-                { edits ->
-                    previous?.let { keepChoice(it, edits) }
-                    restored = true
-                    mutableState.update { it.copy(edits = edits, version = it.version + 1, modified = true) }
-                    messages.info(uiText(R.string.csv_editor_restored))
-                },
+            read.fold(
+                { edits -> kept.fold({ restored(edits, previous) }, { messages.error(notKept(it)) }) },
                 { messages.error(readFailure(mutableState.value.name, it)) },
             )
         }
     }
 
+    private fun restored(edits: CsvEdits, previous: CsvEdits?) {
+        previous?.let { keepChoice(it, edits) }
+        restored = true
+        mutableState.update { it.copy(edits = edits, version = it.version + 1, modified = true) }
+        messages.info(uiText(R.string.csv_editor_restored))
+    }
+
+    private fun notKept(error: Throwable): UiText {
+        val why = when (error) {
+            is FileTooLargeException -> uiText(R.string.csv_editor_unsaved_too_large, (error.capBytes / MIB).toInt())
+            else -> IoErrors.reasonOf(error)
+        }
+        return uiText(R.string.csv_editor_restore_failed, why)
+    }
+
     private companion object {
         const val KEY_PATH = "csv_editor_path"
+        const val MIB = 1024L * 1024
     }
 }
 

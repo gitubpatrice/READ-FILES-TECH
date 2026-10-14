@@ -412,8 +412,10 @@
     <string name="csv_editor_discard">Ignorer</string>
     <string name="csv_editor_history">Historique</string>
     <string name="csv_editor_history_empty">Aucune version antérieure de ce fichier pour l\'instant. Chaque sauvegarde garde la version qu\'elle remplace : les %1$d dernières, pour les fichiers jusqu\'à %2$d Mo.</string>
-    <string name="csv_editor_history_hint">Restaurer charge la version dans l\'éditeur : rien n\'est écrit avant que vous sauvegardiez.</string>
+    <string name="csv_editor_history_hint">Restaurer charge la version dans l\'éditeur : vos modifications non sauvegardées vont d\'abord dans l\'historique, et le fichier n\'est écrit que lorsque vous sauvegardez.</string>
     <string name="csv_editor_restored">Version antérieure chargée : sauvegardez pour la garder.</string>
+    <string name="csv_editor_restore_failed">Non restaurée : %1$s</string>
+    <string name="csv_editor_unsaved_too_large">vos modifications non sauvegardées dépassent %1$d Mo, trop pour être gardées dans l\'historique — sauvegardez-les d\'abord</string>
 
     <string name="document_no_text">Ce document ne contient aucun texte.</string>
 

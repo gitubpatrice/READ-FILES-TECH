@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.ui.tools.csveditor
 
 import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.ui.common.UserMessages
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 
 /** Claude reviews R20, R21: loads that overlap, a file opened while another is written, restores in the way. */
@@ -111,6 +113,45 @@ class CsvEditorViewModelTest {
         io.runAll()
         assertThat(a.readText()).isEqualTo("a\n3\n")
         assertThat(viewModel.state.value.edits!!.cells(1, 0, 1, 10)).containsExactly("3")
+    }
+
+    /** As in the code editor (review R22's question): the cells typed were gone once a version replaced them. */
+    @Test
+    fun `cells not saved go to the history before a version replaces them`() {
+        val a = file("a.csv", "a\n1\n")
+        val viewModel = viewModel()
+        val copy = savedOnce(viewModel, a)
+        viewModel.change { it.set(1, 0, "3") }
+        viewModel.restore(copy)
+        assertThat(viewModel.state.value.saving).isTrue()
+        assertThat(viewModel.change { it.set(1, 0, "4") }).isNull()
+        io.runAll()
+        val state = viewModel.state.value
+        assertThat(state.saving).isFalse()
+        assertThat(state.edits!!.cells(1, 0, 1, 10)).containsExactly("1")
+        viewModel.showHistory()
+        io.runAll()
+        assertThat(viewModel.state.value.versions!!.map { it.file.readText() }).containsExactly("a\n3\n", "a\n1\n").inOrder()
+        assertThat(a.readText()).isEqualTo("a\n2\n")
+    }
+
+    @Test
+    fun `when the cells not saved cannot be kept, nothing is restored`() {
+        var full = false
+        val history = EditorHistory(File(dir, "legacy"), File(dir, "history")) { copy, bytes ->
+            if (full) throw IOException("No space left on device") else AtomicFiles.writeBytes(copy, bytes)
+        }
+        val viewModel = CsvEditorViewModel(SavedStateHandle(), history, UserMessages(), io)
+        val a = file("a.csv", "a\n1\n")
+        val copy = savedOnce(viewModel, a)
+        viewModel.change { it.set(1, 0, "3") }
+        full = true
+        viewModel.restore(copy)
+        io.runAll()
+        val state = viewModel.state.value
+        assertThat(state.saving).isFalse()
+        assertThat(state.modified).isTrue()
+        assertThat(state.edits!!.cells(1, 0, 1, 10)).containsExactly("3")
     }
 
     /** Claude review R21: a restore during an open dropped the open's result — loading for ever, no stamp to save. */
