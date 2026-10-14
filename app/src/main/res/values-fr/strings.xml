@@ -540,6 +540,7 @@
     <string name="editor_not_text">« %1$s » n\'est pas un fichier texte : l\'éditeur ne l\'ouvre pas.</string>
     <string name="editor_not_reversible">« %1$s » contient des octets qui ne sont pas des caractères de son encodage — un caractère coupé, ou un dommage : l\'enregistrer les changerait. La visionneuse l\'affiche.</string>
     <string name="editor_unencodable">%1$s, l\'encodage de ce fichier, n\'a pas « %2$s » : retirez-le, puis enregistrez.</string>
+    <string name="editor_text_too_large">le texte dépasse %1$d Mo, le maximum que l\'éditeur ouvre : raccourcissez-le, puis enregistrez</string>
     <string name="editor_changed_title">« %1$s » a changé</string>
     <string name="editor_changed_message">Une autre application a modifié, déplacé ou supprimé ce fichier depuis son ouverture ici. L\'écraser avec votre texte ? Sa version sur le disque va d\'abord dans l\'historique.</string>
     <string name="editor_overwrite">Écraser</string>

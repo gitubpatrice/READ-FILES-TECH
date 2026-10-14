@@ -538,6 +538,7 @@
     <string name="editor_not_reversible">“%1$s” holds bytes that are no characters of its encoding — a character cut short, or damage: saving would change them. The viewer shows it.</string>
     <!-- "Windows-1252, the encoding of this file, has no “😀”" -->
     <string name="editor_unencodable">%1$s, the encoding of this file, has no “%2$s”: remove it, then save.</string>
+    <string name="editor_text_too_large">the text is over %1$d MB, the most the editor opens: shorten it, then save</string>
     <string name="editor_changed_title">“%1$s” changed</string>
     <string name="editor_changed_message">Another app changed, moved or deleted this file since it was opened here. Overwrite it with your text? Its version on disk goes to the history first.</string>
     <string name="editor_overwrite">Overwrite</string>

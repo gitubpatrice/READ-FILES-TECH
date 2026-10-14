@@ -5,6 +5,7 @@ import com.readfilestech.read_files_tech.data.browse.TextPreview
 import com.readfilestech.read_files_tech.data.editor.EditedFile
 import com.readfilestech.read_files_tech.data.editor.NotEditableException
 import com.readfilestech.read_files_tech.data.editor.SaveOutcome
+import com.readfilestech.read_files_tech.data.editor.TextTooLargeException
 import com.readfilestech.read_files_tech.data.editor.UnencodableTextException
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.history.EditorHistory
@@ -35,6 +36,8 @@ enum class LeaveChoice {
     /** Save, and leave once the file is written — only then (D3). */
     SAVE,
 }
+
+private const val MIB = 1024L * 1024
 
 /** The saved versions of the open file, newest first: its own (docs D-021), and apart the 2.15.x's of its exact name. */
 data class EditorVersions(val versions: List<HistoryCopy>, val legacy: List<HistoryCopy>)
@@ -210,10 +213,14 @@ class CodeEditorSession(
      * Loads [copy] in the editor (docs D-021): nothing is written to the file until the user saves. Its
      * text is returned for the text field; [current], the editor's text, goes to the history first when it
      * is not saved — restoring is undone by restoring it. Null when nothing changes, the reason said.
+     *
+     * The screen is held meanwhile, as by a save ([CodeEditorState.saving]): what was typed during the
+     * reads and writes was replaced and kept nowhere, and a save asked then ended "saved" with the version
+     * restored shown, unsaved (Claude review R22).
      */
     suspend fun restore(copy: HistoryCopy, current: String): String? {
         val edited = opened?.takeUnless { mutableState.value.saving } ?: return null
-        mutableState.update { it.copy(versions = null, preview = null) }
+        mutableState.update { it.copy(versions = null, preview = null, saving = true) }
         val result = loadOrFailure {
             withContext(io) {
                 val text = EditedFile.textOf(copy.file)
@@ -221,6 +228,7 @@ class CodeEditorSession(
                 text
             }
         }
+        mutableState.update { it.copy(saving = false) }
         return result.fold(
             {
                 messages.info(uiText(R.string.editor_restored))
@@ -234,7 +242,7 @@ class CodeEditorSession(
     }
 
     private fun restoreReason(error: Throwable): UiText = when (error) {
-        is UnencodableTextException -> saveReason(mutableState.value.name, error)
+        is UnencodableTextException, is TextTooLargeException -> saveReason(mutableState.value.name, error)
         is NotEditableException -> uiText(R.string.editor_version_not_text)
         is FileTooLargeException -> readFailure(mutableState.value.name, error)
         else -> IoErrors.reasonOf(error)
@@ -252,6 +260,7 @@ class CodeEditorSession(
         /** Why a save of [name] wrote nothing. */
         fun saveReason(name: String, error: Throwable): UiText = when (error) {
             is UnencodableTextException -> uiText(R.string.editor_unencodable, encodingName(error.encoding), error.character)
+            is TextTooLargeException -> uiText(R.string.editor_text_too_large, error.capBytes / MIB)
             is FileTooLargeException -> readFailure(name, error)
             else -> IoErrors.reasonOf(error)
         }

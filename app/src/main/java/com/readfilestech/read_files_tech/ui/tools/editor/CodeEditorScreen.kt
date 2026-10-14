@@ -288,15 +288,16 @@ private object LineBreaksAsLf : InputTransformation {
     // What changed (TextFieldBuffer.changes) is still marked experimental.
     @OptIn(ExperimentalFoundationApi::class)
     override fun TextFieldBuffer.transformInput() {
-        val crs = (0 until changes.changeCount).flatMap { change ->
-            val range = changes.getRange(change)
-            (maxOf(range.min - 1, 0) until minOf(range.max + 1, length)).filter { charAt(it) == '\r' }
-        }
-        // Each CR's fate read before any is replaced (a CR then a CRLF are two line breaks, as when
-        // opening); then replaced from the end, so that the places before the one replaced do not move.
-        crs.toSortedSet(reverseOrder())
-            .associateWith { i -> if (i + 1 < length && charAt(i + 1) == '\n') "" else "\n" }
-            .forEach { (i, lineBreak) -> replace(i, i + 1, lineBreak) }
+        val changed = (0 until changes.changeCount).map { changes.getRange(it).let { range -> intArrayOf(range.min, range.max) } }
+        val text = asCharSequence()
+        // Every rewrite read before any is made (a CR then a CRLF are two line breaks, as when opening),
+        // then made from the end, so that the places before do not move. One replace per place: one per CR
+        // made the buffer track as many changes, each against the others — a paste of many CRLF stalled
+        // the screen (Claude review R22).
+        LineBreakInput.places(changed, length)
+            .mapNotNull { (from, to) -> LineBreakInput.rewrite(text, from, to) }
+            .asReversed()
+            .forEach { replace(it.start, it.end, it.text) }
     }
 }
 

@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.editor
 
+import com.readfilestech.read_files_tech.data.tools.LineDiff
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -55,20 +56,25 @@ class EditableText private constructor(
      *
      * @throws UnencodableTextException a character [encoding] has no bytes for
      */
-    fun encode(edited: String): Encoded {
+    suspend fun encode(edited: String): Encoded {
         val normal = split(edited).text
-        val kinds = breaksFor(normal)
-        val bytes = encodeText(encoding, joined(normal, kinds))
+        val kinds = separated(normal, breaksFor(normal))
+        val joined = joined(normal, kinds)
+        // What the next opening reads is what the editor shows: the same lines, each with its line break.
+        val again = split(joined)
+        check(again.text == normal && again.breaks.contentEquals(kinds)) { "line breaks not read back as written" }
+        val bytes = encodeText(encoding, joined)
         return Encoded(bytes, EditableText(encoding, normal, kinds))
     }
 
     /**
-     * The kinds of [edited]'s line breaks. Those in the text before the first change and after the last one
-     * keep their kind, counted from the start and from the end; between them, when there are as many as
-     * before, each keeps the kind of the one at its place — a line changed in place is written with its own
-     * line break; otherwise the file's most common kind.
+     * The kinds of [edited]'s line breaks. Those of the lines before the first change and after the last one
+     * keep their kind, counted from the start and from the end; between them, [middle].
+     *
+     * The text the two share at their end may begin inside a line — `C` replaced by `N` before `\nD`: its
+     * first line break then ends a line that differs, and belongs to the middle (Claude review R22).
      */
-    private fun breaksFor(edited: String): ByteArray {
+    private suspend fun breaksFor(edited: String): ByteArray {
         val count = edited.count { it == '\n' }
         val shortest = minOf(text.length, edited.length)
         var prefix = 0
@@ -76,17 +82,76 @@ class EditableText private constructor(
         var suffix = 0
         while (suffix < shortest - prefix && text[text.length - 1 - suffix] == edited[edited.length - 1 - suffix]) suffix++
         val before = countBreaks(text, 0, prefix)
-        val after = countBreaks(text, text.length - suffix, text.length)
-        // As many between the changes as before them: lines changed in place, none added or removed.
-        val inPlace = breaks.size == count
+        val wholeLines = startsLine(text, text.length - suffix) && startsLine(edited, edited.length - suffix)
+        val after = countBreaks(text, text.length - suffix, text.length).let { if (wholeLines || it == 0) it else it - 1 }
+        val kinds = ByteArray(count)
+        breaks.copyInto(kinds, 0, 0, before)
+        breaks.copyInto(kinds, count - after, breaks.size - after, breaks.size)
+        middle(edited, kinds, before, breaks.size - after, count - after)
+        return kinds
+    }
+
+    /**
+     * The line breaks between the first change and the last, from [from] to [oldEnd] in the file and to
+     * [newEnd] in [edited]: a line found again ([LineDiff]) keeps its own; between two found, the lines
+     * changed keep those of the lines they replace, in order, and a line added takes the file's most common
+     * kind. Edits are not one change: two of them far apart, a line removed in one, re-assigned the line
+     * breaks of every line between them (Claude review R22). A file of one kind needs no search.
+     */
+    private suspend fun middle(edited: String, kinds: ByteArray, from: Int, oldEnd: Int, newEnd: Int) {
         val common = commonKind()
-        return ByteArray(count) { i ->
-            when {
-                i < before -> breaks[i]
-                i >= count - after -> breaks[breaks.size - (count - i)]
-                inPlace -> breaks[i]
-                else -> common
+        if (breaks.none { it != breaks[0] }) {
+            for (i in from until newEnd) kinds[i] = common
+            return
+        }
+        val ids = HashMap<String, Int>()
+        val old = lineIds(text, from, oldEnd, ids)
+        val matches = matches(old, lineIds(edited, from, newEnd, ids))
+        var lastOld = -1
+        var lastNew = -1
+        for (j in 0..matches.size) {
+            val o = if (j == matches.size) old.size else matches[j]
+            if (o < 0) continue
+            // The gap since the last line found: its lines paired in order, the ones in excess added.
+            for (n in lastNew + 1 until j) {
+                val paired = lastOld + 1 + (n - lastNew - 1)
+                kinds[from + n] = if (paired < o) breaks[from + paired] else common
             }
+            if (j < matches.size) kinds[from + j] = breaks[from + o]
+            lastOld = o
+            lastNew = j
+        }
+    }
+
+    /**
+     * For each line of [new], the line of [old] it is, or -1: the diff tool's shortest edit script
+     * ([LineDiff]), its work bounded — past it, the rest is lines changed, paired in order.
+     */
+    private suspend fun matches(old: IntArray, new: IntArray): IntArray {
+        val script = LineDiff.script(old, new, DIFF_WORK)
+        val matches = IntArray(new.size) { -1 }
+        var o = 0
+        var n = 0
+        for (run in 0 until script.size) {
+            val length = script.length(run)
+            when (script.op(run)) {
+                LineDiff.SAME -> repeat(length) { matches[n++] = o++ }
+                LineDiff.REMOVED -> o += length
+                else -> n += length
+            }
+        }
+        return matches
+    }
+
+    /** Ids of the lines [from] to [to] of [text] (each ended by its line break), equal text, equal id. */
+    private fun lineIds(text: String, from: Int, to: Int, ids: HashMap<String, Int>): IntArray {
+        var start = 0
+        repeat(from) { start = text.indexOf('\n', start) + 1 }
+        return IntArray(to - from) {
+            val end = text.indexOf('\n', start)
+            val line = text.substring(start, end)
+            start = end + 1
+            ids.getOrPut(line) { ids.size }
         }
     }
 
@@ -103,6 +168,10 @@ class EditableText private constructor(
         const val CRLF: Byte = 1
         const val CR: Byte = 2
         private const val KINDS = 3
+        private const val NONE: Byte = -1
+
+        /** Steps of the search for the lines found again: a tenth of the diff tool's, a save not to be waited for. */
+        private const val DIFF_WORK = LineDiff.WORK / 10
         private const val NUL = '\u0000'
         private const val BOM = '\uFEFF'
 
@@ -159,6 +228,41 @@ class EditableText private constructor(
 
         private fun countBreaks(text: String, from: Int, to: Int): Int = (from until to).count { text[it] == '\n' }
 
+        private fun startsLine(text: String, at: Int): Boolean = at == 0 || text[at - 1] == '\n'
+
+        /**
+         * [kinds] with each LF that follows a CR, an empty line between, made a CRLF: written `\r` then `\n`,
+         * the two would be read back as one CRLF — a line gone, unseen until the file is opened again (Claude
+         * review R22: Enter at the start of a line after a CR line, in a file of LF).
+         */
+        private fun separated(text: String, kinds: ByteArray): ByteArray {
+            var k = 0
+            var previous = NONE
+            for (c in text) {
+                if (c != '\n') {
+                    previous = NONE
+                    continue
+                }
+                if (kinds[k] == LF && previous == CR) kinds[k] = CRLF
+                previous = kinds[k++]
+            }
+            return kinds
+        }
+
+        /** The index of [text]'s first surrogate without its pair, or -1. */
+        internal fun firstLoneSurrogate(text: CharSequence): Int {
+            var i = 0
+            while (i < text.length) {
+                val c = text[i]
+                when {
+                    c.isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate() -> i += 2
+                    c.isSurrogate() -> return i
+                    else -> i++
+                }
+            }
+            return -1
+        }
+
         /** [text], each LF written as the line break of its kind. */
         private fun joined(text: String, kinds: ByteArray): String {
             val out = StringBuilder(text.length + kinds.size)
@@ -183,8 +287,14 @@ class EditableText private constructor(
          * [text] in [encoding], after its byte order mark: U+FEFF encoded by the same charset gives the very
          * bytes [TextEncoding.detect] read (EF BB BF, FF FE, FE FF). A character the encoding has no bytes for
          * is refused, never replaced by `?` as `String.toByteArray` would.
+         *
+         * A surrogate without its pair (pasted from an app that cut a string between the two) is refused
+         * before any encoder sees it: Android's encoders (ICU) may hold one left at the very end and give it
+         * only to [java.nio.charset.CharsetEncoder.flush] — dropped, had its result been ignored (R22).
          */
         private fun encodeText(encoding: TextEncoding, text: String): ByteArray {
+            val lone = firstLoneSurrogate(text)
+            if (lone >= 0) throw UnencodableTextException(text[lone].toString(), encoding)
             val encoder = encoding.charset.newEncoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT)
@@ -196,7 +306,9 @@ class EditableText private constructor(
                 throw UnencodableTextException(input.subSequence(0, result.length()).toString(), encoding)
             }
             check(!result.isOverflow) { "the bytes outgrew their bound" }
-            encoder.flush(out)
+            val end = encoder.flush(out)
+            if (end.isError) throw UnencodableTextException(text.takeLast(1), encoding)
+            check(!end.isOverflow) { "the bytes outgrew their bound" }
             return out.array().copyOf(out.position())
         }
     }

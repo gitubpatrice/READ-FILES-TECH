@@ -2,11 +2,16 @@ package com.readfilestech.read_files_tech.data.editor
 
 import com.readfilestech.read_files_tech.data.browse.TextPreview
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
+import com.readfilestech.read_files_tech.data.files.FileBytes
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import java.io.File
+import java.io.IOException
+
+/** The editor's text would be more bytes than [capBytes], what the editor opens: nothing is written. */
+class TextTooLargeException(val capBytes: Long) : IOException("text over $capBytes bytes")
 
 /** How a save of the code editor ended, when it did not fail. */
 sealed interface SaveOutcome {
@@ -46,12 +51,22 @@ class EditedFile private constructor(
      * @throws java.io.IOException why nothing was written
      */
     suspend fun save(edited: String, history: EditorHistory, overwrite: Boolean = false): SaveOutcome {
-        val encoded = content.encode(edited)
+        val encoded = encodeWithin(edited)
         val current = if (file.isFile) readBytes(file) else null
         if (!overwrite && (current == null || !current.contentEquals(bytes))) return SaveOutcome.ChangedOnDisk
         current?.let { history.saveBefore(file.absolutePath, it) }
-        AtomicFiles.writeBytes(file, encoded.bytes)
-        return SaveOutcome.Saved(EditedFile(file, encoded.bytes, encoded.text))
+        // Checked again just before the new file takes its place: a sync app writing it while the version
+        // was kept and the new bytes synced had its own replaced, kept nowhere (Claude review R22).
+        val publish = { from: File, to: File ->
+            if (!holdsStill(to, current)) throw ChangedMeanwhile()
+            AtomicFiles.publish(from, to)
+        }
+        return try {
+            AtomicFiles.write(file, publish) { it.write(encoded.bytes) }
+            SaveOutcome.Saved(EditedFile(file, encoded.bytes, encoded.text))
+        } catch (_: ChangedMeanwhile) {
+            SaveOutcome.ChangedOnDisk
+        }
     }
 
     /**
@@ -59,8 +74,23 @@ class EditedFile private constructor(
      * in the editor, so that restoring is undone by restoring it.
      *
      * @throws UnencodableTextException a character the file's encoding has no bytes for
+     * @throws TextTooLargeException over [FileCaps.CODE_EDITOR]: a version the editor could not open again
      */
-    fun keep(edited: String, history: EditorHistory) = history.saveBefore(file.absolutePath, content.encode(edited).bytes)
+    suspend fun keep(edited: String, history: EditorHistory) = history.saveBefore(file.absolutePath, encodeWithin(edited).bytes)
+
+    /**
+     * [edited] as the file's bytes, within [FileCaps.CODE_EDITOR]: past it, a save went through but the file
+     * opened no more, nor could be saved again — its every save read it first (Claude review R22).
+     */
+    private suspend fun encodeWithin(edited: String): EditableText.Encoded =
+        content.encode(edited).also { if (it.bytes.size > FileCaps.CODE_EDITOR) throw TextTooLargeException(FileCaps.CODE_EDITOR) }
+
+    /** The file still holds [current], the bytes read before the save — or is still missing, when it was. */
+    private fun holdsStill(file: File, current: ByteArray?): Boolean =
+        if (current == null) !file.exists() else FileBytes.holds(file, current)
+
+    /** The file changed between the check and the moment the new one took its place. */
+    private class ChangedMeanwhile : IOException("the file changed during the save")
 
     companion object {
         /**

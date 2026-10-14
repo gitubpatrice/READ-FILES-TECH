@@ -3,14 +3,18 @@ package com.readfilestech.read_files_tech.ui.tools.editor
 import com.google.common.truth.Truth.assertThat
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.ui.common.UserMessages
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.coroutines.CoroutineContext
 
 /**
  * The leave dialog of the code editor on the REAL screen's rules — `editor_leave_dialog_test.dart` of
@@ -135,6 +139,47 @@ class CodeEditorSessionTest {
         session.textChanged(UNSAVED)
         assertThat(session.restore(older, UNSAVED)).isEqualTo(ORIGINAL)
         assertThat(history.versions(file.absolutePath).map { it.file.readText() }).containsExactly(UNSAVED, ORIGINAL).inOrder()
+        assertThat(file.readText()).isEqualTo(EDITED)
+    }
+
+    /** The IO dispatcher: runs at once, or, [held], keeps the work until [runAll]. */
+    private class HeldDispatcher : CoroutineDispatcher() {
+        var held = false
+        private val tasks = ArrayDeque<Runnable>()
+
+        override fun isDispatchNeeded(context: CoroutineContext) = held
+
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            tasks += block
+        }
+
+        fun runAll() {
+            while (tasks.isNotEmpty()) tasks.removeFirst().run()
+        }
+    }
+
+    /** Claude review R22: what was typed during a restore's reads and writes was lost; a save then ended "saved" wrongly. */
+    @Test
+    fun `the screen is held while a version is restored`() = runTest {
+        val history = history()
+        val io = HeldDispatcher()
+        val session = CodeEditorSession(history, UserMessages(), io)
+        session.open(file)
+        session.save(EDITED)
+        val older = history.versions(file.absolutePath).single()
+        session.textChanged(UNSAVED)
+        io.held = true
+        val restored = async { session.restore(older, UNSAVED) }
+        runCurrent()
+        assertThat(session.state.value.saving).isTrue()
+        val saved = async { session.save("typed meanwhile\n") }
+        repeat(3) {
+            runCurrent()
+            io.runAll()
+        }
+        saved.await()
+        assertThat(restored.await()).isEqualTo(ORIGINAL)
+        assertThat(session.state.value.saving).isFalse()
         assertThat(file.readText()).isEqualTo(EDITED)
     }
 

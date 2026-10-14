@@ -123,10 +123,42 @@ class EditedFileTest {
         assertThat(history.versions(target.absolutePath)).isEmpty()
     }
 
+    /** Claude review R22: a save past the cap went through, then the file opened no more, nor saved again. */
+    @Test
+    fun `a text over the cap is not saved nor kept, the file untouched`() {
+        val target = file("notes.txt", "one\n".toByteArray())
+        val opened = open(target)
+        val atCap = "a".repeat(FileCaps.CODE_EDITOR.toInt())
+        val over = "$atCap!"
+        assertThrows<TextTooLargeException> { opened.saved(over) }
+        assertThrows<TextTooLargeException> { runBlocking { opened.keep(over, history) } }
+        assertThat(target.readText()).isEqualTo("one\n")
+        assertThat(history.versions(target.absolutePath)).isEmpty()
+        assertThat(opened.saved(atCap)).isInstanceOf(SaveOutcome.Saved::class.java)
+        assertThat(open(target).text).isEqualTo(atCap)
+    }
+
+    /** Claude review R22: a sync app writing the file during the save had its version replaced, kept nowhere. */
+    @Test
+    fun `a file written by another app during the save is not replaced`() {
+        val target = file("notes.txt", "one\n".toByteArray())
+        val meanwhile = EditorHistory(File(tmp, "legacy"), File(tmp, "files/editor_history")) { copy, bytes ->
+            copy.writeBytes(bytes)
+            target.writeText("theirs\n")
+        }
+        val opened = open(target)
+        assertThat(runBlocking { opened.save("two\n", meanwhile) }).isEqualTo(SaveOutcome.ChangedOnDisk)
+        assertThat(target.readText()).isEqualTo("theirs\n")
+        assertThat(tmp.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+        // Asked again, the user overwrites: the other app's version is kept first.
+        assertThat(open(target).saved("two\n", overwrite = true)).isInstanceOf(SaveOutcome.Saved::class.java)
+        assertThat(history.versions(target.absolutePath).map { it.file.readText() }).contains("theirs\n")
+    }
+
     @Test
     fun `the unsaved text kept before a restore is in the file's encoding`() {
         val target = file("notes.txt", "café\r\n".toByteArray(CP1252))
-        open(target).keep("thé\n", history)
+        runBlocking { open(target).keep("thé\n", history) }
         assertThat(history.versions(target.absolutePath).single().file.readBytes()).isEqualTo("thé\r\n".toByteArray(CP1252))
     }
 
