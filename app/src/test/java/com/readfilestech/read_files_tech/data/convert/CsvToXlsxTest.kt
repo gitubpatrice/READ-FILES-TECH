@@ -120,6 +120,15 @@ class CsvToXlsxTest {
         assertThat(escaped).isEqualTo("a&amp;b&lt;c&gt;d&#13;e_x0001_f_x005F_x0041_g\tlh😀i_xD800_j_xFFFE_")
     }
 
+    /** Claude review R18: `_xABCD` then U+0001 came out `_xABCD_x0001_`, read back by Excel as `ꯍx0001_`. */
+    @Test
+    fun `an _xHHHH before a character itself escaped has its underscore escaped too`() {
+        val escaped = StringBuilder().also { XlsxCells.escape("_xABCD" + Char(1), it) }.toString()
+        assertThat(escaped).isEqualTo("_x005F_xABCD_x0001_")
+        // Not before a plain character: `_xABCDe` stays as it is.
+        assertThat(StringBuilder().also { XlsxCells.escape("_xABCDe", it) }.toString()).isEqualTo("_xABCDe")
+    }
+
     @Test
     fun `a line break and leading spaces in a cell are kept`() = runTest {
         val xml = convert("\"  two\nlines \"\n".toByteArray())[sheet]!!

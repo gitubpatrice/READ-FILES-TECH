@@ -15,6 +15,7 @@ import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import com.tom_roush.pdfbox.util.Matrix
 import java.io.InputStream
 import java.io.OutputStream
+import java.security.SecureRandom
 import java.util.zip.DeflaterInputStream
 
 /** The pixels of a decoded image, one row at a time: what [ImagesPdf] embeds without loss. */
@@ -65,6 +66,9 @@ class ImagesPdf(memory: MemoryUsageSetting) : AutoCloseable {
     /** The document, on [out] (not closed). */
     fun save(out: OutputStream) {
         check(pageCount > 0) { "a PDF needs a page" }
+        // Without it PdfBox makes the /ID from the time of the save, to the millisecond: the moment the PDF
+        // was made, recoverable from a document that carries no date (Claude review R18).
+        document.documentId = SecureRandom().nextLong()
         document.save(out)
     }
 

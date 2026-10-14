@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.convert
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.pdf.ChannelRandomAccess
 import com.readfilestech.read_files_tech.data.viewer.pdf.LockedPdfException
 import com.readfilestech.read_files_tech.data.viewer.pdf.PdfUnlock
@@ -42,7 +43,35 @@ class PdfToTextTest {
     fun `a file without a password opens, its pages counted`() {
         for ((name, pages) in listOf("edge-fr-3p.pdf" to 3, "reportlab-cgu-3p.pdf" to 3, "edge-cjk.pdf" to 1)) {
             open(corpusFile(name)).use { assertThat(it.document.numberOfPages).isEqualTo(pages) }
+            assertThat(PdfPageTexts(open(corpusFile(name))).use { it.pageCount }).isEqualTo(pages)
         }
+    }
+
+    /** Claude review R18: the pages were the `/Count` written — two billion empty pages in the output. */
+    @Test
+    fun `the pages extracted are those the tree holds, whatever its count says`() {
+        val objects = listOf(
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 2147483647 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>",
+        )
+        val pdf = StringBuilder("%PDF-1.7\n")
+        val offsets = objects.mapIndexed { i, body -> pdf.length.also { pdf.append("${i + 1} 0 obj\n$body\nendobj\n") } }
+        val xref = pdf.length
+        pdf.append("xref\n0 4\n0000000000 65535 f \n")
+        offsets.forEach { pdf.append("%010d 00000 n \n".format(it)) }
+        pdf.append("trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n$xref\n%%EOF\n")
+        val file = File(tmp, "count.pdf").apply { writeBytes(pdf.toString().toByteArray(Charsets.ISO_8859_1)) }
+
+        assertThat(open(file).use { it.document.numberOfPages }).isEqualTo(Int.MAX_VALUE)
+        assertThat(PdfPageTexts(open(file)).use { it.pageCount }).isEqualTo(1)
+    }
+
+    @Test
+    fun `more pages than the cap are refused, as many as it are extracted`() {
+        val three = corpusFile("edge-fr-3p.pdf")
+        assertThat(PdfPageTexts(open(three), maxPages = 3).use { it.pageCount }).isEqualTo(3)
+        open(three).use { opened -> assertThrows<TooManyItemsException> { PdfPageTexts(opened, maxPages = 2) } }
     }
 
     @Test

@@ -14,6 +14,7 @@ import android.os.ParcelFileDescriptor
 import android.os.Process
 import androidx.core.graphics.createBitmap
 import com.readfilestech.read_files_tech.data.convert.PdfConversionCalls
+import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import java.io.IOException
@@ -224,7 +225,8 @@ internal object PdfBox {
     fun scratch(context: Context): MemoryUsageSetting {
         val folder = PdfUnlocked.under(context.cacheDir).folder
         Files.createDirectories(folder.toPath())
-        return MemoryUsageSetting.setupMixed(SCRATCH_MEMORY).setTempDir(folder)
+        // Bounded on disk too: past it PdfBox throws ("Maximum allowed scratch file memory exceeded"), a refusal.
+        return MemoryUsageSetting.setupMixed(SCRATCH_MEMORY, FileCaps.PDF_SCRATCH).setTempDir(folder)
     }
 }
 

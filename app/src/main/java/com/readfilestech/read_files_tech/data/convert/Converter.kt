@@ -138,12 +138,20 @@ class Converter @Inject constructor(@param:ApplicationContext private val app: C
         return TextDocument.of(bytes, size)
     }
 
-    /** A new file of `Conversions/` filled by [write], atomically; given back if anything fails. */
-    private fun output(conversion: Conversion, name: String, write: (OutputStream) -> Unit): File {
+    /**
+     * A new file of `Conversions/` filled by [write], atomically; given back if anything fails — a stop that
+     * came during the last write too: checked before the file is committed, so that a conversion stopped
+     * leaves nothing (Claude review R18: a PNG of 64 Mpx compressed for seconds was published after a stop).
+     */
+    private suspend fun output(conversion: Conversion, name: String, write: (OutputStream) -> Unit): File {
+        val job = currentCoroutineContext()
         val reserved = outputs.reserve(OutputCategory.CONVERSIONS, name, conversion.extension)
         var written = false
         try {
-            outputs.write(reserved, write)
+            outputs.write(reserved) { stream ->
+                write(stream)
+                job.ensureActive()
+            }
             written = true
         } finally {
             if (!written) outputs.discard(reserved)

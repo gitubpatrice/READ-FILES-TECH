@@ -217,10 +217,14 @@ object XlsxCells {
     private fun needsEscape(c: Char): Boolean =
         (c.code < FIRST_UNSAFE && c.code != TAB && c.code != LF) || c.code >= NOT_CHARACTERS || Character.isSurrogate(c)
 
-    /** `_xHHHH_` at [at]: four hex digits between `_x` and `_`. */
+    /**
+     * `_xHHHH_` at [at] once written: four hex digits between `_x` and `_` — or a character after them that is
+     * itself written `_xHHHH_`, whose escape brings the `_` (Claude review R18: `_xABCD` then U+0001 read
+     * back as `ꯍx0001_`). Escaping a `_` that did not need it is always safe.
+     */
     private fun looksEscaped(text: String, at: Int): Boolean {
         val end = at + 2 + HEX_DIGITS
-        return end < text.length && text[at + 1] == 'x' && text[end] == '_' &&
+        return end < text.length && text[at + 1] == 'x' && (text[end] == '_' || needsEscape(text[end])) &&
             (at + 2 until end).all { text[it] in '0'..'9' || text[it] in 'a'..'f' || text[it] in 'A'..'F' }
     }
 

@@ -1,6 +1,10 @@
 package com.readfilestech.read_files_tech.data.convert
 
+import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.pdf.OpenedPdf
+import com.tom_roush.pdfbox.pdmodel.PDPage
+import com.tom_roush.pdfbox.pdmodel.PDPageTree
 import com.tom_roush.pdfbox.text.PDFTextStripper
 
 /** A piece of a page's text and whether more of it follows. */
@@ -15,9 +19,21 @@ class TextChunk(val text: String, val more: Boolean)
  * One page's text is kept, the one being handed out; its trailing white space is trimmed, as the 2.15.3's
  * `trimRight()` (text_extraction_service.dart:392). Lines end in `\n` whatever the platform.
  */
-class PdfPageTexts(private val opened: OpenedPdf) : AutoCloseable {
-    val pageCount: Int = opened.document.numberOfPages
-    private val stripper = PDFTextStripper().apply { lineSeparator = "\n" }
+class PdfPageTexts(private val opened: OpenedPdf, maxPages: Int = FileCaps.PDF_TO_TEXT_PAGES) : AutoCloseable {
+    /**
+     * The pages, found by walking the page tree once — never the `/Count` the file declares (one page could
+     * declare two billion) — and at most [maxPages] (Claude review R18).
+     */
+    private val pages: List<PDPage> = buildList {
+        for (page in opened.document.pages) {
+            if (size == maxPages) throw TooManyItemsException(maxPages)
+            add(page)
+        }
+    }
+    val pageCount: Int get() = pages.size
+
+    // Made at the first page asked: PdfBox's stripper needs Android's classes (a JVM test counts pages only).
+    private val stripper by lazy { OnePage().apply { lineSeparator = "\n" } }
     private var page = -1
     private var text = ""
 
@@ -26,12 +42,29 @@ class PdfPageTexts(private val opened: OpenedPdf) : AutoCloseable {
     fun chunk(index: Int, from: Int, max: Int): TextChunk {
         require(index in 0 until pageCount) { "page $index of $pageCount" }
         if (index != page) {
-            stripper.startPage = index + 1
-            stripper.endPage = index + 1
+            stripper.target = pages[index]
             text = stripper.getText(opened.document).trimEnd()
             page = index
         }
         return cut(text, from, max)
+    }
+
+    /**
+     * PdfBox's stripper over ONE page: the stock one walks every page of the tree to reach the range asked,
+     * so a document of a million pages cost a million visits per page (Claude review R18). Its range test
+     * then sees page 0 (the counter is not moved): the range is 0 to 0.
+     */
+    private class OnePage : PDFTextStripper() {
+        var target: PDPage? = null
+
+        init {
+            startPage = 0
+            endPage = 0
+        }
+
+        override fun processPages(pages: PDPageTree) {
+            target?.let { if (it.hasContents()) processPage(it) }
+        }
     }
 
     @Synchronized

@@ -103,6 +103,22 @@ object FileCaps {
      */
     const val TEXT_TO_PDF = 2 * MIB
     const val TEXT_TO_PDF_PAGES = 1_000
+
+    /**
+     * Pages PDF → TXT extracts, counted by walking the page tree — never the `/Count` a file declares: one page
+     * declaring 2 147 483 647 made as many empty pages in the output (Claude review R18). The viewer opens
+     * a document of 100 000 pages; about 4 h of extraction at the prototype's 165 ms a page. No 2.15.3
+     * counterpart (it refused a file over 100 MiB, `convert_screen.dart:223`).
+     */
+    const val PDF_TO_TEXT_PAGES = 100_000
+
+    /**
+     * Bytes of scratch files PdfBox may write for one document in the `:pdf` process — decoded streams once
+     * past its memory. Unbounded, the content stream of a 20 MB PDF that inflates to 20 GB filled the phone's
+     * storage during PDF → TXT (Claude review R18). Images → PDF holds up to [IMAGES_TO_PDF_TOTAL] of JPEG
+     * plus pixel streams: 1 GiB leaves room for both. No 2.15.3 counterpart.
+     */
+    const val PDF_SCRATCH = 1024 * MIB
     const val ZIP_CREATE_TOTAL = 200 * MIB
     const val ZIP_VIEWER = 500 * MIB
 

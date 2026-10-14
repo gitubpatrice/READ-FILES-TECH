@@ -93,7 +93,9 @@ class ConvertViewModel @Inject constructor(
     fun shared() = mutableState.update { it.copy(share = null) }
 
     private fun start(conversion: Conversion, paths: List<String>, password: String?) {
-        if (job?.isActive == true) return
+        // Until the last one has ENDED, not only been stopped: its `finally` would clear this one's progress and
+        // Stop button (Claude review R18). The screen still shows it working meanwhile.
+        if (job?.isCompleted == false) return
         mutableState.update { it.copy(working = conversion, progress = null) }
         job = viewModelScope.launch {
             try {

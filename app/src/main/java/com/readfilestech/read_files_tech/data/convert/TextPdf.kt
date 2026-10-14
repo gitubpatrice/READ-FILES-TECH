@@ -33,8 +33,8 @@ object TextPdf {
      */
     fun write(text: TextDocument, out: OutputStream, onRow: (Int) -> Unit = {}) {
         val document = PdfDocument()
+        val pages = TextPages(document)
         try {
-            val pages = TextPages(document)
             var row = 0
             while (row < text.rowCount) {
                 // A line of the file, its rows joined: the viewer cuts a long line into rows of 4 KB.
@@ -47,6 +47,9 @@ object TextPdf {
             pages.finish()
             document.writeTo(out)
         } finally {
+            // PdfDocument.close() throws on a page left open: a stop or a failure in mid-page would have been
+            // replaced by that IllegalStateException — the user's stop said as an error (Claude review R18).
+            pages.release()
             document.close()
         }
     }
@@ -101,8 +104,14 @@ private class TextPages(private val document: PdfDocument) {
         page = null
     }
 
-    private fun newPage(): PdfDocument.Page {
+    /** The page left open by a stop or a failure, finished: the document can then be closed. */
+    fun release() {
         page?.let(document::finishPage)
+        page = null
+    }
+
+    private fun newPage(): PdfDocument.Page {
+        release()
         if (count == FileCaps.TEXT_TO_PDF_PAGES) throw TooManyItemsException(FileCaps.TEXT_TO_PDF_PAGES)
         count++
         y = ImagePlacement.MARGIN
