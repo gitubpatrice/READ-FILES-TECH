@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.browse.RenameProposal
 import com.readfilestech.read_files_tech.data.sharing.KnownApps
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.data.storage.StorageVolumes
@@ -26,6 +27,8 @@ import javax.inject.Inject
  * hands files to other apps; this selects, and sends the changes to [FileOperations], which finishes
  * them even if the user leaves.
  */
+// One function per action of the explorer's bar and menus: the screen's surface, not a class doing too much.
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class ExplorerViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
@@ -82,6 +85,12 @@ class ExplorerViewModel @Inject constructor(
     fun moveToTrash(entries: List<FileEntry>) {
         clearSelection()
         operations.moveToTrash(entries.map(FileEntry::file))
+    }
+
+    /** The bulk rename's batch, its names checked by its preview; the explorer's operations finish it. */
+    fun renameAll(proposals: List<RenameProposal>) {
+        clearSelection()
+        operations.renameAll(proposals)
     }
 
     fun deleteForever(entries: List<FileEntry>) {

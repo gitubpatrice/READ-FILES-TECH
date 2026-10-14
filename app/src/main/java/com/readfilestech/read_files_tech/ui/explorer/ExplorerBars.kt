@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.SdStorage
@@ -128,6 +129,7 @@ fun SelectionTopBar(
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onMove: () -> Unit,
+    onRename: () -> Unit,
     onTrash: () -> Unit,
     onDeleteForever: () -> Unit,
 ) {
@@ -150,6 +152,9 @@ fun SelectionTopBar(
             }
             IconButton(onClick = onMove) {
                 Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = stringResource(R.string.action_move_to))
+            }
+            IconButton(onClick = onRename) {
+                Icon(Icons.Outlined.DriveFileRenameOutline, contentDescription = stringResource(R.string.action_bulk_rename))
             }
             DeleteButton(onTrash, onDeleteForever)
         },

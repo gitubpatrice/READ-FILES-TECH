@@ -128,6 +128,50 @@ object FileCaps {
      */
     const val PDF_SCRATCH = 1024 * MIB
     const val ZIP_CREATE_TOTAL = 200 * MIB
+
+    /**
+     * Bytes of a text file whose content a search reads — the global search and the content search, both
+     * the 2.15.3's 2 MiB (`global_search_service.dart:24`, `content_search_screen.dart:86`): a larger file is
+     * matched on its name only by the first, skipped and counted by the second.
+     */
+    const val SEARCH_CONTENT = 2 * MIB
+
+    /**
+     * Characters of a pattern the user types — a content search's, a bulk rename's: the 2.15.3's 200
+     * (`content_search_screen.dart:76`, `bulk_rename_screen.dart:73`). There it bounded no time (inventory
+     * F3); here RE2/J does, in a time linear in the text (SearchPattern).
+     */
+    const val PATTERN_CHARS = 200
+
+    /**
+     * Copies a pattern's counted repetitions make, all multiplied together (`a{10}` makes 10, `(a{10}){10}`
+     * 100): RE2/J expands them when it compiles, and `((a{1000}){1000}){1000}`, 24 characters, would be a
+     * billion instructions. RE2's own bound on one repetition. No 2.15.3 counterpart.
+     */
+    const val PATTERN_REPEATS = 1_000
+
+    /** Files a content search keeps with their matches; it stops there, as the global search does. The 2.15.3 kept all. */
+    const val CONTENT_SEARCH_FILES = 1_000
+
+    /** Matching lines kept of one file, all counted; the 2.15.3 kept every one, each whole. */
+    const val CONTENT_SEARCH_LINES = 100
+
+    /** Characters kept of a matching line, around its first match: the global search's snippet. */
+    const val CONTENT_SEARCH_LINE_CHARS = 200
+
+    /**
+     * Files the duplicate finder lists, each of [DUPLICATE_MIN_BYTES] at least, before it compares them: past
+     * it, the listing stops, and the screen says the folder was not listed whole. A file costs its path and
+     * two numbers, some 300 bytes: 60 MB here. No 2.15.3 counterpart: it kept every file of the folder
+     * (`duplicate_finder_service.dart:185`).
+     */
+    const val DUPLICATE_FILES = 200_000
+
+    /** Smaller files are not compared: the 2.15.3's `minSize` (`duplicate_finder_service.dart:105`). */
+    const val DUPLICATE_MIN_BYTES = 4096L
+
+    /** The largest files listed beside the duplicates: the 2.15.3's `topN`. */
+    const val DUPLICATE_LARGEST = 50
     const val ZIP_VIEWER = 500 * MIB
 
     /**

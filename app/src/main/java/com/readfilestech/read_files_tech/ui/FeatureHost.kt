@@ -8,6 +8,9 @@ import com.readfilestech.read_files_tech.ui.tools.csveditor.CsvEditorScreen
 import com.readfilestech.read_files_tech.ui.tools.diff.DiffScreen
 import com.readfilestech.read_files_tech.ui.tools.editor.CodeEditorScreen
 import com.readfilestech.read_files_tech.ui.tools.encode.EncodeScreen
+import com.readfilestech.read_files_tech.ui.tools.files.ContentSearchScreen
+import com.readfilestech.read_files_tech.ui.tools.files.DuplicatesScreen
+import com.readfilestech.read_files_tech.ui.tools.files.ZipCreatorScreen
 import com.readfilestech.read_files_tech.ui.tools.format.FormatScreen
 import com.readfilestech.read_files_tech.ui.tools.hash.HashScreen
 import com.readfilestech.read_files_tech.ui.tools.images.CompressScreen
@@ -29,6 +32,9 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.ENCODE -> EncodeScreen(onBack)
         Feature.FORMAT -> FormatScreen(picked, onNavigate, onBack)
         Feature.DIFF -> DiffScreen(picked, onNavigate, onBack)
+        Feature.ZIP_CREATOR -> ZipCreatorScreen(picked, onNavigate, onBack)
+        Feature.DUPLICATES -> DuplicatesScreen(picked, onNavigate, onBack)
+        Feature.CONTENT_SEARCH -> ContentSearchScreen(picked, onNavigate, onBack)
         Feature.COLOR_PICKER -> ColorPickerScreen(onBack)
         Feature.CONVERT -> ConvertScreen(picked, onNavigate, onBack)
         Feature.COMPRESS -> CompressScreen(picked, onNavigate, onBack)

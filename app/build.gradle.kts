@@ -348,6 +348,9 @@ dependencies {
     implementation(libs.commonmark.ext.gfm.tables)
     implementation(libs.commonmark.ext.gfm.strikethrough)
 
+    // The patterns the user types (content search, bulk rename): matched in linear time, never backtracking.
+    implementation(libs.re2j)
+
     // The PDF viewer's password and outline (docs D-005), in the `:pdf` process only (D-029).
     implementation(libs.pdfbox.android)
 

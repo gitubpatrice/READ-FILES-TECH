@@ -2,7 +2,9 @@ package com.readfilestech.read_files_tech.ui.common
 
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.BatchResult
+import com.readfilestech.read_files_tech.data.browse.BulkRename
 import com.readfilestech.read_files_tech.data.browse.FileActions
+import com.readfilestech.read_files_tech.data.browse.RenameProposal
 import com.readfilestech.read_files_tech.data.trash.TrashEntry
 import com.readfilestech.read_files_tech.data.trash.TrashStore
 import kotlinx.coroutines.CoroutineDispatcher
@@ -51,8 +53,27 @@ class FileOperations @Inject constructor(
 
     fun rename(target: File, newName: String) = single(R.string.error_rename) { actions.rename(target, newName) }
 
-    /** Soft deletion, with "Undo" on the message: no confirmation, it can be taken back (2.15.x). */
-    fun moveToTrash(targets: List<File>) = launch {
+    /**
+     * The bulk rename's batch, its names checked beforehand ([BulkRename.preview]): renamed one by one by
+     * [FileActions.rename], a failure not stopping the others. The message says how many were renamed, and
+     * how many were not, naming the first with its reason.
+     */
+    fun renameAll(proposals: List<RenameProposal>) = launch {
+        val report = BulkRename.apply(proposals, actions::rename)
+        val done = UiText.Plural(R.plurals.bulk_rename_done, report.renamed)
+        val text = report.failures.firstOrNull()?.let { (file, error) ->
+            val failed = report.failures.size
+            val notRenamed = UiText.Plural(R.plurals.bulk_rename_not_renamed, failed, listOf(failed, file.name, IoErrors.reasonOf(error)))
+            UiText.Joined(done, notRenamed, R.string.joined_dot)
+        } ?: done
+        messages.post(UserMessage(text, isError = report.failures.isNotEmpty()))
+    }
+
+    /**
+     * Soft deletion, with "Undo" on the message: no confirmation, it can be taken back (2.15.x).
+     * [onTrashed] gets the paths that did go to the trash (the duplicates screen drops them from its lists).
+     */
+    fun moveToTrash(targets: List<File>, onTrashed: (List<String>) -> Unit = {}) = launch {
         val entries = mutableListOf<TrashEntry>()
         var failed = 0
         var lastError: IOException? = null
@@ -64,6 +85,7 @@ class FileOperations @Inject constructor(
                 lastError = e
             }
         }
+        onTrashed(entries.map(TrashEntry::originalPath))
         val text = when {
             targets.size == 1 && failed == 0 -> uiText(R.string.trashed_one, targets.single().name)
             targets.size == 1 -> uiText(R.string.error_trash, IoErrors.reasonOf(requireNotNull(lastError)))

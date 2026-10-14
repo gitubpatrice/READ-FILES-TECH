@@ -2,7 +2,10 @@ package com.readfilestech.read_files_tech.ui.common
 
 import com.google.common.truth.Truth.assertThat
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.browse.BulkRename
 import com.readfilestech.read_files_tech.data.browse.FileActions
+import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.browse.RenameRule
 import com.readfilestech.read_files_tech.data.files.SharedStorageNames
 import com.readfilestech.read_files_tech.data.trash.TrashStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -95,6 +98,46 @@ class FileOperationsTest {
         posted { requireNotNull(said.action).run() }
         assertThat(a.readText()).isEqualTo("a")
         assertThat(b.readText()).isEqualTo("b")
+    }
+
+    /** The duplicates screen drops from its lists what did go, not what was asked. */
+    @Test
+    fun `the trash hands back the paths that went`() = runTest(dispatcher) {
+        val a = File(work, "a.txt").apply { writeText("a") }
+        var went: List<String>? = null
+        posted { it.moveToTrash(listOf(a, File(work, "absent"))) { paths -> went = paths } }
+        assertThat(went).containsExactly(a.absolutePath)
+    }
+
+    @Test
+    fun `a bulk rename says how many were renamed, and names the first one that was not`() = runTest(dispatcher) {
+        fun entry(name: String) = FileEntry(File(work, name).path, name, isDirectory = false, size = 1, modifiedMs = 0, isSymlink = false)
+        File(work, "a.txt").writeText("a")
+        File(work, "b.txt").writeText("b")
+        val proposals = BulkRename.preview(listOf(entry("a.txt"), entry("b.txt")), RenameRule.Affixes("new-", ""), true, {
+            emptySet()
+        })
+        File(work, "b.txt").delete()
+        val said = posted { it.renameAll(proposals) }.single()
+        assertThat(said.isError).isTrue()
+        assertThat(said.text).isEqualTo(
+            UiText.Joined(
+                UiText.Plural(R.plurals.bulk_rename_done, 1),
+                UiText.Plural(R.plurals.bulk_rename_not_renamed, 1, listOf(1, "b.txt", UiText.Res(R.string.error_not_found))),
+                R.string.joined_dot,
+            ),
+        )
+        assertThat(work.list()!!.toList()).containsExactly("new-a.txt")
+        assertThat(
+            posted {
+                it.renameAll(
+                    BulkRename.preview(listOf(entry("new-a.txt")), RenameRule.Affixes("", "-2"), true, {
+                        emptySet()
+                    })
+                )
+            }.single()
+        )
+            .isEqualTo(UserMessage(UiText.Plural(R.plurals.bulk_rename_done, 1)))
     }
 
     @Test

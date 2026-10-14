@@ -83,6 +83,13 @@ class FileSearchTest {
         assertThat(names(SearchQuery(root, content = "contrat"))).containsExactly("latin.txt")
     }
 
+    /** D35, whole: replacing the bad bytes found "contrat", never "signé" — the accented words were lost. */
+    @Test
+    fun `an accented word of a Latin-1 text is found`() {
+        File(root, "latin.txt").writeBytes("contrat signé".toByteArray(Charsets.ISO_8859_1))
+        assertThat(names(SearchQuery(root, content = "SIGNÉ"))).containsExactly("latin.txt")
+    }
+
     @Test
     fun `content beyond the size cap is not read, the name can still match`() {
         file("big.txt", "needle " + "x".repeat(100))

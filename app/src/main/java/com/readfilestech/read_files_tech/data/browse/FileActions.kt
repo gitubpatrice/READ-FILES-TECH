@@ -154,8 +154,8 @@ class FileActions @Inject constructor() {
     private fun isSameFolder(a: File?, b: File): Boolean =
         a != null && runCatching { Files.isSameFile(a.toPath(), b.toPath()) }.getOrDefault(false)
 
-    private companion object {
-        /** NAME_MAX of ext4, f2fs and FUSE. */
+    companion object {
+        /** NAME_MAX of ext4, f2fs and FUSE, in UTF-8 bytes; the bulk rename refuses a longer name before renaming. */
         const val MAX_NAME_BYTES = 255
     }
 }

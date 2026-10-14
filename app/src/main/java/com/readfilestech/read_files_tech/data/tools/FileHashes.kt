@@ -36,8 +36,9 @@ object FileHashes {
         }
         return ALGORITHMS.zip(digests) { name, digest -> FileHash(name, digest.digest().toHex()) }
     }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it.toInt() and BYTE) }
-
-    private const val BYTE = 0xFF
 }
+
+/** A digest in lower-case hex, as the hash tool and the duplicate finder show and compare them. */
+internal fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it.toInt() and BYTE) }
+
+private const val BYTE = 0xFF

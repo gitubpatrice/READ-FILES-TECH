@@ -60,6 +60,9 @@ private sealed interface ExplorerDialog {
     data class Info(val entry: FileEntry) : ExplorerDialog
 
     data class Preview(val entry: FileEntry) : ExplorerDialog
+
+    /** The selection's bulk rename (`FES:728`), over the explorer. */
+    data class BulkRename(val entries: List<FileEntry>) : ExplorerDialog
 }
 
 /**
@@ -173,6 +176,7 @@ fun ExplorerScreen(
                     onShare = { launching.share(context, state.selectedEntries) },
                     onCopy = { transfer(state.selectedEntries, move = false) },
                     onMove = { transfer(state.selectedEntries, move = true) },
+                    onRename = { dialog = ExplorerDialog.BulkRename(state.selectedEntries) },
                     onTrash = { viewModel.moveToTrash(state.selectedEntries) },
                     onDeleteForever = { dialog = ExplorerDialog.DeleteForever(state.selectedEntries) },
                 )
@@ -299,6 +303,10 @@ fun ExplorerScreen(
         is ExplorerDialog.Preview -> PreviewSheet(shown.entry, onOpen = {
             dialog = null
             open(shown.entry)
+        }, onDismiss = { dialog = null })
+        is ExplorerDialog.BulkRename -> BulkRenameDialog(shown.entries, onRename = {
+            viewModel.renameAll(it)
+            dialog = null
         }, onDismiss = { dialog = null })
     }
 }

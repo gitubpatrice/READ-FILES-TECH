@@ -720,6 +720,179 @@
         <item quantity="other">Trop long pour être copié (plus de %1$,d caractères).</item>
     </plurals>
 
+    <!-- Créer un ZIP, Doublons, Recherche dans les fichiers, Renommage en masse (phase 5) -->
+    <string name="zip_intro">Réunit les fichiers choisis dans une archive ZIP, enregistrée dans Conversions</string>
+    <string name="zip_pick_title">Fichiers à compresser</string>
+    <string name="zip_add_files">Ajouter des fichiers</string>
+    <plurals name="zip_files_count">
+        <item quantity="one">%1$d fichier · %2$s</item>
+        <item quantity="many">%1$d fichiers · %2$s</item>
+        <item quantity="other">%1$d fichiers · %2$s</item>
+    </plurals>
+    <string name="zip_remove">Retirer de la liste</string>
+    <plurals name="zip_create">
+        <item quantity="one">Créer le ZIP (%d fichier)</item>
+        <item quantity="many">Créer le ZIP (%d fichiers)</item>
+        <item quantity="other">Créer le ZIP (%d fichiers)</item>
+    </plurals>
+    <string name="zip_working">Compression… %1$d %%</string>
+    <string name="zip_saved_title">ZIP créé</string>
+    <plurals name="zip_saved_body">
+        <item quantity="one">%d fichier, sous son propre nom. Il est ici :</item>
+        <item quantity="many">%d fichiers, chacun sous son propre nom. Il est ici :</item>
+        <item quantity="other">%d fichiers, chacun sous son propre nom. Il est ici :</item>
+    </plurals>
+    <string name="zip_too_large">Les fichiers choisis sont trop volumineux ensemble (plus de %1$,d %2$s).</string>
+    <string name="zip_failed">Impossible de créer le ZIP : %1$s</string>
+    <string name="duplicates_intro">Trouve les fichiers de même contenu dans un dossier, et ses plus gros fichiers. Ce que vous retirez va à la corbeille.</string>
+    <string name="duplicates_choose_folder">Choisir le dossier à analyser</string>
+    <string name="duplicates_scan">Analyser</string>
+    <string name="duplicates_tab_duplicates">Doublons</string>
+    <string name="duplicates_tab_largest">Plus gros</string>
+    <plurals name="duplicates_listing">
+        <item quantity="one">Inventaire : %d fichier</item>
+        <item quantity="many">Inventaire : %d fichiers</item>
+        <item quantity="other">Inventaire : %d fichiers</item>
+    </plurals>
+    <string name="duplicates_sampling">Comparaison des débuts et des fins : %1$d sur %2$d</string>
+    <string name="duplicates_reading">Comparaison des contenus : %1$d sur %2$d</string>
+    <plurals name="duplicates_files_compared">
+        <item quantity="one">%d fichier comparé</item>
+        <item quantity="many">%d fichiers comparés</item>
+        <item quantity="other">%d fichiers comparés</item>
+    </plurals>
+    <plurals name="duplicates_groups">
+        <item quantity="one">%d groupe de doublons</item>
+        <item quantity="many">%d groupes de doublons</item>
+        <item quantity="other">%d groupes de doublons</item>
+    </plurals>
+    <string name="duplicates_wasted">%1$s gaspillés</string>
+    <plurals name="walk_unreadable_folders">
+        <item quantity="one">%d dossier n\'a pas pu être lu</item>
+        <item quantity="many">%d dossiers n\'ont pas pu être lus</item>
+        <item quantity="other">%d dossiers n\'ont pas pu être lus</item>
+    </plurals>
+    <plurals name="duplicates_unreadable_files">
+        <item quantity="one">%d fichier n\'a pas pu être lu</item>
+        <item quantity="many">%d fichiers n\'ont pas pu être lus</item>
+        <item quantity="other">%d fichiers n\'ont pas pu être lus</item>
+    </plurals>
+    <plurals name="duplicates_truncated">
+        <item quantity="one">Seuls les %1$,d premiers fichiers ont été comparés.</item>
+        <item quantity="many">Seuls les %1$,d premiers fichiers ont été comparés.</item>
+        <item quantity="other">Seuls les %1$,d premiers fichiers ont été comparés.</item>
+    </plurals>
+    <string name="duplicates_none">Aucun doublon trouvé</string>
+    <string name="duplicates_no_files">Aucun fichier de 4 Ko ou plus dans ce dossier</string>
+    <plurals name="duplicates_group">
+        <item quantity="one">%1$d copie · %2$s chacune · %3$s gaspillés</item>
+        <item quantity="many">%1$d copies · %2$s chacune · %3$s gaspillés</item>
+        <item quantity="other">%1$d copies · %2$s chacune · %3$s gaspillés</item>
+    </plurals>
+    <string name="duplicates_keep_one">Une copie de chaque groupe reste toujours : la dernière ne peut pas être cochée.</string>
+    <plurals name="duplicates_trash">
+        <item quantity="one">Mettre %d à la corbeille</item>
+        <item quantity="many">Mettre %d à la corbeille</item>
+        <item quantity="other">Mettre %d à la corbeille</item>
+    </plurals>
+    <plurals name="duplicates_kept_back">
+        <item quantity="one">%d fichier non déplacé : lui, ou la copie gardée, a changé depuis l\'analyse.</item>
+        <item quantity="many">%d fichiers non déplacés : eux, ou la copie gardée, ont changé depuis l\'analyse.</item>
+        <item quantity="other">%d fichiers non déplacés : eux, ou la copie gardée, ont changé depuis l\'analyse.</item>
+    </plurals>
+    <string name="duplicates_not_found">Ce dossier n\'existe plus.</string>
+    <string name="duplicates_failed">Impossible d\'analyser ce dossier : %1$s</string>
+    <string name="content_search_choose_folder">Choisir un dossier…</string>
+    <string name="content_search_hint">Mot, phrase ou regex…</string>
+    <string name="content_search_match_case">Respecter la casse</string>
+    <string name="content_search_regex">Expression régulière</string>
+    <string name="content_search_needs_text">Saisissez ce qu\'il faut chercher</string>
+    <plurals name="content_search_lines">
+        <item quantity="one">%d ligne trouvée</item>
+        <item quantity="many">%d lignes trouvées</item>
+        <item quantity="other">%d lignes trouvées</item>
+    </plurals>
+    <plurals name="content_search_files">
+        <item quantity="one">%d fichier</item>
+        <item quantity="many">%d fichiers</item>
+        <item quantity="other">%d fichiers</item>
+    </plurals>
+    <string name="content_search_summary">%1$s dans %2$s</string>
+    <plurals name="content_search_more_lines">
+        <item quantity="one">%d autre ligne non affichée</item>
+        <item quantity="many">%d autres lignes non affichées</item>
+        <item quantity="other">%d autres lignes non affichées</item>
+    </plurals>
+    <plurals name="content_search_too_large">
+        <item quantity="one">%1$d fichier de plus de %2$d Mo n\'a pas été lu</item>
+        <item quantity="many">%1$d fichiers de plus de %2$d Mo n\'ont pas été lus</item>
+        <item quantity="other">%1$d fichiers de plus de %2$d Mo n\'ont pas été lus</item>
+    </plurals>
+    <plurals name="content_search_unreadable">
+        <item quantity="one">%d fichier n\'a pas pu être lu</item>
+        <item quantity="many">%d fichiers n\'ont pas pu être lus</item>
+        <item quantity="other">%d fichiers n\'ont pas pu être lus</item>
+    </plurals>
+    <plurals name="content_search_full">
+        <item quantity="one">La recherche s\'est arrêtée à %1$,d fichier trouvé.</item>
+        <item quantity="many">La recherche s\'est arrêtée à %1$,d fichiers trouvés.</item>
+        <item quantity="other">La recherche s\'est arrêtée à %1$,d fichiers trouvés.</item>
+    </plurals>
+    <string name="content_search_choose_first">Choisissez un dossier pour commencer</string>
+    <string name="content_search_enter">Saisissez un mot et appuyez sur Rechercher</string>
+    <string name="content_search_nothing">Aucun résultat</string>
+    <plurals name="pattern_too_long">
+        <item quantity="one">Le motif est trop long : %1$d caractère au plus.</item>
+        <item quantity="many">Le motif est trop long : %1$d caractères au plus.</item>
+        <item quantity="other">Le motif est trop long : %1$d caractères au plus.</item>
+    </plurals>
+    <string name="pattern_invalid">Ce motif n\'est pas valide (les assertions avant/arrière et les références arrière ne sont pas prises en charge).</string>
+    <plurals name="pattern_too_many_repeats">
+        <item quantity="one">Ce motif répète trop : ses compteurs {n} font plus de %1$,d copie ensemble.</item>
+        <item quantity="many">Ce motif répète trop : ses compteurs {n} font plus de %1$,d copies ensemble.</item>
+        <item quantity="other">Ce motif répète trop : ses compteurs {n} font plus de %1$,d copies ensemble.</item>
+    </plurals>
+    <string name="pattern_bad_replacement">Le remplacement nomme un groupe que le motif n\'a pas.</string>
+    <string name="pattern_too_slow">Ce motif prend trop de temps sur ces noms.</string>
+    <string name="action_bulk_rename">Renommer la sélection</string>
+    <plurals name="bulk_rename_title">
+        <item quantity="one">Renommer %d élément</item>
+        <item quantity="many">Renommer %d éléments</item>
+        <item quantity="other">Renommer %d éléments</item>
+    </plurals>
+    <string name="bulk_rename_numbering">Numéroter</string>
+    <string name="bulk_rename_affixes">Préfixe</string>
+    <string name="bulk_rename_replace">Regex</string>
+    <string name="bulk_rename_base">Nom de base</string>
+    <string name="bulk_rename_base_hint">ex. : Photo</string>
+    <string name="bulk_rename_base_default">Photo</string>
+    <string name="bulk_rename_start">Début</string>
+    <string name="bulk_rename_digits">Chiffres (3 → 001)</string>
+    <string name="bulk_rename_prefix">Préfixe</string>
+    <string name="bulk_rename_suffix">Suffixe (avant l\'extension)</string>
+    <string name="bulk_rename_pattern">Motif (regex)</string>
+    <string name="bulk_rename_pattern_hint">ex. : IMG_(\\d+)</string>
+    <string name="bulk_rename_replacement">Remplacement</string>
+    <string name="bulk_rename_replacement_hint">ex. : Photo_$1</string>
+    <string name="bulk_rename_keep_extension">Conserver l\'extension</string>
+    <string name="bulk_rename_duplicate">donné deux fois dans le lot</string>
+    <string name="bulk_rename_unchanged">inchangé</string>
+    <plurals name="bulk_rename_refused">
+        <item quantity="one">%d nom refusé : rien ne sera renommé.</item>
+        <item quantity="many">%d noms refusés : rien ne sera renommé.</item>
+        <item quantity="other">%d noms refusés : rien ne sera renommé.</item>
+    </plurals>
+    <plurals name="bulk_rename_done">
+        <item quantity="one">%d renommé</item>
+        <item quantity="many">%d renommés</item>
+        <item quantity="other">%d renommés</item>
+    </plurals>
+    <plurals name="bulk_rename_not_renamed">
+        <item quantity="one">%1$d non renommé : « %2$s », %3$s</item>
+        <item quantity="many">%1$d non renommés, le premier « %2$s » : %3$s</item>
+        <item quantity="other">%1$d non renommés, le premier « %2$s » : %3$s</item>
+    </plurals>
+
     <!-- La visionneuse PDF -->
     <string name="pdf_contents">Sommaire</string>
     <string name="pdf_contents_untitled">(sans titre)</string>
