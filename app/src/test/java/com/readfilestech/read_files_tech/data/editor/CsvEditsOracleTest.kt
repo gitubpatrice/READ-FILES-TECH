@@ -28,6 +28,9 @@ class CsvEditsOracleTest {
             val same = File(out, "${input.name}.same").apply { outputStream().use(edits::writeTo) }
             assertThat(same.readBytes()).isEqualTo(input.readBytes())
             if (edits.rowCount < 2) return@map "${input.name}\t-\t-\tEMPTY"
+            if (edits.readOnly != null) return@map "${input.name}\t-\t-\tREAD_ONLY"
+            // A file that does not say its encoding: the one it is read in, Windows-1252 for one of ASCII.
+            edits.chosenEncoding = edits.encodingChoices.lastOrNull()
             val position = minOf(2, edits.rowCount - 1)
             val column = minOf(1, edits.columnCount - 1)
             val change = edits.set(position, column, VALUE)

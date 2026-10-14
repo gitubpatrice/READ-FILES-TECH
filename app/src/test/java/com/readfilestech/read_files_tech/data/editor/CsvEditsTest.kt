@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
+import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -102,17 +103,18 @@ class CsvEditsTest {
         val edits = edits("a,b\n-5,=A1\n+33612,@x\n")
         assertThat(edits.set(1, 1, "=A1")).isEqualTo(CellChange.UNCHANGED)
         assertThat(edits.set(2, 1, "=HYPERLINK(1)")).isEqualTo(CellChange.CHANGED)
-        assertThat(edits.cellForEditing(2, 1)).isEqualTo("'=HYPERLINK(1)")
+        assertThat(edits.editable(2, 1)).isEqualTo(CellText.Editable("'=HYPERLINK(1)"))
         assertThat(savedText(edits)).isEqualTo("a,b\n-5,=A1\n+33612,'=HYPERLINK(1)\n")
     }
 
     @Test
     fun `a Windows-1252 file stays in Windows-1252, and refuses what it cannot hold`() {
         val edits = edits("Ville;Montant\r\nÉvry;3\r\n".toByteArray(cp1252))
+        edits.chosenEncoding = TextEncoding.WINDOWS_1252
         assertThat(edits.set(1, 0, "Évry €")).isEqualTo(CellChange.CHANGED)
         assertThat(saved(edits)).isEqualTo("Ville;Montant\r\nÉvry €;3\r\n".toByteArray(cp1252))
         assertThat(edits.set(1, 1, "東京")).isEqualTo(CellChange.UNWRITABLE)
-        assertThat(edits.cellForEditing(1, 1)).isEqualTo("3")
+        assertThat(edits.editable(1, 1)).isEqualTo(CellText.Editable("3"))
     }
 
     @Test
@@ -160,7 +162,7 @@ class CsvEditsTest {
         val text = "h1,h2,h3\n1,2,3\nshort\n"
         val edits = edits(text)
         assertThat(edits.cells(2, 0, 3, 100)).containsExactly("short", "", "").inOrder()
-        assertThat(edits.cellForEditing(2, 2)).isEqualTo("")
+        assertThat(edits.editable(2, 2)).isEqualTo(CellText.Editable(""))
         edits.insertColumn(3)
         assertThat(savedText(edits)).isEqualTo("h1,h2,h3,\n1,2,3\nshort\n")
         edits.deleteColumn(3)
@@ -187,7 +189,7 @@ class CsvEditsTest {
         val long = "x".repeat(FileCaps.CSV_CELL_CHARS + 1)
         val text = "a,b\n$long,1\n"
         val edits = edits(text)
-        assertThat(edits.cellForEditing(1, 0)).isNull()
+        assertThat(edits.editable(1, 0)).isEqualTo(CellText.TooLong)
         assertThat(edits.set(1, 0, "y")).isEqualTo(CellChange.TOO_LONG)
         assertThat(edits.set(1, 1, "z".repeat(FileCaps.CSV_CELL_CHARS + 1))).isEqualTo(CellChange.TOO_LONG)
         edits.set(1, 1, "2")
@@ -224,6 +226,111 @@ class CsvEditsTest {
             assertThat(edits.canAddColumn).isFalse()
             assertThat(savedText(edits)).isEqualTo(text)
         }
+    }
+
+    /** Claude review R20: with fields past the cap, a column deleted then one added shifted them under other columns. */
+    @Test
+    fun `the fields past the column cap stay under their columns`() {
+        val cap = FileCaps.CSV_COLUMNS
+        val file = (0..cap).joinToString(",") { "h$it" } + "\n" + (0..cap).joinToString(",") { "d$it" } + "\n"
+        val edits = edits(file)
+        edits.deleteColumn(0)
+        edits.insertColumn(edits.columnCount)
+        val header = (1 until cap).joinToString(",") { "h$it" } + ",,h$cap"
+        val row = (1 until cap).joinToString(",") { "d$it" } + ",,d$cap"
+        assertThat(savedText(edits)).isEqualTo("$header\n$row\n")
+    }
+
+    /** The same, every column of the file deleted and two added: the fields past the cap still after both. */
+    @Test
+    fun `the fields past the column cap stay after the columns added, every other deleted`() {
+        val cap = FileCaps.CSV_COLUMNS
+        val file = (0..cap).joinToString(",") { "h$it" } + "\n" + (0..cap).joinToString(",") { "d$it" } + "\n"
+        val bare = edits(file)
+        repeat(2) {
+            bare.deleteColumn(bare.columnCount - 1)
+            bare.insertColumn(0)
+        }
+        while (bare.columnCount > 2) bare.deleteColumn(2)
+        assertThat(savedText(bare)).isEqualTo(",,h$cap\n,,d$cap\n")
+    }
+
+    /** Claude review R20: UTF-16 without a byte order mark read a byte at a time — an edit shifted the rest of the file. */
+    @Test
+    fun `a text holding NUL bytes is shown, not edited`() {
+        val bytes = "a,b\r\n1,2\r\n".toByteArray(Charsets.UTF_16LE)
+        val edits = edits(bytes)
+        assertThat(edits.readOnly).isEqualTo(ReadOnly.NUL_BYTES)
+        assertThat(edits.canAddRow).isFalse()
+        assertThat(edits.canDeleteColumn).isFalse()
+        assertThat(edits.set(1, 0, "x")).isEqualTo(CellChange.READ_ONLY)
+        assertThat(saved(edits)).isEqualTo(bytes)
+    }
+
+    /** Claude review R20: an ASCII file got UTF-8 that Excel reads as `HÃ©lÃ¨ne`; the user chooses, once. */
+    @Test
+    fun `a file that does not say its encoding asks it at the first accent`() {
+        val text = "a;b\r\n1;2\r\n"
+        val ascii = edits(text)
+        assertThat(ascii.encodingStated).isFalse()
+        assertThat(ascii.encodingChoices).containsExactly(TextEncoding.UTF_8, TextEncoding.WINDOWS_1252).inOrder()
+        assertThat(ascii.set(1, 0, "x")).isEqualTo(CellChange.CHANGED)
+        assertThat(ascii.set(1, 1, "Hélène")).isEqualTo(CellChange.ENCODING_UNCHOSEN)
+        ascii.chosenEncoding = TextEncoding.WINDOWS_1252
+        assertThat(ascii.set(1, 1, "Hélène")).isEqualTo(CellChange.CHANGED)
+        assertThat(saved(ascii)).isEqualTo("a;b\r\nx;Hélène\r\n".toByteArray(cp1252))
+        val utf8 = edits(text)
+        utf8.chosenEncoding = TextEncoding.UTF_8
+        utf8.set(1, 1, "Hélène")
+        assertThat(savedText(utf8)).isEqualTo("a;b\r\n1;Hélène\r\n")
+        val windows = edits("a;b\r\nÉvry;2\r\n".toByteArray(cp1252))
+        assertThat(windows.encodingChoices).containsExactly(TextEncoding.WINDOWS_1252)
+        assertThrows<IllegalArgumentException> { windows.chosenEncoding = TextEncoding.UTF_8 }
+        val stated = edits("a;b\r\nÉvry;2\r\n")
+        assertThat(stated.encodingStated).isTrue()
+        assertThat(stated.set(1, 1, "Hélène")).isEqualTo(CellChange.CHANGED)
+    }
+
+    /** Claude review R20: an MS-DOS or Mac file read as Windows-1252 — a typed `é` would read `Ú` or `È` there. */
+    @Test
+    fun `a file of an MS-DOS or Mac code page is shown, not edited`() {
+        assertThat(edits(File("../tools/corpus/csv-editor/excel-msdos.csv").readBytes()).readOnly).isEqualTo(ReadOnly.DOS_CODE_PAGE)
+        assertThat(edits(File("../tools/corpus/csv-editor/excel-mac-cr.csv").readBytes()).readOnly).isEqualTo(ReadOnly.DOS_CODE_PAGE)
+        assertThat(edits(File("../tools/corpus/csv/excel-csv-1252.csv").readBytes()).readOnly).isNull()
+        assertThat(edits("Nom;Note\r\nl’homme;cœur\r\n".toByteArray(cp1252)).readOnly).isNull()
+    }
+
+    /** Claude review R20: U+FFFD shown for bytes the encoding lacks was written back in their place. */
+    @Test
+    fun `a cell whose bytes would not come back is not edited`() {
+        val odd = edits(utf16LeBom + "a;b\r\n1;2".toByteArray(Charsets.UTF_16LE) + byteArrayOf(0x41))
+        assertThat(odd.editable(1, 1)).isEqualTo(CellText.Undecodable)
+        assertThat(odd.set(1, 1, "3")).isEqualTo(CellChange.UNDECODABLE)
+        assertThat(odd.editable(1, 0)).isEqualTo(CellText.Editable("1"))
+        val windows = edits("a;b\r\nÉ;".toByteArray(cp1252) + byteArrayOf(0x81.toByte()) + "\r\n".toByteArray())
+        assertThat(windows.editable(1, 1)).isEqualTo(CellText.Undecodable)
+        val cut = edits("a,é\n1,".toByteArray() + byteArrayOf(0xC3.toByte()))
+        assertThat(cut.editable(1, 1)).isEqualTo(CellText.Undecodable)
+    }
+
+    /** Claude review R20: a row writing nothing before its line break is an empty line, which no reader counts. */
+    @Test
+    fun `an empty row of one column is written as an empty field`() {
+        val edits = edits("h\nx\ny\n")
+        edits.set(1, 0, "")
+        edits.insertRow(2)
+        assertThat(savedText(edits)).isEqualTo("h\n\"\"\ny\n\"\"\n")
+    }
+
+    /** Claude review R20: without `sep=`, an unquoted `,` typed in a `;` file could tip the next reading. */
+    @Test
+    fun `a typed text holding a separator is quoted when the file does not name its own`() {
+        val guessed = edits("Nom;Ville\r\nZoé;Paris\r\n")
+        guessed.set(0, 0, "Nom, prénom")
+        assertThat(savedText(guessed)).isEqualTo("\"Nom, prénom\";Ville\r\nZoé;Paris\r\n")
+        val named = edits("sep=;\r\nNom;Ville\r\nZoé;Paris\r\n")
+        named.set(0, 0, "Nom, prénom")
+        assertThat(savedText(named)).isEqualTo("sep=;\r\nNom, prénom;Ville\r\nZoé;Paris\r\n")
     }
 
     @Test

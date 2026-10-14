@@ -25,7 +25,7 @@ class CsvSavingTest {
         val file = File(dir, "data.csv").apply { writeText("a;b\r\n1;2\r\n") }
         val (edits, stamp) = open(file)
         edits.set(1, 1, "3")
-        CsvSaving.save(file, edits, stamp, history)
+        CsvSaving.save(file, stamp, history, edits::writeTo)
         assertThat(file.readText()).isEqualTo("a;b\r\n1;3\r\n")
         val versions = history.versions(file.absolutePath)
         assertThat(versions).hasSize(1)
@@ -40,11 +40,27 @@ class CsvSavingTest {
         val (edits, stamp) = open(file)
         edits.set(1, 0, "9")
         file.writeText("a,b\n1,2\n3,4\n")
-        assertThrows<FileChangedException> { CsvSaving.save(file, edits, stamp, history) }
+        assertThrows<FileChangedException> { CsvSaving.save(file, stamp, history, edits::writeTo) }
         assertThat(file.readText()).isEqualTo("a,b\n1,2\n3,4\n")
         assertThat(history.versions(file.absolutePath)).isEmpty()
         file.delete()
-        assertThrows<FileChangedException> { CsvSaving.save(file, edits, stamp, history) }
+        assertThrows<FileChangedException> { CsvSaving.save(file, stamp, history, edits::writeTo) }
         assertThat(file.exists()).isFalse()
+    }
+
+    /** Claude review R20: the stamp was read before the copy and the writing only, seconds before the rename. */
+    @Test
+    fun `a file written by another app during the save is not replaced`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        assertThrows<FileChangedException> {
+            CsvSaving.save(file, stamp, history) { out ->
+                edits.writeTo(out)
+                file.writeText("a,b\n1,2\nfrom another app\n")
+            }
+        }
+        assertThat(file.readText()).isEqualTo("a,b\n1,2\nfrom another app\n")
+        assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
     }
 }

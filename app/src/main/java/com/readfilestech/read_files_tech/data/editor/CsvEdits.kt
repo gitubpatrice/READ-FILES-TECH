@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.editor
 
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.text.CsvRows
 import com.readfilestech.read_files_tech.data.text.CsvSafe
 import com.readfilestech.read_files_tech.data.text.CsvScanner
 import com.readfilestech.read_files_tech.data.text.quotedField
@@ -10,6 +11,7 @@ import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import java.io.OutputStream
 import java.nio.CharBuffer
+import java.nio.charset.CharacterCodingException
 
 /** What became of a cell the user typed ([CsvEdits.set]). */
 enum class CellChange {
@@ -19,11 +21,40 @@ enum class CellChange {
     /** The cell held it already: nothing to save. */
     UNCHANGED,
 
-    /** A character of it has no place in the file's encoding (Windows-1252): the cell is left as it was. */
+    /** A character of it has no place in the encoding the file is saved in: the cell is left as it was. */
     UNWRITABLE,
 
     /** Longer than a cell may be ([FileCaps.CSV_CELL_CHARS]), or the cell's text in the file is: writing it back would cut it. */
     TOO_LONG,
+
+    /** The cell's bytes do not decode to a text that encodes back to them: changing it would change bytes never shown. */
+    UNDECODABLE,
+
+    /** A character outside ASCII in a file that does not say its encoding: [CsvEdits.chosenEncoding] first. */
+    ENCODING_UNCHOSEN,
+
+    /** The file is shown, not edited ([CsvEdits.readOnly]). */
+    READ_ONLY,
+}
+
+/** A cell as the editor can take it ([CsvEdits.editable]): its text, or why it cannot be edited. */
+sealed interface CellText {
+    data class Editable(val text: String) : CellText
+
+    /** Longer than a cell may be ([FileCaps.CSV_CELL_CHARS]): rewriting it would cut it. */
+    data object TooLong : CellText
+
+    /** Its bytes do not decode to a text that encodes back to them (a byte the encoding lacks, a cut character). */
+    data object Undecodable : CellText
+}
+
+/** Why a file is shown, not edited (Claude review R20). */
+enum class ReadOnly {
+    /** A NUL byte in a text of one byte per character: UTF-16 without a byte order mark, or not a text. */
+    NUL_BYTES,
+
+    /** Read as Windows-1252, but its accents sit where the MS-DOS (850) or Mac code pages put theirs. */
+    DOS_CODE_PAGE,
 }
 
 /**
@@ -45,13 +76,51 @@ enum class CellChange {
  * row is not padded to the table's width; a column added in its middle adds an empty field to it, one
  * added past its end adds nothing but to the header — which keeps the table's width once saved.
  *
+ * The encoding is the file's, when the file says it (a byte order mark, or UTF-8 beyond ASCII); a file
+ * that does not — pure ASCII, or read as Windows-1252 because it is not UTF-8 — has its encoding chosen
+ * by the user at the first character outside ASCII typed ([chosenEncoding]). A file the editor would
+ * damage is shown and not edited ([readOnly]); so is a cell whose bytes would not come back ([editable]).
+ *
  * Not thread-safe: changed on one thread, written while it does not change.
  */
-class CsvEdits private constructor(private val bytes: ByteArray, private val table: CsvTable) {
+class CsvEdits private constructor(private val bytes: ByteArray, private val table: CsvTable, facts: ByteFacts) {
     private val text = table.text
 
     val encoding: TextEncoding get() = table.encoding
     val separator: Char get() = table.separator
+
+    /** Why the file is shown and not edited; null when it is edited. */
+    val readOnly: ReadOnly? = facts.readOnly
+
+    /** Whether the file says its encoding: a byte order mark, or UTF-8 holding characters outside ASCII. */
+    val encodingStated: Boolean = encoding.bomLength > 0 || (encoding == TextEncoding.UTF_8 && facts.nonAscii)
+
+    /**
+     * What a file that does not say its encoding may be saved in, asked at the first character outside ASCII
+     * typed: UTF-8 or Windows-1252 for a file of ASCII only; Windows-1252 alone for one read as Windows-1252
+     * — its own accents are, and UTF-8 typed among them would read wrong in every program.
+     */
+    val encodingChoices: List<TextEncoding> = when {
+        encodingStated || readOnly != null -> emptyList()
+        facts.nonAscii -> listOf(TextEncoding.WINDOWS_1252)
+        else -> listOf(TextEncoding.UTF_8, TextEncoding.WINDOWS_1252)
+    }
+
+    /** The user's answer for a file that does not say its encoding, kept while the file is open. */
+    var chosenEncoding: TextEncoding? = null
+        set(value) {
+            require(value == null || value in encodingChoices) { "not a choice for this file: $value" }
+            field = value
+        }
+
+    /** What the cells typed are written in. */
+    val writeEncoding: TextEncoding get() = chosenEncoding ?: encoding
+
+    /**
+     * Without an Excel `sep=` line, the separator is found again at each reading: a typed text holding any
+     * of the separators weighed is quoted, so that it never tips the next reading (Claude review R20).
+     */
+    private val quoting: CharArray = if (CsvRows.dialectOf(text, 0).start > 0) CharArray(0) else CsvRows.CANDIDATES
 
     /** No row to edit: an empty file, or nothing but empty lines. */
     val isEmpty: Boolean get() = table.isEmpty
@@ -86,12 +155,12 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
     /** Whether saving would write something else than the file. */
     val modified: Boolean get() = reshaped || typed.isNotEmpty()
 
-    val canAddRow: Boolean get() = !isEmpty && rowCount < FileCaps.CSV_ROWS
-    val canAddColumn: Boolean get() = !isEmpty && columnCount < FileCaps.CSV_COLUMNS
-    val canDeleteColumn: Boolean get() = columnCount > 1
+    val canAddRow: Boolean get() = readOnly == null && !isEmpty && rowCount < FileCaps.CSV_ROWS
+    val canAddColumn: Boolean get() = readOnly == null && !isEmpty && columnCount < FileCaps.CSV_COLUMNS
+    val canDeleteColumn: Boolean get() = readOnly == null && columnCount > 1
 
     /** The header (position 0) is never deleted, as in the 2.15.3. */
-    fun canDeleteRow(position: Int): Boolean = position in 1 until rowCount
+    fun canDeleteRow(position: Int): Boolean = readOnly == null && position in 1 until rowCount
 
     /**
      * The cells [from] until [until] of the row at [position] (0 the header), each of at most [maxChars]
@@ -123,30 +192,46 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
         }
     }
 
-    /** The whole text of a cell, to edit it; null when it is longer than a cell may be ([FileCaps.CSV_CELL_CHARS]). */
-    fun cellForEditing(position: Int, column: Int): String? {
+    /**
+     * The whole text of a cell, to edit it — or why it cannot be: longer than a cell may be, or bytes of the
+     * file that its text would not give back once encoded (a byte Windows-1252 lacks, a character cut short,
+     * the odd last byte of UTF-16). U+FFFD in its place would have replaced them (Claude review R20).
+     */
+    fun editable(position: Int, column: Int): CellText {
         // Two more: a text cut there may lose half of a pair of surrogates, and still be longer than the cap.
-        val text = cells(position, column, column + 1, FileCaps.CSV_CELL_CHARS + 2).single()
-        return text.takeIf { it.length <= FileCaps.CSV_CELL_CHARS }
+        val shown = cells(position, column, column + 1, FileCaps.CSV_CELL_CHARS + 2).single()
+        val entry = order[position]
+        val key = keys[column]
+        val fromFile = entry >= 0 && key >= 0 && typed[entry]?.containsKey(key) != true
+        return when {
+            shown.length > FileCaps.CSV_CELL_CHARS -> CellText.TooLong
+            fromFile && !table.fieldRoundTrips(bytes, entry, key) -> CellText.Undecodable
+            else -> CellText.Editable(shown)
+        }
     }
 
     /**
      * The cell at [position], [column] as the user [typed] it. A text that is the cell's is no change —
      * a formula of the file confirmed as it was stays as it was; any other goes through the formula guard
-     * ([CsvSafe.sanitizeCell]: `=SUM(A1)` becomes `'=SUM(A1)`), then must fit the file's encoding.
+     * ([CsvSafe.sanitizeCell]: `=SUM(A1)` becomes `'=SUM(A1)`), then must fit the encoding it is saved in.
      */
     fun set(position: Int, column: Int, typed: String): CellChange {
-        val current = cellForEditing(position, column) ?: return CellChange.TOO_LONG
+        val cell = editable(position, column)
+        val current = (cell as? CellText.Editable)?.text
         val value = CsvSafe.sanitizeCell(typed)
-        return when {
+        val unchosen = chosenEncoding == null && encodingChoices.isNotEmpty() && value.any { it.code >= ASCII_END }
+        val change = when {
+            readOnly != null -> CellChange.READ_ONLY
+            cell == CellText.TooLong -> CellChange.TOO_LONG
+            current == null -> CellChange.UNDECODABLE
             typed == current || value == current -> CellChange.UNCHANGED
             value.length > FileCaps.CSV_CELL_CHARS -> CellChange.TOO_LONG
-            !encoding.charset.newEncoder().canEncode(value) -> CellChange.UNWRITABLE
-            else -> {
-                store(order[position], keys[column], value)
-                CellChange.CHANGED
-            }
+            unchosen -> CellChange.ENCODING_UNCHOSEN
+            !writeEncoding.charset.newEncoder().canEncode(value) -> CellChange.UNWRITABLE
+            else -> CellChange.CHANGED
         }
+        if (change == CellChange.CHANGED) store(order[position], keys[column], value)
+        return change
     }
 
     private fun store(entry: Int, key: Int, value: String) {
@@ -195,7 +280,7 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
     }
 
     fun deleteColumn(column: Int) {
-        check(canDeleteColumn) { "the last column cannot be deleted" }
+        check(canDeleteColumn) { "this column cannot be deleted" }
         require(column in 0 until columnCount) { "column $column of $columnCount" }
         val key = keys[column]
         keys.copyInto(keys, column, column + 1, columnCount)
@@ -206,15 +291,18 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
         reshaped = true
     }
 
-    /** The file as it is now, in its own encoding and dialect. */
+    /** The file as it is now, in its own dialect; the cells typed in [writeEncoding]. */
     fun writeTo(out: OutputStream) {
         if (isEmpty) out.write(bytes, 0, text.byteAt(text.length)) else Writing(out).all()
     }
 
     /** One writing of the file: [open] while the last row written still lacks its line break. */
     private inner class Writing(private val out: OutputStream) {
-        private val encoder = encoding.charset.newEncoder()
+        private val encoder = writeEncoding.charset.newEncoder()
         private val separatorBytes = encode(separator.toString())
+
+        /** A row that would write nothing before its line break is an empty line, which no reader counts as a row. */
+        private val emptyField = encode(EMPTY_FIELD)
         private val identity = columnCount == table.columns && (0 until columnCount).all { keys[it] == it }
 
         /** Where each field of the row read last lies in [text], for the columns of the table. */
@@ -295,10 +383,11 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
         /** A row of the file written again: its untouched fields as they were, the typed ones encoded, the columns in their new order. */
         private fun rebuild(record: Int, edits: Map<Int, String>?) {
             val shown = minOf(fieldCount, table.columns)
-            val length = (columnCount downTo 1).firstOrNull { column ->
-                val key = keys[column - 1]
-                key in 0 until shown || edits?.containsKey(key) == true || (record == 0 && key < 0)
-            } ?: 0
+            val hidden = fieldCount > table.columns
+            // A row holding fields past the cap writes every column before them, whatever it holds: they stay
+            // under the columns they were under (Claude review R20). Otherwise a short row stays short.
+            val length = if (hidden) columnCount else rowLength(keys, columnCount, shown, edits, header = record == 0)
+            var wrote = length > 1
             for (column in 0 until length) {
                 if (column > 0) out.write(separatorBytes)
                 val key = keys[column]
@@ -306,19 +395,24 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
                 val start = if (inFile) fields[2 * key] else 0
                 val end = if (inFile) fields[2 * key + 1] else 0
                 val value = edits?.get(key)
-                when {
+                val written = when {
                     // Its quotes kept: an empty field has no first character.
                     value != null -> {
-                        val quoted = start < end && text[start] == CsvScanner.QUOTE
-                        out.write(encode(quotedField(value, separator, quoted)))
+                        val quoted = start < end && text[start] == CsvScanner.QUOTE || value.any { it in quoting }
+                        encode(quotedField(value, separator, quoted))
                     }
-                    inFile -> raw(text.byteAt(start), text.byteAt(end))
+                    inFile -> bytes.copyOfRange(text.byteAt(start), text.byteAt(end))
+                    else -> ByteArray(0)
                 }
+                out.write(written)
+                if (written.isNotEmpty()) wrote = true
             }
             // The fields past the viewer's cap of columns, as they were, after the columns shown.
-            if (fieldCount > table.columns) {
+            if (hidden) {
                 out.write(separatorBytes)
                 raw(text.byteAt(hiddenStart), text.byteAt(contentEnd))
+            } else if (!wrote) {
+                out.write(emptyField)
             }
         }
 
@@ -326,8 +420,9 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
             closeRow()
             for (column in 0 until columnCount) {
                 if (column > 0) out.write(separatorBytes)
-                row[keys[column]]?.let { out.write(encode(quotedField(it, separator))) }
+                row[keys[column]]?.let { value -> out.write(encode(quotedField(value, separator, value.any { it in quoting }))) }
             }
+            if (columnCount == 1 && row[keys[0]] == null) out.write(emptyField)
             open = true
         }
 
@@ -374,13 +469,98 @@ class CsvEdits private constructor(private val bytes: ByteArray, private val tab
         }
 
         /** The CSV of the first [size] bytes of [bytes], kept — not copied — whole. */
-        suspend fun of(bytes: ByteArray, size: Int = bytes.size): CsvEdits = CsvEdits(bytes, CsvTable.of(bytes, size, whole = true))
+        suspend fun of(bytes: ByteArray, size: Int = bytes.size): CsvEdits {
+            val table = CsvTable.of(bytes, size, whole = true)
+            return CsvEdits(bytes, table, ByteFacts.of(bytes, size, table.encoding))
+        }
 
         private const val CRLF = "\r\n"
+        private const val EMPTY_FIELD = "\"\""
         private const val MIN_ROWS = 16
+        private const val ASCII_END = 0x80
     }
 }
+
+/** What one pass over a file's bytes says of its encoding (Claude review R20). */
+private class ByteFacts(val nonAscii: Boolean, val readOnly: ReadOnly?) {
+    companion object {
+        /**
+         * In a text of one byte per character: whether a byte is outside ASCII; a NUL byte, which no text CSV
+         * holds (UTF-16 without a byte order mark is one, every other byte); and, in a file read as
+         * Windows-1252, a byte 0x80-0x9F between two ASCII letters — where MS-DOS 850 puts `é è à ç ô` and Mac
+         * Roman `é è ê`, and Windows-1252 nothing a word holds but `’ ‘ œ Œ`, left out.
+         */
+        fun of(bytes: ByteArray, size: Int, encoding: TextEncoding): ByteFacts {
+            if (encoding.unitSize != 1) return ByteFacts(nonAscii = true, readOnly = null)
+            val start = encoding.bomLength
+            var nonAscii = false
+            var nul = false
+            var dos = false
+            for (i in start until size) {
+                val byte = bytes[i].toInt() and BYTE
+                nul = nul || byte == 0
+                nonAscii = nonAscii || byte >= ASCII_END
+                dos = dos || encoding == TextEncoding.WINDOWS_1252 && isDosAccent(bytes, i, start, size)
+            }
+            val readOnly = when {
+                nul -> ReadOnly.NUL_BYTES
+                dos -> ReadOnly.DOS_CODE_PAGE
+                else -> null
+            }
+            return ByteFacts(nonAscii, readOnly)
+        }
+
+        private fun isDosAccent(bytes: ByteArray, i: Int, start: Int, size: Int): Boolean {
+            val byte = bytes[i].toInt() and BYTE
+            return byte in DOS_ACCENTS && byte !in WORD_PUNCTUATION_1252 &&
+                i > start && i + 1 < size && isAsciiLetter(bytes[i - 1]) && isAsciiLetter(bytes[i + 1])
+        }
+
+        private fun isAsciiLetter(byte: Byte): Boolean = byte.toInt().toChar().let { it in 'a'..'z' || it in 'A'..'Z' }
+
+        private const val BYTE = 0xFF
+        private const val ASCII_END = 0x80
+        private val DOS_ACCENTS = 0x80..0x9F
+
+        /** `Œ ‘ ’ œ` of Windows-1252: an apostrophe and a ligature sit between letters in French and English text. */
+        private val WORD_PUNCTUATION_1252 = intArrayOf(0x8C, 0x91, 0x92, 0x9C)
+    }
+}
+
+/**
+ * How many fields a row of the file writes once the columns changed: up to its last column of the file or
+ * typed cell — a short row stays short —, and every column added for the [header], which keeps the width.
+ */
+private fun rowLength(keys: IntArray, columnCount: Int, shown: Int, edits: Map<Int, String>?, header: Boolean): Int =
+    (columnCount downTo 1).firstOrNull { column ->
+        val key = keys[column - 1]
+        key in 0 until shown || edits?.containsKey(key) == true || (header && key < 0)
+    } ?: 0
 
 /** The cells [from] until [until] of row [record] of the file, 0 its header. */
 private fun CsvTable.recordCells(record: Int, from: Int, until: Int, maxChars: Int): List<String> =
     if (record == 0) header(from, until, maxChars) else cells(record - 1, from, until, maxChars)
+
+/**
+ * Whether field [key] of row [record] decodes to a text that encodes back to its very bytes — a field the
+ * row lacks does. The text is decoded raw, quotes included: only the encoding is checked here.
+ */
+private fun CsvTable.fieldRoundTrips(bytes: ByteArray, record: Int, key: Int): Boolean {
+    val range = intArrayOf(-1, -1)
+    CsvScanner(text, separator).record(recordStart(record)) { index, start, end ->
+        if (index == key) {
+            range[0] = start
+            range[1] = end
+        }
+        index < key
+    }
+    if (range[0] < 0) return true
+    val from = text.byteAt(range[0])
+    val original = bytes.copyOfRange(from, text.byteAt(range[1]))
+    val again = try {
+        encoding.charset.newEncoder().encode(CharBuffer.wrap(text.decode(range[0], range[1])))
+    } catch (ignored: CharacterCodingException) {
+        null
+    }
+    return again != null && ByteArray(again.remaining()).also { again.get(it) }.contentEquals(original)
+}

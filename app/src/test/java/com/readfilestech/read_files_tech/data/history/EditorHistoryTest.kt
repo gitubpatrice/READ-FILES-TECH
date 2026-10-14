@@ -3,8 +3,10 @@ package com.readfilestech.read_files_tech.data.history
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.io.IOException
 
 /** docs D-021: the old history read on the exact name, the new one kept per path. */
 class EditorHistoryTest {
@@ -80,5 +82,24 @@ class EditorHistoryTest {
         assertThat(all.sumOf { it.size }).isEqualTo(8)
         assertThat(history.deleteLegacy()).isTrue()
         assertThat(legacy.exists()).isFalse()
+    }
+
+    /** Claude review R20: the clock set back, the new copy was named below the ten newest and deleted at once. */
+    @Test
+    fun `a copy saved after the clock went back is the newest, and kept`() {
+        repeat(EditorHistory.KEPT) { history.saveBefore("/a.csv", "v$it".toByteArray(), nowMs = 2_000L + it) }
+        history.saveBefore("/a.csv", "after".toByteArray(), nowMs = 100)
+        val versions = history.versions("/a.csv")
+        assertThat(versions).hasSize(EditorHistory.KEPT)
+        assertThat(versions.first().file.readText()).isEqualTo("after")
+    }
+
+    /** Claude review R20: a copy that failed left an empty name, listed as a version and pushing a real one out. */
+    @Test
+    fun `a copy that fails to be written leaves no version behind`() {
+        val failing = EditorHistory(legacy, File(tmp, "files/editor-history")) { _, _ -> throw IOException("no space") }
+        history.saveBefore("/a.csv", "kept".toByteArray(), nowMs = 1)
+        assertThrows<IOException> { failing.saveBefore("/a.csv", "lost".toByteArray(), nowMs = 2) }
+        assertThat(history.versions("/a.csv").map { it.file.readText() }).containsExactly("kept")
     }
 }

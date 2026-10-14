@@ -27,6 +27,8 @@ class EditorHistory(
     private val legacyDir: File,
     /** Where the port keeps its own history, one folder per path. */
     private val newHistoryDir: File,
+    /** How a copy is written ([AtomicFiles.writeBytes]); a test makes it fail. */
+    private val writeCopy: (File, ByteArray) -> Unit = AtomicFiles::writeBytes,
 ) {
     /** The old copies whose name is EXACTLY the one the 2.15.x derived from [fileName], newest first. */
     fun legacyFor(fileName: String): List<HistoryCopy> {
@@ -49,14 +51,25 @@ class EditorHistory(
      * Saves [current], the content of [path] about to be overwritten, then keeps the last [KEPT] of THAT
      * path. A copy never replaces another: two saves in the same millisecond take the next free one,
      * reserved by an exclusive creation (GPT review R3).
+     *
+     * Named after the newest copy when the clock went back (Claude review R20): named from [nowMs] alone,
+     * it sorted below the ten newest and the rotation deleted it at once. A copy that fails to be written
+     * leaves no empty name behind, which would count as a version and push a real one out (R20).
      */
     @Synchronized
     fun saveBefore(path: String, current: ByteArray, nowMs: Long = System.currentTimeMillis()) {
         val dir = folderOf(path)
         dir.mkdirs()
         AtomicFiles.writeBytes(File(dir, PATH_FILE), path.toByteArray(Charsets.UTF_8))
-        val copy = generateSequence(nowMs) { it + 1 }.map { File(dir, "$it$BAK") }.first { it.createNewFile() }
-        AtomicFiles.writeBytes(copy, current)
+        val first = maxOf(nowMs, (versions(path).firstOrNull()?.savedAtMs ?: -1) + 1)
+        val copy = generateSequence(first) { it + 1 }.map { File(dir, "$it$BAK") }.first { it.createNewFile() }
+        var written = false
+        try {
+            writeCopy(copy, current)
+            written = true
+        } finally {
+            if (!written) copy.delete()
+        }
         versions(path).drop(KEPT).forEach { it.file.delete() }
     }
 

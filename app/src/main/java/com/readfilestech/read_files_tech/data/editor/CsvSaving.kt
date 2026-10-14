@@ -7,6 +7,7 @@ import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
 
 /** A file as it was when an editor opened it: its size and its time, to see whether another app changed it since. */
 data class FileStamp(val length: Long, val modifiedMs: Long) {
@@ -28,22 +29,35 @@ class FileChangedException : IOException("the file changed since it was opened")
  *    [FileCaps.EDITOR_HISTORY_COPY]: a copy that fails stops the save, the file untouched. The 2.15.3's
  *    CSV editor kept no copy.
  * 3. The new content is written atomically next to the file ([AtomicFiles]), then put in its place: on
- *    any failure, the file is left as it was.
+ *    any failure, the file is left as it was. The stamp is read again just before: a file written by
+ *    another app while the new one was being written is not replaced (Claude review R20).
  */
 object CsvSaving {
     private const val BUFFER = 64 * 1024
 
-    /** @throws IOException why nothing was written — [FileChangedException] among others. */
-    fun save(file: File, edits: CsvEdits, opened: FileStamp, history: EditorHistory?) {
-        if (!file.isFile || FileStamp.of(file) != opened) throw FileChangedException()
+    /**
+     * Writes over [file], opened as [opened], what [write] gives ([CsvEdits.writeTo]).
+     *
+     * @throws IOException why nothing was written — [FileChangedException] among others.
+     */
+    fun save(file: File, opened: FileStamp, history: EditorHistory?, write: (OutputStream) -> Unit) {
+        checkUnchanged(file, opened)
         if (history != null && opened.length <= FileCaps.EDITOR_HISTORY_COPY) {
             val current = StorageFileSource(file).open(FileCaps.EDITOR_HISTORY_COPY).use { it.readBytes() }
             history.saveBefore(file.absolutePath, current)
         }
-        AtomicFiles.write(file) { out ->
+        val publish = { from: File, to: File ->
+            checkUnchanged(to, opened)
+            AtomicFiles.publish(from, to)
+        }
+        AtomicFiles.write(file, publish) { out ->
             val buffered = BufferedOutputStream(out, BUFFER)
-            edits.writeTo(buffered)
+            write(buffered)
             buffered.flush()
         }
+    }
+
+    private fun checkUnchanged(file: File, opened: FileStamp) {
+        if (!file.isFile || FileStamp.of(file) != opened) throw FileChangedException()
     }
 }

@@ -112,7 +112,9 @@ object CsvRows {
     /** `sep=` and its value: a longer first line is a row, never a hint. */
     private const val SEP_LINE_MAX = 16
     private const val ASCII_LIMIT = 0x80
-    private val CANDIDATES = charArrayOf(',', ';', '\t', '|')
+
+    /** The separators the detection weighs; the CSV editor quotes a typed text holding one (Claude review R20). */
+    internal val CANDIDATES = charArrayOf(',', ';', '\t', '|')
     private const val CONSISTENCY_BONUS = 2
 
     /** The lines `csv` 8 scored. */

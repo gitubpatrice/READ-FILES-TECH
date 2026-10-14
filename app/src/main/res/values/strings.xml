@@ -369,6 +369,16 @@
     <string name="csv_editor_save_failed">Not saved: %1$s</string>
     <string name="csv_editor_changed">the file was changed by another app since it was opened</string>
     <string name="csv_editor_cut_kept">What is not shown is saved as it was.</string>
+    <string name="csv_editor_read_only_nul">This file holds NUL bytes: it is not a text of one byte per character (UTF-16 without a byte order mark, or not a text at all). It is shown, not edited.</string>
+    <string name="csv_editor_read_only_dos">This file seems written in an MS-DOS or Mac code page, not in Windows-1252: what you typed would read wrong in it. It is shown, not edited.</string>
+    <string name="csv_editor_cell_undecodable">This cell holds bytes that %1$s does not give back as they are: changing it would change them. It cannot be edited here.</string>
+    <string name="csv_editor_encoding">Saved in %1$s</string>
+    <string name="csv_editor_encoding_unstated">The file does not say its encoding (read as %1$s): asked at the first accent typed.</string>
+    <string name="csv_editor_encoding_title">Encoding of the file</string>
+    <string name="csv_editor_encoding_ask">This file does not say its encoding. Save what you type in UTF-8, or in Windows-1252, the encoding Excel reads a CSV in on Windows?</string>
+    <string name="csv_editor_encoding_windows_only">This file does not say its encoding: it is read as Windows-1252, the encoding of Excel on Windows, and what you type is saved in it.</string>
+    <string name="csv_editor_encoding_utf8">UTF-8</string>
+    <string name="csv_editor_encoding_windows">Windows-1252 (Excel)</string>
     <string name="csv_editor_hint">Tap a cell to change it; touch and hold it to insert or delete its row or its column.</string>
     <string name="csv_editor_cell_header">Header · column %1$d</string>
     <string name="csv_editor_cell_title">Row %1$d · column %2$d</string>

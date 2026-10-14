@@ -69,7 +69,12 @@ class CsvEditorViewModel @Inject constructor(
     val state: StateFlow<CsvEditorState> = mutableState.asStateFlow()
 
     private var file: File? = null
+
+    /** The file as the edits shown were read from it: read with them, set with them, never apart (Claude review R20). */
     private var stamp: FileStamp? = null
+
+    /** Each load — open, read again after a save, restore — takes the next number: only the last one lands (R20). */
+    private var loads = 0
 
     /** A version of the history loaded: there is something to save, though no cell was typed. */
     private var restored = false
@@ -78,27 +83,33 @@ class CsvEditorViewModel @Inject constructor(
         (handle.get<String>(KEY_PATH) ?: handle.get<String>(Routes.ARG_PATH)?.takeIf(String::isNotEmpty))?.let(::open)
     }
 
+    /** Opens [path] — never while a file is being written. A load still running for another file is dropped. */
     fun open(path: String) {
+        if (mutableState.value.saving) return
+        val serial = ++loads
         handle[KEY_PATH] = path
         val chosen = File(path)
         file = chosen
+        stamp = null
         restored = false
         mutableState.value = CsvEditorState(name = chosen.name, loading = true)
         viewModelScope.launch {
             val result = loadOrFailure { withContext(io) { read(chosen) } }
+            if (serial != loads) return@launch
+            stamp = result.getOrNull()?.second
             mutableState.update { current ->
                 result.fold(
-                    { current.copy(loading = false, edits = it, version = current.version + 1, modified = false) },
+                    { current.copy(loading = false, edits = it.first, version = current.version + 1, modified = false) },
                     { current.copy(loading = false, failure = readFailure(chosen.name, it)) },
                 )
             }
         }
     }
 
-    /** The stamp first: a change while the file is read is a change since it was opened. */
-    private suspend fun read(chosen: File): CsvEdits {
-        stamp = FileStamp.of(chosen)
-        return CsvEdits.read(StorageFileSource(chosen))
+    /** The edits of [chosen] and its stamp, read together; the stamp first: a change while it is read is a change. */
+    private suspend fun read(chosen: File): Pair<CsvEdits, FileStamp> {
+        val opened = FileStamp.of(chosen)
+        return CsvEdits.read(StorageFileSource(chosen)) to opened
     }
 
     /**
@@ -122,22 +133,31 @@ class CsvEditorViewModel @Inject constructor(
         if (edits == null || target == null || opened == null) return
         mutableState.value = current.copy(saving = true, saveFailure = null)
         viewModelScope.launch {
-            val error = loadOrFailure { withContext(io) { CsvSaving.save(target, edits, opened, history) } }.exceptionOrNull()
-            if (error == null) saved(target, thenLeave) else failed(error, thenLeave)
+            val error = loadOrFailure {
+                withContext(io) { CsvSaving.save(target, opened, history, edits::writeTo) }
+            }.exceptionOrNull()
+            if (error == null) saved(target, thenLeave, edits) else failed(error, thenLeave)
         }
     }
 
-    private suspend fun saved(target: File, thenLeave: Boolean) {
+    private suspend fun saved(target: File, thenLeave: Boolean, written: CsvEdits) {
         restored = false
         messages.info(uiText(R.string.csv_editor_saved))
         // Read again what was written: the next save starts from the file as it is now.
+        val serial = ++loads
         val reread = loadOrFailure { withContext(io) { read(target) } }
+        val landed = serial == loads
+        if (landed) stamp = reread.getOrNull()?.second
+        reread.getOrNull()?.first?.let { keepChoice(written, it) }
         mutableState.update { state ->
             val done = state.copy(saving = false, modified = false, left = thenLeave)
-            reread.fold(
-                { done.copy(edits = it, version = state.version + 1) },
-                { done.copy(edits = null, failure = readFailure(target.name, it)) },
-            )
+            when {
+                !landed -> state.copy(saving = false)
+                else -> reread.fold(
+                    { done.copy(edits = it.first, version = state.version + 1) },
+                    { done.copy(edits = null, failure = readFailure(target.name, it)) },
+                )
+            }
         }
     }
 
@@ -163,11 +183,15 @@ class CsvEditorViewModel @Inject constructor(
     /** Loads [copy] in the editor (D-021): nothing is written until the user saves. */
     fun restore(copy: HistoryCopy) {
         if (mutableState.value.saving) return
+        val serial = ++loads
+        val previous = mutableState.value.edits
         mutableState.update { it.copy(versions = null) }
         viewModelScope.launch {
             val result = loadOrFailure { withContext(io) { CsvEdits.read(StorageFileSource(copy.file)) } }
+            if (serial != loads) return@launch
             result.fold(
                 { edits ->
+                    previous?.let { keepChoice(it, edits) }
                     restored = true
                     mutableState.update { it.copy(edits = edits, version = it.version + 1, modified = true) }
                     messages.info(uiText(R.string.csv_editor_restored))
@@ -180,4 +204,9 @@ class CsvEditorViewModel @Inject constructor(
     private companion object {
         const val KEY_PATH = "csv_editor_path"
     }
+}
+
+/** The encoding the user chose for the file, kept while it is open — read again after a save, restored. */
+private fun keepChoice(from: CsvEdits, to: CsvEdits) {
+    from.chosenEncoding?.takeIf { it in to.encodingChoices }?.let { to.chosenEncoding = it }
 }

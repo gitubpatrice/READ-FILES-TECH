@@ -40,6 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,12 +60,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.editor.CellChange
+import com.readfilestech.read_files_tech.data.editor.CellText
 import com.readfilestech.read_files_tech.data.editor.CsvEdits
+import com.readfilestech.read_files_tech.data.editor.ReadOnly
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.data.text.CsvSafe
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
+import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.formatBytes
@@ -235,7 +239,8 @@ private class EditorCells(private val edits: CsvEdits) : TableCells {
 private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel) {
     var editRow by rememberSaveable { mutableIntStateOf(NONE) }
     var editColumn by rememberSaveable { mutableIntStateOf(NONE) }
-    Summary(edits)
+    // Read from the edits, changed in place: composed again at each change, never skipped.
+    key(version) { Summary(edits) }
     val cells = remember(edits, version) { EditorCells(edits) }
     val actions = CellActions(edits) { position, column ->
         editRow = position
@@ -255,15 +260,19 @@ private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel)
         CellDialog(
             position = editRow,
             column = editColumn,
-            initial = remember(edits, editRow, editColumn) { edits.cellForEditing(editRow, editColumn) },
-            encoding = edits.encoding.charset.displayName(),
+            cell = remember(edits, editRow, editColumn) { edits.editable(editRow, editColumn) },
+            edits = edits,
             onConfirm = { typed -> viewModel.change { it.set(editRow, editColumn, typed) } ?: CellChange.UNCHANGED },
+            onEncoding = { choice -> viewModel.change { it.chosenEncoding = choice } },
             onDismiss = close,
         )
     }
 }
 
-/** "1 234 rows · 6 columns", and what is not shown of a file past Excel's limits — but kept as it is. */
+/**
+ * "1 234 rows · 6 columns", what is not shown of a file past Excel's limits — but kept as it is —, why a
+ * file is not edited, and the encoding what is typed is saved in.
+ */
 @Composable
 private fun Summary(edits: CsvEdits) {
     val rows = pluralStringResource(R.plurals.csv_rows, edits.rowCount - 1, edits.rowCount - 1)
@@ -279,15 +288,32 @@ private fun Summary(edits: CsvEdits) {
             Text(pluralStringResource(R.plurals.csv_columns_cut, FileCaps.CSV_COLUMNS, FileCaps.CSV_COLUMNS), style = style, color = color)
         }
         if (edits.rowsCut || edits.columnsCut) Text(stringResource(R.string.csv_editor_cut_kept), style = style, color = color)
-        Text(stringResource(R.string.csv_editor_hint), style = style, color = color)
+        val readOnly = edits.readOnly
+        if (readOnly != null) {
+            Text(stringResource(readOnlyReason(readOnly)), style = style, color = MaterialTheme.colorScheme.error)
+        } else {
+            val unasked = edits.chosenEncoding == null && edits.encodingChoices.isNotEmpty()
+            val name = edits.writeEncoding.charset.displayName()
+            Text(
+                stringResource(if (unasked) R.string.csv_editor_encoding_unstated else R.string.csv_editor_encoding, name),
+                style = style,
+                color = color,
+            )
+            Text(stringResource(R.string.csv_editor_hint), style = style, color = color)
+        }
     }
     HorizontalDivider()
+}
+
+private fun readOnlyReason(readOnly: ReadOnly): Int = when (readOnly) {
+    ReadOnly.NUL_BYTES -> R.string.csv_editor_read_only_nul
+    ReadOnly.DOS_CODE_PAGE -> R.string.csv_editor_read_only_dos
 }
 
 /** What a cell's tap and long press reach. */
 private class CellActions(val edits: CsvEdits, val edit: (position: Int, column: Int) -> Unit)
 
-/** A cell: a tap edits it; a long press inserts or deletes its row or its column. */
+/** A cell: a tap edits it; a long press inserts or deletes its row or its column — neither in a file shown only. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EditableCell(position: Int, column: Int, text: String, actions: CellActions, viewModel: CsvEditorViewModel) {
@@ -295,6 +321,7 @@ private fun EditableCell(position: Int, column: Int, text: String, actions: Cell
     val edits = actions.edits
     Box(
         Modifier.fillMaxSize().combinedClickable(
+            enabled = edits.readOnly == null,
             onClickLabel = stringResource(R.string.action_edit),
             onLongClickLabel = stringResource(R.string.action_more),
             onLongClick = { menu = true },
@@ -335,21 +362,29 @@ private fun CellMenuItem(label: Int, enabled: Boolean, close: () -> Unit, action
 
 /**
  * Edits one cell (`_editCell` of the 2.15.3). A text that starts like a formula is said before it is
- * confirmed: it is saved with a `'` in front ([CsvSafe]). A text the file's encoding cannot hold, or too
- * long, keeps the dialog open with the reason. [initial] null: the cell is too long to be edited here.
+ * confirmed: it is saved with a `'` in front ([CsvSafe]). A text the encoding cannot hold, or too long,
+ * keeps the dialog open with the reason; the first character outside ASCII typed in a file that does not
+ * say its encoding asks it ([EncodingDialog]). A cell too long, or whose bytes would not come back, is
+ * said, not edited ([CellText]).
  */
 @Composable
 private fun CellDialog(
     position: Int,
     column: Int,
-    initial: String?,
-    encoding: String,
+    cell: CellText,
+    edits: CsvEdits,
     onConfirm: (String) -> CellChange,
+    onEncoding: (TextEncoding) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val initial = (cell as? CellText.Editable)?.text
     var value by rememberSaveable { mutableStateOf(initial.orEmpty()) }
     var refusal by remember { mutableStateOf<CellChange?>(null) }
     val focus = remember { FocusRequester() }
+    val confirm = {
+        val change = if (initial == null) CellChange.UNCHANGED else onConfirm(value)
+        if (change == CellChange.CHANGED || change == CellChange.UNCHANGED) onDismiss() else refusal = change
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -362,10 +397,12 @@ private fun CellDialog(
             )
         },
         text = {
-            if (initial == null) {
-                Text(pluralStringResource(R.plurals.csv_editor_cell_too_long, FileCaps.CSV_CELL_CHARS, FileCaps.CSV_CELL_CHARS))
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (cell) {
+                CellText.TooLong -> {
+                    Text(pluralStringResource(R.plurals.csv_editor_cell_too_long, FileCaps.CSV_CELL_CHARS, FileCaps.CSV_CELL_CHARS))
+                }
+                CellText.Undecodable -> Text(stringResource(R.string.csv_editor_cell_undecodable, edits.encoding.charset.displayName()))
+                is CellText.Editable -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = value,
                         onValueChange = {
@@ -379,22 +416,56 @@ private fun CellDialog(
                     if (value != initial && CsvSafe.sanitizeCell(value) != value) {
                         Text(stringResource(R.string.csv_editor_formula_guarded), style = MaterialTheme.typography.bodySmall)
                     }
-                    refusal?.let {
-                        Text(refusalText(it, encoding), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    refusal?.takeUnless { it == CellChange.ENCODING_UNCHOSEN }?.let {
+                        val reason = refusalText(it, edits.writeEncoding.charset.displayName())
+                        Text(reason, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
+                    LaunchedEffect(Unit) { focus.requestFocus() }
                 }
-                LaunchedEffect(Unit) { focus.requestFocus() }
             }
         },
-        confirmButton = {
-            Button(onClick = {
-                val change = if (initial == null) CellChange.UNCHANGED else onConfirm(value)
-                if (change == CellChange.CHANGED || change == CellChange.UNCHANGED) onDismiss() else refusal = change
-            }) { Text(stringResource(R.string.action_ok)) }
-        },
+        confirmButton = { Button(onClick = confirm) { Text(stringResource(R.string.action_ok)) } },
         dismissButton = {
             if (initial != null) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            }
+        },
+    )
+    if (refusal == CellChange.ENCODING_UNCHOSEN) {
+        EncodingDialog(
+            edits.encodingChoices,
+            onChoose = { choice ->
+                onEncoding(choice)
+                refusal = null
+                confirm()
+            },
+            onDismiss = { refusal = null },
+        )
+    }
+}
+
+/**
+ * Asked once, at the first character outside ASCII typed in a file that does not say its encoding (Claude
+ * review R20): UTF-8, or Windows-1252 — what Excel reads a CSV in on Windows. A file already read as
+ * Windows-1252 is saved in it, or not at all: UTF-8 among its accents would read wrong everywhere.
+ */
+@Composable
+private fun EncodingDialog(choices: List<TextEncoding>, onChoose: (TextEncoding) -> Unit, onDismiss: () -> Unit) {
+    val windowsOnly = TextEncoding.UTF_8 !in choices
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.csv_editor_encoding_title)) },
+        text = {
+            Text(stringResource(if (windowsOnly) R.string.csv_editor_encoding_windows_only else R.string.csv_editor_encoding_ask))
+        },
+        confirmButton = {
+            Button(onClick = { onChoose(TextEncoding.WINDOWS_1252) }) { Text(stringResource(R.string.csv_editor_encoding_windows)) }
+        },
+        dismissButton = {
+            if (windowsOnly) {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            } else {
+                TextButton(onClick = { onChoose(TextEncoding.UTF_8) }) { Text(stringResource(R.string.csv_editor_encoding_utf8)) }
             }
         },
     )

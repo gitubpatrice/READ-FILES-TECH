@@ -376,6 +376,16 @@
     <string name="csv_editor_save_failed">Non sauvegardé : %1$s</string>
     <string name="csv_editor_changed">le fichier a été modifié par une autre application depuis son ouverture</string>
     <string name="csv_editor_cut_kept">Ce qui n\'est pas affiché est enregistré tel quel.</string>
+    <string name="csv_editor_read_only_nul">Ce fichier contient des octets NUL : ce n\'est pas un texte d\'un octet par caractère (de l\'UTF-16 sans marque d\'ordre des octets, ou pas un texte). Il est affiché, pas modifié.</string>
+    <string name="csv_editor_read_only_dos">Ce fichier semble écrit dans une page de code MS-DOS ou Mac, pas en Windows-1252 : ce que vous saisiriez s\'y lirait mal. Il est affiché, pas modifié.</string>
+    <string name="csv_editor_cell_undecodable">Cette cellule contient des octets que %1$s ne restitue pas tels quels : la modifier les changerait. Elle ne peut pas être modifiée ici.</string>
+    <string name="csv_editor_encoding">Enregistré en %1$s</string>
+    <string name="csv_editor_encoding_unstated">Le fichier ne dit pas son encodage (lu en %1$s) : il sera demandé au premier accent saisi.</string>
+    <string name="csv_editor_encoding_title">Encodage du fichier</string>
+    <string name="csv_editor_encoding_ask">Ce fichier ne dit pas son encodage. Enregistrer ce que vous saisissez en UTF-8, ou en Windows-1252, l\'encodage dans lequel Excel lit un CSV sous Windows ?</string>
+    <string name="csv_editor_encoding_windows_only">Ce fichier ne dit pas son encodage : il est lu en Windows-1252, l\'encodage d\'Excel sous Windows, et ce que vous saisissez y est enregistré.</string>
+    <string name="csv_editor_encoding_utf8">UTF-8</string>
+    <string name="csv_editor_encoding_windows">Windows-1252 (Excel)</string>
     <string name="csv_editor_hint">Touchez une cellule pour la modifier ; maintenez-la pour insérer ou supprimer sa ligne ou sa colonne.</string>
     <string name="csv_editor_cell_header">En-tête · colonne %1$d</string>
     <string name="csv_editor_cell_title">Ligne %1$d · colonne %2$d</string>
