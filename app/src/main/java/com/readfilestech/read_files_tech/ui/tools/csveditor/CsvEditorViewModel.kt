@@ -131,6 +131,8 @@ class CsvEditorViewModel @Inject constructor(
         val target = file
         val opened = stamp
         if (edits == null || target == null || opened == null) return
+        // A restore still being read lands no more: the save writes what is shown (Claude review R21).
+        ++loads
         mutableState.value = current.copy(saving = true, saveFailure = null)
         viewModelScope.launch {
             val error = loadOrFailure {
@@ -180,9 +182,12 @@ class CsvEditorViewModel @Inject constructor(
 
     fun hideHistory() = mutableState.update { it.copy(versions = null) }
 
-    /** Loads [copy] in the editor (D-021): nothing is written until the user saves. */
+    /**
+     * Loads [copy] in the editor (D-021): nothing is written until the user saves. Never while a file is
+     * written or opened: it would drop the open's result, the screen left loading, with no stamp to save (R21).
+     */
     fun restore(copy: HistoryCopy) {
-        if (mutableState.value.saving) return
+        if (mutableState.value.let { it.saving || it.loading }) return
         val serial = ++loads
         val previous = mutableState.value.edits
         mutableState.update { it.copy(versions = null) }

@@ -529,7 +529,7 @@ private fun HistoryDialog(versions: List<HistoryCopy>, onRestore: (HistoryCopy) 
                     LazyColumn(Modifier.heightIn(max = 320.dp)) {
                         items(versions, key = { it.file.name }) { copy ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val date = formatter.format(Instant.ofEpochMilli(copy.savedAtMs).atZone(ZoneId.systemDefault()))
+                                val date = formatter.format(Instant.ofEpochMilli(copy.writtenAtMs).atZone(ZoneId.systemDefault()))
                                 Text(stringResource(R.string.joined_dot, date, formatBytes(copy.size)), Modifier.weight(1f))
                                 TextButton(onClick = { onRestore(copy) }) { Text(stringResource(R.string.action_restore)) }
                             }

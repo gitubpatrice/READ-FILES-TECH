@@ -487,8 +487,8 @@ private class ByteFacts(val nonAscii: Boolean, val readOnly: ReadOnly?) {
         /**
          * In a text of one byte per character: whether a byte is outside ASCII; a NUL byte, which no text CSV
          * holds (UTF-16 without a byte order mark is one, every other byte); and, in a file read as
-         * Windows-1252, a byte 0x80-0x9F between two ASCII letters — where MS-DOS 850 puts `é è à ç ô` and Mac
-         * Roman `é è ê`, and Windows-1252 nothing a word holds but `’ ‘ œ Œ`, left out.
+         * Windows-1252, a byte 0x80-0x9F that ends or splits a word — where MS-DOS 850 puts `é è à ç ô` and Mac
+         * Roman `é è ê`, and Windows-1252 little a word holds ([isDosAccent] leaves it out).
          */
         fun of(bytes: ByteArray, size: Int, encoding: TextEncoding): ByteFacts {
             if (encoding.unitSize != 1) return ByteFacts(nonAscii = true, readOnly = null)
@@ -510,11 +510,24 @@ private class ByteFacts(val nonAscii: Boolean, val readOnly: ReadOnly?) {
             return ByteFacts(nonAscii, readOnly)
         }
 
+        /**
+         * A byte of 0x80–0x9F after an ASCII letter, where an MS-DOS or Mac accent stands: before another letter
+         * (MS-DOS 850 `cafés`), or at the end of a word — before a separator, a quote, a line break or the end
+         * (`Payé;`). Never the Windows-1252 characters found there in ordinary text: dashes, `š ž`, `‘ ’ Œ œ`
+         * (`Paris–Lyon`, `Košice`, `l’homme`, `cœur`), and at a word's end `… ” ™` — so MS-DOS `voilà`, whose
+         * `à` is the byte of `…`, goes unseen (Claude reviews R20, R21: a valid file read-only, even right after
+         * the user's own save of an en dash).
+         */
         private fun isDosAccent(bytes: ByteArray, i: Int, start: Int, size: Int): Boolean {
             val byte = bytes[i].toInt() and BYTE
-            return byte in DOS_ACCENTS && byte !in WORD_PUNCTUATION_1252 &&
-                i > start && i + 1 < size && isAsciiLetter(bytes[i - 1]) && isAsciiLetter(bytes[i + 1])
+            val afterLetter = i > start && isAsciiLetter(bytes[i - 1])
+            if (byte !in DOS_ACCENTS || byte in WORD_PUNCTUATION_1252 || !afterLetter) return false
+            val beforeLetter = i + 1 < size && isAsciiLetter(bytes[i + 1])
+            return beforeLetter || byte !in END_PUNCTUATION_1252 && endsWord(bytes, i + 1, size)
         }
+
+        private fun endsWord(bytes: ByteArray, next: Int, size: Int): Boolean =
+            next == size || bytes[next].toInt().toChar().let { it in CsvRows.CANDIDATES || it == '"' || it == '\r' || it == '\n' }
 
         private fun isAsciiLetter(byte: Byte): Boolean = byte.toInt().toChar().let { it in 'a'..'z' || it in 'A'..'Z' }
 
@@ -522,8 +535,11 @@ private class ByteFacts(val nonAscii: Boolean, val readOnly: ReadOnly?) {
         private const val ASCII_END = 0x80
         private val DOS_ACCENTS = 0x80..0x9F
 
-        /** `Œ ‘ ’ œ` of Windows-1252: an apostrophe and a ligature sit between letters in French and English text. */
-        private val WORD_PUNCTUATION_1252 = intArrayOf(0x8C, 0x91, 0x92, 0x9C)
+        /** Windows-1252 seen between letters in ordinary text: `Œ ‘ ’ – — š œ ž`. */
+        private val WORD_PUNCTUATION_1252 = intArrayOf(0x8C, 0x91, 0x92, 0x96, 0x97, 0x9A, 0x9C, 0x9E)
+
+        /** Windows-1252 seen at the end of a word: `… ” ™`. */
+        private val END_PUNCTUATION_1252 = intArrayOf(0x85, 0x94, 0x99)
     }
 }
 

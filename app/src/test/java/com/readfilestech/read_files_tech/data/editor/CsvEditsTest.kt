@@ -300,6 +300,23 @@ class CsvEditsTest {
         assertThat(edits("Nom;Note\r\nl’homme;cœur\r\n".toByteArray(cp1252)).readOnly).isNull()
     }
 
+    /** Claude review R21: dashes and `š ž` of Windows-1252 made a valid file read-only — after its own save too. */
+    @Test
+    fun `Windows-1252 dashes and Central European letters between letters stay editable`() {
+        assertThat(edits("Trajet;Ville\r\nParis–Lyon;Košice\r\nwell—known;Žižek\r\n".toByteArray(cp1252)).readOnly).isNull()
+        // Ellipsis, closing quote and trademark at a word's end: ordinary Windows-1252 too.
+        assertThat(edits("a;b\r\nwait…;“Bonjour”\r\nBrand™;x\r\n".toByteArray(cp1252)).readOnly).isNull()
+    }
+
+    /** Claude review R21: an MS-DOS accent at the end of a word (`Payé;`) was not seen — only between letters. */
+    @Test
+    fun `an MS-DOS accent at the end of a word, before a separator or the end, is seen`() {
+        val cp850 = charset("IBM850")
+        assertThat(edits("Etat;Lieu\r\nPayé;Ici\r\n".toByteArray(cp850)).readOnly).isEqualTo(ReadOnly.DOS_CODE_PAGE)
+        assertThat(edits("Etat\r\n\"Payé\"\r\n".toByteArray(cp850)).readOnly).isEqualTo(ReadOnly.DOS_CODE_PAGE)
+        assertThat(edits("Etat\r\ncafé".toByteArray(cp850)).readOnly).isEqualTo(ReadOnly.DOS_CODE_PAGE)
+    }
+
     /** Claude review R20: U+FFFD shown for bytes the encoding lacks was written back in their place. */
     @Test
     fun `a cell whose bytes would not come back is not edited`() {

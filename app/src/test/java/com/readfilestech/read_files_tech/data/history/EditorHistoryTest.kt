@@ -94,6 +94,18 @@ class EditorHistoryTest {
         assertThat(versions.first().file.readText()).isEqualTo("after")
     }
 
+    /** Claude review R21: after the clock went ahead once, every later copy was shown dated ahead. */
+    @Test
+    fun `a copy is shown at the time it was written, not the time its name took`() {
+        val ahead = 4_102_444_800_000 // 2100-01-01
+        val now = 1_700_000_000_000
+        history.saveBefore("/a.csv", "then".toByteArray(), nowMs = ahead)
+        history.saveBefore("/a.csv", "now".toByteArray(), nowMs = now)
+        val versions = history.versions("/a.csv")
+        assertThat(versions.map { it.file.readText() }).containsExactly("now", "then").inOrder()
+        assertThat(versions.map { it.writtenAtMs }).containsExactly(now, ahead).inOrder()
+    }
+
     /** Claude review R20: a copy that failed left an empty name, listed as a version and pushing a real one out. */
     @Test
     fun `a copy that fails to be written leaves no version behind`() {

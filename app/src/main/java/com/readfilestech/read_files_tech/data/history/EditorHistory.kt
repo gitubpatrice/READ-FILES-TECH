@@ -5,9 +5,18 @@ import com.readfilestech.read_files_tech.data.files.FileTrees
 import java.io.File
 import java.security.MessageDigest
 
-/** One saved version: the raw copy of a file BEFORE it was overwritten, and when that was. */
+/**
+ * One saved version: the raw copy of a file BEFORE it was overwritten, and when that was — [savedAtMs], read
+ * from its name, which orders the copies.
+ */
 data class HistoryCopy(val file: File, val savedAtMs: Long) {
     val size: Long get() = file.length()
+
+    /**
+     * When the copy was written, to show: once the clock went ahead and back, every later name follows the
+     * newest, a millisecond apart, all dated ahead (Claude review R21). The name where the file gives no date.
+     */
+    val writtenAtMs: Long get() = file.lastModified().takeIf { it > 0 } ?: savedAtMs
 }
 
 /**
@@ -67,6 +76,7 @@ class EditorHistory(
         try {
             writeCopy(copy, current)
             written = true
+            copy.setLastModified(nowMs)
         } finally {
             if (!written) copy.delete()
         }
