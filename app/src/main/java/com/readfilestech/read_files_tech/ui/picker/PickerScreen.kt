@@ -63,12 +63,14 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.editor.EditedFile
 import com.readfilestech.read_files_tech.data.storage.StorageModel
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.explorer.AccessBanner
 import com.readfilestech.read_files_tech.ui.explorer.EntryRow
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
+import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -226,6 +228,13 @@ private fun RecentsTab(
                             DropdownMenuItem(text = { Text(stringResource(R.string.action_open)) }, onClick = {
                                 dismiss()
                                 open(entry)
+                            })
+                        }
+                        // "Modify" of the 2.15.3 (`rft_picker_screen.dart:669-676`) was offered for any file (F34).
+                        if (entry.extension in EditedFile.EXTENSIONS) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.action_edit)) }, onClick = {
+                                dismiss()
+                                onNavigate(Routes.feature(Feature.EDITOR, entry.path))
                             })
                         }
                         if (canLeave) {

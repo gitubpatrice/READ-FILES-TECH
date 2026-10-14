@@ -525,6 +525,38 @@
     <string name="color_hex" translatable="false">HEX</string>
     <string name="color_rgb" translatable="false">RGB</string>
     <string name="color_hsl" translatable="false">HSL</string>
+    <!-- Code editor (CodeEditorScreen of the 2.15.3) -->
+    <string name="editor_choose">Choose a file to edit</string>
+    <string name="editor_intro">Edit a text file — code, settings, notes — and save it as it was: same encoding, same line endings.</string>
+    <string name="editor_modified">modified</string>
+    <string name="editor_redo">Redo</string>
+    <string name="editor_text_size">Text size</string>
+    <string name="editor_text_size_value" translatable="false">%1$d pt</string>
+    <string name="editor_saved">File saved</string>
+    <string name="editor_save_failed">Not saved: %1$s</string>
+    <string name="editor_not_text">“%1$s” is not a text file: the editor does not open it.</string>
+    <string name="editor_not_reversible">“%1$s” holds bytes that are no characters of its encoding — a character cut short, or damage: saving would change them. The viewer shows it.</string>
+    <!-- "Windows-1252, the encoding of this file, has no “😀”" -->
+    <string name="editor_unencodable">%1$s, the encoding of this file, has no “%2$s”: remove it, then save.</string>
+    <string name="editor_changed_title">“%1$s” changed</string>
+    <string name="editor_changed_message">Another app changed, moved or deleted this file since it was opened here. Overwrite it with your text? Its version on disk goes to the history first.</string>
+    <string name="editor_overwrite">Overwrite</string>
+    <string name="editor_leave_title">Unsaved changes</string>
+    <string name="editor_leave_message">Save before leaving?</string>
+    <string name="editor_discard">Discard</string>
+    <string name="editor_history">History</string>
+    <string name="editor_history_empty">No saved version yet: each save keeps the version it replaces, the last %1$d.</string>
+    <string name="editor_history_hint">Tap a version to see its beginning. Restoring loads it in the editor: your text goes to the history first, and the file is written only when you save.</string>
+    <string name="editor_legacy_title">Old history (before 3.0)</string>
+    <string name="editor_legacy_warning">Kept by the earlier version of the app under this file’s name only: a copy may come from another file of the same name.</string>
+    <string name="editor_restored">Version loaded — save to keep it</string>
+    <string name="editor_restore_failed">Not restored: %1$s</string>
+    <string name="editor_version_not_text">this version is not a text the editor opens</string>
+    <string name="encoding_utf8" translatable="false">UTF-8</string>
+    <string name="encoding_utf8_bom" translatable="false">UTF-8 BOM</string>
+    <string name="encoding_utf16le" translatable="false">UTF-16 LE</string>
+    <string name="encoding_utf16be" translatable="false">UTF-16 BE</string>
+    <string name="encoding_windows_1252" translatable="false">Windows-1252</string>
     <!-- The image viewer: which image of the folder is shown, out of how many. -->
     <string name="image_position" translatable="false">%1$d / %2$d</string>
 

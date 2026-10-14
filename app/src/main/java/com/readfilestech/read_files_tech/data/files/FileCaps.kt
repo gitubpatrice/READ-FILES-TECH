@@ -16,6 +16,14 @@ object FileCaps {
     private const val MIB = 1024L * 1024
 
     const val TEXT_VIEWER = 50 * MIB
+
+    /**
+     * Bytes of a file the code editor opens: a text field lays its whole text out again at each key typed,
+     * where the text viewer lays out the rows on screen only — a larger file is refused in words, and the
+     * viewer shows it. No 2.15.3 counterpart: it read any file whole into its text field
+     * (`code_editor_screen.dart:74-93`, inventory F34).
+     */
+    const val CODE_EDITOR = 1 * MIB
     const val DOC_ZIPPED = 50 * MIB
     const val SPREADSHEET = 50 * MIB
     const val EPUB_FILE = 100 * MIB

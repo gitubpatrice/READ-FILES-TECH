@@ -5,6 +5,7 @@ enum class EntryAction {
     OPEN,
     OPEN_WITH,
     PREVIEW,
+    EDIT,
     EDIT_IN_PDF_TECH,
     STRIP_METADATA,
     SHARE,

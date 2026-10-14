@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Visibility
@@ -27,13 +28,14 @@ import androidx.compose.ui.res.stringResource
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.TextPreview
+import com.readfilestech.read_files_tech.data.editor.EditedFile
 import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.ui.theme.BrandColors
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
 /**
- * A file's menu, in the 2.15.x order. Not yet here: "Edit" (the editor, phase 5) — it comes back with its
- * screen. "Remove metadata" is offered on the formats that carry EXIF (the 2.15.x also on GIF and BMP).
+ * A file's menu, in the 2.15.x order. "Remove metadata" is offered on the formats that carry EXIF (the
+ * 2.15.x also on GIF and BMP).
  */
 @Composable
 fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (EntryAction, FileEntry) -> Unit, dismiss: () -> Unit) {
@@ -42,6 +44,8 @@ fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (Entr
         item(EntryAction.OPEN, R.string.action_open, Icons.AutoMirrored.Outlined.OpenInNew)
         item(EntryAction.OPEN_WITH, R.string.action_open_with, Icons.Outlined.Apps)
         if (entry.extension in TextPreview.EXTENSIONS) item(EntryAction.PREVIEW, R.string.action_preview, Icons.Outlined.Visibility)
+        // `canEdit` of the 2.15.3 (`file_row.dart:108, 296`): the code editor, for a text file.
+        if (entry.extension in EditedFile.EXTENSIONS) item(EntryAction.EDIT, R.string.action_edit, Icons.Outlined.Edit)
         if (entry.extension == "pdf") {
             item(EntryAction.EDIT_IN_PDF_TECH, R.string.action_edit_in_pdf_tech, Icons.Outlined.PictureAsPdf, BrandColors.PdfTech)
         }

@@ -529,6 +529,31 @@
     <string name="color_palette">Nuancier</string>
     <string name="color_area_description">Saturation et luminosité : faites glisser pour choisir</string>
     <string name="color_hue_description">Teinte : faites glisser pour choisir</string>
+    <!-- Éditeur de code (CodeEditorScreen de la 2.15.3) -->
+    <string name="editor_choose">Choisir un fichier à éditer</string>
+    <string name="editor_intro">Modifier un fichier texte — code, réglages, notes — et l\'enregistrer tel qu\'il était : même encodage, mêmes fins de ligne.</string>
+    <string name="editor_modified">modifié</string>
+    <string name="editor_redo">Rétablir</string>
+    <string name="editor_text_size">Taille du texte</string>
+    <string name="editor_saved">Fichier enregistré</string>
+    <string name="editor_save_failed">Non enregistré : %1$s</string>
+    <string name="editor_not_text">« %1$s » n\'est pas un fichier texte : l\'éditeur ne l\'ouvre pas.</string>
+    <string name="editor_not_reversible">« %1$s » contient des octets qui ne sont pas des caractères de son encodage — un caractère coupé, ou un dommage : l\'enregistrer les changerait. La visionneuse l\'affiche.</string>
+    <string name="editor_unencodable">%1$s, l\'encodage de ce fichier, n\'a pas « %2$s » : retirez-le, puis enregistrez.</string>
+    <string name="editor_changed_title">« %1$s » a changé</string>
+    <string name="editor_changed_message">Une autre application a modifié, déplacé ou supprimé ce fichier depuis son ouverture ici. L\'écraser avec votre texte ? Sa version sur le disque va d\'abord dans l\'historique.</string>
+    <string name="editor_overwrite">Écraser</string>
+    <string name="editor_leave_title">Modifications non enregistrées</string>
+    <string name="editor_leave_message">Enregistrer avant de quitter ?</string>
+    <string name="editor_discard">Ignorer</string>
+    <string name="editor_history">Historique</string>
+    <string name="editor_history_empty">Aucune version enregistrée : chaque enregistrement garde la version qu\'il remplace, les %1$d dernières.</string>
+    <string name="editor_history_hint">Touchez une version pour voir son début. La restaurer la charge dans l\'éditeur : votre texte va d\'abord dans l\'historique, et le fichier n\'est écrit que lorsque vous enregistrez.</string>
+    <string name="editor_legacy_title">Ancien historique (avant la 3.0)</string>
+    <string name="editor_legacy_warning">Gardé par la version précédente de l\'application sous le seul nom de ce fichier : une copie peut venir d\'un autre fichier du même nom.</string>
+    <string name="editor_restored">Version restaurée — pensez à enregistrer</string>
+    <string name="editor_restore_failed">Non restaurée : %1$s</string>
+    <string name="editor_version_not_text">cette version n\'est pas un texte que l\'éditeur ouvre</string>
 
     <string name="zip_empty">Cette archive est vide.</string>
     <string name="zip_extract_all">Extraire tout</string>
