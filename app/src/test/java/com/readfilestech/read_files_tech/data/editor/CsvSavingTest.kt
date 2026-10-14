@@ -1,0 +1,50 @@
+package com.readfilestech.read_files_tech.data.editor
+
+import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.history.EditorHistory
+import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
+
+class CsvSavingTest {
+    @TempDir
+    lateinit var dir: File
+
+    private val history by lazy { EditorHistory(File(dir, "legacy"), File(dir, "history")) }
+
+    private fun open(file: File): Pair<CsvEdits, FileStamp> {
+        val stamp = FileStamp.of(file)
+        return runBlocking { CsvEdits.read(StorageFileSource(file)) } to stamp
+    }
+
+    @Test
+    fun `a save writes the change and keeps the version it overwrites`() {
+        val file = File(dir, "data.csv").apply { writeText("a;b\r\n1;2\r\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 1, "3")
+        CsvSaving.save(file, edits, stamp, history)
+        assertThat(file.readText()).isEqualTo("a;b\r\n1;3\r\n")
+        val versions = history.versions(file.absolutePath)
+        assertThat(versions).hasSize(1)
+        assertThat(versions.single().file.readText()).isEqualTo("a;b\r\n1;2\r\n")
+        assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+    }
+
+    /** The rows are written back from the bytes read: over a file another app changed, they would undo its change. */
+    @Test
+    fun `a file changed since it was opened is not overwritten`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        file.writeText("a,b\n1,2\n3,4\n")
+        assertThrows<FileChangedException> { CsvSaving.save(file, edits, stamp, history) }
+        assertThat(file.readText()).isEqualTo("a,b\n1,2\n3,4\n")
+        assertThat(history.versions(file.absolutePath)).isEmpty()
+        file.delete()
+        assertThrows<FileChangedException> { CsvSaving.save(file, edits, stamp, history) }
+        assertThat(file.exists()).isFalse()
+    }
+}

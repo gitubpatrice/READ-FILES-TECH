@@ -1,0 +1,7 @@
+Nom,Ville,Montant,Remarque,Code postal
+Émile Zola,Paris,1234.56,"Ligne 1
+Ligne 2",01000
+albert,"Lyon; Rhône, sud",-5,"Il a dit ""bonjour""",
+Zoé,+33 6 12 34 56 78,,=A1 written as text,
+,,,,
+Bob,Évry,0.25,,

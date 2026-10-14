@@ -313,6 +313,15 @@ object FileCaps {
     const val IMAGE_METADATA_CHUNKS = 100_000
 
     /**
+     * The largest file an editor keeps a copy of, in its history (docs D-021), before it overwrites it:
+     * [EditorHistory][com.readfilestech.read_files_tech.data.history.EditorHistory] keeps ten per file,
+     * and ten copies of a 50 MiB CSV would be half a gigabyte of the phone. No 2.15.3 counterpart: its
+     * code editor copied every save whole, whatever its size (`code_editor_screen.dart:96-150`), and its
+     * CSV editor kept none.
+     */
+    const val EDITOR_HISTORY_COPY = 10 * MIB
+
+    /**
      * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
      * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
      * (Claude review R8).

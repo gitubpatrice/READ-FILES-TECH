@@ -47,7 +47,8 @@ object Routes {
 
     /**
      * A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. A tool
-     * opened on a file by the explorer's menu (Remove EXIF) gets it as [ARG_PATH].
+     * opened on a file — by the explorer's menu (Remove EXIF), by a viewer (the CSV viewer's "Edit") — gets
+     * it as [ARG_PATH].
      */
     const val FEATURE = "feature/{$ARG_FEATURE}?$ARG_PATH={$ARG_PATH}"
 

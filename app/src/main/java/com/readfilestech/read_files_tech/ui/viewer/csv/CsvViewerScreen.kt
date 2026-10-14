@@ -67,8 +67,9 @@ fun CsvViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel:
         onBack = onBack,
         actions = {
             // Edited in place, a file of the storage only: one of the vault (phase 6) has no place to be.
-            if (source?.shareable != null) {
-                IconButton(onClick = { onNavigate(Routes.feature(Feature.CSV_EDITOR)) }) {
+            val file = source?.shareable
+            if (file != null) {
+                IconButton(onClick = { onNavigate(Routes.feature(Feature.CSV_EDITOR, file.path)) }) {
                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
                 }
             }

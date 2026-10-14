@@ -104,6 +104,7 @@ private class HorizontalScroll(initial: Float) {
  * shifted by what is scrolled past. A row of 16 384 columns lays out the six that show.
  *
  * @param headerCell one cell of the header, [TableHeaderText] by default.
+ * @param rowCell one cell of a row, [TableCellText] by default (the CSV editor's cells take a tap).
  * @param aboveRows what shows between the header and the rows (the CSV viewer's "no row contains…").
  */
 @Composable
@@ -111,6 +112,7 @@ fun TableGrid(
     cells: TableCells,
     list: LazyListState,
     headerCell: @Composable (column: Int, text: String) -> Unit = { _, text -> TableHeaderText(text) },
+    rowCell: @Composable (position: Int, column: Int, text: String) -> Unit = { _, _, text -> TableCellText(text) },
     aboveRows: @Composable () -> Unit = {},
 ) {
     val columnWidth = with(LocalDensity.current) { COLUMN_WIDTH.toPx() }
@@ -149,9 +151,7 @@ fun TableGrid(
         LazyColumn(Modifier.fillMaxSize(), state = list) {
             items(cells.rows) { position ->
                 val row = remember(cells, position, first, until) { cells.row(position, first, until) }
-                CellsRow(row, shift, ROW_HEIGHT) { _, text ->
-                    Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
+                CellsRow(row, shift, ROW_HEIGHT) { index, text -> rowCell(position, first + index, text) }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
@@ -169,6 +169,12 @@ fun TableHeaderText(text: String, modifier: Modifier = Modifier) {
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
+}
+
+/** A cell's text, on two lines at most. */
+@Composable
+fun TableCellText(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier = modifier, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
 }
 
 /** A line said instead of rows, or above them. */

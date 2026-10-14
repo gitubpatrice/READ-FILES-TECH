@@ -22,13 +22,19 @@ import kotlinx.coroutines.ensureActive
  * row — both as `csv` 8 read them (`skipEmptyLines`). At most [FileCaps.CSV_ROWS] rows and
  * [FileCaps.CSV_COLUMNS] columns: beyond, [rowsCut] and [columnsCut] say so.
  */
-class CsvTable private constructor(private val text: EncodedText, val separator: Char, private val index: RowIndex) {
+class CsvTable private constructor(internal val text: EncodedText, val separator: Char, private val index: RowIndex) {
     private val starts = index.starts
 
     val encoding: TextEncoding get() = text.encoding
 
     /** No row at all: nothing but empty lines, or nothing. */
     val isEmpty: Boolean get() = index.records == 0
+
+    /** The rows with content, the header included. */
+    internal val records: Int get() = index.records
+
+    /** Where row [record] starts in [text] (0 is the header): the CSV editor copies what it did not touch from there. */
+    internal fun recordStart(record: Int): Int = starts[record]
 
     /** The rows under the header. */
     val rows: Int get() = maxOf(0, index.records - 1)
@@ -90,18 +96,21 @@ class CsvTable private constructor(private val text: EncodedText, val separator:
             return of(bytes, size)
         }
 
-        /** The table of the first [size] bytes of [bytes] — kept, not copied, unless rows are cut. */
-        suspend fun of(bytes: ByteArray, size: Int = bytes.size): CsvTable {
+        /**
+         * The table of the first [size] bytes of [bytes] — kept, not copied, unless rows are cut and not
+         * [whole]: the CSV editor keeps every byte, it writes back the rows it does not show.
+         */
+        suspend fun of(bytes: ByteArray, size: Int = bytes.size, whole: Boolean = false): CsvTable {
             val text = EncodedText(bytes, size, TextEncoding.detect(bytes, size))
             val dialect = CsvRows.dialectOf(text, 0)
-            return index(text, dialect.separator, dialect.start)
+            return index(text, dialect.separator, dialect.start, whole)
         }
 
         /**
          * One pass of the scanner: where each row with content starts, the widest row. Past the cap of
          * rows, the bytes of the rows not shown are let go — a file of 50 MiB of one-letter rows keeps 2.
          */
-        private suspend fun index(text: EncodedText, separator: Char, from: Int): CsvTable {
+        private suspend fun index(text: EncodedText, separator: Char, from: Int, whole: Boolean): CsvTable {
             val scanner = CsvScanner(text, separator)
             var starts = IntArray(INITIAL_ROWS)
             var count = 0
@@ -127,7 +136,7 @@ class CsvTable private constructor(private val text: EncodedText, val separator:
             }
             val columns = minOf(widest, FileCaps.CSV_COLUMNS)
             val index = RowIndex(starts, count, columns, rowsCut = cut, columnsCut = widest > columns)
-            return CsvTable(if (cut) text.prefix(kept) else text, separator, index)
+            return CsvTable(if (cut && !whole) text.prefix(kept) else text, separator, index)
         }
 
         /** What the screen decodes of a cell: two lines of a column show far less, the rest is never read. */

@@ -368,6 +368,43 @@
     <string name="csv_sorted_descending">Trié, ordre décroissant</string>
     <string name="csv_column_number">Colonne %1$d</string>
 
+    <!-- L'éditeur CSV -->
+    <string name="csv_editor_choose">Choisir un CSV à éditer</string>
+    <string name="csv_editor_intro">Modifiez des cellules, ajoutez ou supprimez des lignes et des colonnes. L\'enregistrement ne réécrit que ce que vous avez changé : le reste du fichier reste tel qu\'il était.</string>
+    <string name="csv_editor_modified">modifié</string>
+    <string name="csv_editor_saved">Sauvegardé</string>
+    <string name="csv_editor_save_failed">Non sauvegardé : %1$s</string>
+    <string name="csv_editor_changed">le fichier a été modifié par une autre application depuis son ouverture</string>
+    <string name="csv_editor_cut_kept">Ce qui n\'est pas affiché est enregistré tel quel.</string>
+    <string name="csv_editor_hint">Touchez une cellule pour la modifier ; maintenez-la pour insérer ou supprimer sa ligne ou sa colonne.</string>
+    <string name="csv_editor_cell_header">En-tête · colonne %1$d</string>
+    <string name="csv_editor_cell_title">Ligne %1$d · colonne %2$d</string>
+    <string name="csv_editor_formula_guarded">Commence comme une formule : enregistré avec \' devant, pour qu\'un tableur l\'affiche comme du texte sans l\'exécuter.</string>
+    <string name="csv_editor_unwritable">Un caractère ne peut pas s\'écrire dans l\'encodage de ce fichier (%1$s).</string>
+    <plurals name="csv_editor_too_long">
+        <item quantity="one">Une cellule contient au plus %1$,d caractère.</item>
+        <item quantity="many">Une cellule contient au plus %1$,d caractères.</item>
+        <item quantity="other">Une cellule contient au plus %1$,d caractères.</item>
+    </plurals>
+    <plurals name="csv_editor_cell_too_long">
+        <item quantity="one">Cette cellule dépasse %1$,d caractère : elle ne peut pas être modifiée ici.</item>
+        <item quantity="many">Cette cellule dépasse %1$,d caractères : elle ne peut pas être modifiée ici.</item>
+        <item quantity="other">Cette cellule dépasse %1$,d caractères : elle ne peut pas être modifiée ici.</item>
+    </plurals>
+    <string name="csv_editor_add_row">Ajouter une ligne</string>
+    <string name="csv_editor_add_column">Ajouter une colonne</string>
+    <string name="csv_editor_insert_row">Insérer une ligne en dessous</string>
+    <string name="csv_editor_insert_column">Insérer une colonne après</string>
+    <string name="csv_editor_delete_row">Supprimer cette ligne</string>
+    <string name="csv_editor_delete_column">Supprimer cette colonne</string>
+    <string name="csv_editor_leave_title">Modifications non sauvegardées</string>
+    <string name="csv_editor_leave_message">Voulez-vous sauvegarder avant de quitter ?</string>
+    <string name="csv_editor_discard">Ignorer</string>
+    <string name="csv_editor_history">Historique</string>
+    <string name="csv_editor_history_empty">Aucune version antérieure de ce fichier pour l\'instant. Chaque sauvegarde garde la version qu\'elle remplace : les %1$d dernières, pour les fichiers jusqu\'à %2$d Mo.</string>
+    <string name="csv_editor_history_hint">Restaurer charge la version dans l\'éditeur : rien n\'est écrit avant que vous sauvegardiez.</string>
+    <string name="csv_editor_restored">Version antérieure chargée : sauvegardez pour la garder.</string>
+
     <string name="document_no_text">Ce document ne contient aucun texte.</string>
 
     <!-- Visionneuse HTML -->

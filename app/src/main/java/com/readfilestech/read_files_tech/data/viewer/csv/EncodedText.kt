@@ -35,8 +35,11 @@ internal class EncodedText(private val bytes: ByteArray, private val size: Int, 
         return encoding.charset.decode(ByteBuffer.wrap(bytes, start, byteAt(to) - start)).toString()
     }
 
-    /** Where unit [index] begins; the end of the bytes for the end of the text, an odd last byte of UTF-16 included (decoded as U+FFFD). */
-    private fun byteAt(index: Int): Int = if (index == length) size else offset + index * encoding.unitSize
+    /**
+     * Where unit [index] begins; the end of the bytes for the end of the text, an odd last byte of UTF-16
+     * included (decoded as U+FFFD). The CSV editor copies the bytes of what the user did not touch by it.
+     */
+    fun byteAt(index: Int): Int = if (index == length) size else offset + index * encoding.unitSize
 
     /** The first [units] units, in an array of their own: the rest of the bytes is let go. */
     fun prefix(units: Int): EncodedText {

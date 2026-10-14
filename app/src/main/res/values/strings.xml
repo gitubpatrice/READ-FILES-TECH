@@ -361,6 +361,41 @@
     <!-- A column whose header is empty, for TalkBack. -->
     <string name="csv_column_number">Column %1$d</string>
 
+    <!-- The CSV editor -->
+    <string name="csv_editor_choose">Choose a CSV to edit</string>
+    <string name="csv_editor_intro">Change cells, add or delete rows and columns. Saving writes back only what you changed: the rest of the file stays as it was.</string>
+    <string name="csv_editor_modified">modified</string>
+    <string name="csv_editor_saved">Saved</string>
+    <string name="csv_editor_save_failed">Not saved: %1$s</string>
+    <string name="csv_editor_changed">the file was changed by another app since it was opened</string>
+    <string name="csv_editor_cut_kept">What is not shown is saved as it was.</string>
+    <string name="csv_editor_hint">Tap a cell to change it; touch and hold it to insert or delete its row or its column.</string>
+    <string name="csv_editor_cell_header">Header · column %1$d</string>
+    <string name="csv_editor_cell_title">Row %1$d · column %2$d</string>
+    <string name="csv_editor_formula_guarded">Starts like a formula: saved with \' in front, so that a spreadsheet shows it as text and does not run it.</string>
+    <string name="csv_editor_unwritable">A character cannot be written in the encoding of this file (%1$s).</string>
+    <plurals name="csv_editor_too_long">
+        <item quantity="one">A cell holds at most %1$,d character.</item>
+        <item quantity="other">A cell holds at most %1$,d characters.</item>
+    </plurals>
+    <plurals name="csv_editor_cell_too_long">
+        <item quantity="one">This cell is longer than %1$,d character: it cannot be edited here.</item>
+        <item quantity="other">This cell is longer than %1$,d characters: it cannot be edited here.</item>
+    </plurals>
+    <string name="csv_editor_add_row">Add a row</string>
+    <string name="csv_editor_add_column">Add a column</string>
+    <string name="csv_editor_insert_row">Insert a row below</string>
+    <string name="csv_editor_insert_column">Insert a column after</string>
+    <string name="csv_editor_delete_row">Delete this row</string>
+    <string name="csv_editor_delete_column">Delete this column</string>
+    <string name="csv_editor_leave_title">Unsaved changes</string>
+    <string name="csv_editor_leave_message">Save before leaving?</string>
+    <string name="csv_editor_discard">Discard</string>
+    <string name="csv_editor_history">History</string>
+    <string name="csv_editor_history_empty">No earlier version of this file yet. Each save keeps the version it replaces: the last %1$d, for files up to %2$d MB.</string>
+    <string name="csv_editor_history_hint">Restoring loads the version in the editor: nothing is written until you save.</string>
+    <string name="csv_editor_restored">Earlier version loaded: save to keep it.</string>
+
     <string name="document_no_text">This document contains no text.</string>
 
     <!-- HTML viewer -->

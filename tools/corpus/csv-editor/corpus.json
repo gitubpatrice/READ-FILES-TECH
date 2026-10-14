@@ -1,0 +1,12 @@
+[
+ {"file": "excel-xlcsv-local.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSV, Local, French Windows): code page 1252, ';', decimal comma, CRLF, a quoted cell with a line break and one with \"\", an empty row ';;;;' (tools/oracles/csv_editor/make_excel_csv.vbs)"},
+ {"file": "excel-xlcsv-comma.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSV, not Local): code page 1252, ',', decimal point, CRLF"},
+ {"file": "excel-utf8-local.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSVUTF8, Local): UTF-8 with a BOM, ';', CRLF"},
+ {"file": "excel-utf8-no-final-break.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "excel-utf8-local.csv without its last CRLF (tools/oracles/csv_editor/make_python_csv.py)"},
+ {"file": "excel-mac-cr.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSVMac, Local): Mac Roman, ';', CR line breaks"},
+ {"file": "excel-msdos.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSVMSDOS, Local): code page 850, ';', CRLF"},
+ {"file": "excel-unicode-tab.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlUnicodeText): UTF-16 LE with a BOM, tab, CRLF"},
+ {"file": "python-lf.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Python 3.14 csv.writer: ',', LF, a quoted cell with a line break and one with \"\""},
+ {"file": "python-quote-all-semicolon.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Python 3.14 csv.writer QUOTE_ALL: ';', CRLF, every field quoted"},
+ {"file": "python-sep-blank-lines.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Python 3.14 csv.writer behind an Excel 'sep=,' line: code page 1252, CRLF, empty lines and a row of empty fields"}
+]
