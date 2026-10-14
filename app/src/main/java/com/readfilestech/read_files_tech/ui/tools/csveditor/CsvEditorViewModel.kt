@@ -224,21 +224,23 @@ class CsvEditorViewModel @Inject constructor(
         messages.info(uiText(R.string.csv_editor_restored))
     }
 
-    private fun notKept(error: Throwable): UiText {
-        val why = when (error) {
-            is FileTooLargeException -> uiText(R.string.csv_editor_unsaved_too_large, (error.capBytes / MIB).toInt())
-            else -> IoErrors.reasonOf(error)
-        }
-        return uiText(R.string.csv_editor_restore_failed, why)
-    }
-
     private companion object {
         const val KEY_PATH = "csv_editor_path"
-        const val MIB = 1024L * 1024
     }
 }
 
 /** The encoding the user chose for the file, kept while it is open — read again after a save, restored. */
 private fun keepChoice(from: CsvEdits, to: CsvEdits) {
     from.chosenEncoding?.takeIf { it in to.encodingChoices }?.let { to.chosenEncoding = it }
+}
+
+private const val MIB = 1024L * 1024
+
+/** Why a restore did not happen: the cells not saved could not be kept first. */
+private fun notKept(error: Throwable): UiText {
+    val why = when (error) {
+        is FileTooLargeException -> uiText(R.string.csv_editor_unsaved_too_large, (error.capBytes / MIB).toInt())
+        else -> IoErrors.reasonOf(error)
+    }
+    return uiText(R.string.csv_editor_restore_failed, why)
 }

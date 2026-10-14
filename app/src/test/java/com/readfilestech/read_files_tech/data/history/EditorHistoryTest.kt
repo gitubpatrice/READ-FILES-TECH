@@ -116,7 +116,8 @@ class EditorHistoryTest {
         assertThat(versions.single { it.file.readText() == "v5" }.savedAtMs).isEqualTo(1_005L)
         // The same size, other bytes: a new version, the oldest out.
         history.saveBefore("/a.csv", "vX".toByteArray(), nowMs = 6_000)
-        assertThat(history.versions("/a.csv").map { it.file.readText() }).containsExactlyElementsIn(listOf("vX") + (9 downTo 1).map { "v$it" })
+        val after = history.versions("/a.csv").map { it.file.readText() }
+        assertThat(after).containsExactlyElementsIn(listOf("vX") + (9 downTo 1).map { "v$it" })
     }
 
     /** Claude review R20: a copy that failed left an empty name, listed as a version and pushing a real one out. */
