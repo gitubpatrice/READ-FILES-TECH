@@ -58,6 +58,9 @@ private class TextPages(private val document: PdfDocument) {
         textSize = TextPdf.FONT_SIZE
         typeface = Typeface.DEFAULT
         color = Color.BLACK
+        // No ligatures: drawn as one glyph, "ffi" came back out of the PDF as U+FB03 ("ﬃcially", seen by
+        // pdftotext and pypdf on a phone's output), so the PDF's text could not be searched or copied as written.
+        fontFeatureSettings = "'liga' 0, 'clig' 0"
     }
     private val width = (PAGE_WIDTH - 2 * ImagePlacement.MARGIN).toInt()
     private val bottom = PAGE_HEIGHT - ImagePlacement.MARGIN

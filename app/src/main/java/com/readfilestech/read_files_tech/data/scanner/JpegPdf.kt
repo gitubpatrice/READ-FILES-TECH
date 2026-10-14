@@ -10,10 +10,10 @@ import java.util.Locale
 /** What a PDF needs to know of a JPEG to embed it as it is. */
 data class JpegInfo(val width: Int, val height: Int, val components: Int) {
     companion object {
-        private const val MARKER = 0xFF
-        private const val SOI = 0xD8
-        private const val EOI = 0xD9
-        private const val SOS = 0xDA
+        internal const val MARKER = 0xFF
+        internal const val SOI = 0xD8
+        internal const val EOI = 0xD9
+        internal const val SOS = 0xDA
         private const val TEM = 0x01
         private const val RST_FIRST = 0xD0
         private const val RST_LAST = 0xD7
@@ -49,7 +49,7 @@ data class JpegInfo(val width: Int, val height: Int, val components: Int) {
         }
 
         /** The next marker, past any fill bytes; standalone markers (no length) are not expected before SOS. */
-        private fun nextMarker(data: DataInputStream): Int {
+        internal fun nextMarker(data: DataInputStream): Int {
             if (data.readUnsignedByte() != MARKER) throw IOException("marker expected")
             var marker = data.readUnsignedByte()
             while (marker == MARKER) marker = data.readUnsignedByte()
@@ -70,7 +70,7 @@ data class JpegInfo(val width: Int, val height: Int, val components: Int) {
             return JpegInfo(width, height, components)
         }
 
-        private fun skipFully(input: InputStream, count: Long) {
+        internal fun skipFully(input: InputStream, count: Long) {
             var left = count
             while (left > 0) {
                 val skipped = input.skip(left)

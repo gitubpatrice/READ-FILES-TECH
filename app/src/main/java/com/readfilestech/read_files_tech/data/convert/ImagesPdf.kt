@@ -46,11 +46,12 @@ class ImagesPdf(memory: MemoryUsageSetting) : AutoCloseable {
 
     /**
      * A page of the JPEG [input] gives — [info] read from its frame header — upright by [orientation]
-     * (its EXIF). Its bytes are copied whole from [input], which is not closed.
+     * (its EXIF). Its bytes are copied from [input], which is not closed, without its metadata
+     * ([JpegWithoutMetadata]: no GPS position, date or camera in the PDF); its pixels are never re-encoded.
      */
     fun addJpeg(input: InputStream, info: JpegInfo, orientation: ExifOrientation) {
         val space: PDColorSpace = if (info.components == 1) PDDeviceGray.INSTANCE else PDDeviceRGB.INSTANCE
-        val image = PDImageXObject(document, input, COSName.DCT_DECODE, info.width, info.height, BITS, space)
+        val image = PDImageXObject(document, JpegWithoutMetadata(input), COSName.DCT_DECODE, info.width, info.height, BITS, space)
         page(image, ImagePlacement.onA4(info.width, info.height, orientation))
     }
 

@@ -12,8 +12,10 @@ Usage:
   — text for text, and a number only where the text is that number written plainly (its value equal to the
   text's, Decimal for Decimal). openpyxl does not decode ECMA-376's `_xHHHH_` in an inline string, which
   Excel does: its texts are decoded here (a control character of a binary file is written so).
-- images-to-pdf/: manifest.json names, page by page, the JPEG each page must carry BYTE FOR BYTE (pypdf's
-  raw stream), or the raw RGB (and alpha) its pixels must decode to (pypdf's FlateDecode); pdftotext must
+- images-to-pdf/: manifest.json names, page by page, the JPEG each page must carry (pypdf's raw stream) —
+  byte for byte, but without its metadata segments (EXIF, XMP, IPTC, comments: no GPS position in a PDF),
+  restated here independently, with no such segment left and the pixels Pillow decodes equal to the
+  source's —, or the raw RGB (and alpha) its pixels must decode to (pypdf's FlateDecode); pdftotext must
   count the pages too.
 
 `check-device <dir>`: the outputs the phone made, named <source>_<stamp>.<ext> as the app names them:
@@ -175,8 +177,39 @@ def pdf_pages(path):
     return run.stdout.decode("utf-8").split("\f")[:-1]
 
 
+JPEG_KEPT_APPS = {0xE0, 0xE2, 0xEE}  # JFIF, the ICC profile, Adobe's colour transform: what draws the image
+
+
+def jpeg_segments(data):
+    """(marker, start, end) of each segment before the image data, then (SOS or EOI, start, len(data))."""
+    position = 2
+    while position + 4 <= len(data):
+        while data[position] == 0xFF and data[position + 1] == 0xFF:
+            position += 1
+        marker = data[position + 1]
+        if marker in (0xDA, 0xD9):
+            yield marker, position, len(data)
+            return
+        end = position + 2 + int.from_bytes(data[position + 2:position + 4], "big")
+        yield marker, position, end
+        position = end
+
+
+def jpeg_without_metadata(data):
+    """The JPEG with its metadata segments left out — every APPn but JFIF, ICC and Adobe, and comments."""
+    kept = [data[start:end] for marker, start, end in jpeg_segments(data)
+            if not (0xE0 <= marker <= 0xEF or marker == 0xFE) or marker in JPEG_KEPT_APPS]
+    return data[:2] + b"".join(kept)
+
+
+def jpeg_metadata_markers(data):
+    return [marker for marker, _, _ in jpeg_segments(data)
+            if (0xE0 <= marker <= 0xEF or marker == 0xFE) and marker not in JPEG_KEPT_APPS]
+
+
 def check_images_pdf():
     import pypdf
+    from PIL import Image
     folder = OUTPUTS / "images-to-pdf"
     manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
     pdf = folder / manifest["pdf"]
@@ -191,10 +224,16 @@ def check_images_pdf():
         if "jpeg" in expected:
             source = pathlib.Path(expected["jpeg"])
             source = source if source.is_absolute() else folder / source
-            same = image["/Filter"] == "/DCTDecode" and image._data == source.read_bytes()
-            print(("OK  " if same else "ECHEC"), "page %d: the JPEG %s, byte for byte (%d bytes)" % (number, source.name, len(image._data)))
-            if not same:
-                fail("%s page %d: not the JPEG %s as it is" % (pdf.name, number, source.name))
+            original = source.read_bytes()
+            embedded = image._data
+            same = image["/Filter"] == "/DCTDecode" and embedded == jpeg_without_metadata(original)
+            clean = not jpeg_metadata_markers(embedded)
+            pixels = Image.open(io.BytesIO(embedded)).tobytes() == Image.open(io.BytesIO(original)).tobytes()
+            print(("OK  " if same and clean and pixels else "ECHEC"),
+                  "page %d: the JPEG %s, byte for byte but its metadata (%d of %d bytes), pixels equal: %s"
+                  % (number, source.name, len(embedded), len(original), pixels))
+            if not (same and clean and pixels):
+                fail("%s page %d: not the JPEG %s without its metadata" % (pdf.name, number, source.name))
         else:
             rgb = (folder / expected["rgb"]).read_bytes()
             same = image["/Filter"] == "/FlateDecode" and image.get_data() == rgb

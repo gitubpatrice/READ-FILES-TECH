@@ -90,8 +90,12 @@ class ImagesToPdfTest {
             for ((page, jpeg) in listOf(0 to colour, 1 to turned, 2 to gray)) {
                 val image = images(page, document).single()
                 assertThat(image.cosObject.getItem(COSName.FILTER)).isEqualTo(COSName.DCT_DECODE)
-                assertThat(image.cosObject.createRawInputStream().use { it.readBytes() }).isEqualTo(jpeg)
+                // Byte for byte, but its metadata (JpegWithoutMetadataTest): the photo's EXIF is not in the PDF.
+                val embedded = image.cosObject.createRawInputStream().use { it.readBytes() }
+                assertThat(embedded).isEqualTo(JpegWithoutMetadata(jpeg.inputStream()).readBytes())
+                assertThat(String(embedded, Charsets.ISO_8859_1)).doesNotContain("Exif")
             }
+            assertThat(String(turned, Charsets.ISO_8859_1)).contains("Exif")
             // The photo of EXIF orientation 6 drawn turned, by the page's matrix: its JPEG stays as it is.
             val info = JpegInfo.read(turned.inputStream())
             val expected = ImagePlacement.onA4(info.width, info.height, ExifOrientation.of(6)).map(Float::toDouble).toDoubleArray()
