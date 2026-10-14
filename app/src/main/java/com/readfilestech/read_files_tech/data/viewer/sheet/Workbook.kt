@@ -21,8 +21,8 @@ import java.util.Locale
 /**
  * A workbook opened for the viewer (`XlsxViewerScreen` of the 2.15.3): the names of its sheets, in their
  * order, and each sheet read when it is shown — one at a time, never all of them (the 2.15.3 decoded every
- * sheet whole, inventory D21). Open until [close]: an .xls is held by POI, an .xlsx or .ods is read from its
- * archive on demand.
+ * sheet whole, inventory D21). Open until [close]: an .xls is read from its OLE file (held whole), an .xlsx or
+ * .ods from its archive, on demand.
  *
  * The format is told by the content, not by the name (the 2.15.3 sent `.ods` to its own reader by the name,
  * so an .xlsx named .ods was "not a valid .ods"): an OLE file is an .xls (or an encrypted .xlsx, a format not

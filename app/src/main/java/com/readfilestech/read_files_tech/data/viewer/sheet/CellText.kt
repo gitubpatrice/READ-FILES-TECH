@@ -1,8 +1,6 @@
 package com.readfilestech.read_files_tech.data.viewer.sheet
 
 import com.readfilestech.read_files_tech.data.files.FileCaps
-import org.apache.poi.ss.usermodel.Cell
-import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.util.LocaleUtil
 import java.text.SimpleDateFormat
@@ -11,9 +9,9 @@ import java.util.TimeZone
 import kotlin.math.pow
 
 /**
- * A cell's text as a spreadsheet shows it, by POI's `DataFormatter`: one engine for the cells of an .xls and
- * the numbers of an .xlsx — 347 cells of 347 as Excel shows them, in both formats (prototype, docs D-006
- * and D-015).
+ * A cell's text as a spreadsheet shows it, by POI's `DataFormatter`: one engine for the numbers of an .xls
+ * and of an .xlsx, each from its value, its format's index and code — 347 cells of 347 as Excel shows them,
+ * in both formats (prototype, docs D-006 and D-015).
  *
  * **The `java.awt.Color` trap.** `DataFormatter` hands every format of three sections or more (the
  * accounting "_-* # ##0,00 €") and every conditional one to `CellFormat`, whose `CellFormatPart.<clinit>`
@@ -43,21 +41,7 @@ internal class CellText(locale: Locale) {
         formatter.addFormat("m/d/yy h:mm", SimpleDateFormat("$shortDate HH:mm", locale).apply { timeZone = UTC })
     }
 
-    /** The text of a cell of an .xls, its formula's cached value for a formula. */
-    fun format(cell: Cell, date1904: Boolean): String = inUtc {
-        val type = if (cell.cellType == CellType.FORMULA) cell.cachedFormulaResultType else cell.cellType
-        when (type) {
-            CellType.BOOLEAN -> booleanText(cell.booleanCellValue)
-            CellType.NUMERIC -> {
-                val style = cell.cellStyle
-                number(cell.numericCellValue, style.dataFormat.toInt(), style.dataFormatString, date1904)
-                    ?: formatter.formatCellValue(cell)
-            }
-            else -> formatter.formatCellValue(cell)
-        }
-    }
-
-    /** A number of an .xlsx in format [formatIndex] (its code [format]), dates of the 1904 calendar if [date1904]. */
+    /** A number of a workbook in format [formatIndex] (its code [format]), dates of the 1904 calendar if [date1904]. */
     fun formatNumber(value: Double, formatIndex: Int, format: String, date1904: Boolean): String = inUtc {
         number(value, formatIndex, format, date1904) ?: formatter.formatRawCellContents(value, formatIndex, format, date1904)
     }

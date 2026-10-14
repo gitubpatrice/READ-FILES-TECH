@@ -158,6 +158,12 @@ try {
   SaveAs $wb 'excel-main-password.xlsx' 51 'Motdepasse1'
   try { SaveAs $wb 'excel-main-95.xls' 39 $null; 'excel95=ok' } catch { "excel95=refused: $($_.Exception.Message)" }  # xlExcel7
   $wb.Close($false)
+  # The structure protected: Excel encrypts the .xls with its default password ("VelvetSweatshop"), opened
+  # without asking. Made from the .xls saved above, as its first maker did (a VBScript doing these steps).
+  $wb = $xl.Workbooks.Open((Join-Path $Out 'excel-main.xls'))
+  $wb.Protect('struct', $true, $false)
+  SaveAs $wb 'excel-main-protected.xls' 56 $null
+  $wb.Close($false)
 
   # ---------- the 1904 calendar ----------
   $wb = $xl.Workbooks.Add()

@@ -51,8 +51,8 @@ internal class XlsxWorkbook private constructor(
     override fun release() = parts.archive.close()
 
     /**
-     * The numbers of the workbook as shown: the format of each cell style (`cellXfs`, a built-in index or a
-     * custom code), the calendar of its dates, the formatter they share — used under its lock.
+     * The numbers of the workbook as shown: the format of each cell style (`cellXfs`, an .xls's XF records: a
+     * built-in index or a custom code), the calendar of its dates, the formatter they share — used under its lock.
      */
     class Numbers(
         private val styles: IntArray,

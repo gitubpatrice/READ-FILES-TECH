@@ -7,9 +7,15 @@ import os
 import pathlib
 import random
 import shutil
+import struct
 import zipfile
 
 MIB = 1024 * 1024
+BIFF_DATA = 8224  # BIFF8's longest record data
+SECTOR = 4096
+END_OF_CHAIN = 0xFFFFFFFE
+FREE_SECTOR = 0xFFFFFFFF
+NO_STREAM = 0xFFFFFFFF  # a directory entry without sibling or child
 SPREADSHEET_CAP = 50 * MIB  # FileCaps.SPREADSHEET
 PART_CAP = 200 * MIB  # FileCaps.ZIP_ENTRY_DECOMPRESSED
 SHEET_ROWS = 5000  # FileCaps.SHEET_ROWS
@@ -83,6 +89,71 @@ def _rows(first, last, cells):
             yield b"".join(batch)
             batch = []
     yield b"".join(batch)
+
+
+def _record(sid, data=b""):
+    """A BIFF8 record ([MS-XLS] 2.1.4): its type, its length, its data (8 224 bytes at most)."""
+    assert len(data) <= BIFF_DATA
+    return struct.pack("<HH", sid, len(data)) + data
+
+
+def _sst(count, text, unique=None, total=None):
+    """The shared strings table ([MS-XLS] 2.4.265): `count` strings, `text(i)` the i-th, in an SST record and
+    the CONTINUEs it takes; a string's chars cut across two of them start the CONTINUE with their flags byte.
+    `unique` and `total` are the counts it declares."""
+    records = []
+    sid = 0x00FC
+    body = bytearray(struct.pack("<II", count if total is None else total, count if unique is None else unique))
+    for i in range(count):
+        if len(body) + 3 > BIFF_DATA:
+            records.append(_record(sid, bytes(body)))
+            sid, body = 0x003C, bytearray()
+        chars = text(i).encode("latin-1")
+        body += struct.pack("<HB", len(chars), 0)
+        while len(body) + len(chars) > BIFF_DATA:
+            fits = BIFF_DATA - len(body)
+            body += chars[:fits]
+            chars = chars[fits:]
+            records.append(_record(sid, bytes(body)))
+            sid, body = 0x003C, bytearray(b"\x00")
+        body += chars
+    records.append(_record(sid, bytes(body)))
+    return b"".join(records)
+
+
+def _xls(path, globals_, sheet):
+    """An .xls of one sheet: its workbook stream (globals, then the sheet's records) written by hand and wrapped
+    in a compound file of version 4 ([MS-CFB], 4 096-byte sectors) - never by POI, the reader on the device."""
+    def bof(kind):
+        return _record(0x0809, struct.pack("<HHHHII", 0x0600, kind, 0x0DBB, 0x07CC, 0, 6))
+
+    name = b"Feuil1"
+    stream = b"".join([bof(0x0005), _record(0x0085, struct.pack("<IHBB", 0, 0, len(name), 0) + name), globals_,
+                       _record(0x000A), bof(0x0010), sheet, _record(0x000A)])
+    stream += bytes(max(0, SECTOR - len(stream)))  # under a sector it would go to the mini stream; zeros follow the EOF
+    sectors = -(-len(stream) // SECTOR)
+    fat = 1
+    while fat * (SECTOR // 4) < sectors + 1 + fat:
+        fat += 1
+    assert fat <= 109
+    directory = sectors
+    header = (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + bytes(16) + struct.pack("<5H", 0x3E, 4, 0xFFFE, 12, 6) + bytes(6)
+              + struct.pack("<9I", 1, fat, directory, 0, SECTOR, END_OF_CHAIN, 0, END_OF_CHAIN, 0)
+              + struct.pack("<109I", *([directory + 1 + i for i in range(fat)] + [FREE_SECTOR] * (109 - fat))))
+
+    def entry(entry_name, kind, child, start, size):
+        raw = entry_name.encode("utf-16-le")
+        return (raw + bytes(64 - len(raw)) + struct.pack("<HBB3I", len(raw) + 2, kind, 1, NO_STREAM, NO_STREAM, child)
+                + bytes(36) + struct.pack("<IQ", start, size))
+
+    table = [i + 1 for i in range(sectors - 1)] + [END_OF_CHAIN, END_OF_CHAIN] + [0xFFFFFFFD] * fat
+    table += [FREE_SECTOR] * (fat * (SECTOR // 4) - len(table))
+    with open(path, "wb") as handle:
+        handle.write(header + bytes(SECTOR - len(header)))
+        handle.write(stream + bytes(sectors * SECTOR - len(stream)))
+        root = entry("Root Entry", 5, 1, END_OF_CHAIN, 0) + entry("Workbook", 2, NO_STREAM, 0, len(stream))
+        handle.write(root + bytes(SECTOR - len(root)))
+        handle.write(struct.pack("<%dI" % len(table), *table))
 
 
 def _column(index):
@@ -188,6 +259,25 @@ def generate(out):
     main = (REAL / "excel-main.xls").read_bytes()
     (out / "sheets-cut.xls").write_bytes(main[: len(main) // 2])
     case("sheets-cut.xls", "unreadable", 2000)
+
+    # Near the cap, every cell its own shared string, as the .xls Excel made (65 536 rows of 27 cells, 1.77
+    # million strings, 45 MB): POI's SSTRecord held the table whole (293 MiB on a JVM). Read, the strings shown.
+    cells = bytearray()
+    for i in range(65536 * 27):
+        cells += _record(0x00FD, struct.pack("<HHHI", i // 27, i % 27, 0, i))
+    _xls(out / "sheets-unique-strings.xls", _sst(65536 * 27, lambda i: "r%dc%d" % (i // 27 + 1, i % 27)), bytes(cells))
+    case("sheets-unique-strings.xls", "ok", 10000)
+
+    # A table that declares two billion strings and holds three: POI's SSTRecord made an empty one for each.
+    _xls(out / "sheets-sst-count.xls", _sst(3, lambda i: "abc"[i], unique=0x7FFFFFFF, total=0x7FFFFFFF),
+         b"".join(_record(0x00FD, struct.pack("<HHHI", 0, c, 0, c)) for c in range(3)))
+    case("sheets-sst-count.xls", "ok", 2000)
+
+    # A file of 4 KB whose OLE header addresses 249 MB: POIFSFileSystem(InputStream) allocated them at once.
+    header = (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + bytes(16) + struct.pack("<5H", 0x3E, 3, 0xFFFE, 9, 6) + bytes(6)
+              + struct.pack("<9I", 0, 3800, 1, 0, SECTOR, END_OF_CHAIN, 0, END_OF_CHAIN, 0) + struct.pack("<109I", *range(2, 111)))
+    (out / "sheets-ole-header.xls").write_bytes(header + bytes(SECTOR - len(header)))
+    case("sheets-ole-header.xls", "unreadable", 2000)
 
     # Told by the content, not the name: Excel's .xlsx under .xls and .ods names opens.
     shutil.copyfile(REAL / "excel-main.xlsx", out / "sheets-xlsx-named.xls")
