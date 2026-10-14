@@ -21,12 +21,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.outlined.FormatColorText
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -65,25 +68,26 @@ import kotlinx.coroutines.launch
 private val FONT_SIZES = listOf(10, 12, 13, 14, 16, 18, 20)
 private const val DEFAULT_FONT_SIZE = 13
 
-/** What the 2.15.3 coloured, and showed in a fixed-width font. */
-private val CODE_EXTENSIONS = setOf("css", "js", "php", "xml", "dart")
-
 /** The 2.15.3's line height for plain text. */
 private const val PLAIN_LINE_HEIGHT = 1.6f
 
 /**
  * `TxtViewerScreen` of the 2.15.3: the text, its colours in a bar (a tap copies the code), a size
- * from 10 to 20 pt, share. Rows are laid out lazily — only those on screen exist.
+ * from 10 to 20 pt, share; code in a fixed-width font and coloured, which can be turned off. Rows are
+ * laid out lazily — only those on screen exist — and coloured as they show.
  */
 @Composable
 fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltViewModel()) {
     val state by viewModel.content.state.collectAsStateWithLifecycle()
     val colors by viewModel.colors.collectAsStateWithLifecycle()
+    val codeColours by viewModel.codeColours.collectAsStateWithLifecycle()
     var fontSize by rememberSaveable { mutableIntStateOf(DEFAULT_FONT_SIZE) }
     // The bar shows by default once colours are found, as the 2.15.3's; the user's choice wins after.
     var colorsHidden by rememberSaveable { mutableStateOf(false) }
+    // Coloured by default, as the 2.15.3 always was.
+    var syntaxHidden by rememberSaveable { mutableStateOf(false) }
     val source = viewModel.source
-    val code = source?.extension in CODE_EXTENSIONS
+    val code = viewModel.language != null
 
     ViewerScaffold(
         title = source?.name.orEmpty(),
@@ -91,20 +95,28 @@ fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltVi
         state = state,
         onBack = onBack,
         actions = {
+            if (code) {
+                ToggleAction(Icons.Outlined.FormatColorText, stringResource(R.string.text_syntax_colours), !syntaxHidden) {
+                    syntaxHidden = !syntaxHidden
+                }
+            }
             if (colors.isNotEmpty()) ColorsToggle(colorsHidden) { colorsHidden = !colorsHidden }
             FontSizeMenu(fontSize) { fontSize = it }
         },
     ) { document, padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (!colorsHidden && colors.isNotEmpty()) ColorBar(colors, viewModel::copied)
-            TextRows(document, fontSize, code)
+            TextRows(document, fontSize, code, codeColours.takeUnless { syntaxHidden })
         }
     }
 }
 
-/** The rows of [document], laid out lazily and selectable — also the document viewer's, which shows a text. */
+/**
+ * The rows of [document], laid out lazily and selectable, coloured by [colours] when given — also the
+ * document viewer's, which shows a text, and the source views of the Markdown, HTML and JSON viewers.
+ */
 @Composable
-internal fun TextRows(document: TextDocument, fontSize: Int, code: Boolean) {
+internal fun TextRows(document: TextDocument, fontSize: Int, code: Boolean, colours: RowColours? = null) {
     val style = if (code) {
         TextStyle(fontSize = fontSize.sp, fontFamily = FontFamily.Monospace)
     } else {
@@ -119,7 +131,11 @@ internal fun TextRows(document: TextDocument, fontSize: Int, code: Boolean) {
     SelectionContainer {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
             items(document.rowCount) { index ->
-                Text(document.row(index), style = style, color = MaterialTheme.colorScheme.onSurface)
+                if (colours != null) {
+                    ColouredRow(document, index, colours, style)
+                } else {
+                    Text(document.row(index), style = style, color = MaterialTheme.colorScheme.onSurface)
+                }
             }
         }
     }
@@ -152,13 +168,14 @@ internal fun FontSizeMenu(current: Int, sizes: List<Int> = FONT_SIZES, onChoose:
 
 /** Shows or hides the [ColorBar] — also the HTML viewer's. */
 @Composable
-internal fun ColorsToggle(hidden: Boolean, onToggle: () -> Unit) {
-    IconButton(onClick = onToggle) {
-        Icon(
-            Icons.Outlined.Palette,
-            contentDescription = stringResource(R.string.text_colors),
-            tint = if (hidden) LocalContentColor.current else MaterialTheme.colorScheme.primary,
-        )
+internal fun ColorsToggle(hidden: Boolean, onToggle: () -> Unit) =
+    ToggleAction(Icons.Outlined.Palette, stringResource(R.string.text_colors), on = !hidden, onToggle)
+
+/** An action of the bar that is on or off — tinted when on, and said to be by TalkBack. */
+@Composable
+private fun ToggleAction(icon: ImageVector, description: String, on: Boolean, onToggle: () -> Unit) {
+    IconToggleButton(checked = on, onCheckedChange = { onToggle() }) {
+        Icon(icon, contentDescription = description, tint = if (on) MaterialTheme.colorScheme.primary else LocalContentColor.current)
     }
 }
 

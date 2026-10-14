@@ -332,6 +332,7 @@
     <string name="viewer_too_many_items">Ce fichier contient trop d\'éléments pour être affiché ici (plus de %1$,d).</string>
     <string name="text_colors">Couleurs</string>
     <string name="text_size">Taille du texte</string>
+    <string name="text_syntax_colours">Coloration syntaxique</string>
     <string name="text_size_value">%1$d pt</string>
     <string name="value_copied">Copié : %1$s</string>
 

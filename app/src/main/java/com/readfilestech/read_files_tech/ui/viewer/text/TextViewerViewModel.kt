@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
+import com.readfilestech.read_files_tech.data.viewer.text.CodeLanguage
 import com.readfilestech.read_files_tech.data.viewer.text.TextColor
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
@@ -37,6 +38,14 @@ class TextViewerViewModel @Inject constructor(
     val content = ViewerContent(viewModelScope, io) { TextDocument.read(requireNotNull(source) { "no file in the route" }) }
         .also(::addCloseable)
 
+    /** The language the file is coloured in: the 2.15.3 coloured css, js, php, xml and dart, in a fixed-width font. */
+    val language: CodeLanguage? = source?.let { CodeLanguage.of(it.extension) }
+
+    private val rowColours = MutableStateFlow<RowColours?>(null)
+
+    /** The syntax colours of the rows, once the text is read; none for a file not in a [language]. */
+    val codeColours: StateFlow<RowColours?> = rowColours.asStateFlow()
+
     private val found = MutableStateFlow<List<TextColor>>(emptyList())
 
     /** The colours of the text, found once it shows: a long text is on screen before they are all read. */
@@ -45,6 +54,7 @@ class TextViewerViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val document = content.state.filterIsInstance<ViewerState.Ready<TextDocument>>().first().content
+            language?.let { rowColours.value = RowColours(document, it, viewModelScope, io) }
             // Without colours rather than without the app: its failure was uncaught (Claude review R9).
             found.value = loadOrFailure { withContext(io) { TextColors.extract(document) } }.getOrDefault(emptyList())
         }

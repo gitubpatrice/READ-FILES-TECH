@@ -19,6 +19,8 @@ import com.readfilestech.read_files_tech.data.viewer.json.JsonTree
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownFile
 import com.readfilestech.read_files_tech.data.viewer.pdf.PdfRefusalException
 import com.readfilestech.read_files_tech.data.viewer.sheet.Workbook
+import com.readfilestech.read_files_tech.data.viewer.text.CodeColouring
+import com.readfilestech.read_files_tech.data.viewer.text.CodeLanguage
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
 import com.readfilestech.read_files_tech.data.viewer.zip.ZipArchive
@@ -93,7 +95,7 @@ class CorpusCheck(private val sandbox: File, private val context: Context) {
         // Strictly here, where the screen tolerates it: a failure of the colours is the corpus's to see.
         ViewerKind.TEXT -> TextDocument.read(source).also { document ->
             TextColors.extract(document)
-            decodeScreenRows(document)
+            decodeScreenRows(document, CodeLanguage.of(source.extension))
         }
         ViewerKind.CSV -> CsvTable.read(source).also { table ->
             // The cells the screen decodes first, on its main thread: the header, the first rows, the last one.
@@ -109,7 +111,7 @@ class CorpusCheck(private val sandbox: File, private val context: Context) {
         ViewerKind.DOCUMENT -> DocumentText.read(source).also { decodeScreenRows(it.document) }
         ViewerKind.SHEET -> resources.keep(Workbook.open(source)).also { formatScreenCells(it) }
         // The rendering (its blocks are laid out as they show), and the first rows of the source.
-        ViewerKind.MARKDOWN -> MarkdownFile.read(source).also { decodeScreenRows(it.source) }
+        ViewerKind.MARKDOWN -> MarkdownFile.read(source).also { decodeScreenRows(it.source, CodeLanguage.MARKDOWN) }
         ViewerKind.JSON -> loadJson(source)
         // The page and its colours, then what its loader would serve (no WebView here).
         ViewerKind.HTML -> HtmlProbe(sandbox).load(source)
@@ -150,10 +152,15 @@ class CorpusCheck(private val sandbox: File, private val context: Context) {
         if (sheet.rows > 0) sheet.cells(sheet.rows - 1, 0, columns)
     }
 
-    /** The rows the screen decodes first, on its main thread, and the last one. */
-    private fun decodeScreenRows(document: TextDocument) {
-        for (index in 0 until minOf(document.rowCount, FIRST_SCREEN_ROWS)) document.row(index)
-        document.row(document.rowCount - 1)
+    /** The rows the screen decodes first, on its main thread, and the last one — coloured in [language] if any. */
+    private suspend fun decodeScreenRows(document: TextDocument, language: CodeLanguage? = null) {
+        val shown = (0 until minOf(document.rowCount, FIRST_SCREEN_ROWS)) + (document.rowCount - 1)
+        for (index in shown) document.row(index)
+        // Their syntax colours, in a coloured language, as the screen's RowColours computes them: the scan of
+        // the whole file (in the background there), then each row's. Strictly: the screen leaves a failure plain.
+        val colouring = CodeColouring(document, language ?: return)
+        colouring.scan()
+        for (index in shown) colouring.spans(index)
     }
 
     private fun outcomeOf(error: Throwable): String = when (error) {

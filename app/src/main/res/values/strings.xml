@@ -327,6 +327,7 @@
     <string name="viewer_too_many_items">This file holds too many items to be shown here (over %1$,d).</string>
     <string name="text_colors">Colours</string>
     <string name="text_size">Text size</string>
+    <string name="text_syntax_colours">Syntax colours</string>
     <string name="text_size_value">%1$d pt</string>
     <string name="value_copied">Copied: %1$s</string>
 

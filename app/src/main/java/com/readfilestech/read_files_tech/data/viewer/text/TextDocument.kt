@@ -87,17 +87,17 @@ internal class TextRows(
     fun row(index: Int): String {
         require(index in 0 until count) { "row $index of $count" }
         val start = start(index)
-        return decode(start, next(start)).removeSuffix("\n").removeSuffix("\r")
+        return decode(start, RowEnds.contentEnd(bytes, start, next(start), encoding))
     }
 
     /** Whether the row after [index] carries on the same line (this one was cut at [TextDocument.ROW_BYTES]). */
     fun continues(index: Int): Boolean {
-        if (index + 1 >= count) return false
-        val unit = encoding.unitSize
         val start = start(index)
-        val end = next(start)
-        return end - start < unit || !TextDocument.isLineFeed(bytes, end - unit, encoding)
+        return !RowEnds.endsLine(bytes, start, next(start), index + 1 >= count, encoding)
     }
+
+    /** The rows from [from] on, undecoded, one after the other. */
+    fun rawRows(from: Int): RawRows = RawRows(bytes, size, encoding, start(from))
 
     /** The text of the rows from [from] until [to], line breaks included, decoded at once. */
     fun text(from: Int, to: Int): String {
@@ -179,6 +179,12 @@ class TextDocument private constructor(private val rows: TextRows) {
 
     /** The first row from [from] on that starts at least [bytes] bytes after it; [rowCount] when none does. */
     internal fun rowAfter(from: Int, bytes: Int): Int = rows.rowAfter(from, bytes)
+
+    /** The rows from [from] on, read from the bytes without decoding them, one after the other (CodeColouring). */
+    internal fun rawRows(from: Int): RawRows {
+        require(from in 0 until rowCount) { "row $from of $rowCount" }
+        return rows.rawRows(from)
+    }
 
     companion object {
         /** The longest row, in bytes, before it is cut (at a character boundary). */
@@ -266,7 +272,7 @@ class TextDocument private constructor(private val rows: TextRows) {
 
         internal fun isLineFeed(bytes: ByteArray, p: Int, encoding: TextEncoding): Boolean = isUnit(bytes, p, encoding, LF)
 
-        private fun isUnit(bytes: ByteArray, p: Int, encoding: TextEncoding, value: Byte): Boolean = when (encoding) {
+        internal fun isUnit(bytes: ByteArray, p: Int, encoding: TextEncoding, value: Byte): Boolean = when (encoding) {
             TextEncoding.UTF_16LE -> bytes[p] == value && bytes[p + 1] == ZERO
             TextEncoding.UTF_16BE -> bytes[p] == ZERO && bytes[p + 1] == value
             else -> bytes[p] == value
@@ -294,7 +300,7 @@ class TextDocument private constructor(private val rows: TextRows) {
         private fun isSurrogate(high: Byte, kind: Int): Boolean = (high.toInt() and SURROGATE_MASK) == kind
 
         private const val LF: Byte = 0x0A
-        private const val CR: Byte = 0x0D
+        internal const val CR: Byte = 0x0D
         private const val ZERO: Byte = 0
         private const val CONTINUATION_MASK = 0xC0
         private const val CONTINUATION = 0x80

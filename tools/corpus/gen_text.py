@@ -58,4 +58,26 @@ def generate(out):
     # An empty file.
     (out / "text-empty.txt").write_bytes(b"")
     case("text-empty.txt", "ok", 2000)
+
+    # Syntax colouring (CodeColouring): the scan reads the whole file once, the rows shown are coloured
+    # from its checkpoints. A comment opened on the first byte and never closed, in one line: every row a
+    # comment, exactly. In Dart, where comments nest, its depth is bounded.
+    _write(out / "code-cap-of-comment-openers.js", b"/*", TEXT_VIEWER_CAP)
+    case("code-cap-of-comment-openers.js", "ok")
+    _write(out / "code-cap-of-comment-openers.dart", b"/*\n", TEXT_VIEWER_CAP)
+    case("code-cap-of-comment-openers.dart", "ok")
+    # Brackets nested 50 MiB deep: CSS counts its braces (bounded), the others do not count.
+    _write(out / "code-cap-of-braces.css", b"a{", TEXT_VIEWER_CAP)
+    case("code-cap-of-braces.css", "ok")
+    _write(out / "code-cap-of-brackets.js", b"([{", TEXT_VIEWER_CAP)
+    case("code-cap-of-brackets.js", "ok")
+    # A string never closed, its PHP opened once: every row of 13 million lines inside it.
+    _write(out / "code-cap-of-one-string.php", b"x\n", TEXT_VIEWER_CAP, prefix=b"<?php $s = '")
+    case("code-cap-of-one-string.php", "ok")
+    # Tags opened and never closed, an attribute's value never ended.
+    _write(out / "code-cap-of-open-tags.xml", b"<a b=\"<c ", TEXT_VIEWER_CAP)
+    case("code-cap-of-open-tags.xml", "ok")
+    # The Markdown viewer's source: a fence opened on every line, each closing the one before.
+    _write(out / "code-cap-of-fences.md", b"```\n", TEXT_VIEWER_CAP)
+    cases.append({"file": "code-cap-of-fences.md", "viewer": "MARKDOWN", "expect": "ok", "maxMillis": 15000})
     return cases

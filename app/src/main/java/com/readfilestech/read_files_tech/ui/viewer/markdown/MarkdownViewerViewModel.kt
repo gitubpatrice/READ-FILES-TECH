@@ -14,18 +14,28 @@ import com.readfilestech.read_files_tech.data.images.ImageDecoding
 import com.readfilestech.read_files_tech.data.images.ImageScale
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
+import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownContent
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownFile
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownImage
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownImages
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownLinks
+import com.readfilestech.read_files_tech.data.viewer.text.CodeLanguage
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.viewer.ViewerContent
 import com.readfilestech.read_files_tech.ui.viewer.ViewerSources
+import com.readfilestech.read_files_tech.ui.viewer.ViewerState
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
+import com.readfilestech.read_files_tech.ui.viewer.text.RowColours
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -40,6 +50,18 @@ class MarkdownViewerViewModel @Inject constructor(
 
     val content = ViewerContent(viewModelScope, io) { MarkdownFile.read(requireNotNull(source) { "no file in the route" }) }
         .also(::addCloseable)
+
+    private val rowColours = MutableStateFlow<RowColours?>(null)
+
+    /** The syntax colours of the source's rows, once it is read — the 2.15.3 coloured it as `markdown`. */
+    val sourceColours: StateFlow<RowColours?> = rowColours.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val source = content.state.filterIsInstance<ViewerState.Ready<MarkdownContent>>().first().content.source
+            rowColours.value = RowColours(source, CodeLanguage.MARKDOWN, viewModelScope, io)
+        }
+    }
 
     /** The images decoded, within [FileCaps.MARKDOWN_IMAGE_BYTES]: the one shown least recently goes first. */
     private val images = object : LruCache<String, Bitmap>(FileCaps.MARKDOWN_IMAGE_BYTES.toInt()) {

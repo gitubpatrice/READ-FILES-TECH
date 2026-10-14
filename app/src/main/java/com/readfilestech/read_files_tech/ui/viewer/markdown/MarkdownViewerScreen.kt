@@ -88,6 +88,7 @@ import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownText
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import com.readfilestech.read_files_tech.ui.viewer.text.FontSizeMenu
+import com.readfilestech.read_files_tech.ui.viewer.text.RowColours
 import com.readfilestech.read_files_tech.ui.viewer.text.TextRows
 
 /** The 2.15.3's size of the source, in points. */
@@ -113,6 +114,7 @@ private const val IMAGE_CONTENT = "image"
 @Composable
 fun MarkdownViewerScreen(onBack: () -> Unit, viewModel: MarkdownViewerViewModel = hiltViewModel()) {
     val state by viewModel.content.state.collectAsStateWithLifecycle()
+    val sourceColours by viewModel.sourceColours.collectAsStateWithLifecycle()
     var showSource by rememberSaveable { mutableStateOf(false) }
     var fontSize by rememberSaveable { mutableIntStateOf(SOURCE_FONT_SIZE) }
     val source = viewModel.source
@@ -139,18 +141,18 @@ fun MarkdownViewerScreen(onBack: () -> Unit, viewModel: MarkdownViewerViewModel 
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (val rendering = content.rendering) {
                 is MarkdownRendering.Rendered -> if (showSource) {
-                    TextRows(content.source, fontSize, code = true)
+                    TextRows(content.source, fontSize, code = true, sourceColours)
                 } else {
                     RenderedBlocks(rendering.blocks, viewModel::image) { viewModel.open(context, it) }
                 }
-                else -> SourceOnly(content, rendering, fontSize)
+                else -> SourceOnly(content, rendering, fontSize, sourceColours)
             }
         }
     }
 }
 
 @Composable
-private fun SourceOnly(content: MarkdownContent, rendering: MarkdownRendering, fontSize: Int) {
+private fun SourceOnly(content: MarkdownContent, rendering: MarkdownRendering, fontSize: Int, colours: RowColours?) {
     val reason = when (rendering) {
         is MarkdownRendering.TooLong -> stringResource(R.string.markdown_too_long, formatBytes(rendering.capBytes))
         is MarkdownRendering.TooManyCells -> stringResource(R.string.markdown_too_many_cells, rendering.limit)
@@ -165,7 +167,7 @@ private fun SourceOnly(content: MarkdownContent, rendering: MarkdownRendering, f
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-        TextRows(content.source, fontSize, code = true)
+        TextRows(content.source, fontSize, code = true, colours)
     }
 }
 
