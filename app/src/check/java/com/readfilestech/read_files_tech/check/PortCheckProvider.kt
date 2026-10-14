@@ -84,7 +84,7 @@ class PortCheckProvider : ContentProvider() {
     private fun corpus(dir: String): Bundle {
         val app = requireNotNull(context).applicationContext
         val sandbox = requireNotNull(app.filesDir.parentFile)
-        val report = DartJson.encode(runBlocking { CorpusCheck(sandbox).run(File(dir)) })
+        val report = DartJson.encode(runBlocking { CorpusCheck(sandbox, app).run(File(dir)) })
         return Bundle().apply {
             putString(KEY_REPORT, Base64.encodeToString(report.toByteArray(Charsets.UTF_8), Base64.NO_WRAP))
         }

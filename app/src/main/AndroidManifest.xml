@@ -125,6 +125,16 @@
         </service>
 
         <!--
+            The PDF viewer's reader (docs D-029): PdfRenderer and PdfBox parse a PDF in the `:pdf` process
+            only, which a hostile file may end without ending the app. Bound by the viewer, NOT exported:
+            no other app can reach it, and it checks that its caller is this app's own uid.
+        -->
+        <service
+            android:name=".data.viewer.pdf.PdfService"
+            android:exported="false"
+            android:process=":pdf" />
+
+        <!--
             The files handed to other apps (open with, share, send). The authority of the 2.15.x, kept
             (docs D-012). NOT exported: an app reads only the one URI an intent granted it, for the time
             of that intent. What may be served is decided by PathGuard first, then by file_paths.xml.

@@ -521,4 +521,24 @@
         <item quantity="one">Too long to copy (over %1$,d character).</item>
         <item quantity="other">Too long to copy (over %1$,d characters).</item>
     </plurals>
+
+    <!-- The PDF viewer -->
+    <string name="pdf_contents">Contents</string>
+    <string name="pdf_contents_untitled">(untitled)</string>
+    <string name="pdf_first_page">First page</string>
+    <string name="pdf_previous_page">Previous page</string>
+    <string name="pdf_next_page">Next page</string>
+    <string name="pdf_last_page">Last page</string>
+    <string name="pdf_page_counter">%1$d / %2$d</string>
+    <string name="pdf_page_description">Page %1$d</string>
+    <string name="pdf_go_to_page">Go to page</string>
+    <string name="pdf_go_to_hint">1 – %1$d</string>
+    <string name="pdf_go_to_invalid">Enter a page from 1 to %1$d.</string>
+    <string name="pdf_go">Go</string>
+    <string name="pdf_password_title">Password required</string>
+    <string name="pdf_password_required">This PDF is protected by a password.</string>
+    <string name="pdf_password_label">Password</string>
+    <string name="pdf_password_wrong">Wrong password. Try again.</string>
+    <string name="pdf_certificate_encrypted">This PDF is encrypted for the certificates of its recipients: no password opens it, and Read Files Tech cannot. Try “Open with…”.</string>
+    <string name="pdf_reader_stopped">This PDF stopped the PDF reader: it may be damaged, or made to crash it. The rest of the app is not affected. Try “Open with…”.</string>
 </resources>

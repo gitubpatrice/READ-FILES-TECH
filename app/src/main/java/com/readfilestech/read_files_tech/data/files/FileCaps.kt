@@ -113,6 +113,45 @@ object FileCaps {
     /** A page of the HTML viewer, and of its reading mode (the 2.15.3's reading mode read it with no cap: D22). */
     const val HTML_VIEWER = 20 * MIB
     const val PDF_SIGNATURE_SOURCE = 100 * MIB
+
+    /**
+     * Bytes of a PDF the viewer opens. No 2.15.3 counterpart: Syncfusion read the whole file into memory
+     * and opened whatever the phone could hold — a scanned book of several hundred MB on a large phone.
+     * Here no page is read whole (PdfRenderer and PdfBox seek in the file, in the `:pdf` process), so the
+     * cap bounds what is COPIED: the vault's private copy (phase 6, D-028) and the decrypted temporary of a
+     * password-protected file. 1 GiB, above any scanned document of real use: a choice for Patrice.
+     */
+    const val PDF_VIEWER = 1024 * MIB
+
+    /**
+     * Entries of a PDF's outline the "Contents" panel lists, in the order of the outline; the rest is not
+     * listed. No 2.15.3 counterpart (Syncfusion's bookmark panel read them all, a cycle included). A
+     * technical manual of 2 000 pages holds a few thousand; each costs its title and two numbers.
+     */
+    const val PDF_OUTLINE_ENTRIES = 5_000
+
+    /** Levels of an outline listed: deeper entries are not. No 2.15.3 counterpart; real outlines nest a few. */
+    const val PDF_OUTLINE_DEPTH = 32
+
+    /** Chars kept of an outline entry's title: the panel shows two lines of it. No 2.15.3 counterpart. */
+    const val PDF_OUTLINE_TITLE_CHARS = 256
+
+    /**
+     * Page-tree nodes read to find the pages the outline leads to, all entries together: past it, the
+     * remaining entries are listed without a page. Twice the kids of a 100 000-page document; a page tree
+     * whose `/Kids` hold millions of references would otherwise be read once per entry. No 2.15.3 counterpart.
+     */
+    const val PDF_OUTLINE_PAGE_LOOKUPS = 200_000
+
+    /** Levels of a page tree climbed from a page to its root; deeper, the entry has no page. No 2.15.3 counterpart. */
+    const val PDF_PAGE_TREE_DEPTH = 64
+
+    /**
+     * Bytes of rendered pages the PDF viewer keeps beside those on screen: about seven A4 pages at a phone's
+     * width, so that scrolling back does not render them again. Past it, the page seen least recently is
+     * recycled. No 2.15.3 counterpart (Syncfusion's own cache).
+     */
+    const val PDF_PAGE_BITMAPS = 48 * MIB
     const val ZIP_EXTRACT_TOTAL = 1024 * MIB
 
     /** Pixels of a decoded image, whatever its file size. */

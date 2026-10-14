@@ -45,6 +45,9 @@ enum class ViewerKind(val extensions: Set<String>) {
      * which leads its page here by this route, never by the page's extension: `.html` keeps one viewer.
      */
     READER(setOf("epub")),
+
+    /** `PdfViewerScreen` of the 2.15.3: the pages, zoom, go to page, a password asked, the outline (docs D-005, D-029). */
+    PDF(setOf("pdf")),
     ;
 
     companion object {

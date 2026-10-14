@@ -49,6 +49,12 @@ commonmark              = "0.30.0"
 # --- Crypto (docs D-005): ONE BouncyCastle family for the vault KDFs and, later, PdfBox ---
 bouncycastle            = "1.86"
 
+# --- PDF (phase 4, the PDF viewer, docs D-005 and D-029): PdfBox-Android reads what PdfRenderer does not
+# expose — the password of an encrypted file (decrypted to a private temporary) and the outline — and only
+# in the `:pdf` process. Apache-2.0 (its POM). Its BouncyCastle `*-jdk15to18:1.72` is substituted by the
+# one family above (app/build.gradle.kts). 2.0.27.0, published 2023, measured by the prototype (point 2).
+pdfboxAndroid           = "2.0.27.0"
+
 # --- Tests ---
 junit                   = "6.1.3"
 truth                   = "1.4.5"
@@ -98,6 +104,12 @@ commonmark-ext-gfm-tables               = { group = "org.commonmark",           
 commonmark-ext-gfm-strikethrough        = { group = "org.commonmark",                  name = "commonmark-ext-gfm-strikethrough",  version.ref = "commonmark" }
 
 bcprov                                  = { group = "org.bouncycastle",                name = "bcprov-jdk18on",                    version.ref = "bouncycastle" }
+# Not declared as dependencies: the TARGETS of the substitution in app/build.gradle.kts (PdfBox-Android pulls
+# bcpkix and bcutil in the jdk15to18 family, which duplicates bcprov-jdk18on's classes).
+bcpkix                                  = { group = "org.bouncycastle",                name = "bcpkix-jdk18on",                    version.ref = "bouncycastle" }
+bcutil                                  = { group = "org.bouncycastle",                name = "bcutil-jdk18on",                    version.ref = "bouncycastle" }
+
+pdfbox-android                          = { group = "com.tom-roush",                   name = "pdfbox-android",                    version.ref = "pdfboxAndroid" }
 
 # Tests — JUnit Jupiter. The platform launcher is declared and aligned through the BOM: without it
 # Gradle runs the tests with the launcher it bundles, and on JUnit 6 the test task died with 0 test

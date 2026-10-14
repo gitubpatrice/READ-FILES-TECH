@@ -1,0 +1,9 @@
+[
+ {"file": "edge-fr-3p.pdf", "viewer": "PDF", "expect": "ok", "maxMillis": 8000, "made_by": "Microsoft Edge headless --print-to-pdf (make_pdf.py): three pages of French text, accents, ligatures, nbsp"},
+ {"file": "edge-outline.pdf", "viewer": "PDF", "expect": "ok", "maxMillis": 5000, "made_by": "Microsoft Edge headless --print-to-pdf --generate-pdf-document-outline (make_pdf.py): three chapters, two levels of outline"},
+ {"file": "edge-cjk.pdf", "viewer": "PDF", "expect": "ok", "maxMillis": 5000, "made_by": "Microsoft Edge headless (the prototype's make_fixtures.py): Japanese, Chinese, Korean, fonts embedded (Identity-H)"},
+ {"file": "reportlab-cgu-3p.pdf", "viewer": "PDF", "expect": "ok", "maxMillis": 5000, "made_by": "ReportLab (the 2.15.x's docs/ folder, taken by the prototype): three pages of terms"},
+ {"file": "cjk-predef.pdf", "viewer": "PDF", "expect": "ok", "maxMillis": 5000, "made_by": "written by hand (the prototype's make_fixtures.py): a Type0 font NOT embedded, predefined CMap UniJIS-UCS2-H"},
+ {"file": "pypdf-aes256.pdf", "viewer": "PDF", "expect": "password_required", "maxMillis": 5000, "made_by": "pypdf 6.19.0 (make_pdf.py): edge-fr-3p.pdf encrypted AES-256 (R6), user password Mot2passe-é€"},
+ {"file": "pypdf-owner-only.pdf", "viewer": "PDF", "expect": "ok", "maxMillis": 5000, "made_by": "pypdf 6.19.0 (make_pdf.py): edge-fr-3p.pdf encrypted AES-128 under an owner password only"}
+]

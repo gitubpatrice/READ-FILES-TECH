@@ -199,7 +199,23 @@ android {
             excludes += file("java-resources-excludes.txt").readLines()
                 .map { it.substringBefore("<-").trim() }
                 .filter { it.isNotEmpty() && !it.startsWith("#") }
+            // bcprov, bcpkix and bcutil 1.86 each ship the SAME `META-INF/LICENSE.md`: one is kept (prototype).
+            pickFirsts += "META-INF/LICENSE.md"
         }
+    }
+
+    // The predefined CJK CMaps of PdfBox-Android (docs D-005: -1.26 MB of APK). Kept: Identity-H/V, which
+    // the EMBEDDED CID fonts of Edge, Word and LibreOffice use. Their price, measured by the prototype: the
+    // text of a CJK PDF whose font is not embedded (`UniJIS-UCS2-H`) is lost to extraction; its rendering is
+    // PdfRenderer's and stays whole. Only `prefix*` or exact names: what ignoreAssetsPatterns understands.
+    // FILES only, `<file>`: the patterns ignore case, and the prototype's bare `Uni*` also dropped FontBox's
+    // `unicode/` folder (its Scripts.txt, 167 KB) — seen in the APK of this branch.
+    androidResources {
+        ignoreAssetsPatterns += listOf(
+            "83pv-*", "90ms-*", "90msp-*", "90pv-*", "Add-*", "Ext-*", "Adobe-*", "B5pc-*", "CNS-*", "ETen*",
+            "EUC-*", "GB-*", "GBK-*", "GBK2K-*", "GBKp-*", "GBpc-*", "HKscs-*", "KSC-*", "KSCms-*", "KSCpc-*",
+            "Uni*", "H", "V",
+        ).map { "<file>$it" }
     }
 
     testOptions {
@@ -278,6 +294,23 @@ androidComponents {
     }
 }
 
+// ONE BouncyCastle in the APK (docs D-005). PdfBox-Android 2.0.27.0 pulls the `jdk15to18` family in 1.72
+// (10 OSV advisories), which duplicates 3 504 classes of `bcprov-jdk18on` (the vault's Argon2):
+// `checkReleaseDuplicateClasses` fails. The whole family is replaced by `jdk18on` at the catalog's version
+// rather than excluded: excluded, PdfBox cannot even build its certificate handler — the one that refuses
+// a `/Adobe.PubSec` file in words (PdfUnlock) — `NoClassDefFoundError: org/bouncycastle/cms/CMSException`,
+// measured on the JVM. A password never reaches BC (javax.crypto of the platform, read in the bytecode).
+configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("org.bouncycastle:bcprov-jdk15to18")).using(module(libs.bcprov.get().toString()))
+            .because("duplicate of bcprov-jdk18on; 1.72 has 10 OSV advisories")
+        substitute(module("org.bouncycastle:bcpkix-jdk15to18")).using(module(libs.bcpkix.get().toString()))
+            .because("the same family as bcprov-jdk18on")
+        substitute(module("org.bouncycastle:bcutil-jdk15to18")).using(module(libs.bcutil.get().toString()))
+            .because("the same family as bcprov-jdk18on")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -314,6 +347,9 @@ dependencies {
     implementation(libs.commonmark)
     implementation(libs.commonmark.ext.gfm.tables)
     implementation(libs.commonmark.ext.gfm.strikethrough)
+
+    // The PDF viewer's password and outline (docs D-005), in the `:pdf` process only (D-029).
+    implementation(libs.pdfbox.android)
 
     debugImplementation(libs.compose.ui.tooling)
 

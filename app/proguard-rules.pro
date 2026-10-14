@@ -36,3 +36,9 @@
 -dontwarn java.awt.image.DirectColorModel
 -dontwarn java.awt.image.IndexColorModel
 -dontwarn java.awt.image.PackedColorModel
+
+# ---- PdfBox-Android 2.0.27.0 (the PDF viewer's password and outline: docs D-005) ----------------------
+# Its consumer rules keep the SecurityHandlers it builds by reflection. They do not cover its optional
+# JPEG 2000 decoder (com.gemalto.jp2, not shipped): R8 fails on the missing classes without this line
+# (measured by the prototype, also in negative). Never reached: the viewer renders with PdfRenderer.
+-dontwarn com.gemalto.jp2.**

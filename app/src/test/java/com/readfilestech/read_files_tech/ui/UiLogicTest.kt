@@ -190,7 +190,8 @@ class UiLogicTest {
         val install = FileTarget.Internal("install?path=%2Fd%2Fapp.APK")
         assertThat(FileRouter.targetFor(entry("app.APK"))).isEqualTo(install)
         assertThat(FileRouter.chooserTargetFor(entry("app.APK"))).isEqualTo(install)
-        assertThat(FileRouter.targetFor(entry("doc.pdf"))).isEqualTo(FileTarget.External)
+        // A file no viewer opens (a PDF did, before its viewer came in phase 4).
+        assertThat(FileRouter.targetFor(entry("song.mp3"))).isEqualTo(FileTarget.External)
         assertThat(FileRouter.chooserTargetFor(entry("doc.pdf"))).isEqualTo(FileTarget.External)
         assertThat(FileRouter.targetFor(entry("apk", dir = true))).isEqualTo(FileTarget.External)
     }

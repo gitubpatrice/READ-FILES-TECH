@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.check
 
+import android.content.Context
 import android.os.Debug
 import android.os.SystemClock
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
@@ -16,6 +17,7 @@ import com.readfilestech.read_files_tech.data.viewer.json.JsonDocument
 import com.readfilestech.read_files_tech.data.viewer.json.JsonFile
 import com.readfilestech.read_files_tech.data.viewer.json.JsonTree
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownFile
+import com.readfilestech.read_files_tech.data.viewer.pdf.PdfRefusalException
 import com.readfilestech.read_files_tech.data.viewer.sheet.Workbook
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
@@ -42,7 +44,7 @@ data class CorpusCase(val file: String, val viewer: ViewerKind, val expect: Stri
  *
  * A viewer of phase 4 adds its branch to [load]: the `when` is exhaustive, the build fails without it.
  */
-class CorpusCheck(private val sandbox: File) {
+class CorpusCheck(private val sandbox: File, private val context: Context) {
     suspend fun run(dir: File): Map<String, Any?> {
         val cases = parse(File(dir, MANIFEST).readText())
         return linkedMapOf("results" to cases.map { case -> check(dir, case) })
@@ -116,6 +118,7 @@ class CorpusCheck(private val sandbox: File) {
             val blocks = if (document.chapterCount > 0) document.chapter(0).blocks else null
             for (index in 0 until minOf(blocks?.size ?: 0, FIRST_SCREEN_ROWS)) blocks?.text(index)
         }
+        ViewerKind.PDF -> PdfProbe(context, PAGE_WIDTH, PAGE_HEIGHT).load(source, resources)
     }
 
     /** The tree's rows with the document's value opened, and the texts of the first ones; or the text. */
@@ -160,6 +163,8 @@ class CorpusCheck(private val sandbox: File) {
         is TooManyItemsException -> "too_many_items"
         is UnsupportedFormatException -> "unsupported"
         is UnreadableFileException -> UNREADABLE
+        // password_required, certificate, reader_stopped: the last one a file that ended the :pdf process.
+        is PdfRefusalException -> error.refusal.name.lowercase()
         is IOException -> "cannot_open"
         // What the screen says "unreadable" for: a parser's own exception on a hostile file, a stack overflow.
         else -> UNREADABLE

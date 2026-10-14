@@ -536,4 +536,24 @@
         <item quantity="many">Trop long pour être copié (plus de %1$,d caractères).</item>
         <item quantity="other">Trop long pour être copié (plus de %1$,d caractères).</item>
     </plurals>
+
+    <!-- La visionneuse PDF -->
+    <string name="pdf_contents">Sommaire</string>
+    <string name="pdf_contents_untitled">(sans titre)</string>
+    <string name="pdf_first_page">Première page</string>
+    <string name="pdf_previous_page">Page précédente</string>
+    <string name="pdf_next_page">Page suivante</string>
+    <string name="pdf_last_page">Dernière page</string>
+    <string name="pdf_page_counter">%1$d / %2$d</string>
+    <string name="pdf_page_description">Page %1$d</string>
+    <string name="pdf_go_to_page">Aller à la page</string>
+    <string name="pdf_go_to_hint">1 – %1$d</string>
+    <string name="pdf_go_to_invalid">Saisissez une page de 1 à %1$d.</string>
+    <string name="pdf_go">Aller</string>
+    <string name="pdf_password_title">Mot de passe requis</string>
+    <string name="pdf_password_required">Ce PDF est protégé par un mot de passe.</string>
+    <string name="pdf_password_label">Mot de passe</string>
+    <string name="pdf_password_wrong">Mot de passe incorrect. Réessayez.</string>
+    <string name="pdf_certificate_encrypted">Ce PDF est chiffré pour les certificats de ses destinataires : aucun mot de passe ne l\'ouvre, et Read Files Tech ne le peut pas. Essayez « Ouvrir avec… ».</string>
+    <string name="pdf_reader_stopped">Ce PDF a arrêté le lecteur PDF : il est peut-être endommagé, ou fait pour le planter. Le reste de l\'application n\'est pas touché. Essayez « Ouvrir avec… ».</string>
 </resources>
