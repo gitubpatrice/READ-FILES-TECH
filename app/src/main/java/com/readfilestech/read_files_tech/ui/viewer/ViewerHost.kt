@@ -8,6 +8,7 @@ import com.readfilestech.read_files_tech.ui.viewer.html.HtmlViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.image.ImageViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.json.JsonViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.markdown.MarkdownViewerScreen
+import com.readfilestech.read_files_tech.ui.viewer.reader.ReaderViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.sheet.SheetViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.text.TextViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.zip.ZipViewerScreen
@@ -28,6 +29,7 @@ fun ViewerHost(kind: ViewerKind?, onBack: () -> Unit, onNavigate: (String) -> Un
         ViewerKind.MARKDOWN -> MarkdownViewerScreen(onBack)
         ViewerKind.JSON -> JsonViewerScreen(onBack)
         ViewerKind.HTML -> HtmlViewerScreen(onBack, onNavigate)
+        ViewerKind.READER -> ReaderViewerScreen(onBack)
         // A route naming no viewer (an old one restored after an update): said, not a crash.
         null -> PendingScreen(null, onBack)
     }

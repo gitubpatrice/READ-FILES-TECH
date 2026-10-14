@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Web
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,10 +51,9 @@ private const val SOURCE_FONT_SIZE = 12
 
 /**
  * `HtmlViewerScreen` of the 2.15.3: the page drawn by a locked WebView, or its source; the colours of its
- * source in a bar (a tap copies the code); share and "Open with…".
+ * source in a bar (a tap copies the code); its reading mode, the reader's; share and "Open with…".
  *
- * Not ported: its "enable JavaScript" switch (scripts stay off) and its "reading mode", which comes with the
- * EPUB viewer. A link the user taps leaves the page ([HtmlLinks]).
+ * Not ported: its "enable JavaScript" switch (scripts stay off). A link the user taps leaves the page ([HtmlLinks]).
  */
 @Composable
 fun HtmlViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel: HtmlViewerViewModel = hiltViewModel()) {
@@ -77,6 +77,11 @@ fun HtmlViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel
                     if (showSource) Icons.Filled.Web else Icons.Filled.Code,
                     contentDescription = stringResource(if (showSource) R.string.html_view_page else R.string.html_view_source),
                 )
+            }
+            viewModel.readingRoute?.let { route ->
+                IconButton(onClick = { onNavigate(route) }) {
+                    Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = stringResource(R.string.html_reading_mode))
+                }
             }
         },
     ) { assets, padding ->

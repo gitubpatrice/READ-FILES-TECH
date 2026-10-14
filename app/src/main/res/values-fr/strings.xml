@@ -375,6 +375,18 @@
     <string name="html_link_refused">Ce lien ne peut pas être ouvert.</string>
     <!-- Le moteur de rendu de la WebView a cessé sur cette page ; le reste de l’app continue. -->
     <string name="html_render_gone">Cette page n\'a pas pu être affichée.</string>
+    <string name="html_reading_mode">Mode lecture (texte désencombré)</string>
+
+    <!-- Liseuse : les chapitres d’un EPUB, et le mode lecture de la visionneuse HTML -->
+    <string name="reader_chapters">Chapitres</string>
+    <string name="reader_previous">Chapitre précédent</string>
+    <string name="reader_next">Chapitre suivant</string>
+    <!-- Le chapitre affiché, sur combien. -->
+    <string name="reader_position">Chapitre %1$d sur %2$d</string>
+    <!-- Un chapitre de la liste : son numéro, puis son titre. -->
+    <string name="reader_chapter_entry">%1$d. %2$s</string>
+    <string name="reader_empty">Ce chapitre ne contient aucun texte à afficher.</string>
+    <string name="reader_no_chapter">Ce livre ne contient aucun chapitre à afficher.</string>
 
     <!-- Visionneuse de tableur -->
     <string name="sheet_no_sheet">Ce classeur ne contient aucune feuille.</string>

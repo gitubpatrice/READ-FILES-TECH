@@ -41,12 +41,8 @@ class HtmlPage private constructor(
     private val encoding = source.encoding
     private val utf16 = encoding.unitSize == 2
 
-    /** The encoding the WebView is told: a BOM, else the page's `<meta>`, else UTF-8 when valid, else Windows-1252. */
-    val charset: String = if (utf16 || encoding == TextEncoding.UTF_8_BOM) {
-        encoding.charset.name()
-    } else {
-        HtmlCharset.declared(bytes, size) ?: encoding.charset.name()
-    }
+    /** The encoding the WebView is told ([charsetOf]). */
+    val charset: String = charsetOf(bytes, size, encoding)
 
     /** Where the policy's tag goes, read from the page's start in its own units: one byte, or one UTF-16 unit, a character. */
     private val tagAt: Int = encoding.bomLength.let { from ->
@@ -80,6 +76,18 @@ class HtmlPage private constructor(
         /** The page [name] of the first [size] bytes of [bytes] — kept, not copied — served with [folder]. */
         suspend fun of(name: String, bytes: ByteArray, size: Int = bytes.size, folder: HtmlFolder? = null): HtmlPage =
             HtmlPage(name, bytes, size, TextDocument.of(bytes, size), folder)
+
+        /**
+         * The encoding the first [size] bytes of a page are in — a BOM, else the page's `<meta>`, else UTF-8
+         * when valid, else Windows-1252 — [encoding] being what [TextEncoding.detect] tells of them. Also the
+         * reader's, which shows the same page in its reading mode.
+         */
+        internal fun charsetOf(bytes: ByteArray, size: Int, encoding: TextEncoding): String =
+            if (encoding.unitSize == 2 || encoding == TextEncoding.UTF_8_BOM) {
+                encoding.charset.name()
+            } else {
+                HtmlCharset.declared(bytes, size) ?: encoding.charset.name()
+            }
 
         /**
          * The type a file is served as: what the WebView does not guess from the bytes — a style sheet is

@@ -23,7 +23,9 @@ import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
+import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.viewer.ViewerContent
+import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.ViewerSources
 import com.readfilestech.read_files_tech.ui.viewer.ViewerState
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
@@ -47,6 +49,10 @@ class HtmlViewerViewModel @Inject constructor(
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
     val source: ViewerSource? = ViewerSources.from(handle)
+
+    /** The reader's route on this same page: its reading mode (`html_viewer_screen.dart:375-384`). */
+    val readingRoute: String? =
+        handle.get<String>(Routes.ARG_PATH)?.takeIf(String::isNotEmpty)?.let { Routes.viewer(ViewerKind.READER, it) }
 
     val content = ViewerContent(viewModelScope, io) {
         HtmlAssets(HtmlPage.read(requireNotNull(source) { "no file in the route" }))

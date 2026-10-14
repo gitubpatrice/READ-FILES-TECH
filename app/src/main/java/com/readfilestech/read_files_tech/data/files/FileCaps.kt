@@ -19,7 +19,43 @@ object FileCaps {
     const val DOC_ZIPPED = 50 * MIB
     const val SPREADSHEET = 50 * MIB
     const val EPUB_FILE = 100 * MIB
+
+    /** One chapter of a book, once decompressed: a larger one is refused, the others read. The 2.15.3's. */
     const val EPUB_CHAPTER = 50 * MIB
+
+    /**
+     * One of a book's package parts once decompressed — `container.xml`, its package document (OPF), its
+     * table of contents (EPUB 3 nav or EPUB 2 NCX): a larger package is refused, a larger table of contents
+     * read up to here. Candide's, from Project Gutenberg (corpus), are 8 KB of OPF and 10 KB of NCX for 36
+     * chapters: a book of a thousand times as many stays under it. The 2.15.3 read container and OPF up to
+     * [ZIP_ENTRY_DECOMPRESSED], with regexes.
+     */
+    const val EPUB_PACKAGE = 16 * MIB
+
+    /**
+     * Bytes all of one book's parts may decompress to while it is open — its package, then each chapter the
+     * first time it is read (a chapter is read once, however often the spine names it): past it, a chapter
+     * is refused: ten chapters at [EPUB_CHAPTER], where a long novel's XHTML is a few megabytes. The 2.15.3
+     * had no such bound, and read every chapter at once, a chapter the spine repeated each time it did
+     * (inventory D22).
+     */
+    const val EPUB_DECOMPRESSED = 512 * MIB
+
+    /**
+     * Items a book's package may list in its manifest, and distinct ones in its spine: past it, the book
+     * holds too many items. A book lists a few items per chapter or picture: a comic of 2 000 pages, a page
+     * and a picture each, lists 4 000. No 2.15.3 counterpart: its regexes held every item of the OPF.
+     */
+    const val EPUB_ITEMS = 20_000
+
+    /**
+     * Characters of text the reader keeps of one book or page — the chapters read so far, each block
+     * costing a few more ([com.readfilestech.read_files_tech.data.viewer.reader.BlockReader.BLOCK_CHARGE]):
+     * past it the chapter read least recently is dropped, read again if it comes back; one chapter alone
+     * past it is refused. 16 MB of heap, where a long novel whole is a few million characters. No 2.15.3
+     * counterpart: it kept every chapter's blocks, as objects.
+     */
+    const val READER_TEXT_CHARS = 8 * MIB
 
     /** One entry of an archive, once decompressed (zip, ods, epub, docx text). */
     const val ZIP_ENTRY_DECOMPRESSED = 200 * MIB
@@ -73,6 +109,8 @@ object FileCaps {
      * equivalent; 200 000 entries with paths of about a hundred characters fit in it.
      */
     const val ZIP_VIEWER_DIRECTORY = 32 * MIB
+
+    /** A page of the HTML viewer, and of its reading mode (the 2.15.3's reading mode read it with no cap: D22). */
     const val HTML_VIEWER = 20 * MIB
     const val PDF_SIGNATURE_SOURCE = 100 * MIB
     const val ZIP_EXTRACT_TOTAL = 1024 * MIB
@@ -92,7 +130,9 @@ object FileCaps {
     /**
      * Elements nested in one XML part of a document (docx, odt, odp): deeper, the file is refused. No
      * 2.15.3 counterpart — its regex scan built no tree. Word's deepest real nesting, a text box in a
-     * table cell, stays under 30; a million nested elements is refused here instead of being held.
+     * table cell, stays under 30; a million nested elements is refused here instead of being held. The
+     * reader's chapters and pages, HTML rather than XML, are not refused: their elements nested deeper are
+     * read as their parent's text, as a browser flattens them.
      */
     const val XML_DEPTH = 256
 

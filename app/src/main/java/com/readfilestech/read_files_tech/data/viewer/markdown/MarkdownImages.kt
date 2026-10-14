@@ -60,8 +60,11 @@ class MarkdownImages(
             null
         }
 
-        /** [text] with its `%XX` escapes decoded as UTF-8; null for a malformed escape or invalid UTF-8. */
-        private fun percentDecoded(text: String): String? {
+        /**
+         * [text] with its `%XX` escapes decoded as UTF-8; null for a malformed escape or invalid UTF-8. Also
+         * how the reader decodes an EPUB's references to its own files.
+         */
+        internal fun percentDecoded(text: String): String? {
             val bytes = ByteArrayOutputStream(text.length)
             var i = 0
             while (i < text.length) {

@@ -34,9 +34,10 @@ internal object DocumentXml {
 
     /**
      * The characters of a part: UTF-8 or UTF-16, the only encodings its formats allow (OPC, ODF), told by a
-     * byte order mark; UTF-8 without one. A malformed sequence becomes U+FFFD, as the 2.15.3 decoded it.
+     * byte order mark; UTF-8 without one. A malformed sequence becomes U+FFFD, as the 2.15.3 decoded it. Also
+     * how the reader decodes an EPUB's chapters and table of contents, whose formats allow the same two.
      */
-    private fun reader(input: InputStream): Reader {
+    fun reader(input: InputStream): Reader {
         val stream = PushbackInputStream(input, BOM_BYTES)
         val head = ByteArray(BOM_BYTES)
         var size = 0

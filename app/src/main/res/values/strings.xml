@@ -368,6 +368,18 @@
     <string name="html_link_refused">This link cannot be opened.</string>
     <!-- The WebView's renderer stopped on this page: the app goes on. -->
     <string name="html_render_gone">This page could not be displayed.</string>
+    <string name="html_reading_mode">Reading mode (decluttered text)</string>
+
+    <!-- Reader: an EPUB's chapters, and the HTML viewer's reading mode -->
+    <string name="reader_chapters">Chapters</string>
+    <string name="reader_previous">Previous chapter</string>
+    <string name="reader_next">Next chapter</string>
+    <!-- Which chapter is shown, out of how many. -->
+    <string name="reader_position">Chapter %1$d of %2$d</string>
+    <!-- A chapter in the list: its number, then its title. -->
+    <string name="reader_chapter_entry">%1$d. %2$s</string>
+    <string name="reader_empty">This chapter has no text to show.</string>
+    <string name="reader_no_chapter">This book has no chapter to show.</string>
 
     <!-- Spreadsheet viewer -->
     <string name="sheet_no_sheet">This workbook contains no sheet.</string>

@@ -39,6 +39,12 @@ enum class ViewerKind(val extensions: Set<String>) {
 
     /** `HtmlViewerScreen` of the 2.15.3: the page in a locked WebView, served by the app (D20), or its source. */
     HTML(setOf("html", "htm")),
+
+    /**
+     * `ReaderViewerScreen` of the 2.15.3: an EPUB's chapters, as text. Also the HTML viewer's reading mode,
+     * which leads its page here by this route, never by the page's extension: `.html` keeps one viewer.
+     */
+    READER(setOf("epub")),
     ;
 
     companion object {

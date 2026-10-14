@@ -24,6 +24,7 @@ import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.ViewerResources
 import com.readfilestech.read_files_tech.ui.viewer.image.ImagePages
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
+import com.readfilestech.read_files_tech.ui.viewer.reader.ReaderOpening
 import org.json.JSONArray
 import java.io.File
 import java.io.IOException
@@ -110,6 +111,11 @@ class CorpusCheck(private val sandbox: File) {
         ViewerKind.JSON -> loadJson(source)
         // The page and its colours, then what its loader would serve (no WebView here).
         ViewerKind.HTML -> HtmlProbe(sandbox).load(source)
+        // The book (or the page, in reading mode), then the chapter the screen shows first, its first blocks laid out.
+        ViewerKind.READER -> resources.keep(ReaderOpening.open(source)).also { document ->
+            val blocks = if (document.chapterCount > 0) document.chapter(0).blocks else null
+            for (index in 0 until minOf(blocks?.size ?: 0, FIRST_SCREEN_ROWS)) blocks?.text(index)
+        }
     }
 
     /** The tree's rows with the document's value opened, and the texts of the first ones; or the text. */

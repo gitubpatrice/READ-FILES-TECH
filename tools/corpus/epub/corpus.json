@@ -1,0 +1,5 @@
+[
+ {"file": "gutenberg-1065-raven-epub2.epub", "viewer": "READER", "expect": "ok", "maxMillis": 2000, "made_by": "Project Gutenberg's Ebookmaker 0.14.6, ebook #1065 (Poe, The Raven) for older readers, downloaded 2026-10-14 from gutenberg.org/cache/epub/1065/pg1065.epub: EPUB 2, an NCX, chapters with the XHTML 1.1 DOCTYPE in single quotes, the boilerplate and the author in <div>s"},
+ {"file": "gutenberg-11-alice-epub2.epub", "viewer": "READER", "expect": "ok", "maxMillis": 2000, "made_by": "Project Gutenberg's Ebookmaker 0.14.6, ebook #11 (Carroll, Alice's Adventures in Wonderland), downloaded 2026-10-14 from gutenberg.org/cache/epub/11/pg11.epub: EPUB 2, an NCX of 14 points, a cover page of one image"},
+ {"file": "gutenberg-4650-candide-epub3.epub", "viewer": "READER", "expect": "ok", "maxMillis": 2000, "made_by": "Project Gutenberg's Ebookmaker 0.14.6, ebook #4650 (Voltaire, Candide), downloaded 2026-10-14 from gutenberg.org/cache/epub/4650/pg4650-images-3.epub: EPUB 3, a nav and an NCX, French text, a <br/> in each chapter's heading"}
+]
