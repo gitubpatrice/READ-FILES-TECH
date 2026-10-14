@@ -6,6 +6,7 @@ enum class EntryAction {
     OPEN_WITH,
     PREVIEW,
     EDIT_IN_PDF_TECH,
+    STRIP_METADATA,
     SHARE,
     SEND_TO_KDRIVE,
     SEND_TO_PROTON,

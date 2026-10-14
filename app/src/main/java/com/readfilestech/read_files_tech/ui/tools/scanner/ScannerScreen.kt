@@ -25,10 +25,8 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DocumentScanner
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PictureAsPdf
@@ -57,16 +55,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
-import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.scanner.ScanPage
 import com.readfilestech.read_files_tech.data.scanner.ScanSession
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -74,11 +69,9 @@ import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
-import com.readfilestech.read_files_tech.ui.outputs.OutputActionsRow
-import kotlinx.coroutines.Dispatchers
+import com.readfilestech.read_files_tech.ui.outputs.AutoShare
+import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 
 /** What the picker offers to import: the images the 2.15.3's gallery import took that Android decodes. */
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp")
@@ -95,7 +88,6 @@ private const val THUMBNAIL_SIDE = 360
 @Composable
 fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -> Unit, viewModel: ScannerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val title = stringResource(R.string.feature_scanner)
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
@@ -105,14 +97,7 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             viewModel.import(it)
         }
     }
-    LaunchedEffect(state.share) {
-        state.share?.let { path ->
-            val entry = withContext(Dispatchers.IO) { DirectoryListing.entryOf(File(path)) }
-            viewModel.launching.share(context, listOf(entry))
-            // Marked done only once handed over: done first, its own recomposition cancelled this effect.
-            viewModel.shared()
-        }
-    }
+    AutoShare(state.share, viewModel.launching, viewModel::shared)
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { viewModel.captured(it) }
     val full = state.pages.size >= ScanSession.MAX_PAGES
     val busy = state.progress != null
@@ -239,25 +224,7 @@ private fun Intro() {
 
 @Composable
 private fun Result(path: String, onNavigate: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(
-                    stringResource(R.string.scanner_saved_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-            Text(stringResource(R.string.scanner_saved_body), style = MaterialTheme.typography.bodySmall)
-            Text(path, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = { File(path).parent?.let { onNavigate(Routes.explorer(path = it)) } }) {
-                Icon(Icons.Outlined.FolderOpen, contentDescription = null)
-                Text(stringResource(R.string.action_open_folder), Modifier.padding(start = 6.dp))
-            }
-            OutputActionsRow(path, onNavigate)
-        }
-    }
+    OutputSavedCard(stringResource(R.string.scanner_saved_title), stringResource(R.string.scanner_saved_body), path, onNavigate)
 }
 
 @Composable

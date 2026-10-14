@@ -664,4 +664,34 @@
     <string name="pdf_password_wrong">Mot de passe incorrect. Réessayez.</string>
     <string name="pdf_certificate_encrypted">Ce PDF est chiffré pour les certificats de ses destinataires : aucun mot de passe ne l\'ouvre, et Read Files Tech ne le peut pas. Essayez « Ouvrir avec… ».</string>
     <string name="pdf_reader_stopped">Ce PDF a arrêté le lecteur PDF : il est peut-être endommagé, ou fait pour le planter. Le reste de l\'application n\'est pas touché. Essayez « Ouvrir avec… ».</string>
+
+    <!-- Compresser et Effacer EXIF (phase 5) -->
+    <string name="action_strip_metadata">Effacer les métadonnées</string>
+    <string name="action_compress">Compresser</string>
+    <string name="compress_intro">Enregistre une copie JPEG plus légère d\'une image, sans sa localisation ni ses autres métadonnées</string>
+    <string name="compress_quality">Qualité JPEG : %1$d / 100</string>
+    <string name="compress_max_width">Largeur maximum : %1$d px</string>
+    <string name="compress_working">Compression…</string>
+    <string name="compress_saved_title">Copie compressée enregistrée</string>
+    <string name="image_copy_saved_body">À l\'endroit, sans EXIF, localisation ni XMP ; l\'original n\'est pas modifié. Elle est ici :</string>
+    <string name="compress_sizes">Avant : %1$s · Après : %2$s</string>
+    <string name="compress_reduction">Réduction : -%1$d %%</string>
+    <string name="compress_larger">La copie n\'est pas plus légère que l\'original : essayez une qualité ou une largeur plus basse.</string>
+    <string name="compress_failed">Impossible de compresser cette image : %1$s</string>
+    <string name="exif_intro">Montre la localisation, la date et l\'appareil que porte une image, et en enregistre une copie sans eux</string>
+    <string name="exif_found">Métadonnées détectées</string>
+    <string name="exif_none">Aucune métadonnée notable</string>
+    <string name="exif_gps">Localisation GPS</string>
+    <string name="exif_present">présente</string>
+    <string name="exif_taken">Prise de vue</string>
+    <string name="exif_make">Marque</string>
+    <string name="exif_model">Modèle</string>
+    <string name="exif_software">Logiciel</string>
+    <string name="exif_dimensions">Dimensions</string>
+    <string name="exif_dimensions_value">%1$d × %2$d</string>
+    <string name="exif_gps_warning">Cette image contient une localisation GPS : effacez ses métadonnées avant tout partage public.</string>
+    <string name="exif_working">Effacement…</string>
+    <string name="exif_saved_title">Image nettoyée et enregistrée</string>
+    <string name="exif_read_failed">Impossible de lire cette image : %1$s</string>
+    <string name="exif_failed">Impossible d\'enregistrer la copie : %1$s</string>
 </resources>

@@ -45,8 +45,11 @@ object Routes {
         if (gallery != null) append("&$ARG_GALLERY=${encode(gallery)}")
     }
 
-    /** A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. */
-    const val FEATURE = "feature/{$ARG_FEATURE}"
+    /**
+     * A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. A tool
+     * opened on a file by the explorer's menu (Remove EXIF) gets it as [ARG_PATH].
+     */
+    const val FEATURE = "feature/{$ARG_FEATURE}?$ARG_PATH={$ARG_PATH}"
 
     /**
      * @param extensions only files of these extensions shown (lower case, no dot); folders always.
@@ -102,7 +105,8 @@ object Routes {
     private const val NIBBLE = 4
     private const val NIBBLE_MASK = 0xF
 
-    fun feature(feature: Feature): String = "feature/${feature.name}"
+    fun feature(feature: Feature, path: String? = null): String =
+        if (path == null) "feature/${feature.name}" else "feature/${feature.name}?$ARG_PATH=${encode(path)}"
 }
 
 /**

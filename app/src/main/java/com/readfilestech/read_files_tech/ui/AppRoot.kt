@@ -194,7 +194,18 @@ private fun Destinations(navController: NavHostController) {
                 onOpenFolder = { navController.navigate(Routes.explorer(it)) },
             )
         }
-        composable(Routes.FEATURE, arguments = listOf(navArgument(Routes.ARG_FEATURE) { type = NavType.StringType })) { entry ->
+        composable(
+            Routes.FEATURE,
+            arguments = listOf(
+                navArgument(Routes.ARG_FEATURE) { type = NavType.StringType },
+                // The file a tool is opened on (the explorer's "Remove metadata"), read by its view model.
+                navArgument(Routes.ARG_PATH) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
             val feature = entry.arguments?.getString(Routes.ARG_FEATURE)?.let { name -> Feature.entries.find { it.name == name } }
             val files = entry.picked<ArrayList<String>>(Routes.RESULT_PICKED_FILES)
             val folder = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)

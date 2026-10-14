@@ -297,6 +297,22 @@ object FileCaps {
     const val DIFF_ROWS = 500
 
     /**
+     * Bytes of an image's metadata the EXIF tool reads to list it: its EXIF block — 64 KiB at most in a
+     * JPEG, any length a PNG, a WebP or a HEIF announces — or the HEIF `meta` box that says where that
+     * block is. A block announcing more is read up to this: its tags come first, a thumbnail after them. No
+     * 2.15.3 counterpart: `ExifService.inspect` decoded the whole picture to read six tags
+     * (`exif_service.dart:116`).
+     */
+    const val IMAGE_METADATA = 1 * MIB
+
+    /**
+     * Segments, chunks or boxes of an image walked looking for its metadata: past it, the image is taken
+     * to carry none. A JPEG's EXIF is in its first few segments; a PNG may put its `eXIf` after its
+     * `IDAT` chunks, about 13 000 of 8 KiB in a 100 MiB file ([IMAGE_FILE]). No 2.15.3 counterpart.
+     */
+    const val IMAGE_METADATA_CHUNKS = 100_000
+
+    /**
      * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
      * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
      * (Claude review R8).

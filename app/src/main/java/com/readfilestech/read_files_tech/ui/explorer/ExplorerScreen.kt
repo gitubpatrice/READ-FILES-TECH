@@ -44,8 +44,10 @@ import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.NameDialog
+import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
+import com.readfilestech.read_files_tech.ui.navigation.Routes
 
 /** A dialog or sheet of the explorer; at most one at a time. */
 private sealed interface ExplorerDialog {
@@ -145,6 +147,7 @@ fun ExplorerScreen(
             }
             EntryAction.PREVIEW -> dialog = ExplorerDialog.Preview(entry)
             EntryAction.EDIT_IN_PDF_TECH -> launching.editInPdfTech(context, entry)
+            EntryAction.STRIP_METADATA -> onNavigate(Routes.feature(Feature.EXIF, entry.path))
             EntryAction.SHARE -> launching.share(context, listOf(entry))
             EntryAction.SEND_TO_KDRIVE -> launching.sendTo(context, entry, KnownApps.KDRIVE, EntryLaunching.KDRIVE_NAME)
             EntryAction.SEND_TO_PROTON -> launching.sendTo(context, entry, KnownApps.PROTON_DRIVE, EntryLaunching.PROTON_DRIVE_NAME)

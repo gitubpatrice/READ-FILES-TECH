@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
@@ -26,12 +27,13 @@ import androidx.compose.ui.res.stringResource
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.TextPreview
+import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.ui.theme.BrandColors
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
 /**
- * A file's menu, in the 2.15.x order. Not yet here: "Edit" (the editor, phase 5), "Strip metadata"
- * (the EXIF tool, phase 5) — they come back with their screens.
+ * A file's menu, in the 2.15.x order. Not yet here: "Edit" (the editor, phase 5) — it comes back with its
+ * screen. "Remove metadata" is offered on the formats that carry EXIF (the 2.15.x also on GIF and BMP).
  */
 @Composable
 fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (EntryAction, FileEntry) -> Unit, dismiss: () -> Unit) {
@@ -42,6 +44,9 @@ fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (Entr
         if (entry.extension in TextPreview.EXTENSIONS) item(EntryAction.PREVIEW, R.string.action_preview, Icons.Outlined.Visibility)
         if (entry.extension == "pdf") {
             item(EntryAction.EDIT_IN_PDF_TECH, R.string.action_edit_in_pdf_tech, Icons.Outlined.PictureAsPdf, BrandColors.PdfTech)
+        }
+        if (entry.extension in ImageToolRules.METADATA_EXTENSIONS) {
+            item(EntryAction.STRIP_METADATA, R.string.action_strip_metadata, Icons.Outlined.CleaningServices)
         }
         item(EntryAction.SHARE, R.string.action_share, Icons.Filled.Share)
         if (kDrive) item(EntryAction.SEND_TO_KDRIVE, R.string.action_send_to_kdrive, Icons.Outlined.CloudUpload, BrandColors.KDrive)

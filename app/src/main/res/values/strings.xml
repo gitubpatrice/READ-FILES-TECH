@@ -653,4 +653,34 @@
     <string name="pdf_password_wrong">Wrong password. Try again.</string>
     <string name="pdf_certificate_encrypted">This PDF is encrypted for the certificates of its recipients: no password opens it, and Read Files Tech cannot. Try “Open with…”.</string>
     <string name="pdf_reader_stopped">This PDF stopped the PDF reader: it may be damaged, or made to crash it. The rest of the app is not affected. Try “Open with…”.</string>
+
+    <!-- Compress and Remove EXIF (phase 5) -->
+    <string name="action_strip_metadata">Remove metadata</string>
+    <string name="action_compress">Compress</string>
+    <string name="compress_intro">Saves a lighter JPEG copy of a picture, without its location or other metadata</string>
+    <string name="compress_quality">JPEG quality: %1$d / 100</string>
+    <string name="compress_max_width">Largest width: %1$d px</string>
+    <string name="compress_working">Compressing…</string>
+    <string name="compress_saved_title">Compressed copy saved</string>
+    <string name="image_copy_saved_body">Upright, without EXIF, location or XMP; the original is untouched. It is here:</string>
+    <string name="compress_sizes">Before: %1$s · After: %2$s</string>
+    <string name="compress_reduction">Reduction: -%1$d %%</string>
+    <string name="compress_larger">The copy is not lighter than the original: try a lower quality or width.</string>
+    <string name="compress_failed">Cannot compress this picture: %1$s</string>
+    <string name="exif_intro">Shows the location, date and camera a picture carries, and saves a copy without them</string>
+    <string name="exif_found">Metadata found</string>
+    <string name="exif_none">No notable metadata</string>
+    <string name="exif_gps">GPS location</string>
+    <string name="exif_present">present</string>
+    <string name="exif_taken">Taken on</string>
+    <string name="exif_make">Make</string>
+    <string name="exif_model">Model</string>
+    <string name="exif_software">Software</string>
+    <string name="exif_dimensions">Dimensions</string>
+    <string name="exif_dimensions_value">%1$d × %2$d</string>
+    <string name="exif_gps_warning">This picture says where it was taken: remove its metadata before sharing it publicly.</string>
+    <string name="exif_working">Removing…</string>
+    <string name="exif_saved_title">Clean copy saved</string>
+    <string name="exif_read_failed">Cannot read this picture: %1$s</string>
+    <string name="exif_failed">Cannot save the copy: %1$s</string>
 </resources>

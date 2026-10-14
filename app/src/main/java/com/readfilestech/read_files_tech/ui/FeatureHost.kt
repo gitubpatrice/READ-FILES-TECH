@@ -8,6 +8,8 @@ import com.readfilestech.read_files_tech.ui.tools.diff.DiffScreen
 import com.readfilestech.read_files_tech.ui.tools.encode.EncodeScreen
 import com.readfilestech.read_files_tech.ui.tools.format.FormatScreen
 import com.readfilestech.read_files_tech.ui.tools.hash.HashScreen
+import com.readfilestech.read_files_tech.ui.tools.images.CompressScreen
+import com.readfilestech.read_files_tech.ui.tools.images.ExifScreen
 import com.readfilestech.read_files_tech.ui.tools.scanner.ScannerScreen
 
 /**
@@ -27,6 +29,8 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.DIFF -> DiffScreen(picked, onNavigate, onBack)
         Feature.COLOR_PICKER -> ColorPickerScreen(onBack)
         Feature.CONVERT -> ConvertScreen(picked, onNavigate, onBack)
+        Feature.COMPRESS -> CompressScreen(picked, onNavigate, onBack)
+        Feature.EXIF -> ExifScreen(picked, onNavigate, onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

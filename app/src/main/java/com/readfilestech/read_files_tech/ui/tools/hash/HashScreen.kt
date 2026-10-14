@@ -14,11 +14,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Fingerprint
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -28,7 +25,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,8 +38,6 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,10 +45,11 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.tools.FileHash
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
-import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.tools.ChosenFileRow
+import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import kotlinx.coroutines.launch
 
 private const val PERCENT = 100
@@ -90,18 +85,10 @@ fun HashScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -
     ) { padding ->
         val file = state.file
         if (file == null) {
-            Intro(Modifier.padding(padding), choose)
+            ToolIntro(Icons.Outlined.Fingerprint, title, stringResource(R.string.hash_intro), choose, Modifier.padding(padding))
         } else {
             Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.size(8.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
-                        Text(formatBytes(file.size), style = MaterialTheme.typography.bodySmall)
-                    }
-                    TextButton(onClick = choose) { Text(stringResource(R.string.action_change)) }
-                }
+                ChosenFileRow(file, choose)
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
                 when {
                     state.computing -> Progress(state.read, file.size)
@@ -109,29 +96,6 @@ fun HashScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -
                     else -> Digests(state.hashes, viewModel::copied)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun Intro(modifier: Modifier, onChoose: () -> Unit) {
-    Column(
-        modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            Icons.Outlined.Fingerprint,
-            contentDescription = null,
-            modifier = Modifier.size(88.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(stringResource(R.string.feature_hash), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.hash_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-        Button(onClick = onChoose) {
-            Icon(Icons.Outlined.FolderOpen, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.action_choose_file))
         }
     }
 }
