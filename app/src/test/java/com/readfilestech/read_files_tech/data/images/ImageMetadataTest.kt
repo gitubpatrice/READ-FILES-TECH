@@ -7,12 +7,14 @@ import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.assertTimeoutPreemptively
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.time.Duration
 
 /**
  * The EXIF reader of Remove EXIF: on files Pillow and System.Drawing wrote (`tools/corpus/`), then on blocks
@@ -193,6 +195,30 @@ class ImageMetadataTest {
             assertThat(read("large.heic", large)).isEqualTo(ImageMetadata())
             val zero = ftyp + bytes(0, 0, 0, 0) + "free".toByteArray() + ByteArray(32)
             assertThat(read("zero.heic", zero)).isEqualTo(ImageMetadata())
+        }
+
+        /** Claude review R19: 65 535 extents of no width per item, times the items walked — billions of steps. */
+        @Test
+        fun `an iloc whose items each declare 65 535 extents of no width ends at once`() {
+            val count = 60_000
+            // Version 1, every size 0: an item is its id, its construction method, its data reference and its
+            // extent count — never the Exif item (2) looked for, so every item is walked.
+            val items = ByteArray(count * 8).also { b ->
+                for (i in 0 until count) {
+                    val id = i + 3
+                    b[i * 8] = (id shr 8).toByte()
+                    b[i * 8 + 1] = id.toByte()
+                    b[i * 8 + 6] = 0xFF.toByte()
+                    b[i * 8 + 7] = 0xFF.toByte()
+                }
+            }
+            val iloc = fullBox("iloc", 1, bytes(0x00, 0x00) + be16(count) + items)
+            val infeExif = fullBox("infe", 2, be16(2) + be16(0) + "Exif".toByteArray() + bytes(0))
+            val iinf = fullBox("iinf", 0, be16(1) + infeExif)
+            val hdlr = fullBox("hdlr", 0, ByteArray(4) + "pict".toByteArray() + ByteArray(13))
+            val file = box("ftyp", "heic".toByteArray() + ByteArray(4)) + fullBox("meta", 0, hdlr + iinf + iloc)
+            val read = assertTimeoutPreemptively(Duration.ofSeconds(5)) { read("amplified.heic", file) }
+            assertThat(read).isEqualTo(ImageMetadata())
         }
 
         @Test

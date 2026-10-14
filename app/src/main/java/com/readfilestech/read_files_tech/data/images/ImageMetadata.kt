@@ -209,7 +209,12 @@ private object Heif {
             val base = fields.number(baseSize)
             val extents = fields.number(2) ?: 0L
             var first: Pair<Long, Long>? = null
-            repeat(extents.toInt()) {
+            // Never more extents than the box holds: 65 535 extents of no width, declared item after item
+            // (100 000 of them), were billions of empty steps (Claude review R19). Of no width, the first one
+            // is all there is to read.
+            val width = indexSize + offsetSize + lengthSize
+            val walked = if (width == 0) minOf(extents, 1L) else minOf(extents, fields.left / width)
+            repeat(walked.toInt()) {
                 fields.skip(indexSize)
                 val offset = fields.number(offsetSize)
                 val length = fields.number(lengthSize)
@@ -269,6 +274,9 @@ private class ArrayBytes(private val array: ByteArray) : Bytes {
 private class Fields(private val array: ByteArray, box: Chunk) {
     private var at = box.contentAt
     private val end = minOf(box.contentAt + box.length, array.size.toLong())
+
+    /** The bytes of the box not read yet; 0 once past its end. */
+    val left: Long get() = maxOf(end - at, 0L)
 
     fun skip(count: Int) {
         at += count

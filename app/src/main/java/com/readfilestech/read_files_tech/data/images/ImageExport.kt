@@ -96,20 +96,36 @@ object ImageExport {
     private fun scaled(decoded: Bitmap, maxWidth: Int): Bitmap {
         val size = ImageToolRules.fitWidth(decoded.width, decoded.height, maxWidth)
         if (size.width == decoded.width.toLong()) return decoded
-        val scaled = decoded.scale(size.width.toInt(), size.height.toInt(), filter = true)
-        if (scaled !== decoded) decoded.recycle()
-        return scaled
+        return replaced(decoded) { it.scale(size.width.toInt(), size.height.toInt(), filter = true) }
     }
 
     private fun opaque(picture: Bitmap): Bitmap {
         if (!picture.hasAlpha()) return picture
-        val flat = createBitmap(picture.width, picture.height)
-        Canvas(flat).apply {
-            drawColor(Color.WHITE)
-            drawBitmap(picture, 0f, 0f, null)
+        return replaced(picture) { source ->
+            createBitmap(source.width, source.height).also { flat ->
+                Canvas(flat).apply {
+                    drawColor(Color.WHITE)
+                    drawBitmap(source, 0f, 0f, null)
+                }
+            }
         }
-        picture.recycle()
-        return flat
+    }
+
+    /**
+     * What [make] makes of [bitmap]; [bitmap] is recycled either way when it is not the result — made, or
+     * failed on the way (an OOM allocating the new one: it was left to the GC, megabytes of native memory
+     * in a batch, Claude review R19).
+     */
+    private inline fun replaced(bitmap: Bitmap, make: (Bitmap) -> Bitmap): Bitmap {
+        var made = bitmap
+        var done = false
+        try {
+            made = make(bitmap)
+            done = true
+        } finally {
+            if (!done || made !== bitmap) bitmap.recycle()
+        }
+        return made
     }
 
     /**
