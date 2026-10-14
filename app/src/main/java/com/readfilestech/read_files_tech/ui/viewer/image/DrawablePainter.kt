@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.painter.Painter
-import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.withSave
 
 /**
  * An animated image (`AnimatedImageDrawable`, API 28+) as a Compose painter: it plays while remembered —
@@ -46,9 +46,17 @@ internal class DrawablePainter(private val drawable: Drawable) : Painter(), Reme
     override fun DrawScope.onDraw() {
         // Read to redraw on each new frame.
         frame
+        val width = drawable.intrinsicWidth
+        val height = drawable.intrinsicHeight
+        if (width <= 0 || height <= 0) return
+        // An AnimatedImageDrawable draws within its intrinsic size whatever its bounds (a 120 × 80 WebP stayed
+        // 120 × 80 in a corner of a Galaxy S9's page): drawn at that size, on a canvas scaled to the page.
+        drawable.setBounds(0, 0, width, height)
         drawIntoCanvas { canvas ->
-            drawable.setBounds(0, 0, size.width.roundToInt(), size.height.roundToInt())
-            drawable.draw(canvas.nativeCanvas)
+            canvas.withSave {
+                canvas.scale(size.width / width, size.height / height)
+                drawable.draw(canvas.nativeCanvas)
+            }
         }
     }
 
