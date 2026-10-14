@@ -258,6 +258,20 @@ object FileCaps {
     const val JSON_DEPTH = 1_000
 
     /**
+     * Lines of a file the comparison tool reads, each file within [TEXT_VIEWER]: a file of more is refused.
+     * A line costs 12 bytes beside the file's (its end, its number, its slot among the distinct lines); a
+     * 50 MiB log holds about half a million. No 2.15.3 counterpart: it compared the first [DIFF_ROWS]
+     * lines of each file only (`diff_screen.dart:62-68`).
+     */
+    const val DIFF_LINES = 1_000_000
+
+    /**
+     * Rows of a comparison shown — the 2.15.3's `_maxLines` (`diff_screen.dart:21`), there the lines read:
+     * here the files are compared whole and counted whole, only the rows shown stop at it.
+     */
+    const val DIFF_ROWS = 500
+
+    /**
      * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
      * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
      * (Claude review R8).

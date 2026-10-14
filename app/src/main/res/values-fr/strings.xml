@@ -411,6 +411,76 @@
     <string name="hash_computing">Calcul en cours… %1$d %%</string>
     <string name="hash_failed">Impossible de calculer les empreintes : %1$s</string>
 
+    <!-- Outils Encodage, Formater, Comparer et Sélecteur de couleur -->
+    <string name="action_clear">Effacer</string>
+    <string name="action_save">Enregistrer</string>
+    <string name="tool_result">Résultat</string>
+    <string name="tool_result_copied">Résultat copié</string>
+    <plurals name="tool_result_beginning">
+        <item quantity="one">Seul le début est affiché : %1$,d caractère sur %2$,d.</item>
+        <item quantity="many">Seul le début est affiché : %1$,d caractères sur %2$,d.</item>
+        <item quantity="other">Seul le début est affiché : %1$,d caractères sur %2$,d.</item>
+    </plurals>
+    <plurals name="tool_result_length">
+        <item quantity="one">%1$,d caractère</item>
+        <item quantity="many">%1$,d caractères</item>
+        <item quantity="other">%1$,d caractères</item>
+    </plurals>
+    <string name="tool_read_failed">Impossible de lire « %1$s » : %2$s</string>
+    <string name="tool_too_large">« %1$s » est trop volumineux (plus de %2$,d %3$s).</string>
+    <string name="encode_encode">Encoder</string>
+    <string name="encode_decode">Décoder</string>
+    <string name="encode_input">Texte</string>
+    <string name="encode_input_hint">Saisissez ou collez le texte ici</string>
+    <string name="encode_swap">Inverser</string>
+    <string name="encode_base64_invalid">Ce n\'est pas du Base64 : un caractère hors de son alphabet, ou une longueur qu\'aucun texte Base64 n\'a.</string>
+    <string name="encode_percent_invalid" formatted="false">Ce n\'est pas un encodage URL : chaque « % » doit être suivi de deux chiffres hexadécimaux.</string>
+    <string name="encode_not_utf8">Les octets décodés ne sont pas du texte (UTF-8) : une image ou un autre fichier binaire, peut-être.</string>
+    <string name="format_indent">Indenter</string>
+    <string name="format_minify">Minifier</string>
+    <string name="format_input">Entrée</string>
+    <string name="format_input_hint">Collez le texte, ou ouvrez un fichier</string>
+    <string name="format_open_file">Ouvrir un fichier</string>
+    <string name="format_not_json">JSON non valide à partir de la ligne %1$,d, colonne %2$,d.</string>
+    <string name="format_too_deep">Tableaux et objets imbriqués trop profondément (la limite est %1$,d).</string>
+    <string name="format_too_many_values">Trop de valeurs (plus de %1$,d).</string>
+    <string name="format_save_failed">Impossible d\'enregistrer le résultat : %1$s</string>
+    <string name="format_saved_body">Le résultat est enregistré ici :</string>
+    <string name="diff_file_a">Fichier A</string>
+    <string name="diff_file_b">Fichier B</string>
+    <string name="diff_intro">Choisissez deux fichiers texte : leurs lignes sont comparées de la première à la dernière.</string>
+    <string name="diff_line_endings">Compter les fins de ligne (CRLF ≠ LF)</string>
+    <string name="diff_computing">Comparaison…</string>
+    <string name="diff_identical">Les fichiers sont identiques.</string>
+    <string name="diff_same_lines">Les lignes sont les mêmes : les fichiers ne diffèrent que par leurs fins de ligne ou leur encodage.</string>
+    <plurals name="diff_removed">
+        <item quantity="one">%1$,d ligne supprimée</item>
+        <item quantity="many">%1$,d lignes supprimées</item>
+        <item quantity="other">%1$,d lignes supprimées</item>
+    </plurals>
+    <plurals name="diff_added">
+        <item quantity="one">%1$,d ligne ajoutée</item>
+        <item quantity="many">%1$,d lignes ajoutées</item>
+        <item quantity="other">%1$,d lignes ajoutées</item>
+    </plurals>
+    <plurals name="diff_skipped">
+        <item quantity="one">%1$,d ligne inchangée</item>
+        <item quantity="many">%1$,d lignes inchangées</item>
+        <item quantity="other">%1$,d lignes inchangées</item>
+    </plurals>
+    <plurals name="diff_truncated">
+        <item quantity="one">Seule %1$,d ligne est affichée ; les décomptes portent sur les fichiers entiers.</item>
+        <item quantity="many">Seules les %1$,d premières lignes sont affichées ; les décomptes portent sur les fichiers entiers.</item>
+        <item quantity="other">Seules les %1$,d premières lignes sont affichées ; les décomptes portent sur les fichiers entiers.</item>
+    </plurals>
+    <string name="diff_approximate">Les fichiers diffèrent trop pour être comparés en entier en un temps raisonnable : dans une partie du résultat, des lignes inchangées apparaissent supprimées et ajoutées.</string>
+    <string name="diff_stopped">Comparaison arrêtée.</string>
+    <string name="diff_compare_again">Comparer à nouveau</string>
+    <string name="diff_too_many_lines">« %1$s » a trop de lignes pour être comparé (plus de %2$,d).</string>
+    <string name="color_palette">Nuancier</string>
+    <string name="color_area_description">Saturation et luminosité : faites glisser pour choisir</string>
+    <string name="color_hue_description">Teinte : faites glisser pour choisir</string>
+
     <string name="zip_empty">Cette archive est vide.</string>
     <string name="zip_extract_all">Extraire tout</string>
     <string name="zip_share_entry">Partager %1$s</string>

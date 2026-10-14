@@ -1,0 +1,17 @@
+@charset "utf-8";
+/* A comment, then an import */
+@import url("theme.css");
+.a , .b > .c ~ .d + .e {
+  width : calc( 100% - 2 * 10px );
+  margin: -1px  -2px;
+  background: url(http://example.com/img.png) no-repeat;
+  font-family: "Helvetica Neue", 'Arial', sans-serif;
+  content: "/* not a comment */ // nor this";
+}
+div :first-child { color : red !important ; }
+a:hover::before { content: '\201C'; }
+@media screen and (min-width: 600px) and (max-width : 900px) {
+  .x { padding : 0 calc(1em + 2px) ; }
+}
+.esc\:name { color: blue }
+.empty { ; }
