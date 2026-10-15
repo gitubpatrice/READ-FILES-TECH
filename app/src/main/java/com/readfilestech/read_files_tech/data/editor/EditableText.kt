@@ -249,6 +249,12 @@ class EditableText private constructor(
             return kinds
         }
 
+        /** @throws UnencodableTextException a surrogate of [text] without its pair, which no encoding holds */
+        private fun requirePairs(text: String, encoding: TextEncoding) {
+            val lone = firstLoneSurrogate(text)
+            if (lone >= 0) throw UnencodableTextException(text[lone].toString(), encoding)
+        }
+
         /** The index of [text]'s first surrogate without its pair, or -1. */
         internal fun firstLoneSurrogate(text: CharSequence): Int {
             var i = 0
@@ -293,8 +299,7 @@ class EditableText private constructor(
          * only to [java.nio.charset.CharsetEncoder.flush] — dropped, had its result been ignored (R22).
          */
         private fun encodeText(encoding: TextEncoding, text: String): ByteArray {
-            val lone = firstLoneSurrogate(text)
-            if (lone >= 0) throw UnencodableTextException(text[lone].toString(), encoding)
+            requirePairs(text, encoding)
             val encoder = encoding.charset.newEncoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT)

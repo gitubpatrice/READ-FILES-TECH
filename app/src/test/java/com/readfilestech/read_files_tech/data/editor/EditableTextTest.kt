@@ -3,12 +3,12 @@ package com.readfilestech.read_files_tech.data.editor
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.Charset
-import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
 
 /**

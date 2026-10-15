@@ -169,18 +169,25 @@ class CodeEditorSessionTest {
         val older = history.versions(file.absolutePath).single()
         session.textChanged(UNSAVED)
         io.held = true
-        val restored = async { session.restore(older, UNSAVED) }
-        runCurrent()
-        assertThat(session.state.value.saving).isTrue()
-        val saved = async { session.save("typed meanwhile\n") }
-        repeat(3) {
+        try {
+            val restored = async { session.restore(older, UNSAVED) }
             runCurrent()
+            assertThat(session.state.value.saving).isTrue()
+            val saved = async { session.save("typed meanwhile\n") }
+            repeat(3) {
+                runCurrent()
+                io.runAll()
+            }
+            saved.await()
+            assertThat(restored.await()).isEqualTo(ORIGINAL)
+            assertThat(session.state.value.saving).isFalse()
+            assertThat(file.readText()).isEqualTo(EDITED)
+        } finally {
+            // Whatever failed, the work held is let go: a coroutine waiting on it held runTest for ever (a
+            // sabotage froze Gradle 17 minutes instead of failing).
+            io.held = false
             io.runAll()
         }
-        saved.await()
-        assertThat(restored.await()).isEqualTo(ORIGINAL)
-        assertThat(session.state.value.saving).isFalse()
-        assertThat(file.readText()).isEqualTo(EDITED)
     }
 
     @Test

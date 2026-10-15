@@ -82,8 +82,11 @@ class EditedFile private constructor(
      * [edited] as the file's bytes, within [FileCaps.CODE_EDITOR]: past it, a save went through but the file
      * opened no more, nor could be saved again — its every save read it first (Claude review R22).
      */
-    private suspend fun encodeWithin(edited: String): EditableText.Encoded =
-        content.encode(edited).also { if (it.bytes.size > FileCaps.CODE_EDITOR) throw TextTooLargeException(FileCaps.CODE_EDITOR) }
+    private suspend fun encodeWithin(edited: String): EditableText.Encoded {
+        val encoded = content.encode(edited)
+        if (encoded.bytes.size > FileCaps.CODE_EDITOR) throw TextTooLargeException(FileCaps.CODE_EDITOR)
+        return encoded
+    }
 
     /** The file still holds [current], the bytes read before the save — or is still missing, when it was. */
     private fun holdsStill(file: File, current: ByteArray?): Boolean =
