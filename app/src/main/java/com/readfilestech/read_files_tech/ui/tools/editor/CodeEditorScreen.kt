@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -297,10 +298,13 @@ private object LineBreaksAsLf : InputTransformation {
         // then made from the end, so that the places before do not move. One replace per place: one per CR
         // made the buffer track as many changes, each against the others — a paste of many CRLF stalled
         // the screen (Claude review R22).
-        LineBreakInput.places(changed, length)
-            .mapNotNull { (from, to) -> LineBreakInput.rewrite(text, from, to) }
-            .asReversed()
-            .forEach { replace(it.start, it.end, it.text) }
+        val rewrites = LineBreakInput.places(changed, length).mapNotNull { (from, to) -> LineBreakInput.rewrite(text, from, to) }
+        if (rewrites.isEmpty()) return
+        // The selection kept among the characters kept: a cursor inside a span went to its end (R23).
+        val start = LineBreakInput.moved(selection.start, text, rewrites)
+        val end = LineBreakInput.moved(selection.end, text, rewrites)
+        rewrites.asReversed().forEach { replace(it.start, it.end, it.text) }
+        selection = TextRange(start, end)
     }
 }
 

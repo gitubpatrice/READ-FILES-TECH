@@ -48,6 +48,23 @@ class LineBreakInputTest {
         assertThat(apart.map { it.toList() }).containsExactly(listOf(0, 3), listOf(5, 8)).inOrder()
     }
 
+    /** Claude review R23: a cursor inside a rewritten span went to its end. */
+    @Test
+    fun `a position keeps its place among the characters kept`() {
+        // `x\r\nf(|)\r\ny`: the cursor between the parentheses, at 5.
+        val text = "x\r\nf()\r\ny"
+        val rewrites = listOfNotNull(LineBreakInput.rewrite(text, 0, text.length))
+        val after = text.replaceRange(rewrites.single().start, rewrites.single().end, rewrites.single().text)
+        assertThat(after).isEqualTo("x\nf()\ny")
+        val moved = LineBreakInput.moved(5, text, rewrites)
+        assertThat(after.substring(0, moved)).isEqualTo("x\nf(")
+        // Before the span and after it: moved by the CR dropped before them only.
+        assertThat(LineBreakInput.moved(0, text, rewrites)).isEqualTo(0)
+        assertThat(LineBreakInput.moved(text.length, text, rewrites)).isEqualTo(after.length)
+        // A CR made a LF moves nothing.
+        assertThat(LineBreakInput.moved(3, "a\rb\rc", listOfNotNull(LineBreakInput.rewrite("a\rb\rc", 0, 5)))).isEqualTo(3)
+    }
+
     /** Claude review R22: one replace per CR — a paste of many CRLF made as many changes, each against the others. */
     @Test
     fun `a paste of many CRLF is rewritten in one place`() {

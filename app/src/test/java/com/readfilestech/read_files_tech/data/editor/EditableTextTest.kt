@@ -78,6 +78,19 @@ class EditableTextTest {
         assertThat(EditableText.of(deleted.bytes).text).isEqualTo("a\n\n")
     }
 
+    /** Claude review R23: of the CR and the LF that cannot follow each other, the line untouched kept its own. */
+    @Test
+    fun `of a CR then a LF, the line new or changed is the one written CRLF`() {
+        // A line added after `a`, before the empty line: the added line's CR (the most common kind) becomes CRLF.
+        assertThat(EditableText.of(bytes("a\r\n\nz\rz\rz\r")).encoded("a\nb\n\nz\nz\nz\n").bytes)
+            .isEqualTo(bytes("a\r\nb\r\n\nz\rz\rz\r"))
+        // `p` removed, `q` changed into `q!`: `q!` takes `p`'s CR, made CRLF; the empty line keeps its LF.
+        assertThat(EditableText.of(bytes("p\rq\r\n\nr\n")).encoded("q!\n\nr\n").bytes).isEqualTo(bytes("q!\r\n\nr\n"))
+        // `B`, found again between two changes, keeps its CR; the empty line added after it is the one made CRLF.
+        assertThat(EditableText.of(bytes("A\nB\rC\r\nD\n")).encoded("A2\nB\n\nC\nD2\n").bytes)
+            .isEqualTo(bytes("A2\nB\r\r\nC\r\nD2\n"))
+    }
+
     /** Claude review R22: two changes far apart, a line removed in one, moved the line breaks between them. */
     @Test
     fun `each line found again keeps its line break, whatever was added or removed around it`() {

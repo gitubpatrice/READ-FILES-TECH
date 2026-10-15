@@ -48,4 +48,19 @@ internal object LineBreakInput {
         }
         return Rewrite(first, last + 1, out.toString())
     }
+
+    /**
+     * Where [position] of [text] lands once [rewrites] are made: before it, each CR dropped (the one of a
+     * CRLF) takes a character away; a CR made a LF moves nothing. The field would otherwise put a cursor
+     * that lies inside a rewritten span at its end (Claude review R23: `f(|)` committed with CRLF around).
+     */
+    fun moved(position: Int, text: CharSequence, rewrites: List<Rewrite>): Int {
+        var dropped = 0
+        for (rewrite in rewrites) {
+            for (i in rewrite.start until minOf(rewrite.end, position)) {
+                if (text[i] == '\r' && i + 1 < text.length && text[i + 1] == '\n') dropped++
+            }
+        }
+        return position - dropped
+    }
 }

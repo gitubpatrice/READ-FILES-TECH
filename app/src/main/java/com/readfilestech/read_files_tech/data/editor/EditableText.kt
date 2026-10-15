@@ -49,6 +49,9 @@ class EditableText private constructor(
     /** The file's bytes for [edited], and the text they hold — what a next save compares with. */
     class Encoded(val bytes: ByteArray, val text: EditableText)
 
+    /** Each line break's kind, and whether its line was found again — the same text, untouched. */
+    private class Assigned(val kinds: ByteArray, val found: BooleanArray)
+
     /**
      * [edited] as the file's bytes: in its encoding, after its byte order mark, each line break of the kind
      * it had. A line break that was not there takes the kind most of the file's have (LF in a file without
@@ -58,7 +61,8 @@ class EditableText private constructor(
      */
     suspend fun encode(edited: String): Encoded {
         val normal = split(edited).text
-        val kinds = separated(normal, breaksFor(normal))
+        val assigned = breaksFor(normal)
+        val kinds = separated(normal, assigned.kinds, assigned.found)
         val joined = joined(normal, kinds)
         // What the next opening reads is what the editor shows: the same lines, each with its line break.
         val again = split(joined)
@@ -74,7 +78,7 @@ class EditableText private constructor(
      * The text the two share at their end may begin inside a line — `C` replaced by `N` before `\nD`: its
      * first line break then ends a line that differs, and belongs to the middle (Claude review R22).
      */
-    private suspend fun breaksFor(edited: String): ByteArray {
+    private suspend fun breaksFor(edited: String): Assigned {
         val count = edited.count { it == '\n' }
         val shortest = minOf(text.length, edited.length)
         var prefix = 0
@@ -85,10 +89,13 @@ class EditableText private constructor(
         val wholeLines = startsLine(text, text.length - suffix) && startsLine(edited, edited.length - suffix)
         val after = countBreaks(text, text.length - suffix, text.length).let { if (wholeLines || it == 0) it else it - 1 }
         val kinds = ByteArray(count)
+        val found = BooleanArray(count)
         breaks.copyInto(kinds, 0, 0, before)
         breaks.copyInto(kinds, count - after, breaks.size - after, breaks.size)
-        middle(edited, kinds, before, breaks.size - after, count - after)
-        return kinds
+        found.fill(true, 0, before)
+        found.fill(true, count - after, count)
+        middle(edited, Assigned(kinds, found), before, breaks.size - after, count - after)
+        return Assigned(kinds, found)
     }
 
     /**
@@ -98,7 +105,8 @@ class EditableText private constructor(
      * kind. Edits are not one change: two of them far apart, a line removed in one, re-assigned the line
      * breaks of every line between them (Claude review R22). A file of one kind needs no search.
      */
-    private suspend fun middle(edited: String, kinds: ByteArray, from: Int, oldEnd: Int, newEnd: Int) {
+    private suspend fun middle(edited: String, assigned: Assigned, from: Int, oldEnd: Int, newEnd: Int) {
+        val kinds = assigned.kinds
         val common = commonKind()
         if (breaks.none { it != breaks[0] }) {
             for (i in from until newEnd) kinds[i] = common
@@ -117,7 +125,10 @@ class EditableText private constructor(
                 val paired = lastOld + 1 + (n - lastNew - 1)
                 kinds[from + n] = if (paired < o) breaks[from + paired] else common
             }
-            if (j < matches.size) kinds[from + j] = breaks[from + o]
+            if (j < matches.size) {
+                kinds[from + j] = breaks[from + o]
+                assigned.found[from + j] = true
+            }
             lastOld = o
             lastNew = j
         }
@@ -231,11 +242,13 @@ class EditableText private constructor(
         private fun startsLine(text: String, at: Int): Boolean = at == 0 || text[at - 1] == '\n'
 
         /**
-         * [kinds] with each LF that follows a CR, an empty line between, made a CRLF: written `\r` then `\n`,
-         * the two would be read back as one CRLF — a line gone, unseen until the file is opened again (Claude
-         * review R22: Enter at the start of a line after a CR line, in a file of LF).
+         * [kinds] where no LF follows a CR, an empty line between: written `\r` then `\n`, the two would be
+         * read back as one CRLF — a line gone, unseen until the file is opened again (Claude review R22:
+         * Enter at the start of a line after a CR line, in a file of LF). One of the two becomes a CRLF: the
+         * CR when its line is new or changed (`\r\n` then `\n` reads back as two), otherwise the LF — never
+         * the line break of a line the user did not touch when the other was (R23).
          */
-        private fun separated(text: String, kinds: ByteArray): ByteArray {
+        private fun separated(text: String, kinds: ByteArray, found: BooleanArray): ByteArray {
             var k = 0
             var previous = NONE
             for (c in text) {
@@ -243,7 +256,9 @@ class EditableText private constructor(
                     previous = NONE
                     continue
                 }
-                if (kinds[k] == LF && previous == CR) kinds[k] = CRLF
+                if (kinds[k] == LF && previous == CR) {
+                    if (found[k - 1]) kinds[k] = CRLF else kinds[k - 1] = CRLF
+                }
                 previous = kinds[k++]
             }
             return kinds
