@@ -15,16 +15,17 @@ import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.readFailure
 
 /**
- * Why [work] wrote nothing, in words — the 2.15.3 showed "Erreur : " and the exception. [name] is what was being
- * worked on, for a phone out of memory: the file, or the merge.
+ * Why [work] wrote nothing, in words — the 2.15.3 showed "Erreur : " and the exception. [name] is the file open,
+ * named when the phone runs out of memory converting it; a merge names none.
  */
-fun csvToolsFailure(work: CsvWork, name: String, error: Throwable): UiText = outputFailure(name, error) ?: when (error) {
-    is NothingToConvertException -> uiText(if (work == CsvWork.MERGE) R.string.csv_tools_merge_empty else R.string.convert_csv_empty)
-    is TooManyItemsException -> UiText.Plural(R.plurals.csv_tools_too_many_pages, error.limit)
-    is SelectionTooLargeException -> uiText(R.string.zip_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
-    is CsvMergeException -> mergeRefusal(error)
-    else -> uiText(if (work == CsvWork.MERGE) R.string.csv_tools_merge_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
-}
+fun csvToolsFailure(work: CsvWork, name: String?, error: Throwable): UiText =
+    outputFailure(error, converted = name.takeIf { work == CsvWork.PDF }) ?: when (error) {
+        is NothingToConvertException -> uiText(if (work == CsvWork.MERGE) R.string.csv_tools_merge_empty else R.string.convert_csv_empty)
+        is TooManyItemsException -> UiText.Plural(R.plurals.csv_tools_too_many_pages, error.limit)
+        is SelectionTooLargeException -> uiText(R.string.zip_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
+        is CsvMergeException -> mergeRefusal(error)
+        else -> uiText(if (work == CsvWork.MERGE) R.string.csv_tools_merge_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
+    }
 
 private fun mergeRefusal(error: CsvMergeException): UiText = when (error.reason) {
     CsvMergeException.Reason.UNREADABLE -> readFailure(error.name, error.cause ?: error)

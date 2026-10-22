@@ -108,7 +108,7 @@ class CompressViewModel @Inject constructor(
                 made.fold(
                     { (result, share) -> current.copy(working = false, result = result, share = result.path.takeIf { share }) },
                     { error ->
-                        val failure = outputFailure(file.name, error) ?: uiText(R.string.compress_failed, imageToolReason(error))
+                        val failure = outputFailure(error) ?: uiText(R.string.compress_failed, imageToolReason(error))
                         current.copy(working = false, failure = failure)
                     },
                 )
@@ -201,7 +201,7 @@ class ExifViewModel @Inject constructor(
                 made.fold(
                     { (path, share) -> s.copy(working = false, result = path, share = path.takeIf { share }) },
                     { error ->
-                        val failure = outputFailure(file.name, error) ?: uiText(R.string.tools_copy_failed, imageToolReason(error))
+                        val failure = outputFailure(error) ?: uiText(R.string.tools_copy_failed, imageToolReason(error))
                         s.copy(working = false, failure = failure)
                     },
                 )

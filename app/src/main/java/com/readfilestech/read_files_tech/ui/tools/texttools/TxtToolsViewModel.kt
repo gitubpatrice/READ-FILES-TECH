@@ -236,19 +236,20 @@ class TxtToolsViewModel @Inject constructor(
     }
 
     /** Why [work] on the file [name] wrote nothing, in words — the 2.15.3 showed "Erreur : " and the exception. */
-    private fun failure(work: TxtWork, name: String, error: Throwable): UiText = outputFailure(name, error) ?: when (error) {
-        is NotEditableException -> {
-            val notText = error.reason == NotEditableException.Reason.NOT_TEXT
-            uiText(if (notText) R.string.txt_replace_not_text else R.string.txt_replace_not_reversible, name)
+    private fun failure(work: TxtWork, name: String, error: Throwable): UiText =
+        outputFailure(error, converted = name.takeIf { work == TxtWork.PDF }) ?: when (error) {
+            is NotEditableException -> {
+                val notText = error.reason == NotEditableException.Reason.NOT_TEXT
+                uiText(if (notText) R.string.txt_replace_not_text else R.string.txt_replace_not_reversible, name)
+            }
+            is UnencodableTextException ->
+                uiText(R.string.txt_replace_unencodable, CodeEditorSession.encodingName(error.encoding), error.character)
+            is ResultTooLargeException -> uiText(R.string.txt_replace_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
+            is NoMatchException -> uiText(R.string.txt_replace_no_match)
+            is FileTooLargeException -> uiText(R.string.txt_pdf_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
+            is TooManyItemsException -> UiText.Plural(R.plurals.convert_too_many_pages, error.limit)
+            else -> uiText(if (work == TxtWork.REPLACE) R.string.tools_copy_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
         }
-        is UnencodableTextException ->
-            uiText(R.string.txt_replace_unencodable, CodeEditorSession.encodingName(error.encoding), error.character)
-        is ResultTooLargeException -> uiText(R.string.txt_replace_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
-        is NoMatchException -> uiText(R.string.txt_replace_no_match)
-        is FileTooLargeException -> uiText(R.string.txt_pdf_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
-        is TooManyItemsException -> UiText.Plural(R.plurals.convert_too_many_pages, error.limit)
-        else -> uiText(if (work == TxtWork.REPLACE) R.string.tools_copy_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
-    }
 
     private companion object {
         const val KEY_PATH = "txt_tools_path"

@@ -307,7 +307,7 @@
     <string name="tool_hint_hash">MD5, SHA-1, SHA-256…</string>
     <string name="tool_hint_encode">Base64, URL, HTML</string>
     <string name="tool_hint_format">JSON, CSS, JS</string>
-    <string name="tool_hint_editor">Modifier et sauvegarder</string>
+    <string name="tool_hint_editor">Modifier et enregistrer</string>
     <string name="tool_hint_content_search">Dans le contenu des fichiers</string>
     <string name="tool_hint_csv_editor">Modifier cellules, lignes, colonnes</string>
     <string name="tool_hint_zip_creator">Compresser des fichiers</string>
@@ -625,7 +625,7 @@
     <string name="scanner_adding">Ajout de l\'image %1$d sur %2$d…</string>
     <string name="scanner_making_page">Création de la page…</string>
     <string name="scanner_making_pdf">Création du PDF…</string>
-    <string name="scanner_saved_title">Scan sauvegardé sur votre téléphone</string>
+    <string name="scanner_saved_title">Scan enregistré sur votre téléphone</string>
     <string name="scanner_saved_body">Le PDF est enregistré ici, vous pourrez le retrouver à tout moment :</string>
     <!-- Convertir (ConvertScreen de la 2.15.3) -->
     <string name="convert_images_to_pdf">Images → PDF</string>
@@ -644,7 +644,7 @@
     <string name="convert_image_to_png_hint">JPG, WebP, GIF, BMP… → PNG</string>
     <string name="convert_working">Conversion…</string>
     <string name="convert_working_percent">Conversion… %1$d %%</string>
-    <string name="convert_saved_title">Sauvegardé sur votre téléphone</string>
+    <string name="convert_saved_title">Enregistré sur votre téléphone</string>
     <string name="convert_saved_body">Le résultat est enregistré ici, vous pourrez le retrouver à tout moment :</string>
     <string name="convert_csv_empty">Ce CSV ne contient aucune ligne : il n\'y a rien à convertir.</string>
     <string name="convert_pdf_no_text">Aucun texte sélectionnable dans ce PDF. S\'il est scanné, utilisez d\'abord l\'outil OCR.</string>
@@ -662,6 +662,7 @@
     <string name="convert_unreadable">« %1$s » est endommagé, ou n\'est pas au format que son nom indique.</string>
     <string name="convert_unsupported">« %1$s » est dans un format qui ne peut pas être converti ici.</string>
     <string name="convert_out_of_memory">Pas assez de mémoire sur ce téléphone pour convertir « %1$s ».</string>
+    <string name="tool_out_of_memory">Pas assez de mémoire sur ce téléphone pour produire le résultat.</string>
     <string name="convert_no_output">Aucun dossier ne peut recevoir le résultat : le dossier de sortie et ses replis le refusent.</string>
     <string name="convert_failed">Impossible de convertir « %1$s » : %2$s</string>
     <plurals name="scanner_full">

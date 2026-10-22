@@ -661,6 +661,7 @@
     <string name="convert_unreadable">“%1$s” is damaged, or is not in the format its name says.</string>
     <string name="convert_unsupported">“%1$s” is in a format that cannot be converted here.</string>
     <string name="convert_out_of_memory">Not enough memory on this phone to convert “%1$s”.</string>
+    <string name="tool_out_of_memory">Not enough memory on this phone to make the result.</string>
     <string name="convert_no_output">No folder can take the result: the output folder and its fallbacks refuse it.</string>
     <string name="convert_failed">Cannot convert “%1$s”: %2$s</string>
     <plurals name="scanner_full">

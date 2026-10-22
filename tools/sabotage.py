@@ -35,6 +35,12 @@ if baseline.returncode != 0:
     print("TEMOIN EN ECHEC : la commande echoue sans sabotage, rien ne serait mesure.")
     print((baseline.stdout + baseline.stderr).strip()[-800:])
     sys.exit(2)
+# Et elle doit avoir lance Gradle. Le 2026-10-22, `cmd /c` tape dans Git Bash sans MSYS_NO_PATHCONV=1 :
+# `/c` devenu un chemin, cmd s'ouvrait et rendait 0 — temoin vert, chaque sabotage « inapercu », rien lance.
+if any("gradlew" in part for part in command) and "BUILD SUCCESSFUL" not in baseline.stdout + baseline.stderr:
+    print("TEMOIN SANS BUILD : la commande rend 0 sans que Gradle ait tourne (MSYS_NO_PATHCONV=1 ?).")
+    print((baseline.stdout + baseline.stderr).strip()[-800:])
+    sys.exit(2)
 try:
     for motif in motifs:
         count = original.count(motif["old"])

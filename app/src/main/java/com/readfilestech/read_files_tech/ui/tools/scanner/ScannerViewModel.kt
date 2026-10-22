@@ -426,7 +426,7 @@ class ScannerViewModel @Inject constructor(
                 withContext(io) { files.deleteSession(s.id) }
             }.onFailure { error ->
                 mutableState.update { it.copy(progress = null) }
-                messages.error(outputFailure(SCAN_NAME, error) ?: uiText(R.string.scanner_pdf_failed, IoErrors.reasonOf(error)))
+                messages.error(outputFailure(error) ?: uiText(R.string.scanner_pdf_failed, IoErrors.reasonOf(error)))
             }
         }
     }

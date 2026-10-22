@@ -171,9 +171,8 @@ class ZipCreator @Inject constructor(private val outputs: OutputStorage) {
         }
     }
 
-    companion object {
-        /** The archive's name, before its time stamp. */
+    private companion object {
         const val NAME = "archive"
-        private const val EXTENSION = "zip"
+        const val EXTENSION = "zip"
     }
 }

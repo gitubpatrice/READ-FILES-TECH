@@ -52,7 +52,7 @@ private fun excelLimit(limit: ExcelLimit): UiText = when (limit) {
 }
 
 /** What reading the file [name], or writing the output, came to. */
-private fun readingFailure(name: String, error: Throwable): UiText = outputFailure(name, error) ?: when (error) {
+private fun readingFailure(name: String, error: Throwable): UiText = outputFailure(error, converted = name) ?: when (error) {
     is ImageTooLargeException ->
         uiText(R.string.convert_image_too_large, name, error.width, error.height, ImageBounds.MAX_SIDE_PX, FileCaps.IMAGE_PIXELS / MEGA)
     is UnsupportedFormatException -> uiText(R.string.convert_unsupported, name)

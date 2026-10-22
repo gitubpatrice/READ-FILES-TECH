@@ -197,7 +197,7 @@ class CsvToolsViewModel @Inject constructor(
                         handle[KEY_MERGED_FILES] = merged?.files
                         mutableState.update { it.copy(result = file.path, merged = merged, share = file.path.takeIf { share }) }
                     },
-                    { error -> messages.error(csvToolsFailure(work, mutableState.value.file?.name ?: MERGE_NAME, error)) },
+                    { error -> messages.error(csvToolsFailure(work, mutableState.value.file?.name, error)) },
                 )
             } finally {
                 mutableState.update { it.copy(working = null, progress = 0f) }

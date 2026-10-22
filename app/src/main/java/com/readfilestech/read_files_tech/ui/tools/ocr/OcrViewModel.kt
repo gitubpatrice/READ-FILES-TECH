@@ -180,7 +180,7 @@ class OcrViewModel @Inject constructor(
                 mutableState.update { it.copy(saving = false, saved = file.path, share = file.path.takeIf { share }) }
             }.onFailure { error ->
                 mutableState.update { it.copy(saving = false) }
-                messages.error(outputFailure(OcrOutput.NAME, error) ?: uiText(R.string.ocr_save_failed, IoErrors.reasonOf(error)))
+                messages.error(outputFailure(error) ?: uiText(R.string.ocr_save_failed, IoErrors.reasonOf(error)))
             }
         }
     }

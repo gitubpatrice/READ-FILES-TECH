@@ -18,11 +18,12 @@ fun readFailure(name: String, error: Throwable): UiText = when (error) {
 
 /**
  * The failures of a tool's output that every tool says the same way: no folder takes it (the output folder and
- * its fallbacks refuse it), or the phone ran out of memory making it from [name] — the file worked on, or the
- * output's own name when there is none. Null for any other failure, which each tool says its own way.
+ * its fallbacks refuse it), or the phone ran out of memory making it — converting the file [converted], named,
+ * when the output is a conversion of one file. Null for any other failure, which each tool says its own way.
  */
-fun outputFailure(name: String, error: Throwable): UiText? = when (error) {
+fun outputFailure(error: Throwable, converted: String? = null): UiText? = when (error) {
     is NoOutputLocationException -> uiText(R.string.convert_no_output)
-    is OutOfMemoryError -> uiText(R.string.convert_out_of_memory, name)
+    is OutOfMemoryError ->
+        if (converted != null) uiText(R.string.convert_out_of_memory, converted) else uiText(R.string.tool_out_of_memory)
     else -> null
 }

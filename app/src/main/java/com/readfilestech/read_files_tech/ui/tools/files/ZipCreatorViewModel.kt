@@ -149,7 +149,7 @@ class ZipCreatorViewModel @Inject constructor(
     }
 
     /** Why no archive was made, in words — the 2.15.3 showed "Erreur : " and the exception. */
-    private fun zipFailure(error: Throwable): UiText = outputFailure(ZipCreator.NAME, error) ?: when (error) {
+    private fun zipFailure(error: Throwable): UiText = outputFailure(error) ?: when (error) {
         is SelectionTooLargeException -> uiText(R.string.zip_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
         is ZipSourceException -> uiText(R.string.tool_read_failed, error.name, IoErrors.reasonOf(error.cause ?: error))
         else -> uiText(R.string.zip_failed, IoErrors.reasonOf(error))
