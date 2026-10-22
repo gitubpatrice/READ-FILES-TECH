@@ -1,13 +1,11 @@
 package com.readfilestech.read_files_tech.ui.tools.scanner
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.core.content.FileProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -126,6 +124,7 @@ class ScannerViewModel @Inject constructor(
     @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel(), PageEditorActions {
     private val files = ScanFiles.under(context.cacheDir)
+    private val camera = CameraCapture(context, handle, KEY_CAPTURE)
     private val work = Mutex()
     private val mutableState = MutableStateFlow(ScannerState(result = handle[KEY_RESULT]))
     val state: StateFlow<ScannerState> = mutableState.asStateFlow()
@@ -180,20 +179,13 @@ class ScannerViewModel @Inject constructor(
     // ---------------------------------------------------------------- photos in
 
     /** A new file for the camera app, and the URI it may write it through (that URI only); null if none could be made. */
-    suspend fun prepareCapture(): Uri? {
-        val file = loadOrFailure { withContext(io) { files.captures.newFile() } }
-            .onFailure { messages.error(uiText(R.string.scanner_photo_failed, IoErrors.reasonOf(it))) }
-            .getOrNull() ?: return null
-        handle[KEY_CAPTURE] = file.path
-        return uriOf(file)
-    }
-
-    private fun uriOf(file: File): Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    suspend fun prepareCapture(): Uri? = loadOrFailure { camera.prepare(io) }
+        .onFailure { messages.error(uiText(R.string.scanner_photo_failed, IoErrors.reasonOf(it))) }
+        .getOrNull()
 
     /** The camera app is back ([taken]: it says it wrote the photo). Its grant ends here. */
     fun captured(taken: Boolean) {
-        val file = handle.remove<String>(KEY_CAPTURE)?.let(::File) ?: return
-        context.revokeUriPermission(uriOf(file), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        val file = camera.returned() ?: return
         viewModelScope.launch {
             restored.join()
             val id = current().id
@@ -457,10 +449,10 @@ class ScannerViewModel @Inject constructor(
     /** The scanner left: its pages and photos, never exported, go (the PDF made, if any, stays). */
     override fun onCleared() {
         val s = session
-        val capture = handle.get<String>(KEY_CAPTURE)
+        val capture = camera.pending()
         appScope.launch(io) {
             s?.let { files.deleteSession(it.id) }
-            capture?.let { files.captures.discard(File(it)) }
+            capture?.let(files.captures::discard)
         }
     }
 
