@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.ui.tools.files
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -141,17 +143,20 @@ fun ContentSearchScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = matchCase,
-                        onClick = { matchCase = !matchCase },
-                        label = { Text(stringResource(R.string.content_search_match_case)) }
-                    )
-                    FilterChip(
-                        selected = regex,
-                        onClick = { regex = !regex },
-                        label = { Text(stringResource(R.string.content_search_regex)) }
-                    )
-                    Spacer(Modifier.weight(1f))
+                    // The chips scroll in what the button leaves: in French on a phone, they took the whole
+                    // width and the button was squeezed into a thin bar (seen on the S9).
+                    Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = matchCase,
+                            onClick = { matchCase = !matchCase },
+                            label = { Text(stringResource(R.string.content_search_match_case)) }
+                        )
+                        FilterChip(
+                            selected = regex,
+                            onClick = { regex = !regex },
+                            label = { Text(stringResource(R.string.content_search_regex)) }
+                        )
+                    }
                     SearchButton(state.searching, enabled = state.root != null, onStart = start, onStop = viewModel::stop)
                 }
             }

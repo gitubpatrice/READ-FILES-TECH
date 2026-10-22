@@ -32,14 +32,51 @@ class FolderWalk(
     var unreadableFolders = 0
         private set
 
-    /** Calls [onFile] with each regular file and its attributes, until it returns false. */
+    /**
+     * Calls [onFile] with each regular file and its attributes, until it returns false. A root left out
+     * ([skipFolder]) — itself, a folder inside it, or a link to it, read where it leads — is not walked: the
+     * user choosing the trash or `Android/data` as the folder had it walked (GPT review R24).
+     */
     suspend fun forEachFile(onFile: suspend (Path, BasicFileAttributes) -> Boolean) {
-        val folders = ArrayDeque<Path>().apply { add(root.toPath()) }
+        val start = root.toPath()
+        if (!walkable(start)) return
+        val folders = ArrayDeque<Path>().apply { add(start) }
         while (folders.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
-            // Per entry, not per folder: a folder of thousands of files kept a cancelled walk reading
-            // (Claude review R4 of the global search).
-            if (!children(folders.removeFirst()).all { visit(it, folders, onFile) }) return
+            if (!list(folders.removeFirst(), folders, onFile)) return
+        }
+    }
+
+    /** Whether [start] is walked: neither it nor where it leads is, or is in, a folder left out. */
+    private fun walkable(start: Path): Boolean {
+        val real = try {
+            start.toRealPath()
+        } catch (expected: IOException) {
+            unreadableFolders++
+            return false
+        }
+        return !leftOut(start) && !leftOut(real)
+    }
+
+    private fun leftOut(path: Path): Boolean = generateSequence(path) { it.parent }.any(skipFolder)
+
+    /**
+     * One folder's entries, each visited as it is listed — per entry, not per folder: a folder of thousands
+     * of files kept a cancelled walk reading (Claude review R4 of the global search), and listed whole first,
+     * a folder of a million names filled the memory before any was looked at (GPT review R24). False when
+     * [onFile] stopped the walk. A folder that cannot be listed is skipped, counted.
+     */
+    private suspend fun list(dir: Path, folders: ArrayDeque<Path>, onFile: suspend (Path, BasicFileAttributes) -> Boolean): Boolean {
+        val stream = open(dir) ?: return true
+        stream.use {
+            val entries = it.iterator()
+            var going = true
+            var entry = next(entries)
+            while (going && entry != null) {
+                going = visit(entry, folders, onFile)
+                entry = next(entries)
+            }
+            return going
         }
     }
 
@@ -58,19 +95,24 @@ class FolderWalk(
         }
     }
 
-    /** A folder's entries; one that cannot be read gives none, counted. */
-    private fun children(dir: Path): List<Path> = try {
-        Files.newDirectoryStream(dir).use(DirectoryStream<Path>::toList)
+    /** A folder's listing, or null — counted — when it cannot be opened. */
+    private fun open(dir: Path): DirectoryStream<Path>? = try {
+        Files.newDirectoryStream(dir)
     } catch (expected: IOException) {
         unreadableFolders++
-        emptyList()
+        null
     } catch (expected: SecurityException) {
         unreadableFolders++
-        emptyList()
+        null
+    }
+
+    /** The next entry, or null at the end — or at an error met while listing, the folder counted unreadable. */
+    private fun next(entries: Iterator<Path>): Path? = try {
+        if (entries.hasNext()) entries.next() else null
     } catch (expected: DirectoryIteratorException) {
-        // An error met while listing, not when opening: unchecked, it went through the IOException above.
+        // Unchecked: an error met while listing, not when opening.
         unreadableFolders++
-        emptyList()
+        null
     }
 
     private fun attributesOf(path: Path): BasicFileAttributes? = try {

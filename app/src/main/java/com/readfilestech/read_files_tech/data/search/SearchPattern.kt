@@ -59,7 +59,11 @@ class SearchPattern private constructor(private val pattern: Pattern) {
 
     companion object {
         /** [text] itself, every character plain. */
-        fun literal(text: String, matchCase: Boolean): SearchPattern = compile(Pattern.quote(text), text, matchCase)
+        fun literal(text: String, matchCase: Boolean): SearchPattern {
+            // Before the quoted copy is made: a pasted text of megabytes was copied once more first (GPT review R24).
+            if (text.length > FileCaps.PATTERN_CHARS) throw InvalidPatternException(PatternProblem.TOO_LONG)
+            return compile(Pattern.quote(text), text, matchCase)
+        }
 
         /** [text] as a regular expression. @throws InvalidPatternException */
         fun regex(text: String, matchCase: Boolean): SearchPattern {
@@ -81,8 +85,9 @@ class SearchPattern private constructor(private val pattern: Pattern) {
         /**
          * The copies [regex]'s counted repetitions make, ALL multiplied together — more than those nested in
          * one another, which is what RE2/J expands: `x{n}` makes n, `x{n,}` n + 1, `x{n,m}` m. An escaped
-         * character and a character class are skipped; a `{` that opens no repetition is a plain character,
-         * as RE2 reads it. Stops counting past the cap.
+         * character, a quoted run `\Q…\E` (GPT review R24: its braces counted, a cheap pattern was refused) and
+         * a character class are skipped; a `{` that opens no repetition is a plain character, as RE2 reads
+         * it. Stops counting past the cap.
          */
         internal fun repeatCopies(regex: String): Long {
             var product = 1L
@@ -91,6 +96,7 @@ class SearchPattern private constructor(private val pattern: Pattern) {
             while (i < regex.length && product <= FileCaps.PATTERN_REPEATS) {
                 val c = regex[i]
                 when {
+                    c == ESCAPE && regex.getOrNull(i + 1) == 'Q' -> i = quotedEnd(regex, i)
                     c == ESCAPE -> i++
                     inClass -> inClass = c != ']'
                     c == '[' -> {
@@ -107,6 +113,12 @@ class SearchPattern private constructor(private val pattern: Pattern) {
                 i++
             }
             return product
+        }
+
+        /** Where the quoted run opened by the `\Q` at [start] ends: its `\E`'s last character, or the end. */
+        private fun quotedEnd(regex: String, start: Int): Int {
+            val end = regex.indexOf(QUOTE_END, start + 2)
+            return if (end < 0) regex.length else end + 1
         }
 
         /** The repetition `{n}`, `{n,}` or `{n,m}` at [start]: its copies, at least 1, and where its `}` is. */
@@ -133,6 +145,7 @@ class SearchPattern private constructor(private val pattern: Pattern) {
         private fun Char.isAsciiDigit() = this in '0'..'9'
 
         private const val ESCAPE = '\\'
+        private const val QUOTE_END = "\\E"
         private const val MAX_DIGITS = 6
     }
 }

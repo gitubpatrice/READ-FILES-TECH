@@ -16,7 +16,7 @@ data class TrashPlan(val paths: List<String>, val keptBack: Int)
  * deleted, for good (`duplicates_screen.dart:102, 315`, inventory D7). A file of no group (a large file)
  * may always be ticked.
  */
-class DuplicateSelection(groups: List<DuplicateGroup>) {
+class DuplicateSelection(private val groups: List<DuplicateGroup>) {
     private val groupOf: Map<String, DuplicateGroup> = buildMap {
         groups.forEach { group -> group.files.forEach { put(it.path, group) } }
     }
@@ -44,6 +44,13 @@ class DuplicateSelection(groups: List<DuplicateGroup>) {
         }
         return TrashPlan(paths, keptBack)
     }
+
+    /**
+     * The rule once [paths] went to the trash: each group keeps its other copies, one left alone included
+     * — its group's last, never ticked (Claude review R24: a group dissolved freed its last copy).
+     */
+    fun without(paths: Set<String>): DuplicateSelection =
+        DuplicateSelection(groups.map { group -> group.copy(files = group.files.filterNot { it.path in paths }) })
 
     companion object {
         /** The file at [file]'s path is a regular file of the size and date listed. */

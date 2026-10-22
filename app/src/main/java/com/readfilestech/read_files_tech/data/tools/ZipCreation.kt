@@ -9,7 +9,6 @@ import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.File
-import java.io.FileInputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.nio.file.Files
@@ -73,8 +72,17 @@ object ZipCreation {
      */
     fun write(files: List<File>, out: OutputStream, cap: Long, check: () -> Unit, onProgress: (Long) -> Unit) {
         val archive = Archive(out, cap, check, onProgress)
-        files.zip(entryNames(files.map(File::getName))).forEach { (file, name) -> archive.add(file, name) }
-        archive.finish()
+        try {
+            files.zip(entryNames(files.map(File::getName))).forEach { (file, name) -> archive.add(file, name) }
+            archive.finish()
+        } finally {
+            archive.release()
+        }
+    }
+
+    /** A ZIP stream whose compressor is ended at will: [ZipOutputStream] ends it in close() only, which closes the caller's stream. */
+    private class Zip(out: OutputStream) : ZipOutputStream(out) {
+        fun release() = def.end()
     }
 
     /** One archive being written: its entries one after the other, and the bytes read so far against [cap]. */
@@ -84,7 +92,7 @@ object ZipCreation {
         private val check: () -> Unit,
         private val onProgress: (Long) -> Unit,
     ) {
-        private val zip = ZipOutputStream(out).apply { setLevel(Deflater.DEFAULT_COMPRESSION) }
+        private val zip = Zip(out).apply { setLevel(Deflater.DEFAULT_COMPRESSION) }
         private val buffer = ByteArray(PIECE)
         private var read = 0L
 
@@ -103,13 +111,17 @@ object ZipCreation {
             zip.flush()
         }
 
+        /** The compressor's native memory let go, written or not (Claude review R24: left to the collector). */
+        fun release() = zip.release()
+
         /**
          * [file] within what the cap leaves. Never a link followed: the picker hands files, and a link swapped
-         * in since would be read through.
+         * in since would be read through — opened without following one too, not only checked before
+         * (Claude review R24). A pipe or a device is refused before it is opened: opening a pipe waits.
          */
         private fun open(file: File): BoundedInputStream = try {
             if (!Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)) throw IOException("not a regular file")
-            BoundedInputStream(FileInputStream(file), cap - read)
+            BoundedInputStream(Files.newInputStream(file.toPath(), LinkOption.NOFOLLOW_LINKS), cap - read)
         } catch (e: IOException) {
             throw ZipSourceException(file.name, e)
         }

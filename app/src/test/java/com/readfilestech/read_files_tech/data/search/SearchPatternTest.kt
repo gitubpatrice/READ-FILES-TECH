@@ -66,6 +66,15 @@ class SearchPatternTest {
         assertThat(SearchPattern.repeatCopies("[]{9}]")).isEqualTo(1)
     }
 
+    /** GPT review R24: braces quoted by `\Q…\E` were counted, and a cheap pattern refused. */
+    @Test
+    fun `braces inside a quoted run are characters, not counts`() {
+        val quoted = """\Q{1000}{1000}{1000}\E"""
+        assertThat(SearchPattern.repeatCopies(quoted)).isEqualTo(1)
+        assertThat(SearchPattern.repeatCopies("""\Q{9}\Ea{3}""")).isEqualTo(3)
+        assertThat(SearchPattern.regex(quoted, matchCase = true).find("x{1000}{1000}{1000}")).isEqualTo(1..18)
+    }
+
     /** ICU, Android's engine, never ends on this; RE2/J reads the text once. */
     @Test
     fun `a catastrophic pattern ends at once on a long text`() {

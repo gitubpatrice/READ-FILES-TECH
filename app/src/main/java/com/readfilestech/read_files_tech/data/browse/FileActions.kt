@@ -74,15 +74,14 @@ class FileActions @Inject constructor() {
     /**
      * [renamed] exists: the same item under another case is renamed through a free temporary name, put
      * back if the second step fails; another item is never replaced.
+     *
+     * Always the two steps: a rename in place first, checked by listing the folder, cost a whole listing
+     * per item — a bulk rename changing only the case of thousands of photos took hours (Claude review R24).
      */
     private fun renameCase(target: File, renamed: File, taken: FileAlreadyExistsException) {
         val from = target.toPath()
         val to = renamed.toPath()
         if (!Files.isSameFile(from, to)) throw taken
-        // One rename first: a volume that keeps case changes it in place, nothing in between. Where a
-        // rename onto "itself" changes nothing (POSIX: same file, success), the listing still shows the
-        // old name, and the two steps below do it.
-        if (target.renameTo(renamed) && renamed.parentFile?.list()?.contains(renamed.name) == true) return
         // A VISIBLE temporary name next to it: a process death between the steps leaves
         // "photo.jpg.rft-rename-…" the user can see and rename, not a hidden file (GPT review R4).
         // A name of 255 bytes at most, or the first move fails (ENAMETOOLONG, Claude review R5).

@@ -98,7 +98,11 @@ fun DuplicatesScreen(
         },
         bottomBar = {
             if (state.ticked.isNotEmpty()) {
-                Button(onClick = viewModel::trash, modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)) {
+                Button(
+                    onClick = viewModel::trash,
+                    enabled = !state.trashing,
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                ) {
                     Icon(Icons.Outlined.Delete, contentDescription = null)
                     Spacer(Modifier.size(6.dp))
                     Text(pluralStringResource(R.plurals.duplicates_trash, state.ticked.size, state.ticked.size))
@@ -130,7 +134,7 @@ fun DuplicatesScreen(
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.duplicates_tab_largest)) })
             }
             val tick = { file: DuplicateFile -> viewModel.toggle(file.path) }
-            val can = { file: DuplicateFile -> state.selection.canToggle(file.path, state.ticked) }
+            val can = { file: DuplicateFile -> !state.trashing && state.selection.canToggle(file.path, state.ticked) }
             when {
                 tab == 0 && report.groups.isEmpty() -> Centered(stringResource(R.string.duplicates_none))
                 tab == 1 && report.largest.isEmpty() -> Centered(stringResource(R.string.duplicates_no_files))

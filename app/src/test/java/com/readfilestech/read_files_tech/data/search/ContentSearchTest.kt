@@ -80,6 +80,19 @@ class ContentSearchTest {
         assertThat(hits(SearchPattern.regex("^none", matchCase = true)).single().lines.single().line).isEqualTo(2)
     }
 
+    /** GPT review R24: a line break ending the text made one line more, empty, that `^$` found. */
+    @Test
+    fun `a line break ending a file opens no line after it`() {
+        text("one.txt", "x\n")
+        text("crlf.txt", "x\r\n")
+        text("cr.txt", "x\r")
+        text("blank.txt", "x\n\n")
+        val found = hits(SearchPattern.regex("^$", matchCase = true))
+        assertThat(found.map { File(it.path).name }).containsExactly("blank.txt")
+        assertThat(found.single().lines.single().line).isEqualTo(2)
+        assertThat(ContentSearch.linesOf("").toList()).containsExactly("")
+    }
+
     @Test
     fun `a long line is kept as a window around its first match`() {
         text("min.js", "x".repeat(5_000) + "needle" + "y".repeat(5_000))

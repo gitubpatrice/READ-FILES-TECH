@@ -36,8 +36,14 @@ data class DuplicatesState(
     val report: DuplicateReport? = null,
     val ticked: Set<String> = emptySet(),
     val failure: UiText? = null,
-    /** The rule of what may be ticked, on the groups of [report]. */
+    /** The rule of what may be ticked, on the groups of [report] — those left with one copy included. */
     val selection: DuplicateSelection = DuplicateSelection(emptyList()),
+    /**
+     * A batch going to the trash: nothing is ticked nor sent meanwhile. Its copies were still listed,
+     * unticked, counted as staying: their group's last copy could be ticked and sent after them (Claude
+     * review R24).
+     */
+    val trashing: Boolean = false,
 ) {
     val scanning: Boolean get() = progress != null
 }
@@ -101,6 +107,7 @@ class DuplicatesViewModel @Inject constructor(
 
     fun toggle(path: String) = mutableState.update { state ->
         when {
+            state.trashing -> state
             path in state.ticked -> state.copy(ticked = state.ticked - path)
             state.selection.canToggle(path, state.ticked) -> state.copy(ticked = state.ticked + path)
             else -> state
@@ -110,18 +117,25 @@ class DuplicatesViewModel @Inject constructor(
     /** The ticked files to the trash — those still as compared, beside a copy that stays and is too. */
     fun trash() {
         val current = mutableState.value
-        if (current.ticked.isEmpty()) return
-        mutableState.update { it.copy(ticked = emptySet()) }
+        if (current.ticked.isEmpty() || current.trashing) return
+        mutableState.update { it.copy(ticked = emptySet(), trashing = true) }
         viewModelScope.launch {
             val plan = withContext(io) { current.selection.trashable(current.ticked) }
             if (plan.keptBack > 0) messages.error(UiText.Plural(R.plurals.duplicates_kept_back, plan.keptBack))
-            if (plan.paths.isNotEmpty()) operations.moveToTrash(plan.paths.map(::File)) { trashed -> dropped(trashed.toSet()) }
+            if (plan.paths.isEmpty()) {
+                mutableState.update { it.copy(trashing = false) }
+            } else {
+                operations.moveToTrash(plan.paths.map(::File)) { trashed -> dropped(trashed.toSet()) }
+            }
         }
     }
 
-    /** The files gone to the trash leave the lists; a group left with one copy is no longer one. */
+    /**
+     * The files gone to the trash leave the lists; a group left with one copy is no longer listed, but its
+     * copy stays its last: never ticked, in either tab (Claude review R24 — dissolved, it could follow).
+     */
     private fun dropped(paths: Set<String>) = mutableState.update { state ->
-        val report = state.report ?: return@update state
+        val report = state.report ?: return@update state.copy(trashing = false)
         val groups = report.groups.map { group ->
             group.copy(
                 files = group.files.filterNot { it.path in paths }
@@ -130,7 +144,8 @@ class DuplicatesViewModel @Inject constructor(
         state.copy(
             report = report.copy(groups = groups, largest = report.largest.filterNot { it.path in paths }),
             ticked = state.ticked - paths,
-            selection = DuplicateSelection(groups),
+            selection = state.selection.without(paths),
+            trashing = false,
         )
     }
 

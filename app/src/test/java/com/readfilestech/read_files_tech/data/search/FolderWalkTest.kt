@@ -37,7 +37,8 @@ class FolderWalkTest {
         file("z/three.txt")
         // Removed between its parent's listing and its own: listing it fails.
         val walk = FolderWalk(tmp, skipHidden = false) { dir ->
-            if (dir.fileName.toString() == "gone") dir.toFile().deleteRecursively()
+            // The root's folders are asked too (a root left out is not walked): the drive's own has no name.
+            if (dir.fileName?.toString() == "gone") dir.toFile().deleteRecursively()
             false
         }
         assertThat(names(walk)).containsExactly("a/one.txt", "z/three.txt")
@@ -62,6 +63,21 @@ class FolderWalkTest {
         file("Android/media/a.txt")
         val walk = FolderWalk(tmp, skipHidden = false) { FolderWalk.isTrash(it) || FolderWalk.isAppData(it) }
         assertThat(names(walk)).containsExactly("keep/a.txt", "Android/media/a.txt")
+    }
+
+    /** GPT review R24: the rule held below the root only — the trash chosen as the folder was walked. */
+    @Test
+    fun `a root left out, or inside a folder left out, is not walked`() {
+        file(".RFT_Corbeille/items/1/a.txt")
+        file("Android/data/com.app/a.txt")
+        file("keep/a.txt")
+        val leftOut = { dir: File ->
+            FolderWalk(dir, skipHidden = false) { FolderWalk.isTrash(it) || FolderWalk.isAppData(it) }
+        }
+        assertThat(names(leftOut(File(tmp, ".RFT_Corbeille")))).isEmpty()
+        assertThat(names(leftOut(File(tmp, ".RFT_Corbeille/items")))).isEmpty()
+        assertThat(names(leftOut(File(tmp, "Android/data")))).isEmpty()
+        assertThat(names(leftOut(File(tmp, "keep")))).containsExactly("keep/a.txt")
     }
 
     @Test

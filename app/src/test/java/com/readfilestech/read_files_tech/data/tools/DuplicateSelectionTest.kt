@@ -54,6 +54,16 @@ class DuplicateSelectionTest {
         assertThat(selection.trashable(setOf("/a/1")) { it.path != "/a/2" }).isEqualTo(TrashPlan(listOf("/a/1"), 0))
     }
 
+    /** Claude review R24: a group left with one copy was dissolved, and its last copy freed for the trash. */
+    @Test
+    fun `once copies went to the trash, the one left of a group stays its last`() {
+        val after = selection.without(setOf("/b/1", "/a/1"))
+        assertThat(after.canToggle("/b/2", emptySet())).isFalse()
+        assertThat(after.trashable(setOf("/b/2")) { true }).isEqualTo(TrashPlan(emptyList(), keptBack = 1))
+        assertThat(after.canToggle("/a/2", emptySet())).isTrue()
+        assertThat(after.canToggle("/a/3", setOf("/a/2"))).isFalse()
+    }
+
     @Test
     fun `unchanged means the same regular file, size and date`() {
         val file = File(tmp, "x.bin").apply { writeBytes(ByteArray(10)) }

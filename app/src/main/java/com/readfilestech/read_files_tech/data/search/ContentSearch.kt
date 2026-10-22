@@ -97,7 +97,7 @@ object ContentSearch {
         private fun hitIn(path: Path, text: String): ContentHit? {
             val kept = mutableListOf<LineMatch>()
             var count = 0
-            text.lineSequence().forEachIndexed { index, line ->
+            linesOf(text).forEachIndexed { index, line ->
                 job.ensureActive()
                 val first = pattern.find(line, check = check) ?: return@forEachIndexed
                 count++
@@ -132,6 +132,19 @@ object ContentSearch {
             }
             return matches
         }
+    }
+
+    /**
+     * [text]'s lines as the text viewer counts them: a line break ending the text opens no line after it —
+     * `lineSequence` gave one, empty, that `^$` matched, a line the viewer had not (GPT review R24).
+     */
+    internal fun linesOf(text: String): Sequence<String> {
+        val ending = when {
+            text.endsWith("\r\n") -> 2
+            text.endsWith('\n') || text.endsWith('\r') -> 1
+            else -> 0
+        }
+        return text.substring(0, text.length - ending).lineSequence()
     }
 
     /** Characters shown before a match in a cut line. */
