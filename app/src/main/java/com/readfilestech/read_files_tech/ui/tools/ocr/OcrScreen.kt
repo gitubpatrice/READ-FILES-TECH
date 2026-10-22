@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,14 +34,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +52,7 @@ import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.outputs.AutoShare
 import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
+import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import com.readfilestech.read_files_tech.ui.tools.ToolResult
 import kotlinx.coroutines.launch
 
@@ -124,7 +122,8 @@ fun OcrScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () ->
     ) { padding ->
         val modifier = Modifier.padding(padding)
         if (state.untouched) {
-            Intro(title, modifier)
+            // The picture is chosen or taken with the bottom bar's buttons.
+            ToolIntro(Icons.Outlined.DocumentScanner, title, stringResource(R.string.ocr_intro), onChoose = null, modifier)
         } else {
             Column(
                 modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -171,23 +170,5 @@ private fun Read(state: OcrState, viewModel: OcrViewModel) {
                 Text(stringResource(R.string.ocr_save_txt), Modifier.padding(start = 6.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun Intro(title: String, modifier: Modifier) {
-    Column(
-        modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            Icons.Outlined.DocumentScanner,
-            contentDescription = null,
-            modifier = Modifier.size(88.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.ocr_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }

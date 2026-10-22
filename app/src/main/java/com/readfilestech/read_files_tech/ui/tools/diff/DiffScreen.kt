@@ -56,6 +56,7 @@ import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.theme.DiffColors
+import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 
 private const val ROW_TINT = 0.08f
 private const val LINE_NUMBER_WIDTH = 44
@@ -96,7 +97,10 @@ fun DiffScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -
         LazyColumn(Modifier.padding(padding).fillMaxSize()) {
             item {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (state.fileA == null && state.fileB == null) Intro()
+                    // The two files are chosen on their own rows, under it; the bar says the tool's name.
+                    if (state.fileA == null && state.fileB == null) {
+                        ToolIntro(Icons.Outlined.Difference, title = null, stringResource(R.string.diff_intro), onChoose = null)
+                    }
                     ChosenFile(fileA, state.fileA) { choose(DiffSlot.A) }
                     ChosenFile(fileB, state.fileB) { choose(DiffSlot.B) }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -114,19 +118,6 @@ fun DiffScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun Intro() {
-    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(
-            Icons.Outlined.Difference,
-            contentDescription = null,
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(stringResource(R.string.diff_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }
 

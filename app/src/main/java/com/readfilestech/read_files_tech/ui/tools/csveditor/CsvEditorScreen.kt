@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -19,7 +18,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.TableView
 import androidx.compose.material3.AlertDialog
@@ -53,7 +51,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -75,6 +72,7 @@ import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import com.readfilestech.read_files_tech.ui.viewer.table.TableCellText
 import com.readfilestech.read_files_tech.ui.viewer.table.TableCells
 import com.readfilestech.read_files_tech.ui.viewer.table.TableGrid
@@ -134,7 +132,12 @@ fun CsvEditorScreen(
             when {
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 failure != null -> TableMessage(failure.resolve())
-                edits == null -> Intro { onNavigate(Routes.picker(PickMode.FILE, extensions = setOf("csv"), title = chooseTitle)) }
+                edits == null -> ToolIntro(
+                    Icons.Outlined.TableView,
+                    stringResource(R.string.feature_csv_editor),
+                    stringResource(R.string.csv_editor_intro),
+                    { onNavigate(Routes.picker(PickMode.FILE, extensions = setOf("csv"), title = chooseTitle)) },
+                )
                 edits.isEmpty -> TableMessage(stringResource(R.string.preview_empty))
                 else -> Editor(edits, state.version, viewModel)
             }
@@ -203,24 +206,6 @@ private fun BarActions(state: CsvEditorState, edits: CsvEdits, viewModel: CsvEdi
                     viewModel.showHistory()
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun Intro(onChoose: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(Icons.Outlined.TableView, contentDescription = null, modifier = Modifier.size(88.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(stringResource(R.string.feature_csv_editor), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.csv_editor_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-        Button(onClick = onChoose) {
-            Icon(Icons.Outlined.FolderOpen, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.action_choose_file))
         }
     }
 }

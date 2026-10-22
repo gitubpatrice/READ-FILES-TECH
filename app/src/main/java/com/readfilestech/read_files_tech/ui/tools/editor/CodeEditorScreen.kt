@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,7 +29,6 @@ import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,7 +63,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -78,11 +75,11 @@ import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
-import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -137,9 +134,14 @@ fun CodeEditorScreen(
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 state.isOpen -> Editor(viewModel.text, textSize, readOnly = state.saving)
-                else -> Intro(state.failure) {
-                    onNavigate(Routes.picker(PickMode.FILE, extensions = EditedFile.EXTENSIONS, title = chooseTitle))
-                }
+                // No file yet, or the one chosen did not open: the failure says why, in words (F34).
+                else -> ToolIntro(
+                    Icons.Outlined.Edit,
+                    stringResource(R.string.feature_editor),
+                    state.failure?.resolve() ?: stringResource(R.string.editor_intro),
+                    { onNavigate(Routes.picker(PickMode.FILE, extensions = EditedFile.EXTENSIONS, title = chooseTitle)) },
+                    isError = state.failure != null,
+                )
             }
         }
     }
@@ -305,29 +307,6 @@ private object LineBreaksAsLf : InputTransformation {
         val end = LineBreakInput.moved(selection.end, text, rewrites)
         rewrites.asReversed().forEach { replace(it.start, it.end, it.text) }
         selection = TextRange(start, end)
-    }
-}
-
-/** No file yet, or the one chosen did not open — [failure] says why, in words (F34). */
-@Composable
-private fun Intro(failure: UiText?, onChoose: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(88.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(stringResource(R.string.feature_editor), style = MaterialTheme.typography.titleLarge)
-        if (failure != null) {
-            Text(failure.resolve(), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-        } else {
-            Text(stringResource(R.string.editor_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-        }
-        Button(onClick = onChoose) {
-            Icon(Icons.Outlined.FolderOpen, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.action_choose_file))
-        }
     }
 }
 

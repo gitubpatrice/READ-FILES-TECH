@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +70,7 @@ import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.outputs.AutoShare
 import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
+import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import kotlinx.coroutines.launch
 
 /** What the picker offers to import: the images the 2.15.3's gallery import took that Android decodes. */
@@ -170,7 +170,15 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
                 item(span = { GridItemSpan(maxLineSpan) }) { Result(path, onNavigate) }
             }
             if (state.pages.isEmpty() && state.result == null) {
-                item(span = { GridItemSpan(maxLineSpan) }) { Intro() }
+                // The photos are taken or imported with the bottom bar's buttons.
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ToolIntro(
+                        Icons.Outlined.DocumentScanner,
+                        stringResource(R.string.feature_scanner),
+                        stringResource(R.string.scanner_intro),
+                        onChoose = null,
+                    )
+                }
             }
             if (state.pages.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -201,24 +209,6 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             },
             dismissButton = { TextButton(onClick = { confirmLeave = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
-    }
-}
-
-@Composable
-private fun Intro() {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 32.dp, horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            Icons.Outlined.DocumentScanner,
-            contentDescription = null,
-            modifier = Modifier.size(88.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Text(stringResource(R.string.feature_scanner), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.scanner_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }
 
