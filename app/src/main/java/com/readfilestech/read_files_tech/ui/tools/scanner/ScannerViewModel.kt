@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
+import com.readfilestech.read_files_tech.data.outputs.create
 import com.readfilestech.read_files_tech.data.scanner.JpegInfo
 import com.readfilestech.read_files_tech.data.scanner.JpegPage
 import com.readfilestech.read_files_tech.data.scanner.JpegPdf
@@ -428,20 +429,12 @@ class ScannerViewModel @Inject constructor(
         }
     }
 
-    private fun writePdf(s: ScanSession): File {
+    private suspend fun writePdf(s: ScanSession): File {
         val pages = s.pages.map { page ->
             val file = files.pageFile(s.id, page)
             JpegPage(FileInputStream(file).use(JpegInfo::read), file.length()) { FileInputStream(file) }
         }
-        val pdf = outputs.reserve(OutputCategory.SCANS, NAME, EXTENSION)
-        var written = false
-        try {
-            outputs.write(pdf) { JpegPdf.write(it, pages) }
-            written = true
-        } finally {
-            if (!written) outputs.discard(pdf)
-        }
-        return pdf
+        return outputs.saveScan(pages)
     }
 
     fun shared() = mutableState.update { it.copy(share = null) }
@@ -467,11 +460,19 @@ class ScannerViewModel @Inject constructor(
         const val KEY_SESSION = "scanner_session"
         const val KEY_CAPTURE = "scanner_capture"
         const val KEY_RESULT = "scanner_result"
-        const val NAME = "scan"
-        const val EXTENSION = "pdf"
 
         /** 25 thumbnails of 240 × 340 pixels, and room for the ones of pages made again. */
         const val THUMBNAIL_BYTES = 16 * 1024 * 1024
         const val MIB = 1024L * 1024
     }
 }
+
+/**
+ * One PDF of [pages] in `Scans/scan_<stamp>.pdf` ([create]): an export stopped — the scanner left while the
+ * PDF is written — publishes nothing.
+ */
+internal suspend fun OutputStorage.saveScan(pages: List<JpegPage>): File =
+    create(OutputCategory.SCANS, SCAN_NAME, SCAN_EXTENSION) { JpegPdf.write(it, pages) }
+
+private const val SCAN_NAME = "scan"
+private const val SCAN_EXTENSION = "pdf"

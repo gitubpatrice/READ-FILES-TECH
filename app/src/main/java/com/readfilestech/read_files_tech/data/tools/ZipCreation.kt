@@ -6,6 +6,7 @@ import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
+import com.readfilestech.read_files_tech.data.outputs.create
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.File
@@ -159,24 +160,15 @@ class ZipCreator @Inject constructor(private val outputs: OutputStorage) {
         val job = currentCoroutineContext()
         val cap = FileCaps.ZIP_CREATE_TOTAL
         val total = ZipCreation.checkTotal(files, cap).coerceAtLeast(1)
-        val reserved = outputs.reserve(OutputCategory.CONVERSIONS, NAME, EXTENSION)
-        var written = false
-        try {
-            outputs.write(reserved) { stream ->
-                ZipCreation.write(
-                    files,
-                    stream,
-                    cap,
-                    { job.ensureActive() }
-                ) { read -> onProgress((read.toFloat() / total).coerceAtMost(1f)) }
-                // A stop during the last piece: nothing is published.
-                job.ensureActive()
-            }
-            written = true
-        } finally {
-            if (!written) outputs.discard(reserved)
+        // A stop during the last piece: nothing is published ([create] checks once the archive is written).
+        return outputs.create(OutputCategory.CONVERSIONS, NAME, EXTENSION) { stream ->
+            ZipCreation.write(
+                files,
+                stream,
+                cap,
+                { job.ensureActive() }
+            ) { read -> onProgress((read.toFloat() / total).coerceAtMost(1f)) }
         }
-        return reserved
     }
 
     private companion object {

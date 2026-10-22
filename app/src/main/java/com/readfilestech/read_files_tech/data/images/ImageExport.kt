@@ -9,6 +9,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
+import com.readfilestech.read_files_tech.data.outputs.create
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import java.io.File
 import java.io.IOException
@@ -72,19 +73,11 @@ object ImageExport {
 
     private fun write(picture: Bitmap, format: ImageFormat, quality: Int, output: Output, ensureActive: () -> Unit): File {
         withoutGainmap(picture)
+        // Before reserving too: the decoding and scaling before it are the expensive part.
         ensureActive()
-        val file = output.storage.reserve(output.category, output.name, format.extension)
-        var written = false
-        try {
-            output.storage.write(file) { stream ->
-                if (!picture.compress(format.platform(), quality, stream)) throw IOException("image not encoded")
-                ensureActive()
-            }
-            written = true
-        } finally {
-            if (!written) output.storage.discard(file)
+        return output.storage.create(output.category, output.name, format.extension, ensureActive) { stream ->
+            if (!picture.compress(format.platform(), quality, stream)) throw IOException("image not encoded")
         }
-        return file
     }
 
     private fun ImageFormat.platform(): Bitmap.CompressFormat = when (this) {

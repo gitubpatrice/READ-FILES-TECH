@@ -7,6 +7,7 @@ import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
+import com.readfilestech.read_files_tech.data.outputs.create
 import com.readfilestech.read_files_tech.data.tools.CodeFormat
 import com.readfilestech.read_files_tech.data.tools.FormatAction
 import com.readfilestech.read_files_tech.data.tools.Formattable
@@ -156,7 +157,7 @@ class FormatViewModel @Inject constructor(
         val action = state.value.action
         mutableState.update { it.copy(saving = true) }
         viewModelScope.launch {
-            val saved = loadOrFailure { withContext(io) { write(result, action) to outputs.autoShare() } }
+            val saved = loadOrFailure { withContext(io) { outputs.saveFormatted(result, action) to outputs.autoShare() } }
             saved.onSuccess { (file, share) ->
                 mutableState.update { it.copy(saving = false, saved = file.path, share = file.path.takeIf { share }) }
             }.onFailure { error ->
@@ -166,34 +167,30 @@ class FormatViewModel @Inject constructor(
         }
     }
 
-    private suspend fun write(result: Formattable.Ready, action: FormatAction): File {
-        val context = currentCoroutineContext()
-        val file = outputs.reserve(OutputCategory.CONVERSIONS, NAME, action.extension)
-        var written = false
-        try {
-            outputs.write(file) { stream ->
-                val writer = stream.bufferedWriter(Charsets.UTF_8)
-                result.write(writer) { context.ensureActive() }
-                writer.flush()
-            }
-            written = true
-        } finally {
-            if (!written) outputs.discard(file)
-        }
-        return file
-    }
-
     fun shared() = mutableState.update { it.copy(share = null) }
 
     /** Carries a refusal through the work's result. */
     private class NotJsonException(val refusal: JsonRefusal) : Exception()
 
     private companion object {
-        /** The 2.15.3's name (`result_<ms>`), the time stamp now the storage's own. */
-        const val NAME = "result"
-
         /** A file this short goes into the text field: no longer than a text the clipboard takes. */
         const val FIELD_BYTES = JsonViewerViewModel.COPY_CHARS
+    }
+}
+
+/** The 2.15.3's name (`result_<ms>`), the time stamp now the storage's own. */
+private const val RESULT_NAME = "result"
+
+/**
+ * [result] written whole, in UTF-8, into `Conversions/result_<stamp>.<ext>` ([create]): a save stopped — the
+ * screen left — publishes nothing, even once the last piece is written.
+ */
+internal suspend fun OutputStorage.saveFormatted(result: Formattable.Ready, action: FormatAction): File {
+    val context = currentCoroutineContext()
+    return create(OutputCategory.CONVERSIONS, RESULT_NAME, action.extension) { stream ->
+        val writer = stream.bufferedWriter(Charsets.UTF_8)
+        result.write(writer) { context.ensureActive() }
+        writer.flush()
     }
 }
 
