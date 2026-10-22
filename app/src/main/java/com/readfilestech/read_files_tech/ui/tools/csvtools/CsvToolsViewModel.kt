@@ -111,6 +111,14 @@ class CsvToolsViewModel @Inject constructor(
 
     fun choose(path: String) {
         if (working?.isCompleted == false) return
+        // Another file: the result of the previous one leaves the screen (as the TXT tools'); the same file,
+        // read again after a process death, keeps its own.
+        if (handle.get<String>(KEY_PATH) != path) {
+            handle.remove<String>(KEY_RESULT)
+            handle.remove<Long>(KEY_MERGED_ROWS)
+            handle.remove<Int>(KEY_MERGED_FILES)
+            mutableState.update { it.copy(result = null, merged = null, share = null) }
+        }
         handle[KEY_PATH] = path
         loading?.cancel()
         table = null

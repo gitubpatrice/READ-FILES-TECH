@@ -99,6 +99,14 @@ class TxtToolsViewModel @Inject constructor(
 
     fun choose(path: String) {
         if (working?.isCompleted == false) return
+        // Another file: the result of the previous one leaves the screen — seen on the S9, the card of a PDF
+        // made of another file stayed, and pushed the export button out of sight. The same file, read again
+        // after a process death, keeps its own.
+        if (handle.get<String>(KEY_PATH) != path) {
+            handle.remove<String>(KEY_RESULT)
+            handle.remove<Long>(KEY_REPLACED)
+            mutableState.update { it.copy(result = null, replaced = null, share = null) }
+        }
         handle[KEY_PATH] = path
         loading?.cancel()
         searching?.cancel()

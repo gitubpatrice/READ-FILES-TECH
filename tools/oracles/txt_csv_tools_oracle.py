@@ -17,7 +17,7 @@ Usage:
   `=1+1`, rows of empty fields; merges.json (the files of each merge, in order).
 
 `check`:
-- stats.json: per text, Python's `len(text)`, `len(text.split())` and its lines (its CRLF, CR and LF breaks + 1,
+- stats.json: per text, Python's `len(text)`, `len(text.split())` and the 2.15.3's lines (`text.count("\\n") + 1`,
   0 for an empty text), the text decoded by Python's own codec — equal;
 - counts.json: per case, `text.count(query)` — equal;
 - replace/<case>.<ext>: the source's BOM, then `text.replace(query, replacement)` encoded by Python's codec —
@@ -42,6 +42,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BASE = ROOT / "app" / "build" / "oracles" / "txt-csv"
@@ -137,8 +138,8 @@ def decoded(path, codec, bom):
 
 
 def lines_of(text):
-    # The line breaks the text viewer reads: a CRLF, a CR alone, a LF.
-    return 0 if not text else len(re.findall(r"\r\n|\r|\n", text)) + 1
+    # The line feeds, as the text viewer reads lines: a lone CR is no line break.
+    return 0 if not text else text.count("\n") + 1
 
 
 def check_texts():
@@ -239,7 +240,10 @@ def pypdf_module():
 def extracted(pdf):
     """The pages' texts by pdftotext, and all the text by pypdf."""
     run = subprocess.run(["pdftotext", "-enc", "UTF-8", str(pdf), "-"], capture_output=True, check=True)
-    pages = run.stdout.decode("utf-8").split("\f")[:-1]
+    # xpdf's pdftotext writes a character beyond U+FFFF as its two surrogates, each in UTF-8 (CESU-8): read
+    # them as such, then put each pair back together (seen with the emoji of a text exported on the S9).
+    text = run.stdout.decode("utf-8", "surrogatepass").encode("utf-16", "surrogatepass").decode("utf-16")
+    pages = text.split("\f")[:-1]
     reader = pypdf_module().PdfReader(str(pdf))
     return pages, "\n".join(page.extract_text() or "" for page in reader.pages)
 
@@ -248,11 +252,24 @@ def bare(text):
     return WHITE.sub("", text)
 
 
+def drawn(text):
+    """[text] without what the text layer of Android's PdfDocument does not give back, though the page shows
+    it (checked on the S9, the page rendered by the app's PDF viewer): characters of no width or of control
+    (categories Cf, Cc: U+200B, U+FEFF, U+001C; it may add U+0001 of its own) and the emoji of the fallback
+    font, lost (a skin-toned one) or moved after the line (seen with pdftotext AND pypdf). In order, the rest."""
+    return "".join(c for c in text if unicodedata.category(c) not in ("Cf", "Cc", "So", "Sk") and ord(c) < 0x1F000)
+
+
 def check_text_pdf(pdf, source, info):
     text = decoded(source, info["codec"], info["bom"])
     pages, by_pypdf = extracted(pdf)
+    # pypdf gives the text in the order it was drawn: compared in order. pdftotext rebuilds the lines from the
+    # glyphs' places, and puts the CJK of the fallback font, set a little lower, before the Latin word before
+    # them (seen on the S9's PDF): compared as the same characters, each as many times.
+    expected = bare(drawn(text))
     for tool, found in (("pdftotext", "".join(pages)), ("pypdf", by_pypdf)):
-        if bare(found) != bare(text):
+        got = bare(drawn(found))
+        if (sorted(got) != sorted(expected)) if tool == "pdftotext" else (got != expected):
             fail("%s (%s): the text extracted is not the source's" % (pdf.name, tool))
 
 
