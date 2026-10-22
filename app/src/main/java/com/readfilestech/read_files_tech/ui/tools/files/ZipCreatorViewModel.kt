@@ -7,7 +7,6 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.convert.SelectionTooLargeException
-import com.readfilestech.read_files_tech.data.outputs.NoOutputLocationException
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.tools.ZipCreator
 import com.readfilestech.read_files_tech.data.tools.ZipSourceException
@@ -17,6 +16,7 @@ import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -149,10 +149,9 @@ class ZipCreatorViewModel @Inject constructor(
     }
 
     /** Why no archive was made, in words — the 2.15.3 showed "Erreur : " and the exception. */
-    private fun zipFailure(error: Throwable): UiText = when (error) {
+    private fun zipFailure(error: Throwable): UiText = outputFailure(ZipCreator.NAME, error) ?: when (error) {
         is SelectionTooLargeException -> uiText(R.string.zip_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
         is ZipSourceException -> uiText(R.string.tool_read_failed, error.name, IoErrors.reasonOf(error.cause ?: error))
-        is NoOutputLocationException -> uiText(R.string.convert_no_output)
         else -> uiText(R.string.zip_failed, IoErrors.reasonOf(error))
     }
 }

@@ -11,7 +11,6 @@ import com.readfilestech.read_files_tech.data.editor.NotEditableException
 import com.readfilestech.read_files_tech.data.editor.UnencodableTextException
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
-import com.readfilestech.read_files_tech.data.outputs.NoOutputLocationException
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.outputs.create
@@ -28,6 +27,7 @@ import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.tools.editor.CodeEditorSession
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.readFailure
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -235,8 +235,7 @@ class TxtToolsViewModel @Inject constructor(
     }
 
     /** Why [work] on the file [name] wrote nothing, in words — the 2.15.3 showed "Erreur : " and the exception. */
-    private fun failure(work: TxtWork, name: String, error: Throwable): UiText = when (error) {
-        is NoOutputLocationException -> uiText(R.string.convert_no_output)
+    private fun failure(work: TxtWork, name: String, error: Throwable): UiText = outputFailure(name, error) ?: when (error) {
         is NotEditableException -> {
             val notText = error.reason == NotEditableException.Reason.NOT_TEXT
             uiText(if (notText) R.string.txt_replace_not_text else R.string.txt_replace_not_reversible, name)
@@ -247,7 +246,6 @@ class TxtToolsViewModel @Inject constructor(
         is NoMatchException -> uiText(R.string.txt_replace_no_match)
         is FileTooLargeException -> uiText(R.string.txt_pdf_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
         is TooManyItemsException -> UiText.Plural(R.plurals.convert_too_many_pages, error.limit)
-        is OutOfMemoryError -> uiText(R.string.convert_out_of_memory, name)
         else -> uiText(if (work == TxtWork.REPLACE) R.string.txt_replace_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
     }
 

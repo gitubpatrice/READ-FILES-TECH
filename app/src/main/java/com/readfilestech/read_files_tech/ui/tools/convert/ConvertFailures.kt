@@ -12,7 +12,6 @@ import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.images.ImageBounds
 import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
-import com.readfilestech.read_files_tech.data.outputs.NoOutputLocationException
 import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
@@ -20,6 +19,7 @@ import com.readfilestech.read_files_tech.data.viewer.pdf.PdfRefusalException
 import com.readfilestech.read_files_tech.ui.common.IoErrors
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.uiText
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.readFailure
 import com.readfilestech.read_files_tech.ui.viewer.pdf.PdfViewer
 
@@ -53,14 +53,12 @@ private fun excelLimit(limit: ExcelLimit): UiText = when (limit) {
 }
 
 /** What reading the file [name], or writing the output, came to. */
-private fun readingFailure(name: String, error: Throwable): UiText = when (error) {
+private fun readingFailure(name: String, error: Throwable): UiText = outputFailure(name, error) ?: when (error) {
     is ImageTooLargeException ->
         uiText(R.string.convert_image_too_large, name, error.width, error.height, ImageBounds.MAX_SIDE_PX, FileCaps.IMAGE_PIXELS / MEGA)
     is UnsupportedFormatException -> uiText(R.string.convert_unsupported, name)
     is UnreadableFileException -> uiText(R.string.convert_unreadable, name)
-    is NoOutputLocationException -> uiText(R.string.convert_no_output)
     is FileTooLargeException -> readFailure(name, error)
-    is OutOfMemoryError -> uiText(R.string.convert_out_of_memory, name)
     // An I/O error by its reason (a full disk, a file gone); anything else is unexpected, and said so.
     else -> uiText(R.string.convert_failed, name, IoErrors.reasonOf(error))
 }

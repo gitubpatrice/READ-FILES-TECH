@@ -21,6 +21,7 @@ import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.tools.copyableResult
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.readFailure
 import com.readfilestech.read_files_tech.ui.tools.resultCopied
 import com.readfilestech.read_files_tech.ui.viewer.json.JsonViewerViewModel
@@ -162,7 +163,7 @@ class FormatViewModel @Inject constructor(
                 mutableState.update { it.copy(saving = false, saved = file.path, share = file.path.takeIf { share }) }
             }.onFailure { error ->
                 mutableState.update { it.copy(saving = false) }
-                messages.error(uiText(R.string.format_save_failed, IoErrors.reasonOf(error)))
+                messages.error(outputFailure(RESULT_NAME, error) ?: uiText(R.string.format_save_failed, IoErrors.reasonOf(error)))
             }
         }
     }

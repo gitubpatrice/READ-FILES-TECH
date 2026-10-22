@@ -22,6 +22,7 @@ import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.viewer.ViewerErrors
 import com.readfilestech.read_files_tech.ui.viewer.ViewerFailure
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
@@ -105,7 +106,7 @@ class CompressViewModel @Inject constructor(
             mutableState.update { current ->
                 made.fold(
                     { (result, share) -> current.copy(working = false, result = result, share = result.path.takeIf { share }) },
-                    { current.copy(working = false, failure = uiText(R.string.compress_failed, imageToolReason(it))) },
+                    { current.copy(working = false, failure = outputFailure(file.name, it) ?: uiText(R.string.compress_failed, imageToolReason(it))) },
                 )
             }
         }
@@ -195,7 +196,7 @@ class ExifViewModel @Inject constructor(
             mutableState.update { s ->
                 made.fold(
                     { (path, share) -> s.copy(working = false, result = path, share = path.takeIf { share }) },
-                    { s.copy(working = false, failure = uiText(R.string.exif_failed, imageToolReason(it))) },
+                    { s.copy(working = false, failure = outputFailure(file.name, it) ?: uiText(R.string.exif_failed, imageToolReason(it))) },
                 )
             }
         }

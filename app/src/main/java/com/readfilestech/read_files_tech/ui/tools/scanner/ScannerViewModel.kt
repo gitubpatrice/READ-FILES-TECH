@@ -33,6 +33,7 @@ import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.viewer.ViewerErrors
 import com.readfilestech.read_files_tech.ui.viewer.ViewerFailure
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
@@ -424,7 +425,7 @@ class ScannerViewModel @Inject constructor(
                 withContext(io) { files.deleteSession(s.id) }
             }.onFailure { error ->
                 mutableState.update { it.copy(progress = null) }
-                messages.error(uiText(R.string.scanner_pdf_failed, IoErrors.reasonOf(error)))
+                messages.error(outputFailure(SCAN_NAME, error) ?: uiText(R.string.scanner_pdf_failed, IoErrors.reasonOf(error)))
             }
         }
     }

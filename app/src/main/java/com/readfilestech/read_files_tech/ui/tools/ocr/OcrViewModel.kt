@@ -22,6 +22,7 @@ import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.tools.copyableResult
 import com.readfilestech.read_files_tech.ui.tools.images.imageToolReason
+import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.resultCopied
 import com.readfilestech.read_files_tech.ui.tools.scanner.CameraCapture
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
@@ -179,7 +180,7 @@ class OcrViewModel @Inject constructor(
                 mutableState.update { it.copy(saving = false, saved = file.path, share = file.path.takeIf { share }) }
             }.onFailure { error ->
                 mutableState.update { it.copy(saving = false) }
-                messages.error(uiText(R.string.ocr_save_failed, IoErrors.reasonOf(error)))
+                messages.error(outputFailure(OcrOutput.NAME, error) ?: uiText(R.string.ocr_save_failed, IoErrors.reasonOf(error)))
             }
         }
     }
