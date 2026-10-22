@@ -27,9 +27,19 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 
-/** A tool's screen before a file is chosen: its icon, its name, what it does, and the button to choose one. */
+/**
+ * A tool's screen before a file is chosen: its icon, its name, what it does, and the button to choose one
+ * — [chooseLabel], "Choose files" for a tool that takes several.
+ */
 @Composable
-fun ToolIntro(icon: ImageVector, title: String, text: String, onChoose: () -> Unit, modifier: Modifier = Modifier) {
+fun ToolIntro(
+    icon: ImageVector,
+    title: String,
+    text: String,
+    onChoose: () -> Unit,
+    modifier: Modifier = Modifier,
+    chooseLabel: String = stringResource(R.string.action_choose_file),
+) {
     Column(
         modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
@@ -41,7 +51,7 @@ fun ToolIntro(icon: ImageVector, title: String, text: String, onChoose: () -> Un
         Button(onClick = onChoose) {
             Icon(Icons.Outlined.FolderOpen, contentDescription = null)
             Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.action_choose_file))
+            Text(chooseLabel)
         }
     }
 }

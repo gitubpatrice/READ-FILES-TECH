@@ -94,7 +94,14 @@ fun ZipCreatorScreen(
     ) { padding ->
         val result = state.result
         if (state.files.isEmpty() && result == null) {
-            ToolIntro(Icons.Outlined.FolderZip, title, stringResource(R.string.zip_intro), add, Modifier.padding(padding))
+            ToolIntro(
+                Icons.Outlined.FolderZip,
+                title,
+                stringResource(R.string.zip_intro),
+                add,
+                Modifier.padding(padding),
+                chooseLabel = stringResource(R.string.pick_files_title),
+            )
             return@Scaffold
         }
         Column(Modifier.padding(padding).fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

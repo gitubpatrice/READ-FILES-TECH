@@ -839,7 +839,7 @@
         <item quantity="other">La recherche s\'est arrêtée à %1$,d fichiers trouvés.</item>
     </plurals>
     <string name="content_search_choose_first">Choisissez un dossier pour commencer</string>
-    <string name="content_search_enter">Saisissez un mot et appuyez sur Rechercher</string>
+    <string name="content_search_enter">Saisissez un mot et appuyez sur Lancer</string>
     <string name="content_search_nothing">Aucun résultat</string>
     <plurals name="pattern_too_long">
         <item quantity="one">Le motif est trop long : %1$d caractère au plus.</item>
@@ -866,7 +866,7 @@
     <string name="bulk_rename_base">Nom de base</string>
     <string name="bulk_rename_base_hint">ex. : Photo</string>
     <string name="bulk_rename_base_default">Photo</string>
-    <string name="bulk_rename_start">Début</string>
+    <string name="bulk_rename_start">Premier numéro</string>
     <string name="bulk_rename_digits">Chiffres (3 → 001)</string>
     <string name="bulk_rename_prefix">Préfixe</string>
     <string name="bulk_rename_suffix">Suffixe (avant l\'extension)</string>

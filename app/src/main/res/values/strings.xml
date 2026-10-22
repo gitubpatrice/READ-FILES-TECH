@@ -840,7 +840,7 @@
     <string name="bulk_rename_base">Base name</string>
     <string name="bulk_rename_base_hint">e.g. Photo</string>
     <string name="bulk_rename_base_default">Photo</string>
-    <string name="bulk_rename_start">Start</string>
+    <string name="bulk_rename_start">First number</string>
     <string name="bulk_rename_digits">Digits (3 → 001)</string>
     <string name="bulk_rename_prefix">Prefix</string>
     <string name="bulk_rename_suffix">Suffix (before the extension)</string>
