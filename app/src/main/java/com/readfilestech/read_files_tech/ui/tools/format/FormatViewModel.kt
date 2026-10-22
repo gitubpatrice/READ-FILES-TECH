@@ -152,10 +152,14 @@ class FormatViewModel @Inject constructor(
 
     fun copied() = resultCopied(messages)
 
-    /** The result written whole into `Conversions/result_<stamp>.<ext>`. */
+    /**
+     * The result written whole into `Conversions/result_<stamp>.<ext>`. One save at a time, as the OCR's and
+     * Compress's: not only the button disabled — a second tap may come before the screen shows it so.
+     */
     fun save() {
-        val result = ready ?: return
-        val action = state.value.action
+        val current = state.value
+        val result = ready?.takeUnless { current.saving } ?: return
+        val action = current.action
         mutableState.update { it.copy(saving = true) }
         viewModelScope.launch {
             val saved = loadOrFailure { withContext(io) { outputs.saveFormatted(result, action) to outputs.autoShare() } }
