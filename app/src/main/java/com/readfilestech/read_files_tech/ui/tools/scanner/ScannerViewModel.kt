@@ -233,7 +233,7 @@ class ScannerViewModel @Inject constructor(
     private fun CoroutineScope.importOne(file: File, s: ScanSession): ScanPage {
         val found = ScanPages.find(file) { ensureActive() }?.takeIf(PageGeometry::isUsable)
         val page = ScanPage(ScanFiles.newId(), PageSource.External(file.path), PageSettings(found ?: PageGeometry.WHOLE, 0, s.filter), 0)
-        ScanPages.render(file, page.settings, files.pageFile(s.id, page)) { ensureActive() }
+        ScanPages.render(file, page.settings, files.newPageFile(s.id, page)) { ensureActive() }
         return page
     }
 
@@ -366,7 +366,7 @@ class ScannerViewModel @Inject constructor(
                 work.withLock {
                     withContext(io) {
                         val source = files.sourceFile(s.id, draft.source)
-                        ScanPages.render(source, draft.settings, files.pageFile(s.id, page)) { ensureActive() }
+                        ScanPages.render(source, draft.settings, files.newPageFile(s.id, page)) { ensureActive() }
                         files.deleteOldRevisions(s.id, page)
                     }
                 }

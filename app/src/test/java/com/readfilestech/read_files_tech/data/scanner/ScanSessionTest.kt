@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.scanner
 
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
@@ -188,5 +189,22 @@ class ScanSessionTest {
         assertThat(files.purge()).isTrue()
         assertThat(root.exists()).isFalse()
         assertThat(files.purge()).isTrue()
+    }
+
+    /** A scan begun by an image imported: no photo, no save has made its folder before its first page. */
+    @Test
+    fun `the first page of a new scan is written into its folder, made for it`() {
+        val files = ScanFiles(File(tmp, "scanner"))
+        val s = ScanSession(ScanFiles.newId())
+        val page = ScanPage(ScanFiles.newId(), PageSource.External("/storage/emulated/0/Download/page.jpg"), settings, revision = 0)
+        assertThat(files.sessionDir(s.id).exists()).isFalse()
+
+        val out = files.newPageFile(s.id, page)
+        AtomicFiles.writeBytes(out, byteArrayOf(1, 2, 3))
+
+        assertThat(out).isEqualTo(files.pageFile(s.id, page))
+        assertThat(out.readBytes()).isEqualTo(byteArrayOf(1, 2, 3))
+        // Again, the folder there: the same file, nothing else.
+        assertThat(files.newPageFile(s.id, page)).isEqualTo(out)
     }
 }
