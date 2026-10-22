@@ -36,13 +36,16 @@ class TextBytes private constructor(private val bytes: ByteArray, val size: Int,
     /**
      * Python's counts of the text decoded (after its byte order mark): `len(text)` characters — code points, an
      * emoji is one, where the 2.15.3 counted UTF-16 units (`txt_tools_screen.dart:125`) —, `len(text.split())`
-     * words — runs of characters between Python's white space ([isPythonSpace]) —, and the 2.15.3's lines: the
-     * line feeds plus one, none in an empty text (`txt_tools_screen.dart:128`).
+     * words — runs of characters between Python's white space ([isPythonSpace]) —, and lines: the line breaks
+     * plus one, none in an empty text (`txt_tools_screen.dart:128`) — a break being a LF, a CR alone or a CRLF,
+     * as the text viewer reads them; the 2.15.3 counted LFs only, a text of CR alone was one line (GPT review
+     * R26).
      */
     fun stats(progress: (Float) -> Unit = {}): TextStats {
         var characters = 0L
         var words = 0L
-        var feeds = 0L
+        var breaks = 0L
+        var afterCr = false
         var inWord = false
         pieces(strict = false, progress) { text ->
             var i = 0
@@ -50,13 +53,15 @@ class TextBytes private constructor(private val bytes: ByteArray, val size: Int,
                 val codePoint = text.codePointAt(i)
                 i += Character.charCount(codePoint)
                 characters++
-                if (codePoint == LF) feeds++
+                // A CRLF is one break, its two halves perhaps in two pieces.
+                if (codePoint == CR || (codePoint == LF && !afterCr)) breaks++
+                afterCr = codePoint == CR
                 val space = isPythonSpace(codePoint)
                 if (!space && !inWord) words++
                 inWord = !space
             }
         }
-        return TextStats(characters, words, if (characters == 0L) 0 else feeds + 1)
+        return TextStats(characters, words, if (characters == 0L) 0 else breaks + 1)
     }
 
     /**
@@ -177,6 +182,7 @@ class TextBytes private constructor(private val bytes: ByteArray, val size: Int,
         const val PIECE_CHARS = 32 * 1024
 
         private const val LF = 0x0A
+        private const val CR = 0x0D
         private const val NUL = '\u0000'
         private const val SPACE = 0x20
         private const val ASCII_LIMIT = 0x80

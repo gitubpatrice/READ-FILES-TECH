@@ -50,6 +50,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.tools.TextStats
+import com.readfilestech.read_files_tech.data.viewer.sheet.cut
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.resolve
@@ -183,7 +184,7 @@ private fun Tools(state: TxtToolsState, fields: SearchFields, viewModel: TxtTool
     val idle = state.working == null
     OutlinedTextField(
         value = search,
-        onValueChange = { fields.search = it.take(FileCaps.PATTERN_CHARS) },
+        onValueChange = { fields.search = cut(it, FileCaps.PATTERN_CHARS) },
         label = { Text(stringResource(R.string.txt_search)) },
         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
         supportingText = { if (search.isNotEmpty()) Text(matchesText(state)) },
@@ -193,7 +194,7 @@ private fun Tools(state: TxtToolsState, fields: SearchFields, viewModel: TxtTool
     )
     OutlinedTextField(
         value = replacement,
-        onValueChange = { fields.replacement = it.take(FileCaps.PATTERN_CHARS) },
+        onValueChange = { fields.replacement = cut(it, FileCaps.PATTERN_CHARS) },
         label = { Text(stringResource(R.string.txt_replace_with)) },
         leadingIcon = { Icon(Icons.Outlined.FindReplace, contentDescription = null) },
         singleLine = true,

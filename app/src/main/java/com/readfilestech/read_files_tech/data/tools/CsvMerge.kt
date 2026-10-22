@@ -69,28 +69,37 @@ object CsvMerge {
      * Merges [files] into [out] (not closed). [progress] gets the part read, from 0 to 1, between pieces of work;
      * what it throws (a cancellation) stops the merge.
      *
-     * @throws SelectionTooLargeException the files are more than [FileCaps.CSV_MERGE_TOTAL] together
+     * @throws SelectionTooLargeException the files are more than [total] bytes together — listed, or read
      * @throws CsvMergeException one of them is refused
      * @throws NothingToConvertException not one of them holds a row
      */
-    fun write(files: List<File>, out: OutputStream, progress: (Float) -> Unit = {}): CsvMerged {
+    fun write(
+        files: List<File>,
+        out: OutputStream,
+        total: Long = FileCaps.CSV_MERGE_TOTAL,
+        progress: (Float) -> Unit = {},
+    ): CsvMerged {
         val sizes = files.map(File::length)
-        if (sizes.sum() > FileCaps.CSV_MERGE_TOTAL) throw SelectionTooLargeException(FileCaps.CSV_MERGE_TOTAL)
-        val total = maxOf(1L, sizes.sum()).toFloat()
+        requireWithin(sizes.sum(), total)
+        val listed = maxOf(1L, sizes.sum()).toFloat()
         var done = 0L
         var output: MergeOutput? = null
         var rows = 0L
         var used = 0
+        var bytesRead = 0L
         files.forEachIndexed { index, file ->
-            val read = FileRows(file) { progress(done / total) }
-            val header = read.next { progress((done + read.position) / total) }
+            val read = FileRows(file) { progress(done / listed) }
+            // The bytes read, not only the sizes listed before: files grown since passed the total (GPT review R26).
+            bytesRead += read.size
+            requireWithin(bytesRead, total)
+            val header = read.next { progress((done + read.position) / listed) }
             if (header != null) {
                 used++
                 val arrangement = output?.let { arrangementOf(it.header, header, file.name) }
                 val bom = read.encoding != TextEncoding.UTF_8
                 val target = output ?: MergeOutput(out, read.separator, bom, header).also { output = it }
                 while (true) {
-                    val row = read.next { progress((done + read.position) / total) } ?: break
+                    val row = read.next { progress((done + read.position) / listed) } ?: break
                     target.row(arrangement?.let { arrange(row, it) } ?: row)
                     rows++
                 }
@@ -114,7 +123,16 @@ object CsvMerge {
         if (found == expected) return null
         val unique = expected.toSet().size == expected.size && found.toSet().size == found.size
         if (!unique || found.toSet() != expected.toSet()) throw CsvMergeException(name, CsvMergeException.Reason.OTHER_COLUMNS)
-        return IntArray(expected.size) { found.indexOf(expected[it]) }
+        // By a map: an index searched per column made 16 384 columns cost 134 million comparisons, no stop between
+        // (GPT review R26).
+        val positions = HashMap<String, Int>(found.size * 2)
+        found.forEachIndexed { index, column -> positions[column] = index }
+        return IntArray(expected.size) { positions.getValue(expected[it]) }
+    }
+
+    /** @throws SelectionTooLargeException [bytes] over [total] */
+    private fun requireWithin(bytes: Long, total: Long) {
+        if (bytes > total) throw SelectionTooLargeException(total)
     }
 
     /** [row] in the first file's order; its cells beyond its own header after them, in their order. */
@@ -123,14 +141,17 @@ object CsvMerge {
 
     /** The rows of one file, read whole within [FileCaps.CSV_FILE], given one at a time. */
     private class FileRows(private val file: File, checkpoint: () -> Unit) {
-        private val text: EncodedText = try {
+        private val bytes: Pair<ByteArray, Int> = try {
             val source = StorageFileSource(file)
             val cap = FileCaps.CSV_FILE
-            val (bytes, size) = source.open(cap).use { TextDocument.readAll(it, source.length(), cap, checkpoint) }
-            EncodedText(bytes, size, TextEncoding.detect(bytes, size))
+            source.open(cap).use { TextDocument.readAll(it, source.length(), cap, checkpoint) }
         } catch (e: IOException) {
             throw CsvMergeException(file.name, CsvMergeException.Reason.UNREADABLE, e)
         }
+
+        /** The file's bytes, as read. */
+        val size: Int = bytes.second
+        private val text = EncodedText(bytes.first, size, TextEncoding.detect(bytes.first, size))
         private val dialect = CsvRows.dialectOf(text, 0)
         private val scanner = CsvScanner(text, dialect.separator)
         private var units = dialect.start

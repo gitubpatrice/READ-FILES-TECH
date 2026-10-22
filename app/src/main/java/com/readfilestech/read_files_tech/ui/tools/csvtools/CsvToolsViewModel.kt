@@ -154,7 +154,7 @@ class CsvToolsViewModel @Inject constructor(
         start(CsvWork.MERGE) { progress ->
             var merged = CsvMerged(0, 0)
             val output = outputs.create(OutputCategory.CONVERSIONS, MERGE_NAME, CSV) { out ->
-                merged = CsvMerge.write(files, out, progress)
+                merged = CsvMerge.write(files, out, progress = progress)
             }
             output to merged
         }

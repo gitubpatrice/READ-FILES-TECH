@@ -17,7 +17,7 @@ Usage:
   `=1+1`, rows of empty fields; merges.json (the files of each merge, in order).
 
 `check`:
-- stats.json: per text, Python's `len(text)`, `len(text.split())` and the 2.15.3's lines (`text.count("\\n") + 1`,
+- stats.json: per text, Python's `len(text)`, `len(text.split())` and its lines (its CRLF, CR and LF breaks + 1,
   0 for an empty text), the text decoded by Python's own codec — equal;
 - counts.json: per case, `text.count(query)` — equal;
 - replace/<case>.<ext>: the source's BOM, then `text.replace(query, replacement)` encoded by Python's codec —
@@ -137,7 +137,8 @@ def decoded(path, codec, bom):
 
 
 def lines_of(text):
-    return 0 if not text else text.count("\n") + 1
+    # The line breaks the text viewer reads: a CRLF, a CR alone, a LF.
+    return 0 if not text else len(re.findall(r"\r\n|\r|\n", text)) + 1
 
 
 def check_texts():

@@ -10,10 +10,12 @@ import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import kotlinx.coroutines.CancellationException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.assertTimeoutPreemptively
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.RandomAccessFile
+import java.time.Duration
 
 /** The CSV tools' merge: the header once, every row as the files hold it, the dialects reconciled or refused. */
 class CsvMergeTest {
@@ -35,6 +37,31 @@ class CsvMergeTest {
     private fun rowsOf(bytes: ByteArray): List<List<String>> {
         val text = String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")
         return CsvRows.parse(text, CsvRows.dialectOf(text).separator)
+    }
+
+    /** GPT review R26: the total was checked on the sizes listed; files grown since were read past it. */
+    @Test
+    fun `files grown past the total while merged are refused`() {
+        val a = csv("a.csv", "name\r\napple\r\n")
+        val b = csv("b.csv", "name\r\npear\r\n")
+        assertThrows<SelectionTooLargeException> {
+            CsvMerge.write(listOf(a, b), ByteArrayOutputStream(), total = 100) {
+                b.writeText("name\r\n" + "x\r\n".repeat(100))
+            }
+        }
+    }
+
+    /**
+     * GPT review R26: the same columns in another order were matched by a search per column — 16 384² steps,
+     * 0.53 s here against 0.08 s by a map, too close for a clock to tell apart: the bound only catches worse.
+     */
+    @Test
+    fun `the widest headers in another order are put back column for column`() {
+        val names = (0 until FileCaps.CSV_COLUMNS).map { "c$it" }
+        val a = csv("a.csv", names.joinToString(",") + "\r\n" + names.indices.joinToString(",") + "\r\n")
+        val b = csv("b.csv", names.reversed().joinToString(",") + "\r\n" + names.indices.reversed().joinToString(",") + "\r\n")
+        val rows = assertTimeoutPreemptively(Duration.ofSeconds(5)) { rowsOf(merge(a, b).second) }
+        assertThat(rows[2]).isEqualTo(rows[1])
     }
 
     @Test

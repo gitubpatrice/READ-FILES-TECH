@@ -42,6 +42,16 @@ class TextBytesTest {
         assertThat(stats.lines).isEqualTo(3)
     }
 
+    /** GPT review R26: the 2.15.3 counted LFs only — a text of CR alone was one line. As the viewer reads it. */
+    @Test
+    fun `a CR alone is a line break, a CRLF one, even across two pieces`() {
+        assertThat(of("a\rb\rc").stats().lines).isEqualTo(3)
+        assertThat(of("a\r\nb").stats().lines).isEqualTo(2)
+        assertThat(of("a\r\r\nb\n\rc").stats().lines).isEqualTo(5)
+        // The CR the last character of a piece, its LF the first of the next.
+        assertThat(of("x".repeat(32_767) + "\r\ny").stats().lines).isEqualTo(2)
+    }
+
     @Test
     fun `an empty text counts nothing, a text without a line feed one line`() {
         assertThat(of("").stats()).isEqualTo(TextStats(0, 0, 0))
