@@ -13,10 +13,11 @@
       viewer (ZipShares), each extracted there for that share and purged at every start. Never a vault
       file's: the viewer offers no share when its file may not leave the app (docs D-028).
 
-    - cache-path "scanner/capture/": the files the system's camera app writes the scanner's photos into
-      (ACTION_IMAGE_CAPTURE, no CAMERA permission, docs D-027): one empty file per photo asked for, its
-      URI granted to the camera app for that photo only and revoked when it returns, the photo moved at
-      once into the scan's folder, which nothing serves (ScanFiles). PathGuard lets nothing of cache/ but
+    - cache-path "scanner/capture/": the files the system's camera app writes the scanner's and the OCR's
+      photos into (ACTION_IMAGE_CAPTURE, no CAMERA permission, docs D-027; CameraCapture): one empty file
+      per photo asked for, its URI granted to the camera app for that photo only and revoked when it
+      returns; the scanner moves the photo at once into the scan's folder, which nothing serves
+      (ScanFiles), the OCR deletes it once decoded. PathGuard lets nothing of cache/ but
       zip_shared/ out: no other way out of the app reaches these files.
 
     Nothing else private is listed: not files/ (the vault, the history), not the rest of cache/

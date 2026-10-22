@@ -12,7 +12,8 @@ import java.security.SecureRandom
  * The scanner's private folder, `cache/scanner/`:
  * - `capture/` ([captures]) — the files the camera app writes into, one per photo asked for: the only
  *   part of it the FileProvider serves (res/xml/file_paths.xml), and only for the URI handed to the
- *   camera; a photo leaves it as soon as the camera returns. PathGuard lets nothing of `cache/scanner/`
+ *   camera; a photo leaves it as soon as the camera returns — moved into its scan, or, the OCR's, deleted
+ *   once decoded. PathGuard lets nothing of `cache/scanner/`
  *   out to another app (of `cache/`, only `zip_shared/` may leave).
  * - `<session>/` — one per scan in progress: `session.json`, the photos taken (`src-<id>.jpg`) and the
  *   processed pages (`page-<id>-<revision>.jpg`).

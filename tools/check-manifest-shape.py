@@ -25,6 +25,8 @@ What is checked
    attribute counts as exported (the pre-Android 12 default), so an omission cannot hide one.
 4. The FileProvider (phase 3): once, authority `<package>.fileprovider`, not exported, per-URI grants;
    and `<queries>`: exactly the packages the explorer sends files to by name.
+5. No component at all, exported or not, of Google's telemetry transport (`datatransport`, pulled by
+   ML Kit for the OCR, docs D-031): the main manifest removes its three by name (phase 5).
 
 Usage
 -----
@@ -96,6 +98,11 @@ EXPORTED = {
 }
 
 COMPONENT_TAGS = ("activity", "activity-alias", "service", "receiver", "provider")
+
+# Packages no component may come from, exported or not. Google's telemetry transport, pulled by ML Kit (the
+# OCR, docs D-031): its backend's registration and its upload schedulers are removed in the main manifest by
+# name — a new component of a later ML Kit would arrive under a name no removal names, and only this sees it.
+FORBIDDEN_COMPONENT_PACKAGES = ("com.google.android.datatransport.",)
 
 IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
 
@@ -198,6 +205,11 @@ def main(argv: list[str]) -> int:
                 problems.append(f"{name}: android:{attribute} is {value!r}, expected {expected!r}.")
 
     problems += file_provider_problems(application, expected_package)
+    for tag in COMPONENT_TAGS:
+        for element in application.iter(tag):
+            name = element.get(A + "name") or ""
+            if name.startswith(FORBIDDEN_COMPONENT_PACKAGES):
+                problems.append(f"telemetry component in the manifest: <{tag}> {name}")
     queried = {p.get(A + "name") for q in root.iter("queries") for p in q.iter("package")}
     if queried != QUERIED_PACKAGES:
         problems.append(f"<queries> packages are {sorted(queried)}, expected {sorted(QUERIED_PACKAGES)}.")

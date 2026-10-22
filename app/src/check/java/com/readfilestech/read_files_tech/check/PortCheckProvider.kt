@@ -70,24 +70,26 @@ class PortCheckProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
         val uid = Binder.getCallingUid()
         if (uid != SHELL_UID && uid != ROOT_UID) throw SecurityException("uid $uid: adb shell only")
-        if (method == METHOD_CORPUS) return corpus(requireNotNull(arg))
-        require(method == METHOD_OBSERVE) { "unknown method $method" }
-        val request = PortCheckRequest.decode(String(Base64.decode(requireNotNull(arg), Base64.NO_WRAP), Charsets.UTF_8))
+        return when (method) {
+            METHOD_OBSERVE -> observe(requireNotNull(arg))
+            METHOD_CORPUS -> corpus(requireNotNull(arg))
+            METHOD_OCR -> report(runBlocking { OcrCheck().run(File(requireNotNull(arg))) })
+            else -> throw IllegalArgumentException("unknown method $method")
+        }
+    }
+
+    private fun observe(arg: String): Bundle {
+        val request = PortCheckRequest.decode(String(Base64.decode(arg, Base64.NO_WRAP), Charsets.UTF_8))
         val app = requireNotNull(context).applicationContext
         val observation = PortObservation(dirsOf(app), EntryPointAccessors.fromApplication(app, PortCheckEntryPoint::class.java))
-        val report = DartJson.encode(runBlocking { observation.observe(request) })
-        val encoded = Base64.encodeToString(report.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-        return Bundle().apply { putString(KEY_REPORT, encoded) }
+        return report(runBlocking { observation.observe(request) })
     }
 
     /** The hostile corpus of phase 4 (CorpusCheck), in the folder [dir] of the device. */
     private fun corpus(dir: String): Bundle {
         val app = requireNotNull(context).applicationContext
         val sandbox = requireNotNull(app.filesDir.parentFile)
-        val report = DartJson.encode(runBlocking { CorpusCheck(sandbox, app).run(File(dir)) })
-        return Bundle().apply {
-            putString(KEY_REPORT, Base64.encodeToString(report.toByteArray(Charsets.UTF_8), Base64.NO_WRAP))
-        }
+        return report(runBlocking { CorpusCheck(sandbox, app).run(File(dir)) })
     }
 
     private fun dirsOf(app: Context): CheckDirs {
@@ -114,11 +116,22 @@ class PortCheckProvider : ContentProvider() {
         throw UnsupportedOperationException()
 
     private companion object {
+        /** A check's result, as the host scripts read it: JSON in Base64 under [KEY_REPORT]. */
+        fun report(result: Map<String, Any?>): Bundle {
+            val report = DartJson.encode(result)
+            return Bundle().apply {
+                putString(KEY_REPORT, Base64.encodeToString(report.toByteArray(Charsets.UTF_8), Base64.NO_WRAP))
+            }
+        }
+
         /** `Process.SHELL_UID` (public from API 29 only) and `Process.ROOT_UID`. */
         const val SHELL_UID = 2000
         const val ROOT_UID = 0
         const val METHOD_OBSERVE = "observe"
         const val METHOD_CORPUS = "corpus"
+
+        /** The OCR's oracle (OcrCheck), on the images of the folder [call]'s argument names. */
+        const val METHOD_OCR = "ocr"
         const val KEY_REPORT = "report"
     }
 }

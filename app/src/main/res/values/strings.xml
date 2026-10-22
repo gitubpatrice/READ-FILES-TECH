@@ -687,6 +687,17 @@
         <item quantity="other">Its %d pages have not been saved as a PDF.</item>
     </plurals>
     <string name="scanner_discard">Discard</string>
+    <string name="ocr_intro">Take a photo of a page or choose an image: its text, in the Latin alphabet, is recognised on this phone. Nothing leaves it.</string>
+    <string name="ocr_choose_image">Choose an image</string>
+    <string name="ocr_image_read">The image read</string>
+    <string name="ocr_working">Recognising the text…</string>
+    <string name="ocr_no_text">No text found in this image.</string>
+    <string name="ocr_failed">Cannot read the text of this image: %1$s</string>
+    <string name="ocr_recognition_failed">the text recognition failed on this phone</string>
+    <string name="ocr_save_txt">Save as .txt</string>
+    <string name="ocr_save_failed">Cannot save the text: %1$s</string>
+    <string name="ocr_saved_title">Text saved</string>
+    <string name="ocr_saved_body">The text is here:</string>
     <string name="markdown_show_rendered">Rendered view</string>
     <string name="markdown_show_source">Markdown source</string>
     <string name="markdown_too_long">Over %1$s: shown as text, not rendered.</string>

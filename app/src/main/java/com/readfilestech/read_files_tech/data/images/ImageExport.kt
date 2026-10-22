@@ -99,7 +99,8 @@ object ImageExport {
         return replaced(decoded) { it.scale(size.width.toInt(), size.height.toInt(), filter = true) }
     }
 
-    private fun opaque(picture: Bitmap): Bitmap {
+    /** [picture] on white where it is transparent, [picture] itself when it has no alpha — the OCR's too. */
+    internal fun opaque(picture: Bitmap): Bitmap {
         if (!picture.hasAlpha()) return picture
         return replaced(picture) { source ->
             createBitmap(source.width, source.height).also { flat ->
@@ -116,7 +117,7 @@ object ImageExport {
      * failed on the way (an OOM allocating the new one: it was left to the GC, megabytes of native memory
      * in a batch, Claude review R19).
      */
-    private inline fun replaced(bitmap: Bitmap, make: (Bitmap) -> Bitmap): Bitmap {
+    internal inline fun replaced(bitmap: Bitmap, make: (Bitmap) -> Bitmap): Bitmap {
         var made = bitmap
         var done = false
         try {

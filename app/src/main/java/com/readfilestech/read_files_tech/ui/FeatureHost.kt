@@ -15,6 +15,7 @@ import com.readfilestech.read_files_tech.ui.tools.format.FormatScreen
 import com.readfilestech.read_files_tech.ui.tools.hash.HashScreen
 import com.readfilestech.read_files_tech.ui.tools.images.CompressScreen
 import com.readfilestech.read_files_tech.ui.tools.images.ExifScreen
+import com.readfilestech.read_files_tech.ui.tools.ocr.OcrScreen
 import com.readfilestech.read_files_tech.ui.tools.scanner.ScannerScreen
 
 /**
@@ -41,6 +42,7 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.EXIF -> ExifScreen(picked, onNavigate, onBack)
         Feature.CSV_EDITOR -> CsvEditorScreen(picked, onNavigate, onBack)
         Feature.EDITOR -> CodeEditorScreen(picked, onNavigate, onBack)
+        Feature.OCR -> OcrScreen(picked, onNavigate, onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

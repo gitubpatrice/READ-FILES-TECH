@@ -53,6 +53,13 @@ commonmark              = "0.30.0"
 # no dependency, no permission. 1.8 published 2025-01-09.
 re2j                    = "1.8"
 
+# --- OCR (phase 5, docs D-031): ML Kit's on-device LATIN text recognition, its model BUNDLED in the APK
+# (no download, no Play Services): the artefact the 2.15.3 shipped through google_mlkit_text_recognition
+# 0.17.1. NOT free software (ML Kit terms): accepted for this tool only, RFT not being on F-Droid. It pulls
+# Google's telemetry transport (datatransport), whose entry points the manifest removes; the CI's permission
+# guard proves nothing of it reaches the APK. 16.0.1 (2024-08-07) is the latest on Google's Maven.
+mlkitTextRecognition    = "16.0.1"
+
 # --- Crypto (docs D-005): ONE BouncyCastle family for the vault KDFs and, later, PdfBox ---
 bouncycastle            = "1.86"
 
@@ -119,6 +126,8 @@ bcpkix                                  = { group = "org.bouncycastle",         
 bcutil                                  = { group = "org.bouncycastle",                name = "bcutil-jdk18on",                    version.ref = "bouncycastle" }
 
 pdfbox-android                          = { group = "com.tom-roush",                   name = "pdfbox-android",                    version.ref = "pdfboxAndroid" }
+
+mlkit-text-recognition                  = { group = "com.google.mlkit",                name = "text-recognition",                  version.ref = "mlkitTextRecognition" }
 
 # Tests — JUnit Jupiter. The platform launcher is declared and aligned through the BOM: without it
 # Gradle runs the tests with the launcher it bundles, and on JUnit 6 the test task died with 0 test

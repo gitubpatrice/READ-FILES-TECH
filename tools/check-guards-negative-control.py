@@ -170,6 +170,11 @@ IMPLICITLY_EXPORTED = (
     '        </activity>\n'
 )
 EXPORTED_PROVIDER = '        <provider android:name="com.example.Provider" android:exported="true" />\n'
+# What ML Kit's transport adds when the main manifest's removal is gone (the OCR, docs D-031): not exported.
+TELEMETRY_SERVICE = (
+    '        <service android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"\n'
+    '            android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />\n'
+)
 
 # --- Release APK fixtures (aapt2 badging output) -------------------------------------------------
 
@@ -362,6 +367,8 @@ def shape_cases(work: str) -> list[tuple]:
              1, "outside the reviewed list: com.example.Implicit"),
         case("an exported provider", in_application(SHAPE_OK, EXPORTED_PROVIDER),
              1, "outside the reviewed list: com.example.Provider"),
+        case("ML Kit's telemetry scheduler, not exported", in_application(SHAPE_OK, TELEMETRY_SERVICE),
+             1, "telemetry component in the manifest: <service> com.google.android.datatransport."),
         case("ProfileInstallReceiver without its permission",
              SHAPE_OK.replace(' android:permission="android.permission.DUMP"', ""),
              1, "ProfileInstallReceiver is guarded by None"),
@@ -479,6 +486,9 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
         (f"REAL {kind} without its data extraction rules", SHAPE_CHECK, shape,
          lambda: manifest_case(work, re.sub(r'\s*android:dataExtractionRules="[^"]*"', "", real, count=1)),
          1, "android:dataExtractionRules> is None"),
+        (f"REAL {kind} + ML Kit's telemetry scheduler", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real.replace("</application>", TELEMETRY_SERVICE + "    </application>", 1)),
+         1, "telemetry component in the manifest"),
     ]
     return cases
 

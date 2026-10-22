@@ -690,6 +690,17 @@
         <item quantity="other">Ses %d pages n\'ont pas été enregistrées en PDF.</item>
     </plurals>
     <string name="scanner_discard">Abandonner</string>
+    <string name="ocr_intro">Photographiez une page ou choisissez une image : son texte, en alphabet latin, est reconnu sur ce téléphone. Rien n\'en sort.</string>
+    <string name="ocr_choose_image">Choisir une image</string>
+    <string name="ocr_image_read">L\'image lue</string>
+    <string name="ocr_working">Reconnaissance du texte…</string>
+    <string name="ocr_no_text">Aucun texte trouvé dans cette image.</string>
+    <string name="ocr_failed">Impossible de lire le texte de cette image : %1$s</string>
+    <string name="ocr_recognition_failed">la reconnaissance du texte a échoué sur ce téléphone</string>
+    <string name="ocr_save_txt">Enregistrer en .txt</string>
+    <string name="ocr_save_failed">Impossible d\'enregistrer le texte : %1$s</string>
+    <string name="ocr_saved_title">Texte enregistré</string>
+    <string name="ocr_saved_body">Le texte est enregistré ici :</string>
     <string name="markdown_show_rendered">Aperçu rendu</string>
     <string name="markdown_show_source">Source Markdown</string>
     <string name="markdown_too_long">Plus de %1$s : affiché en texte, sans mise en forme.</string>
