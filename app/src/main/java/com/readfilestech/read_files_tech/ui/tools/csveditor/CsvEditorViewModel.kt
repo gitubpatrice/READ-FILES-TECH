@@ -170,7 +170,7 @@ class CsvEditorViewModel @Inject constructor(
     /** Nothing was written: said in the leave dialog when it asked, which stays (D3); otherwise below. */
     private fun failed(error: Throwable, thenLeave: Boolean) {
         val why = if (error is FileChangedException) uiText(R.string.csv_editor_changed) else IoErrors.reasonOf(error)
-        val reason = uiText(R.string.csv_editor_save_failed, why)
+        val reason = uiText(R.string.editor_save_failed, why)
         mutableState.update { it.copy(saving = false, saveFailure = reason) }
         if (!thenLeave) messages.error(reason)
     }
@@ -241,5 +241,5 @@ private fun notKept(error: Throwable): UiText {
         is FileTooLargeException -> uiText(R.string.csv_editor_unsaved_too_large, (error.capBytes / MIB).toInt())
         else -> IoErrors.reasonOf(error)
     }
-    return uiText(R.string.csv_editor_restore_failed, why)
+    return uiText(R.string.editor_restore_failed, why)
 }

@@ -371,9 +371,7 @@
     <!-- L'éditeur CSV -->
     <string name="csv_editor_choose">Choisir un CSV à éditer</string>
     <string name="csv_editor_intro">Modifiez des cellules, ajoutez ou supprimez des lignes et des colonnes. L\'enregistrement ne réécrit que ce que vous avez changé : le reste du fichier reste tel qu\'il était.</string>
-    <string name="csv_editor_modified">modifié</string>
-    <string name="csv_editor_saved">Sauvegardé</string>
-    <string name="csv_editor_save_failed">Non sauvegardé : %1$s</string>
+    <string name="csv_editor_saved">Enregistré</string>
     <string name="csv_editor_changed">le fichier a été modifié par une autre application depuis son ouverture</string>
     <string name="csv_editor_cut_kept">Ce qui n\'est pas affiché est enregistré tel quel.</string>
     <string name="csv_editor_read_only_nul">Ce fichier contient des octets NUL : ce n\'est pas un texte d\'un octet par caractère (de l\'UTF-16 sans marque d\'ordre des octets, ou pas un texte). Il est affiché, pas modifié.</string>
@@ -407,15 +405,10 @@
     <string name="csv_editor_insert_column">Insérer une colonne après</string>
     <string name="csv_editor_delete_row">Supprimer cette ligne</string>
     <string name="csv_editor_delete_column">Supprimer cette colonne</string>
-    <string name="csv_editor_leave_title">Modifications non sauvegardées</string>
-    <string name="csv_editor_leave_message">Voulez-vous sauvegarder avant de quitter ?</string>
-    <string name="csv_editor_discard">Ignorer</string>
-    <string name="csv_editor_history">Historique</string>
-    <string name="csv_editor_history_empty">Aucune version antérieure de ce fichier pour l\'instant. Chaque sauvegarde garde la version qu\'elle remplace : les %1$d dernières, pour les fichiers jusqu\'à %2$d Mo.</string>
-    <string name="csv_editor_history_hint">Restaurer charge la version dans l\'éditeur : vos modifications non sauvegardées vont d\'abord dans l\'historique, et le fichier n\'est écrit que lorsque vous sauvegardez.</string>
-    <string name="csv_editor_restored">Version antérieure chargée : sauvegardez pour la garder.</string>
-    <string name="csv_editor_restore_failed">Non restaurée : %1$s</string>
-    <string name="csv_editor_unsaved_too_large">vos modifications non sauvegardées dépassent %1$d Mo, trop pour être gardées dans l\'historique — sauvegardez-les d\'abord</string>
+    <string name="csv_editor_history_empty">Aucune version antérieure de ce fichier pour l\'instant. Chaque enregistrement garde la version qu\'il remplace : les %1$d dernières, pour les fichiers jusqu\'à %2$d Mo.</string>
+    <string name="csv_editor_history_hint">Restaurer charge la version dans l\'éditeur : vos modifications non enregistrées vont d\'abord dans l\'historique, et le fichier n\'est écrit que lorsque vous enregistrez.</string>
+    <string name="csv_editor_restored">Version antérieure chargée : enregistrez pour la garder.</string>
+    <string name="csv_editor_unsaved_too_large">vos modifications non enregistrées dépassent %1$d Mo, trop pour être gardées dans l\'historique — enregistrez-les d\'abord</string>
 
     <string name="document_no_text">Ce document ne contient aucun texte.</string>
 
@@ -534,7 +527,6 @@
     <string name="editor_intro">Modifier un fichier texte — code, réglages, notes — et l\'enregistrer tel qu\'il était : même encodage, mêmes fins de ligne.</string>
     <string name="editor_modified">modifié</string>
     <string name="editor_redo">Rétablir</string>
-    <string name="editor_text_size">Taille du texte</string>
     <string name="editor_saved">Fichier enregistré</string>
     <string name="editor_save_failed">Non enregistré : %1$s</string>
     <string name="editor_not_text">« %1$s » n\'est pas un fichier texte : l\'éditeur ne l\'ouvre pas.</string>
@@ -952,7 +944,7 @@
     <string name="exif_working">Effacement…</string>
     <string name="exif_saved_title">Image nettoyée et enregistrée</string>
     <string name="exif_read_failed">Impossible de lire cette image : %1$s</string>
-    <string name="exif_failed">Impossible d\'enregistrer la copie : %1$s</string>
+    <string name="tools_copy_failed">Impossible d\'enregistrer la copie : %1$s</string>
 
     <!-- Outils TXT et outils CSV (phase 5) -->
     <string name="tools_pdf_created">PDF créé</string>
@@ -992,7 +984,6 @@
     <string name="txt_replace_unencodable">%1$s, l\'encodage de ce fichier, n\'a pas de « %2$s » : changez le remplacement.</string>
     <string name="txt_replace_too_large">La copie dépasserait %1$,d %2$s : rien n\'a été écrit.</string>
     <string name="txt_replace_no_match">Le texte recherché n\'est pas dans ce fichier : il n\'y a rien à remplacer.</string>
-    <string name="txt_replace_failed">Impossible d\'enregistrer la copie : %1$s</string>
     <string name="txt_pdf_too_large">Trop long pour être converti en PDF : plus de %1$,d %2$s de texte.</string>
     <string name="csv_tools_intro">Compte les lignes et les colonnes d\'un CSV, l\'exporte en tableau PDF, fusionne plusieurs CSV en un seul</string>
     <string name="csv_tools_pick_title">Choisir un fichier CSV</string>

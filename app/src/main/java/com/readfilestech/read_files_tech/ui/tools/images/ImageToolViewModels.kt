@@ -201,7 +201,7 @@ class ExifViewModel @Inject constructor(
                 made.fold(
                     { (path, share) -> s.copy(working = false, result = path, share = path.takeIf { share }) },
                     { error ->
-                        val failure = outputFailure(file.name, error) ?: uiText(R.string.exif_failed, imageToolReason(error))
+                        val failure = outputFailure(file.name, error) ?: uiText(R.string.tools_copy_failed, imageToolReason(error))
                         s.copy(working = false, failure = failure)
                     },
                 )

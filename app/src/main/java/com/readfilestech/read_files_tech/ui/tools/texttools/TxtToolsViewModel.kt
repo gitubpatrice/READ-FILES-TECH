@@ -247,7 +247,7 @@ class TxtToolsViewModel @Inject constructor(
         is NoMatchException -> uiText(R.string.txt_replace_no_match)
         is FileTooLargeException -> uiText(R.string.txt_pdf_too_large, error.capBytes / MIB, uiText(R.string.unit_megabytes))
         is TooManyItemsException -> UiText.Plural(R.plurals.convert_too_many_pages, error.limit)
-        else -> uiText(if (work == TxtWork.REPLACE) R.string.txt_replace_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
+        else -> uiText(if (work == TxtWork.REPLACE) R.string.tools_copy_failed else R.string.tools_pdf_failed, IoErrors.reasonOf(error))
     }
 
     private companion object {

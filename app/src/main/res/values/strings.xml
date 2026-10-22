@@ -364,9 +364,7 @@
     <!-- The CSV editor -->
     <string name="csv_editor_choose">Choose a CSV to edit</string>
     <string name="csv_editor_intro">Change cells, add or delete rows and columns. Saving writes back only what you changed: the rest of the file stays as it was.</string>
-    <string name="csv_editor_modified">modified</string>
     <string name="csv_editor_saved">Saved</string>
-    <string name="csv_editor_save_failed">Not saved: %1$s</string>
     <string name="csv_editor_changed">the file was changed by another app since it was opened</string>
     <string name="csv_editor_cut_kept">What is not shown is saved as it was.</string>
     <string name="csv_editor_read_only_nul">This file holds NUL bytes: it is not a text of one byte per character (UTF-16 without a byte order mark, or not a text at all). It is shown, not edited.</string>
@@ -398,14 +396,9 @@
     <string name="csv_editor_insert_column">Insert a column after</string>
     <string name="csv_editor_delete_row">Delete this row</string>
     <string name="csv_editor_delete_column">Delete this column</string>
-    <string name="csv_editor_leave_title">Unsaved changes</string>
-    <string name="csv_editor_leave_message">Save before leaving?</string>
-    <string name="csv_editor_discard">Discard</string>
-    <string name="csv_editor_history">History</string>
     <string name="csv_editor_history_empty">No earlier version of this file yet. Each save keeps the version it replaces: the last %1$d, for files up to %2$d MB.</string>
     <string name="csv_editor_history_hint">Restoring loads the version in the editor: your unsaved changes go to the history first, and the file is written only when you save.</string>
     <string name="csv_editor_restored">Earlier version loaded: save to keep it.</string>
-    <string name="csv_editor_restore_failed">Not restored: %1$s</string>
     <string name="csv_editor_unsaved_too_large">your unsaved changes are over %1$d MB, too large to be kept in the history — save them first</string>
 
     <string name="document_no_text">This document contains no text.</string>
@@ -530,7 +523,6 @@
     <string name="editor_intro">Edit a text file — code, settings, notes — and save it as it was: same encoding, same line endings.</string>
     <string name="editor_modified">modified</string>
     <string name="editor_redo">Redo</string>
-    <string name="editor_text_size">Text size</string>
     <string name="editor_text_size_value" translatable="false">%1$d pt</string>
     <string name="editor_saved">File saved</string>
     <string name="editor_save_failed">Not saved: %1$s</string>
@@ -549,7 +541,7 @@
     <string name="editor_history_empty">No saved version yet: each save keeps the version it replaces, the last %1$d.</string>
     <string name="editor_history_hint">Tap a version to see its beginning. Restoring loads it in the editor: your text goes to the history first, and the file is written only when you save.</string>
     <string name="editor_legacy_title">Old history (before 3.0)</string>
-    <string name="editor_legacy_warning">Kept by the earlier version of the app under this file’s name only: a copy may come from another file of the same name.</string>
+    <string name="editor_legacy_warning">Kept by the earlier version of the app under this file\'s name only: a copy may come from another file of the same name.</string>
     <string name="editor_restored">Version loaded — save to keep it</string>
     <string name="editor_restore_failed">Not restored: %1$s</string>
     <string name="editor_version_not_text">this version is not a text the editor opens</string>
@@ -923,7 +915,7 @@
     <string name="exif_working">Removing…</string>
     <string name="exif_saved_title">Clean copy saved</string>
     <string name="exif_read_failed">Cannot read this picture: %1$s</string>
-    <string name="exif_failed">Cannot save the copy: %1$s</string>
+    <string name="tools_copy_failed">Cannot save the copy: %1$s</string>
 
     <!-- Text tools and CSV tools (phase 5) -->
     <string name="tools_pdf_created">PDF created</string>
@@ -961,7 +953,6 @@
     <string name="txt_replace_unencodable">%1$s, the encoding of this file, has no “%2$s”: change the replacement.</string>
     <string name="txt_replace_too_large">The copy would be larger than %1$,d %2$s: nothing was written.</string>
     <string name="txt_replace_no_match">The text searched is not in this file: there is nothing to replace.</string>
-    <string name="txt_replace_failed">Cannot save the copy: %1$s</string>
     <string name="txt_pdf_too_large">Too long to convert to PDF: over %1$,d %2$s of text.</string>
     <string name="csv_tools_intro">Counts the rows and columns of a CSV, exports it as a PDF table, merges several CSV files into one</string>
     <string name="csv_tools_pick_title">Choose a CSV file</string>

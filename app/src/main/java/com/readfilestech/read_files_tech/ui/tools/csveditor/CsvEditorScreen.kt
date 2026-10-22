@@ -156,7 +156,7 @@ private fun Title(state: CsvEditorState) {
         Text(state.name.ifEmpty { stringResource(R.string.feature_csv_editor) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (state.modified) {
             Text(
-                stringResource(R.string.csv_editor_modified),
+                stringResource(R.string.editor_modified),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary,
             )
@@ -199,7 +199,7 @@ private fun BarActions(state: CsvEditorState, edits: CsvEdits, viewModel: CsvEdi
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.csv_editor_history)) },
+                text = { Text(stringResource(R.string.editor_history)) },
                 enabled = editable,
                 onClick = {
                     menu = false
@@ -470,10 +470,10 @@ private fun refusalText(refusal: CellChange, encoding: String): String = when (r
 private fun LeaveDialog(state: CsvEditorState, onSave: () -> Unit, onDiscard: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = { if (!state.saving) onDismiss() },
-        title = { Text(stringResource(R.string.csv_editor_leave_title)) },
+        title = { Text(stringResource(R.string.editor_leave_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.csv_editor_leave_message))
+                Text(stringResource(R.string.editor_leave_message))
                 state.saveFailure?.let { Text(it.resolve(), color = MaterialTheme.colorScheme.error) }
             }
         },
@@ -488,7 +488,7 @@ private fun LeaveDialog(state: CsvEditorState, onSave: () -> Unit, onDiscard: ()
         },
         dismissButton = {
             Row {
-                TextButton(onClick = onDiscard, enabled = !state.saving) { Text(stringResource(R.string.csv_editor_discard)) }
+                TextButton(onClick = onDiscard, enabled = !state.saving) { Text(stringResource(R.string.editor_discard)) }
                 TextButton(onClick = onDismiss, enabled = !state.saving) { Text(stringResource(R.string.action_cancel)) }
             }
         },
@@ -504,7 +504,7 @@ private fun HistoryDialog(versions: List<HistoryCopy>, onRestore: (HistoryCopy) 
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.csv_editor_history)) },
+        title = { Text(stringResource(R.string.editor_history)) },
         text = {
             if (versions.isEmpty()) {
                 Text(stringResource(R.string.csv_editor_history_empty, EditorHistory.KEPT, FileCaps.EDITOR_HISTORY_COPY / MIB))

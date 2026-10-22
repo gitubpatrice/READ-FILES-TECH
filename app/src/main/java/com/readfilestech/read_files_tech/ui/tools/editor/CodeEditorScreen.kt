@@ -235,7 +235,7 @@ private fun BarActions(state: CodeEditorState, viewModel: CodeEditorViewModel, t
                     viewModel.launching.share(context, listOf(entry))
                 })
             }
-            DropdownMenuItem(text = { Text(stringResource(R.string.editor_text_size)) }, onClick = {
+            DropdownMenuItem(text = { Text(stringResource(R.string.text_size)) }, onClick = {
                 menu = false
                 sizes = true
             })
