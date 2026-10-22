@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.data.scanner.ScanPage
 import com.readfilestech.read_files_tech.data.scanner.ScanSession
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -72,9 +73,6 @@ import com.readfilestech.read_files_tech.ui.outputs.AutoShare
 import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import kotlinx.coroutines.launch
-
-/** What the picker offers to import: the images the 2.15.3's gallery import took that Android decodes. */
-private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp")
 
 /** The thumbnails are decoded at this many pixels a side at most. */
 private const val THUMBNAIL_SIDE = 360
@@ -112,7 +110,7 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             }
         }
     }
-    val importImages = { onNavigate(Routes.picker(PickMode.FILES, IMAGE_EXTENSIONS, title)) }
+    val importImages = { onNavigate(Routes.picker(PickMode.FILES, ImageToolRules.SCANNER_EXTENSIONS, title)) }
     // Pages not yet in a PDF: leaving asks first.
     val leave = { if (state.pages.isEmpty()) onBack() else confirmLeave = true }
     val editor = state.editor

@@ -10,12 +10,14 @@ enum class ImageFormat(val extension: String) {
 
 /**
  * The rules of the two image tools, Compress and Remove EXIF (`compress_screen.dart`, `exif_service.dart` of
- * the 2.15.3) — pure, tested on the JVM; [ImageExport] applies them to pixels.
+ * the 2.15.3) — pure, tested on the JVM; [ImageExport] applies them to pixels. Here too, the one home of the
+ * picker filters of every tool that takes a picture: the OCR's and the scanner's as well.
  */
 object ImageToolRules {
     /**
-     * What Compress takes: what the platform decodes (HEIC and HEIF from Android 9). The 2.15.3 took any
-     * picture its picker offered and failed on HEIC, which its `image` package does not read.
+     * What Compress takes, and the OCR: what the platform decodes (HEIC and HEIF from Android 9) — both decode
+     * through [ImageDecoding]. The 2.15.3 took any picture its picker offered and failed on HEIC, which its
+     * `image` package does not read.
      */
     val COMPRESS_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "heic", "heif", "bmp", "gif")
 
@@ -25,6 +27,13 @@ object ImageToolRules {
      * into its first frame).
      */
     val METADATA_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
+
+    /**
+     * What the scanner imports: the images the 2.15.3's gallery import took (ML Kit's document scanner) that
+     * Android decodes. Its pages are decoded through [ImageDecoding] as Compress's pictures are, so HEIC, HEIF
+     * and GIF would decode too; the 2.15.3's set is kept.
+     */
+    val SCANNER_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp")
 
     const val QUALITY_MIN = 10
     const val QUALITY_MAX = 100
