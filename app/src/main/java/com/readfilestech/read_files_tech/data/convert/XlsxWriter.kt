@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.convert
 
+import com.readfilestech.read_files_tech.data.files.FileCaps
 import java.io.BufferedWriter
 import java.io.OutputStream
 import java.io.OutputStreamWriter
@@ -136,12 +137,12 @@ class XlsxWriter(output: OutputStream) {
 
 /** What a cell of [XlsxWriter] may be, and how it is written: Excel's own limits and conventions. */
 object XlsxCells {
-    /** Excel's rows and columns in a sheet; the CSV viewer's caps are the same (`FileCaps.CSV_ROWS`, `CSV_COLUMNS`). */
-    const val MAX_ROWS = 1_048_576
-    const val MAX_COLUMNS = 16_384
+    /** Excel's rows and columns in a sheet: the CSV viewer's caps, which are Excel's own. */
+    const val MAX_ROWS = FileCaps.CSV_ROWS
+    const val MAX_COLUMNS = FileCaps.CSV_COLUMNS
 
-    /** Characters Excel keeps in a cell. */
-    const val MAX_CELL_CHARS = 32_767
+    /** Characters Excel keeps in a cell: the CSV viewer's cap too. */
+    const val MAX_CELL_CHARS = FileCaps.CSV_CELL_CHARS
 
     /** The digits a double holds exactly, and Excel shows: a longer number would come back changed. */
     const val MAX_DIGITS = 15

@@ -8,6 +8,7 @@ import com.readfilestech.read_files_tech.data.editor.SaveOutcome
 import com.readfilestech.read_files_tech.data.editor.TextTooLargeException
 import com.readfilestech.read_files_tech.data.editor.UnencodableTextException
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
@@ -36,8 +37,6 @@ enum class LeaveChoice {
     /** Save, and leave once the file is written — only then (D3). */
     SAVE,
 }
-
-private const val MIB = 1024L * 1024
 
 /** The saved versions of the open file, newest first: its own (docs D-021), and apart the 2.15.x's of its exact name. */
 data class EditorVersions(val versions: List<HistoryCopy>, val legacy: List<HistoryCopy>)

@@ -28,7 +28,7 @@ class ContentSearchTest {
 
     private fun text(path: String, content: String) = file(path, content.toByteArray(Charsets.UTF_8))
 
-    private fun events(pattern: SearchPattern, maxFiles: Int = FileCaps.CONTENT_SEARCH_FILES): List<ContentEvent> =
+    private fun events(pattern: SearchPattern, maxFiles: Int = FileCaps.SEARCH_RESULTS): List<ContentEvent> =
         runBlocking { ContentSearch.run(root, pattern, maxFiles).toList() }
 
     private fun hits(pattern: SearchPattern) = events(pattern).filterIsInstance<ContentEvent.Found>().flatMap { it.hits }

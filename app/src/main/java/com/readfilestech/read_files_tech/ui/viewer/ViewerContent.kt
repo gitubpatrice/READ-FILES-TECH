@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.files.MEGA
 import com.readfilestech.read_files_tech.data.images.ImageBounds
 import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
@@ -142,7 +143,4 @@ object ViewerErrors {
         // A parser's own exception on a hostile file: an index out of bounds, a number that is not one.
         else -> ViewerFailure.Reason(uiText(R.string.viewer_unreadable))
     }
-
-    /** Pixels in a megapixel, the unit the cap is said in. */
-    private const val MEGA = 1_000_000L
 }

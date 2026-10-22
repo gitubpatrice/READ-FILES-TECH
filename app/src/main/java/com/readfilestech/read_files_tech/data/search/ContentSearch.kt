@@ -29,7 +29,7 @@ sealed interface ContentEvent {
     /**
      * The last event: what was not searched, said rather than read as "not there" — [tooLarge] text files
      * over [FileCaps.SEARCH_CONTENT], [unreadable] files and [unreadableFolders] that could not be read —
-     * and whether the search stopped at [FileCaps.CONTENT_SEARCH_FILES] files found ([full]).
+     * and whether the search stopped at [FileCaps.SEARCH_RESULTS] files found ([full]).
      */
     data class Finished(val scanned: Int, val tooLarge: Int, val unreadable: Int, val unreadableFolders: Int, val full: Boolean) :
         ContentEvent
@@ -50,7 +50,7 @@ object ContentSearch {
         "sh", "bat",
     )
 
-    fun run(root: File, pattern: SearchPattern, maxFiles: Int = FileCaps.CONTENT_SEARCH_FILES): Flow<ContentEvent> = flow {
+    fun run(root: File, pattern: SearchPattern, maxFiles: Int = FileCaps.SEARCH_RESULTS): Flow<ContentEvent> = flow {
         val search = Search(pattern, currentCoroutineContext())
         val batches = SearchBatches<ContentHit>({ emit(ContentEvent.Found(it)) }, { emit(ContentEvent.Scanned(it)) })
         val walk = FolderWalk(root, skipHidden = false) { FolderWalk.isTrash(it) || FolderWalk.isAppData(it) }

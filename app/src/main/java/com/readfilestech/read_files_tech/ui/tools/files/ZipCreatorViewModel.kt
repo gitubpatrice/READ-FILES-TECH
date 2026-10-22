@@ -7,6 +7,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.convert.SelectionTooLargeException
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.tools.ZipCreator
 import com.readfilestech.read_files_tech.data.tools.ZipSourceException
@@ -145,7 +146,6 @@ class ZipCreatorViewModel @Inject constructor(
         const val KEY_FILES = "zip_files"
         const val KEY_RESULT = "zip_result"
         const val KEY_RESULT_COUNT = "zip_result_count"
-        const val MIB = 1024L * 1024
     }
 
     /** Why no archive was made, in words — the 2.15.3 showed "Erreur : " and the exception. */

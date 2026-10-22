@@ -61,6 +61,7 @@ import com.readfilestech.read_files_tech.data.editor.CellText
 import com.readfilestech.read_files_tech.data.editor.CsvEdits
 import com.readfilestech.read_files_tech.data.editor.ReadOnly
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.data.text.CsvSafe
@@ -83,7 +84,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-private const val MIB = 1024 * 1024
 private const val NONE = -1
 
 /**

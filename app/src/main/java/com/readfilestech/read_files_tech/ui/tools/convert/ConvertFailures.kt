@@ -10,6 +10,8 @@ import com.readfilestech.read_files_tech.data.convert.SelectionTooLargeException
 import com.readfilestech.read_files_tech.data.convert.XlsxCells
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.files.MEGA
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.images.ImageBounds
 import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
 import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
@@ -22,9 +24,6 @@ import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.readFailure
 import com.readfilestech.read_files_tech.ui.viewer.pdf.PdfViewer
-
-private const val MIB = 1024L * 1024
-private const val MEGA = 1_000_000L
 
 /**
  * Why [conversion] of the file [name] made nothing, in words, with the file's name — the 2.15.3 showed

@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.outputs.create
@@ -464,7 +465,6 @@ class ScannerViewModel @Inject constructor(
 
         /** 25 thumbnails of 240 × 340 pixels, and room for the ones of pages made again. */
         const val THUMBNAIL_BYTES = 16 * 1024 * 1024
-        const val MIB = 1024L * 1024
     }
 }
 

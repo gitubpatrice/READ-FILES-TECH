@@ -10,6 +10,7 @@ import com.readfilestech.read_files_tech.data.editor.CsvSaving
 import com.readfilestech.read_files_tech.data.editor.FileChangedException
 import com.readfilestech.read_files_tech.data.editor.FileStamp
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
@@ -233,8 +234,6 @@ class CsvEditorViewModel @Inject constructor(
 private fun keepChoice(from: CsvEdits, to: CsvEdits) {
     from.chosenEncoding?.takeIf { it in to.encodingChoices }?.let { to.chosenEncoding = it }
 }
-
-private const val MIB = 1024L * 1024
 
 /** Why a restore did not happen: the cells not saved could not be kept first. */
 private fun notKept(error: Throwable): UiText {

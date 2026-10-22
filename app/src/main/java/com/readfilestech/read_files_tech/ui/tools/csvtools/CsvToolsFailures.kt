@@ -5,6 +5,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.convert.NothingToConvertException
 import com.readfilestech.read_files_tech.data.convert.SelectionTooLargeException
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.tools.CsvMergeException
 import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.ui.common.IoErrors
@@ -12,8 +13,6 @@ import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.tools.outputFailure
 import com.readfilestech.read_files_tech.ui.tools.readFailure
-
-private const val MIB = 1024L * 1024
 
 /**
  * Why [work] wrote nothing, in words — the 2.15.3 showed "Erreur : " and the exception. [name] is what was being

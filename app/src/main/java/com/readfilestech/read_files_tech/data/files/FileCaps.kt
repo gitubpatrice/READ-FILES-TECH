@@ -6,6 +6,12 @@ import java.io.IOException
 /** A file above the cap of what reads it: the screen says so instead of running out of memory. */
 class FileTooLargeException(val capBytes: Long) : IOException("file larger than $capBytes bytes")
 
+/** Bytes in a mebibyte: the unit the caps are written in, and said in ("50 MB"). */
+internal const val MIB = 1024L * 1024
+
+/** Pixels in a megapixel: the unit [FileCaps.IMAGE_PIXELS] is said in. */
+internal const val MEGA = 1_000_000L
+
 /**
  * The size caps of the 2.15.3 (`lib/utils/file_caps.dart`), one place for the viewers and tools of
  * phases 4 and 5 — each reads its cap here, never a number of its own. The vault keeps its own caps
@@ -13,8 +19,6 @@ class FileTooLargeException(val capBytes: Long) : IOException("file larger than 
  * restore cap it never was — inventory S2), the trash its metadata cap (`TrashEntry.META_MAX_BYTES`).
  */
 object FileCaps {
-    private const val MIB = 1024L * 1024
-
     const val TEXT_VIEWER = 50 * MIB
 
     /**
@@ -166,8 +170,11 @@ object FileCaps {
      */
     const val PATTERN_REPEATS = 1_000
 
-    /** Files a content search keeps with their matches; it stops there, as the global search does. The 2.15.3 kept all. */
-    const val CONTENT_SEARCH_FILES = 1_000
+    /**
+     * Files a search keeps before it stops: the global search's files found (the 2.15.x's `maxResults`,
+     * `global_search_service.dart:25`), the content search's files with their matches (the 2.15.3 kept all).
+     */
+    const val SEARCH_RESULTS = 1_000
 
     /** Matching lines kept of one file, all counted; the 2.15.3 kept every one, each whole. */
     const val CONTENT_SEARCH_LINES = 100

@@ -11,6 +11,7 @@ import com.readfilestech.read_files_tech.data.editor.NotEditableException
 import com.readfilestech.read_files_tech.data.editor.UnencodableTextException
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.outputs.create
@@ -255,7 +256,6 @@ class TxtToolsViewModel @Inject constructor(
         const val KEY_REPLACED = "txt_tools_replaced"
         const val TXT = "txt"
         const val PDF = "pdf"
-        const val MIB = 1024L * 1024
 
         /** The search waits this long after a key: each count reads the whole text. */
         const val SEARCH_DELAY_MS = 300L

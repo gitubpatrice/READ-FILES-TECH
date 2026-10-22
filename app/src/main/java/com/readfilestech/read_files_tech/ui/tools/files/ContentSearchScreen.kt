@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.search.ContentEvent
 import com.readfilestech.read_files_tech.data.search.ContentHit
 import com.readfilestech.read_files_tech.data.search.LineMatch
@@ -77,8 +78,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-
-private const val MIB = 1024L * 1024
 
 /**
  * `ContentSearchScreen` of the 2.15.3: a folder, what to look for, "Aa" (case) and ".*" (regex); the files
@@ -240,7 +239,7 @@ private fun Notes(finished: ContentEvent.Finished) {
     val color = MaterialTheme.colorScheme.error
     if (finished.full) {
         Text(
-            pluralStringResource(R.plurals.content_search_full, FileCaps.CONTENT_SEARCH_FILES, FileCaps.CONTENT_SEARCH_FILES),
+            pluralStringResource(R.plurals.content_search_full, FileCaps.SEARCH_RESULTS, FileCaps.SEARCH_RESULTS),
             style = style,
             color = color
         )

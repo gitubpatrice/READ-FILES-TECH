@@ -7,6 +7,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.images.ImageExport
 import com.readfilestech.read_files_tech.data.images.ImageMetadata
 import com.readfilestech.read_files_tech.data.images.ImageMetadataReader
@@ -232,5 +233,3 @@ private fun viewerReason(error: Throwable): UiText = when (val failure = ViewerE
     is ViewerFailure.Reason -> failure.text
     is ViewerFailure.TooLarge -> uiText(R.string.scanner_too_large, failure.capBytes / MIB)
 }
-
-private const val MIB = 1024L * 1024

@@ -19,7 +19,8 @@ data class SearchQuery(
     val name: String? = null,
     val content: String? = null,
     val maxContentBytes: Long = FileSearch.MAX_CONTENT_BYTES,
-    val maxResults: Int = FileSearch.MAX_RESULTS,
+    /** The search stops there. */
+    val maxResults: Int = FileCaps.SEARCH_RESULTS,
 )
 
 data class SearchHit(val path: String, val size: Long, val modifiedMs: Long, val snippet: String?)
@@ -45,9 +46,6 @@ object FileSearch {
 
     /** A larger text file is matched on its name only (2.15.x: 2 MiB). */
     const val MAX_CONTENT_BYTES = FileCaps.SEARCH_CONTENT
-
-    /** The search stops there (2.15.x). */
-    const val MAX_RESULTS = 1_000
 
     fun run(query: SearchQuery): Flow<SearchEvent> = flow {
         val matcher = Matcher(query)
