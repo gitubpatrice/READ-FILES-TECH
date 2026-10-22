@@ -19,8 +19,13 @@ import java.io.File
 class CameraCapture(private val context: Context, private val handle: SavedStateHandle, private val key: String) {
     val captures = ScanFiles.under(context.cacheDir).captures
 
-    /** A new empty file, created on [io], its path kept; the URI the camera app may write it through, that file only. */
+    /**
+     * A new empty file, created on [io], its path kept; the URI the camera app may write it through, that file
+     * only. A photo asked before and not come back is forgotten first — its grant ended, its file deleted:
+     * a second tap overwrote its path, and its file stayed (Claude review R25).
+     */
     suspend fun prepare(io: CoroutineDispatcher): Uri {
+        returned()?.let { stale -> withContext(io) { captures.discard(stale) } }
         val file = withContext(io) { captures.newFile() }
         handle[key] = file.path
         return uriOf(file)

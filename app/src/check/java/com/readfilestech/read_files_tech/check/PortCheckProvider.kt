@@ -73,7 +73,10 @@ class PortCheckProvider : ContentProvider() {
         return when (method) {
             METHOD_OBSERVE -> observe(requireNotNull(arg))
             METHOD_CORPUS -> corpus(requireNotNull(arg))
-            METHOD_OCR -> report(runBlocking { OcrCheck().run(File(requireNotNull(arg))) })
+            METHOD_OCR -> {
+                val app = requireNotNull(context).applicationContext
+                report(runBlocking { OcrCheck(app).run(File(requireNotNull(arg))) })
+            }
             else -> throw IllegalArgumentException("unknown method $method")
         }
     }

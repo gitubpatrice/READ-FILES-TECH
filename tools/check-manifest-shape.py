@@ -26,7 +26,8 @@ What is checked
 4. The FileProvider (phase 3): once, authority `<package>.fileprovider`, not exported, per-URI grants;
    and `<queries>`: exactly the packages the explorer sends files to by name.
 5. No component at all, exported or not, of Google's telemetry transport (`datatransport`, pulled by
-   ML Kit for the OCR, docs D-031): the main manifest removes its three by name (phase 5).
+   ML Kit for the OCR, docs D-031): the main manifest removes its three by name (phase 5). Nor ML Kit's
+   own init provider, which would start it on the application, its Play services binding allowed.
 
 Usage
 -----
@@ -103,6 +104,10 @@ COMPONENT_TAGS = ("activity", "activity-alias", "service", "receiver", "provider
 # OCR, docs D-031): its backend's registration and its upload schedulers are removed in the main manifest by
 # name — a new component of a later ML Kit would arrive under a name no removal names, and only this sees it.
 FORBIDDEN_COMPONENT_PACKAGES = ("com.google.android.datatransport.",)
+
+# Components no manifest may hold. ML Kit's own provider would start it on the application at every launch,
+# before the OCR starts it on a context that refuses Play services' telemetry binding (Claude review R25).
+FORBIDDEN_COMPONENTS = ("com.google.mlkit.common.internal.MlKitInitProvider",)
 
 IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
 
@@ -208,7 +213,7 @@ def main(argv: list[str]) -> int:
     for tag in COMPONENT_TAGS:
         for element in application.iter(tag):
             name = element.get(A + "name") or ""
-            if name.startswith(FORBIDDEN_COMPONENT_PACKAGES):
+            if name.startswith(FORBIDDEN_COMPONENT_PACKAGES) or name in FORBIDDEN_COMPONENTS:
                 problems.append(f"telemetry component in the manifest: <{tag}> {name}")
     queried = {p.get(A + "name") for q in root.iter("queries") for p in q.iter("package")}
     if queried != QUERIED_PACKAGES:

@@ -176,6 +176,13 @@ TELEMETRY_SERVICE = (
     '            android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />\n'
 )
 
+# ML Kit's own init provider, back: it would start ML Kit on the application at every launch, its Play
+# services telemetry binding allowed (Claude review R25).
+MLKIT_INIT_PROVIDER = (
+    '        <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider"\n'
+    '            android:authorities="x.mlkitinitprovider" android:exported="false" />\n'
+)
+
 # --- Release APK fixtures (aapt2 badging output) -------------------------------------------------
 
 RANKS = {"universal": 0, "armeabi-v7a": 1, "arm64-v8a": 2, "x86_64": 3}
@@ -369,6 +376,8 @@ def shape_cases(work: str) -> list[tuple]:
              1, "outside the reviewed list: com.example.Provider"),
         case("ML Kit's telemetry scheduler, not exported", in_application(SHAPE_OK, TELEMETRY_SERVICE),
              1, "telemetry component in the manifest: <service> com.google.android.datatransport."),
+        case("ML Kit's init provider, not exported", in_application(SHAPE_OK, MLKIT_INIT_PROVIDER),
+             1, "telemetry component in the manifest: <provider> com.google.mlkit.common.internal.MlKitInitProvider"),
         case("ProfileInstallReceiver without its permission",
              SHAPE_OK.replace(' android:permission="android.permission.DUMP"', ""),
              1, "ProfileInstallReceiver is guarded by None"),
@@ -488,6 +497,9 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
          1, "android:dataExtractionRules> is None"),
         (f"REAL {kind} + ML Kit's telemetry scheduler", SHAPE_CHECK, shape,
          lambda: manifest_case(work, real.replace("</application>", TELEMETRY_SERVICE + "    </application>", 1)),
+         1, "telemetry component in the manifest"),
+        (f"REAL {kind} + ML Kit's init provider", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real.replace("</application>", MLKIT_INIT_PROVIDER + "    </application>", 1)),
          1, "telemetry component in the manifest"),
     ]
     return cases

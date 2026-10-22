@@ -84,7 +84,7 @@ class OcrViewModel @Inject constructor(
     @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
     private val camera = CameraCapture(context, handle, KEY_CAPTURE)
-    private val engine = OcrEngine()
+    private val engine = OcrEngine(context)
     private val mutableState = MutableStateFlow(OcrState(saved = handle[KEY_SAVED]))
     val state: StateFlow<OcrState> = mutableState.asStateFlow()
     private var job: Job? = null
@@ -125,15 +125,21 @@ class OcrViewModel @Inject constructor(
      * the previous one off the screen: the 2.15.3 left its row under the new text.
      */
     private fun read(file: File, photo: Boolean, chosen: Boolean) {
-        job?.cancel()
+        val previous = job
+        previous?.cancel()
         if (chosen) handle.remove<String>(KEY_SAVED)
         mutableState.update {
             it.copy(preview = null, working = true, text = null, failure = null, saved = it.saved.takeUnless { chosen })
         }
         job = viewModelScope.launch {
-            engine.idle()
             val read = loadOrFailure {
                 val picture = try {
+                    // The previous read gone first — its decode, which a cancellation does not stop — then
+                    // ML Kit's task: two pictures never meet (Claude review R25: after a process death, the
+                    // picker's picture read again and the camera's photo were decoded at once). Inside the
+                    // try: a photo is deleted even when cancelled while waiting.
+                    previous?.join()
+                    engine.idle()
                     withContext(io) { OcrImages.decode(file) }
                 } finally {
                     if (photo) withContext(NonCancellable + io) { camera.captures.discard(file) }

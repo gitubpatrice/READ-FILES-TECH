@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.check
 
+import android.content.Context
 import android.os.SystemClock
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.images.ImageTooLargeException
@@ -17,8 +18,8 @@ import java.io.IOException
  * `check` build, the release as R8 makes it, so that what R8 keeps of ML Kit is what is measured. The report
  * gives, per image, the outcome, the text found, the size decoded and the times; the script judges the text.
  */
-class OcrCheck {
-    suspend fun run(dir: File): Map<String, Any?> = OcrEngine().use { engine ->
+class OcrCheck(private val context: Context) {
+    suspend fun run(dir: File): Map<String, Any?> = OcrEngine(context).use { engine ->
         val images = dir.listFiles { f -> f.isFile && f.name != MANIFEST }.orEmpty().sortedBy { it.name }
         linkedMapOf("results" to images.map { check(engine, it) })
     }

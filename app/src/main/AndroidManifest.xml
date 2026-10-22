@@ -169,5 +169,16 @@
         <receiver
             android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
             tools:node="remove" />
+        <!--
+            NO USAGE REPORTS THROUGH PLAY SERVICES: ML Kit's vision libraries also report each use (method,
+            status, times) through Google Play services' client telemetry, a binding to com.google.android.gms
+            that needs no permission (Claude review R25, measured on a Galaxy S9 and an emulator). ML Kit is
+            therefore not started by its provider, on the application, at every launch: the OCR starts it on
+            a context that refuses any binding to Play services (data/ocr/NoGmsContext.kt).
+            tools/check-manifest-shape.py fails if this provider comes back.
+        -->
+        <provider
+            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
+            tools:node="remove" />
     </application>
 </manifest>

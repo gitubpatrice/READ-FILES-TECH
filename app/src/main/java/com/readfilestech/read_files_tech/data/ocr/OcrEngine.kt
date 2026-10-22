@@ -1,6 +1,8 @@
 package com.readfilestech.read_files_tech.data.ocr
 
+import android.content.Context
 import android.graphics.Bitmap
+import com.google.mlkit.common.sdkinternal.MlKitContext
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -16,12 +18,17 @@ class RecognitionFailedException(cause: Throwable?) : Exception("text recognitio
 /**
  * ML Kit's on-device LATIN text recognition (docs D-031), the 2.15.3's
  * `TextRecognizer(script: TextRecognitionScript.latin)` (`ocr_screen.dart:22`): its model is bundled in the
- * APK, nothing is downloaded and nothing is sent — the app has no network permission.
+ * APK, nothing is downloaded and nothing is sent — the app has no network permission, and ML Kit is started
+ * here on a [NoGmsContext], which refuses the binding its usage reports go through (Claude review R25).
  *
  * One per screen, [close]d with it. Its calls come from one thread (the view model's).
  */
-class OcrEngine : AutoCloseable {
-    private val client = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+class OcrEngine(context: Context) : AutoCloseable {
+    private val client = run {
+        // Its own provider is removed from the manifest: ML Kit starts here, the first time, on this context.
+        MlKitContext.initializeIfNeeded(NoGmsContext(context.applicationContext))
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     /** ML Kit's task for the previous picture, which a cancellation does not stop. */
     private var previous: CompletableDeferred<Unit>? = null
