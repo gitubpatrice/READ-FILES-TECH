@@ -23,17 +23,28 @@ import java.io.OutputStream
  * going on to the next page line by line. At most [FileCaps.TEXT_TO_PDF_PAGES] pages: the 2.15.3 had no bound.
  */
 object TextPdf {
-    const val FONT_SIZE = 11f
+    /**
+     * The face a text is drawn in: the platform's proportional one at 11 pt for Convert (the 2.15.3's Helvetica
+     * 11), its monospace one at 10 pt for the text tools (their Courier 10, `txt_tools_screen.dart:81`) — a
+     * text file's columns stay aligned. Either way the platform's fallbacks draw what the face has no glyph for.
+     */
+    enum class Face(val size: Float) {
+        PROSE(11f),
+        MONOSPACE(10f),
+        ;
+
+        val typeface: Typeface get() = if (this == MONOSPACE) Typeface.MONOSPACE else Typeface.DEFAULT
+    }
 
     /**
-     * [text] as a PDF on [out] (not closed). [onRow] gets the rows laid out so far after each line of the
-     * file; what it throws (a cancellation) stops the work.
+     * [text] as a PDF on [out] (not closed), in [face]. [onRow] gets the rows laid out so far after each line
+     * of the file; what it throws (a cancellation) stops the work.
      *
      * @throws TooManyItemsException more than [FileCaps.TEXT_TO_PDF_PAGES] pages.
      */
-    fun write(text: TextDocument, out: OutputStream, onRow: (Int) -> Unit = {}) {
+    fun write(text: TextDocument, out: OutputStream, face: Face = Face.PROSE, onRow: (Int) -> Unit = {}) {
         val document = PdfDocument()
-        val pages = TextPages(document)
+        val pages = TextPages(document, face)
         try {
             var row = 0
             while (row < text.rowCount) {
@@ -56,19 +67,16 @@ object TextPdf {
 }
 
 /** The pages of a [TextPdf] being drawn, and where the next line goes. */
-private class TextPages(private val document: PdfDocument) {
+private class TextPages(document: PdfDocument, face: TextPdf.Face) {
+    private val pages = PdfPages(document, FileCaps.TEXT_TO_PDF_PAGES)
     private val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = TextPdf.FONT_SIZE
-        typeface = Typeface.DEFAULT
+        textSize = face.size
+        typeface = face.typeface
         color = Color.BLACK
-        // No ligatures: drawn as one glyph, "ffi" came back out of the PDF as U+FB03 ("ﬃcially", seen by
-        // pdftotext and pypdf on a phone's output), so the PDF's text could not be searched or copied as written.
-        fontFeatureSettings = "'liga' 0, 'clig' 0"
+        fontFeatureSettings = PdfPages.NO_LIGATURES
     }
-    private val width = (PAGE_WIDTH - 2 * ImagePlacement.MARGIN).toInt()
-    private val bottom = PAGE_HEIGHT - ImagePlacement.MARGIN
-    private var page: PdfDocument.Page? = null
-    private var count = 0
+    private val width = (PdfPages.WIDTH - 2 * ImagePlacement.MARGIN).toInt()
+    private val bottom = PdfPages.HEIGHT - ImagePlacement.MARGIN
     private var y = 0f
 
     /** [paragraph] wrapped at the margin, its lines on this page while they fit, then on the next ones. */
@@ -76,7 +84,7 @@ private class TextPages(private val document: PdfDocument) {
         val layout = layout(paragraph, 0, paragraph.length)
         var first = 0
         while (first < layout.lineCount) {
-            val canvas = (page ?: newPage()).canvas
+            val canvas = (pages.current ?: newPage()).canvas
             val empty = y == ImagePlacement.MARGIN
             var last = first
             while (last < layout.lineCount && y + layout.getLineBottom(last) - layout.getLineTop(first) <= bottom) last++
@@ -99,24 +107,12 @@ private class TextPages(private val document: PdfDocument) {
     }
 
     /** The last page finished — a blank one for an empty text, as the 2.15.3 made. */
-    fun finish() {
-        document.finishPage(page ?: newPage())
-        page = null
-    }
+    fun finish() = pages.finish()
 
     /** The page left open by a stop or a failure, finished: the document can then be closed. */
-    fun release() {
-        page?.let(document::finishPage)
-        page = null
-    }
+    fun release() = pages.release()
 
-    private fun newPage(): PdfDocument.Page {
-        release()
-        if (count == FileCaps.TEXT_TO_PDF_PAGES) throw TooManyItemsException(FileCaps.TEXT_TO_PDF_PAGES)
-        count++
-        y = ImagePlacement.MARGIN
-        return document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, count).create()).also { page = it }
-    }
+    private fun newPage(): PdfDocument.Page = pages.next().also { y = ImagePlacement.MARGIN }
 
     /** Greedy breaks, no hyphen added: a part laid out again breaks where the whole did, and its text is the file's. */
     // WrongConstant: lint asks for LineBreaker's constants, of API 29; Layout's are the same values, from API 23.
@@ -127,10 +123,4 @@ private class TextPages(private val document: PdfDocument) {
             .setBreakStrategy(Layout.BREAK_STRATEGY_SIMPLE)
             .setHyphenationFrequency(Layout.HYPHENATION_FREQUENCY_NONE)
             .build()
-
-    private companion object {
-        /** A4 in points, whole: what `PdfDocument.PageInfo` takes. */
-        const val PAGE_WIDTH = 595
-        const val PAGE_HEIGHT = 842
-    }
 }

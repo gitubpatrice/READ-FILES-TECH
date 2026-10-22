@@ -29,7 +29,7 @@ import com.readfilestech.read_files_tech.ui.common.formatBytes
 
 /**
  * A tool's screen before a file is chosen: its icon, its name, what it does, and the button to choose one
- * — [chooseLabel], "Choose files" for a tool that takes several.
+ * — [chooseLabel], "Choose files" for a tool that takes several —, then [more] (the CSV tools' "Merge").
  */
 @Composable
 fun ToolIntro(
@@ -39,6 +39,7 @@ fun ToolIntro(
     onChoose: () -> Unit,
     modifier: Modifier = Modifier,
     chooseLabel: String = stringResource(R.string.action_choose_file),
+    more: @Composable () -> Unit = {},
 ) {
     Column(
         modifier.fillMaxSize().padding(32.dp),
@@ -53,6 +54,7 @@ fun ToolIntro(
             Spacer(Modifier.size(8.dp))
             Text(chooseLabel)
         }
+        more()
     }
 }
 

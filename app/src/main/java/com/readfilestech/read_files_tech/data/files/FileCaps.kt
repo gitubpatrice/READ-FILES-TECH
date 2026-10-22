@@ -81,6 +81,20 @@ object FileCaps {
     const val CSV_CELL_CHARS = 32_767
 
     /**
+     * Bytes the CSV tools merge in all, their files together: the 2.15.3's three times [CSV_FILE]
+     * (`csv_tools_screen.dart:170-173`, H2 v2.12.1). The files are read one at a time, each within [CSV_FILE].
+     */
+    const val CSV_MERGE_TOTAL = 3 * CSV_FILE
+
+    /**
+     * Pages a CSV table exported to PDF makes: Android's PdfDocument keeps every page drawn in memory until it
+     * writes the file, as for [TEXT_TO_PDF_PAGES] — some 53 000 rows of up to ten columns. Counted before the
+     * first page is drawn. No 2.15.3 counterpart: it added pages for as long as there were rows
+     * (`csv_tools_screen.dart:104-110`).
+     */
+    const val CSV_TO_PDF_PAGES = 1_000
+
+    /**
      * Rows and columns one sheet of a workbook (.xlsx, .xls, .ods) shows, its first row included: the
      * 2.15.3's (`xlsx_viewer_screen.dart:36-37`, `ods_service.dart:46, 53`). Past them nothing more is read
      * of an .xlsx sheet, and the screen says what is not shown — the 2.15.3 cut silently.
@@ -139,7 +153,9 @@ object FileCaps {
     /**
      * Characters of a pattern the user types — a content search's, a bulk rename's: the 2.15.3's 200
      * (`content_search_screen.dart:76`, `bulk_rename_screen.dart:73`). There it bounded no time (inventory
-     * F3); here RE2/J does, in a time linear in the text (SearchPattern).
+     * F3); here RE2/J does, in a time linear in the text (SearchPattern). The text tools' search and its
+     * replacement too, which the 2.15.3 did not bound (`txt_tools_screen.dart:216-233`): a literal is looked for
+     * at each place of a text of up to [TEXT_VIEWER], and each match may add its replacement to the result.
      */
     const val PATTERN_CHARS = 200
 

@@ -211,11 +211,21 @@ class TextDocument private constructor(private val rows: TextRows) {
          * CSV viewer reads its files the same way.
          */
         internal suspend fun readAll(input: InputStream, expected: Long, cap: Long): Pair<ByteArray, Int> {
+            val job = currentCoroutineContext()
+            return readAll(input, expected, cap) { job.ensureActive() }
+        }
+
+        /**
+         * The same, for work that cannot suspend — the CSV merge reads its files one by one while it writes its
+         * output, inside the output's atomic write: [checkpoint] is called before each piece, and what it throws
+         * (a cancellation) stops the reading.
+         */
+        internal fun readAll(input: InputStream, expected: Long, cap: Long, checkpoint: () -> Unit): Pair<ByteArray, Int> {
             // One byte more than announced: a file that grew is read on, up to the cap.
             var buffer = ByteArray((expected.coerceIn(0, cap) + 1).toInt())
             var size = 0
             while (true) {
-                currentCoroutineContext().ensureActive()
+                checkpoint()
                 if (size == buffer.size) {
                     // The stream's own cap stops it first; a source that would not is stopped here.
                     if (buffer.size > cap) throw FileTooLargeException(cap)

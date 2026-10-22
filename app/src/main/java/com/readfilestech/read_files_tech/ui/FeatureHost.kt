@@ -5,6 +5,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.tools.color.ColorPickerScreen
 import com.readfilestech.read_files_tech.ui.tools.convert.ConvertScreen
 import com.readfilestech.read_files_tech.ui.tools.csveditor.CsvEditorScreen
+import com.readfilestech.read_files_tech.ui.tools.csvtools.CsvToolsScreen
 import com.readfilestech.read_files_tech.ui.tools.diff.DiffScreen
 import com.readfilestech.read_files_tech.ui.tools.editor.CodeEditorScreen
 import com.readfilestech.read_files_tech.ui.tools.encode.EncodeScreen
@@ -17,6 +18,7 @@ import com.readfilestech.read_files_tech.ui.tools.images.CompressScreen
 import com.readfilestech.read_files_tech.ui.tools.images.ExifScreen
 import com.readfilestech.read_files_tech.ui.tools.ocr.OcrScreen
 import com.readfilestech.read_files_tech.ui.tools.scanner.ScannerScreen
+import com.readfilestech.read_files_tech.ui.tools.texttools.TxtToolsScreen
 
 /**
  * The screen of each [Feature] — a tool of the home's grid, a quick-settings tile, a menu entry. A tool
@@ -43,6 +45,8 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.CSV_EDITOR -> CsvEditorScreen(picked, onNavigate, onBack)
         Feature.EDITOR -> CodeEditorScreen(picked, onNavigate, onBack)
         Feature.OCR -> OcrScreen(picked, onNavigate, onBack)
+        Feature.TXT_TOOLS -> TxtToolsScreen(picked, onNavigate, onBack)
+        Feature.CSV_TOOLS -> CsvToolsScreen(picked, onNavigate, onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

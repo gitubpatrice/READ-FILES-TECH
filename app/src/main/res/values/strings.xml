@@ -924,4 +924,84 @@
     <string name="exif_saved_title">Clean copy saved</string>
     <string name="exif_read_failed">Cannot read this picture: %1$s</string>
     <string name="exif_failed">Cannot save the copy: %1$s</string>
+
+    <!-- Text tools and CSV tools (phase 5) -->
+    <string name="tools_pdf_created">PDF created</string>
+    <string name="tools_pdf_working">Making the PDF… %1$d %%</string>
+    <string name="tools_pdf_failed">Cannot make the PDF: %1$s</string>
+    <string name="txt_intro">Counts the characters, words and lines of a text, finds and replaces in it, exports it to PDF</string>
+    <string name="txt_pick_title">Choose a text file</string>
+    <string name="txt_reading">Reading…</string>
+    <string name="txt_statistics">Statistics</string>
+    <string name="txt_characters">Characters</string>
+    <string name="txt_words">Words</string>
+    <string name="txt_lines">Lines</string>
+    <string name="txt_counting">Counting… %1$d %%</string>
+    <string name="txt_search_replace">Search and replace</string>
+    <string name="txt_search">Search</string>
+    <string name="txt_replace_with">Replace with</string>
+    <string name="txt_searching">Searching…</string>
+    <string name="txt_not_found">Not found</string>
+    <plurals name="txt_matches">
+        <item quantity="one">%1$,d match</item>
+        <item quantity="other">%1$,d matches</item>
+    </plurals>
+    <string name="txt_replace_all">Replace all into a copy</string>
+    <string name="txt_replace_note">The file itself is left as it is: a copy with the replacements is saved in Conversions.</string>
+    <string name="txt_replacing">Replacing… %1$d %%</string>
+    <string name="txt_export">Export</string>
+    <string name="txt_to_pdf">Convert to PDF</string>
+    <string name="txt_replaced_title">Copy saved with the replacements</string>
+    <plurals name="txt_replaced_body">
+        <item quantity="one">%1$,d replacement; the original file is untouched. The copy is here:</item>
+        <item quantity="other">%1$,d replacements; the original file is untouched. The copy is here:</item>
+    </plurals>
+    <string name="txt_replace_not_text">“%1$s” is not a text file: nothing was replaced.</string>
+    <string name="txt_replace_not_reversible">“%1$s” holds bytes that are no characters of its encoding — a character cut short, or damage: a copy would change them. Nothing was replaced.</string>
+    <string name="txt_replace_unencodable">%1$s, the encoding of this file, has no “%2$s”: change the replacement.</string>
+    <string name="txt_replace_too_large">The copy would be larger than %1$,d %2$s: nothing was written.</string>
+    <string name="txt_replace_no_match">The text searched is not in this file: there is nothing to replace.</string>
+    <string name="txt_replace_failed">Cannot save the copy: %1$s</string>
+    <string name="txt_pdf_too_large">Too long to convert to PDF: over %1$,d %2$s of text.</string>
+    <string name="csv_tools_intro">Counts the rows and columns of a CSV, exports it as a PDF table, merges several CSV files into one</string>
+    <string name="csv_tools_pick_title">Choose a CSV file</string>
+    <string name="csv_tools_merge_pick_title">CSV files to merge</string>
+    <string name="csv_tools_merge_several">Merge several CSV files</string>
+    <string name="csv_tools_merge_with">Merge with other CSV files</string>
+    <string name="csv_tools_rows">Rows</string>
+    <string name="csv_tools_columns">Columns</string>
+    <string name="csv_tools_rows_cut">More rows than the viewer shows: counted up to %1$,d.</string>
+    <string name="csv_tools_columns_cut">More columns than the viewer shows: counted up to %1$,d.</string>
+    <plurals name="csv_tools_more_columns">
+        <item quantity="one">and %1$,d more</item>
+        <item quantity="other">and %1$,d more</item>
+    </plurals>
+    <string name="csv_tools_actions">Actions</string>
+    <string name="csv_tools_merging">Merging… %1$d %%</string>
+    <string name="csv_tools_to_pdf">Export to PDF</string>
+    <string name="csv_tools_merge_note">The rows of the files chosen go after those of this file, under its header; the files themselves are untouched.</string>
+    <string name="csv_tools_merged_title">CSV files merged</string>
+    <plurals name="csv_tools_merged_files">
+        <item quantity="one">From %1$d file</item>
+        <item quantity="other">From %1$d files</item>
+    </plurals>
+    <plurals name="csv_tools_merged_body">
+        <item quantity="one">%1$,d row under the first file\'s header. It is here:</item>
+        <item quantity="other">%1$,d rows under the first file\'s header. It is here:</item>
+    </plurals>
+    <string name="csv_tools_merge_empty">None of these files holds a row: there is nothing to merge.</string>
+    <string name="csv_tools_merge_other_columns">“%1$s” does not have the columns of the first file: it cannot go under its header.</string>
+    <plurals name="csv_tools_merge_too_many_columns">
+        <item quantity="one">A row of “%1$s” has more than %2$,d column.</item>
+        <item quantity="other">A row of “%1$s” has more than %2$,d columns.</item>
+    </plurals>
+    <plurals name="csv_tools_merge_cell_too_long">
+        <item quantity="one">A cell of “%1$s” holds more than %2$,d character, more than a spreadsheet cell.</item>
+        <item quantity="other">A cell of “%1$s” holds more than %2$,d characters, more than a spreadsheet cell.</item>
+    </plurals>
+    <string name="csv_tools_merge_failed">Cannot merge these files: %1$s</string>
+    <plurals name="csv_tools_too_many_pages">
+        <item quantity="one">This table would make more than %1$,d page: too large to export here.</item>
+        <item quantity="other">This table would make more than %1$,d pages: too large to export here.</item>
+    </plurals>
 </resources>

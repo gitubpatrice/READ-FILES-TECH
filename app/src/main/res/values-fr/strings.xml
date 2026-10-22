@@ -953,4 +953,92 @@
     <string name="exif_saved_title">Image nettoyée et enregistrée</string>
     <string name="exif_read_failed">Impossible de lire cette image : %1$s</string>
     <string name="exif_failed">Impossible d\'enregistrer la copie : %1$s</string>
+
+    <!-- Outils TXT et outils CSV (phase 5) -->
+    <string name="tools_pdf_created">PDF créé</string>
+    <string name="tools_pdf_working">Création du PDF… %1$d %%</string>
+    <string name="tools_pdf_failed">Impossible de créer le PDF : %1$s</string>
+    <string name="txt_intro">Compte les caractères, les mots et les lignes d\'un texte, y recherche et remplace, l\'exporte en PDF</string>
+    <string name="txt_pick_title">Choisir un fichier texte</string>
+    <string name="txt_reading">Lecture…</string>
+    <string name="txt_statistics">Statistiques</string>
+    <string name="txt_characters">Caractères</string>
+    <string name="txt_words">Mots</string>
+    <string name="txt_lines">Lignes</string>
+    <string name="txt_counting">Comptage… %1$d %%</string>
+    <string name="txt_search_replace">Rechercher / Remplacer</string>
+    <string name="txt_search">Rechercher</string>
+    <string name="txt_replace_with">Remplacer par</string>
+    <string name="txt_searching">Recherche…</string>
+    <string name="txt_not_found">Introuvable</string>
+    <plurals name="txt_matches">
+        <item quantity="one">%1$,d résultat</item>
+        <item quantity="many">%1$,d résultats</item>
+        <item quantity="other">%1$,d résultats</item>
+    </plurals>
+    <string name="txt_replace_all">Tout remplacer dans une copie</string>
+    <string name="txt_replace_note">Le fichier lui-même reste tel quel : une copie avec les remplacements est enregistrée dans Conversions.</string>
+    <string name="txt_replacing">Remplacement… %1$d %%</string>
+    <string name="txt_export">Export</string>
+    <string name="txt_to_pdf">Convertir en PDF</string>
+    <string name="txt_replaced_title">Copie enregistrée avec les remplacements</string>
+    <plurals name="txt_replaced_body">
+        <item quantity="one">%1$,d remplacement ; le fichier d\'origine n\'est pas modifié. La copie est ici :</item>
+        <item quantity="many">%1$,d remplacements ; le fichier d\'origine n\'est pas modifié. La copie est ici :</item>
+        <item quantity="other">%1$,d remplacements ; le fichier d\'origine n\'est pas modifié. La copie est ici :</item>
+    </plurals>
+    <string name="txt_replace_not_text">« %1$s » n\'est pas un fichier texte : rien n\'a été remplacé.</string>
+    <string name="txt_replace_not_reversible">« %1$s » contient des octets qui ne sont pas des caractères de son encodage — un caractère coupé, ou un dommage : une copie les changerait. Rien n\'a été remplacé.</string>
+    <string name="txt_replace_unencodable">%1$s, l\'encodage de ce fichier, n\'a pas de « %2$s » : changez le remplacement.</string>
+    <string name="txt_replace_too_large">La copie dépasserait %1$,d %2$s : rien n\'a été écrit.</string>
+    <string name="txt_replace_no_match">Le texte recherché n\'est pas dans ce fichier : il n\'y a rien à remplacer.</string>
+    <string name="txt_replace_failed">Impossible d\'enregistrer la copie : %1$s</string>
+    <string name="txt_pdf_too_large">Trop long pour être converti en PDF : plus de %1$,d %2$s de texte.</string>
+    <string name="csv_tools_intro">Compte les lignes et les colonnes d\'un CSV, l\'exporte en tableau PDF, fusionne plusieurs CSV en un seul</string>
+    <string name="csv_tools_pick_title">Choisir un fichier CSV</string>
+    <string name="csv_tools_merge_pick_title">CSV à fusionner</string>
+    <string name="csv_tools_merge_several">Fusionner plusieurs CSV</string>
+    <string name="csv_tools_merge_with">Fusionner avec d\'autres CSV</string>
+    <string name="csv_tools_rows">Lignes</string>
+    <string name="csv_tools_columns">Colonnes</string>
+    <string name="csv_tools_rows_cut">Plus de lignes que la visionneuse n\'en montre : comptées jusqu\'à %1$,d.</string>
+    <string name="csv_tools_columns_cut">Plus de colonnes que la visionneuse n\'en montre : comptées jusqu\'à %1$,d.</string>
+    <plurals name="csv_tools_more_columns">
+        <item quantity="one">et %1$,d autre</item>
+        <item quantity="many">et %1$,d autres</item>
+        <item quantity="other">et %1$,d autres</item>
+    </plurals>
+    <string name="csv_tools_actions">Actions</string>
+    <string name="csv_tools_merging">Fusion… %1$d %%</string>
+    <string name="csv_tools_to_pdf">Exporter en PDF</string>
+    <string name="csv_tools_merge_note">Les lignes des fichiers choisis viennent après celles de ce fichier, sous son en-tête ; les fichiers eux-mêmes ne sont pas modifiés.</string>
+    <string name="csv_tools_merged_title">CSV fusionnés</string>
+    <plurals name="csv_tools_merged_files">
+        <item quantity="one">À partir de %1$d fichier</item>
+        <item quantity="many">À partir de %1$d fichiers</item>
+        <item quantity="other">À partir de %1$d fichiers</item>
+    </plurals>
+    <plurals name="csv_tools_merged_body">
+        <item quantity="one">%1$,d ligne sous l\'en-tête du premier fichier. Il est ici :</item>
+        <item quantity="many">%1$,d lignes sous l\'en-tête du premier fichier. Il est ici :</item>
+        <item quantity="other">%1$,d lignes sous l\'en-tête du premier fichier. Il est ici :</item>
+    </plurals>
+    <string name="csv_tools_merge_empty">Aucun de ces fichiers ne contient de ligne : il n\'y a rien à fusionner.</string>
+    <string name="csv_tools_merge_other_columns">« %1$s » n\'a pas les colonnes du premier fichier : il ne peut pas aller sous son en-tête.</string>
+    <plurals name="csv_tools_merge_too_many_columns">
+        <item quantity="one">Une ligne de « %1$s » a plus de %2$,d colonne.</item>
+        <item quantity="many">Une ligne de « %1$s » a plus de %2$,d colonnes.</item>
+        <item quantity="other">Une ligne de « %1$s » a plus de %2$,d colonnes.</item>
+    </plurals>
+    <plurals name="csv_tools_merge_cell_too_long">
+        <item quantity="one">Une cellule de « %1$s » contient plus de %2$,d caractère, plus qu\'une cellule de tableur.</item>
+        <item quantity="many">Une cellule de « %1$s » contient plus de %2$,d caractères, plus qu\'une cellule de tableur.</item>
+        <item quantity="other">Une cellule de « %1$s » contient plus de %2$,d caractères, plus qu\'une cellule de tableur.</item>
+    </plurals>
+    <string name="csv_tools_merge_failed">Impossible de fusionner ces fichiers : %1$s</string>
+    <plurals name="csv_tools_too_many_pages">
+        <item quantity="one">Ce tableau ferait plus de %1$,d page : trop grand pour être exporté ici.</item>
+        <item quantity="many">Ce tableau ferait plus de %1$,d pages : trop grand pour être exporté ici.</item>
+        <item quantity="other">Ce tableau ferait plus de %1$,d pages : trop grand pour être exporté ici.</item>
+    </plurals>
 </resources>
