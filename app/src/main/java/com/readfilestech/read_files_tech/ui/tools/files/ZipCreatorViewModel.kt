@@ -62,11 +62,18 @@ class ZipCreatorViewModel @Inject constructor(
     private var job: Job? = null
 
     init {
-        handle.get<ArrayList<String>>(KEY_FILES)?.let(::add)
+        // The files chosen, read again after a process death: the card of the last archive, if any, stays.
+        handle.get<ArrayList<String>>(KEY_FILES)?.let { addFiles(it, chosen = false) }
     }
 
-    /** The files the picker handed back, after those already chosen; one already there is not added twice. */
-    fun add(paths: List<String>) {
+    /**
+     * The files the picker handed back, after those already chosen; one already there is not added twice. Files
+     * chosen take the last archive's card off the screen, as in the TXT and CSV tools and the OCR.
+     */
+    fun add(paths: List<String>) = addFiles(paths, chosen = true)
+
+    private fun addFiles(paths: List<String>, chosen: Boolean) {
+        if (chosen && paths.isNotEmpty()) clearResult()
         viewModelScope.launch {
             val added = withContext(io) { paths.distinct().map { DirectoryListing.entryOf(File(it)) } }
             mutableState.update { state ->
@@ -85,6 +92,8 @@ class ZipCreatorViewModel @Inject constructor(
     fun create() {
         val files = mutableState.value.files
         if (files.isEmpty() || job?.isCompleted == false) return
+        // A new run: the last archive's card is not this run's, whatever it comes to.
+        clearResult()
         mutableState.update { it.copy(progress = 0f) }
         job = viewModelScope.launch {
             try {
@@ -124,6 +133,12 @@ class ZipCreatorViewModel @Inject constructor(
 
     private fun remember() {
         handle[KEY_FILES] = ArrayList(mutableState.value.files.map(FileEntry::path))
+    }
+
+    private fun clearResult() {
+        handle.remove<String>(KEY_RESULT)
+        handle.remove<Int>(KEY_RESULT_COUNT)
+        mutableState.update { it.copy(result = null, resultCount = 0, share = null) }
     }
 
     private companion object {

@@ -96,7 +96,10 @@ class ConvertViewModel @Inject constructor(
         // Until the last one has ENDED, not only been stopped: its `finally` would clear this one's progress and
         // Stop button (Claude review R18). The screen still shows it working meanwhile.
         if (job?.isCompleted == false) return
-        mutableState.update { it.copy(working = conversion, progress = null) }
+        // A new input, a new run: the previous output's card leaves the screen, as in the TXT and CSV tools and
+        // the OCR — it stayed under the new run, and after its failure, as if it were this run's output.
+        handle.remove<String>(KEY_RESULT)
+        mutableState.update { it.copy(working = conversion, progress = null, result = null, share = null) }
         job = viewModelScope.launch {
             try {
                 val outcome = loadOrFailure {
