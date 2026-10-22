@@ -46,14 +46,14 @@ class ScanFiles(val root: File) {
      * imported, before any photo or save has made it — every import into a new scan failed so, the page's
      * temporary file opened in a folder not there ("the item no longer exists", seen on the S9).
      */
-    fun newPageFile(sessionId: String, page: ScanPage): File = pageFile(sessionId, page).also { madeDir(sessionId) }
-
-    /** [sessionDir], made if it is not there yet. */
-    private fun madeDir(sessionId: String): File = sessionDir(sessionId).also { Files.createDirectories(it.toPath()) }
+    fun newPageFile(sessionId: String, page: ScanPage): File {
+        sessionDir(sessionId).made()
+        return pageFile(sessionId, page)
+    }
 
     /** Written atomically: a process killed half-way leaves the previous session, never a truncated one. */
     fun save(session: ScanSession) {
-        val dir = madeDir(session.id)
+        val dir = sessionDir(session.id).made()
         AtomicFiles.writeBytes(File(dir, SESSION_FILE), session.toJson().toByteArray(Charsets.UTF_8))
     }
 
@@ -112,7 +112,7 @@ class ScanFiles(val root: File) {
         /** The photo the camera wrote into [capture], moved into the session's folder (out of the served one). */
         fun adopt(capture: File, sessionId: String): PageSource.Owned {
             require(isOwn(capture)) { "not a capture" }
-            val folder = madeDir(sessionId)
+            val folder = sessionDir(sessionId).made()
             val name = "src-${newId()}.jpg"
             Files.move(capture.toPath(), File(folder, name).toPath(), StandardCopyOption.ATOMIC_MOVE)
             return PageSource.Owned(name)
@@ -138,3 +138,6 @@ class ScanFiles(val root: File) {
         private val CAPTURE_NAME = Regex("^[0-9a-f]{16}\\.jpg$")
     }
 }
+
+/** This folder, made if it is not there yet. */
+private fun File.made(): File = also { Files.createDirectories(toPath()) }
