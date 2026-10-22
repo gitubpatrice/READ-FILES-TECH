@@ -106,7 +106,10 @@ class CompressViewModel @Inject constructor(
             mutableState.update { current ->
                 made.fold(
                     { (result, share) -> current.copy(working = false, result = result, share = result.path.takeIf { share }) },
-                    { current.copy(working = false, failure = outputFailure(file.name, it) ?: uiText(R.string.compress_failed, imageToolReason(it))) },
+                    { error ->
+                        val failure = outputFailure(file.name, error) ?: uiText(R.string.compress_failed, imageToolReason(error))
+                        current.copy(working = false, failure = failure)
+                    },
                 )
             }
         }
@@ -196,7 +199,10 @@ class ExifViewModel @Inject constructor(
             mutableState.update { s ->
                 made.fold(
                     { (path, share) -> s.copy(working = false, result = path, share = path.takeIf { share }) },
-                    { s.copy(working = false, failure = outputFailure(file.name, it) ?: uiText(R.string.exif_failed, imageToolReason(it))) },
+                    { error ->
+                        val failure = outputFailure(file.name, error) ?: uiText(R.string.exif_failed, imageToolReason(error))
+                        s.copy(working = false, failure = failure)
+                    },
                 )
             }
         }
