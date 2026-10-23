@@ -60,19 +60,20 @@ data class OcrState(
     val untouched: Boolean get() = !working && text == null && failure == null && saved == null
 }
 
-/** Why a picture gave no text, in words: the decoder's refusal as the image tools say it, or ML Kit's failure. */
+/** Why a picture gave no text, in words: the decoder's refusal as the image tools say it, or Tesseract's failure. */
 internal fun ocrReason(error: Throwable): UiText =
     if (error is RecognitionFailedException) uiText(R.string.ocr_recognition_failed) else imageToolReason(error)
 
 /**
  * `OcrScreen` of the 2.15.3: a picture from the picker or a photo of the system's camera app (the scanner's
- * capture, no CAMERA permission: docs D-027), its latin text recognised on the phone by ML Kit (D-031), then
+ * capture, no CAMERA permission: docs D-027), its text recognised on the phone by Tesseract (D-032), then
  * copied, saved as `OCR/ocr_<stamp>.txt` or shared.
  *
  * Departures, each a defect of the 2.15.3: the photo is the app's file, deleted once decoded (its plugin left
  * `cache/image_picker*.jpg` for ever, D16); the picture is decoded within the image viewer's bounds,
  * upright (`InputImage.fromFilePath`, no cap); a failure is said in words (`'Erreur OCR : $e'`,
- * `ocr_screen.dart:52`); leaving the screen drops the recognition under way and closes the recognizer.
+ * `ocr_screen.dart:52`); leaving the screen stops the recognition under way and recycles the engine.
+ * And no longer ML Kit (D-032), which reported each use through Google Play services.
  */
 @HiltViewModel
 class OcrViewModel @Inject constructor(
@@ -120,10 +121,10 @@ class OcrViewModel @Inject constructor(
     fun noCamera() = messages.error(uiText(R.string.scanner_no_camera))
 
     /**
-     * One picture at a time: a new one replaces the one being read, whose ML Kit task — which nothing stops —
-     * is waited for before the new picture is decoded ([OcrEngine.idle]). A [photo] is deleted once decoded,
-     * whatever happens. A picture [chosen] now (not read again after a process death) takes the .txt saved from
-     * the previous one off the screen: the 2.15.3 left its row under the new text.
+     * One picture at a time: a new one replaces the one being read, whose recognition is stopped and waited
+     * for before the new picture is decoded. A [photo] is deleted once decoded, whatever happens. A picture
+     * [chosen] now (not read again after a process death) takes the .txt saved from the previous one off the
+     * screen: the 2.15.3 left its row under the new text.
      */
     private fun read(file: File, photo: Boolean, chosen: Boolean) {
         val previous = job
@@ -135,12 +136,11 @@ class OcrViewModel @Inject constructor(
         job = viewModelScope.launch {
             val read = loadOrFailure {
                 val picture = try {
-                    // The previous read gone first — its decode, which a cancellation does not stop — then
-                    // ML Kit's task: two pictures never meet (Claude review R25: after a process death, the
-                    // picker's picture read again and the camera's photo were decoded at once). Inside the
-                    // try: a photo is deleted even when cancelled while waiting.
+                    // The previous read gone first — its decode, which a cancellation does not stop, or its
+                    // recognition, stopped at its next word: two pictures never meet (Claude review R25: after
+                    // a process death, the picker's picture read again and the camera's photo were decoded at
+                    // once). Inside the try: a photo is deleted even when cancelled while waiting.
                     previous?.join()
-                    engine.idle()
                     withContext(io) { OcrImages.decode(file) }
                 } finally {
                     if (photo) withContext(NonCancellable + io) { camera.captures.discard(file) }
@@ -187,7 +187,7 @@ class OcrViewModel @Inject constructor(
 
     fun shared() = mutableState.update { it.copy(share = null) }
 
-    /** The screen left: the recognition under way is dropped, the recognizer closed, a photo not yet back deleted. */
+    /** The screen left: the recognition under way is stopped, the engine recycled, a photo not yet back deleted. */
     override fun onCleared() {
         engine.close()
         camera.pending()?.let { capture -> appScope.launch(io) { camera.captures.discard(capture) } }

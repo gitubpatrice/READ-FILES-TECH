@@ -683,7 +683,7 @@
         <item quantity="other">Ses %d pages n\'ont pas été enregistrées en PDF.</item>
     </plurals>
     <string name="scanner_discard">Abandonner</string>
-    <string name="ocr_intro">Photographiez une page ou choisissez une image : son texte, en alphabet latin, est reconnu sur ce téléphone. Rien n\'en sort.</string>
+    <string name="ocr_intro">Photographiez une page ou choisissez une image : son texte, en français ou en anglais, est reconnu sur ce téléphone. Rien n\'en sort.</string>
     <string name="ocr_choose_image">Choisir une image</string>
     <string name="ocr_image_read">L\'image lue</string>
     <string name="ocr_working">Reconnaissance du texte…</string>

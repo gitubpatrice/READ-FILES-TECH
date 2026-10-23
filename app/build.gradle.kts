@@ -354,8 +354,8 @@ dependencies {
     // The PDF viewer's password and outline (docs D-005), in the `:pdf` process only (D-029).
     implementation(libs.pdfbox.android)
 
-    // The OCR (docs D-031): ML Kit's latin recognizer, its model bundled — offline, no Play Services.
-    implementation(libs.mlkit.text.recognition)
+    // The OCR (docs D-032): Tesseract, its trained data in the assets — offline, nothing of Google.
+    implementation(libs.tesseract4android)
 
     debugImplementation(libs.compose.ui.tooling)
 

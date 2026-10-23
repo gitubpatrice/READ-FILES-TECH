@@ -148,37 +148,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        <!--
-            NO TELEMETRY: Google's transport `datatransport`, which ML Kit pulls (the OCR, docs D-031), removed
-            as the 2.15.3 removed it (its AndroidManifest.xml:167-207). transport-backend-cct reports the
-            library's usage to Google; these are the three components it adds to the merged manifest — its
-            backend's registration and its two schedulers of uploads. Without them declared, Android can
-            neither bind the service nor deliver the broadcast: the transport never starts. Its code stays
-            in the APK; the INTERNET and ACCESS_NETWORK_STATE it asks for are removed above, so even started
-            it could send nothing. tools/check-manifest-shape.py fails on any component of its package.
-            The recognition itself needs none of them: the model is bundled, read from the APK.
-            Not declared either: the `com.google.mlkit.vision.DEPENDENCIES` meta-data of the 2.15.3, which
-            only asks Play Services to download an UNBUNDLED model (inventory S10).
-        -->
-        <service
-            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
-            tools:node="remove" />
-        <service
-            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
-            tools:node="remove" />
-        <receiver
-            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
-            tools:node="remove" />
-        <!--
-            NO USAGE REPORTS THROUGH PLAY SERVICES: ML Kit's vision libraries also report each use (method,
-            status, times) through Google Play services' client telemetry, a binding to com.google.android.gms
-            that needs no permission (Claude review R25, measured on a Galaxy S9 and an emulator). ML Kit is
-            therefore not started by its provider, on the application, at every launch: the OCR starts it on
-            a context that refuses any binding to Play services (data/ocr/NoGmsContext.kt).
-            tools/check-manifest-shape.py fails if this provider comes back.
-        -->
-        <provider
-            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
-            tools:node="remove" />
     </application>
 </manifest>

@@ -53,12 +53,15 @@ commonmark              = "0.30.0"
 # no dependency, no permission. 1.8 published 2025-01-09.
 re2j                    = "1.8"
 
-# --- OCR (phase 5, docs D-031): ML Kit's on-device LATIN text recognition, its model BUNDLED in the APK
-# (no download, no Play Services): the artefact the 2.15.3 shipped through google_mlkit_text_recognition
-# 0.17.1. NOT free software (ML Kit terms): accepted for this tool only, RFT not being on F-Droid. It pulls
-# Google's telemetry transport (datatransport), whose entry points the manifest removes; the CI's permission
-# guard proves nothing of it reaches the APK. 16.0.1 (2024-08-07) is the latest on Google's Maven.
-mlkitTextRecognition    = "16.0.1"
+# --- OCR (phase 5, docs D-032): Tesseract 5.5.1, free, on the phone, offline — ML Kit, which reported each
+# use through Google Play services, left the app. Tesseract4Android 4.9.0 (2025-06-11, the latest): its JNI
+# binding and native builds of Tesseract (Apache-2.0), Leptonica (BSD-2-Clause), the IJG's libjpeg 9f (IJG
+# licence) and libpng 1.6.48 (PNG Reference Library License v2) — each read at its source, all in NOTICE.
+# Apache-2.0 itself (its LICENSE); no permission, no component in its manifest; one dependency,
+# androidx.annotation. The STANDARD variant, not `-openmp`: one thread, so its progress callback runs on the
+# thread that recognises (OcrEngine stops it from there). On JitPack only: settings.gradle.kts gives JitPack
+# this group alone, gradle/verification-metadata.xml pins its bytes.
+tesseract4android       = "4.9.0"
 
 # --- Crypto (docs D-005): ONE BouncyCastle family for the vault KDFs and, later, PdfBox ---
 bouncycastle            = "1.86"
@@ -127,7 +130,7 @@ bcutil                                  = { group = "org.bouncycastle",         
 
 pdfbox-android                          = { group = "com.tom-roush",                   name = "pdfbox-android",                    version.ref = "pdfboxAndroid" }
 
-mlkit-text-recognition                  = { group = "com.google.mlkit",                name = "text-recognition",                  version.ref = "mlkitTextRecognition" }
+tesseract4android                       = { group = "cz.adaptech.tesseract4android",   name = "tesseract4android",                 version.ref = "tesseract4android" }
 
 # Tests — JUnit Jupiter. The platform launcher is declared and aligned through the BOM: without it
 # Gradle runs the tests with the launcher it bundles, and on JUnit 6 the test task died with 0 test

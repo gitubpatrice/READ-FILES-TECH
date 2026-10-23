@@ -75,7 +75,7 @@ class PortCheckProvider : ContentProvider() {
             METHOD_CORPUS -> corpus(requireNotNull(arg))
             METHOD_OCR -> {
                 val app = requireNotNull(context).applicationContext
-                report(runBlocking { OcrCheck(app).run(File(requireNotNull(arg))) })
+                report(runBlocking { OcrCheck(app, extras).run(File(requireNotNull(arg))) })
             }
             else -> throw IllegalArgumentException("unknown method $method")
         }
@@ -133,7 +133,7 @@ class PortCheckProvider : ContentProvider() {
         const val METHOD_OBSERVE = "observe"
         const val METHOD_CORPUS = "corpus"
 
-        /** The OCR's oracle (OcrCheck), on the images of the folder [call]'s argument names. */
+        /** The OCR's oracle (OcrCheck), on the images of the folder [call]'s argument names, its extras its options. */
         const val METHOD_OCR = "ocr"
         const val KEY_REPORT = "report"
     }

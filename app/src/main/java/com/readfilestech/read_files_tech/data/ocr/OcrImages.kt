@@ -13,18 +13,21 @@ import kotlin.math.roundToInt
  * The picture the OCR reads, made by the image viewer's decoder within its bounds ([ImageDecoding]): the
  * file's size, then the dimensions its header announces, checked before a pixel is allocated — a picture
  * of 100 megapixels is refused there, in words —, the EXIF orientation applied, so that the picture is
- * upright before ML Kit sees it; subsampled to [MAX_PIXELS] at most; on white where it is transparent, in
- * ARGB_8888. The 2.15.3 handed the path to ML Kit (`InputImage.fromFilePath`, `ocr_screen.dart:44`): no
- * cap, the whole image decoded whatever its size.
+ * upright before Tesseract sees it; subsampled to [MAX_PIXELS] at most; on white where it is transparent,
+ * in ARGB_8888 (what Tesseract's binding takes). The 2.15.3 handed the path to ML Kit
+ * (`InputImage.fromFilePath`, `ocr_screen.dart:44`): no cap, the whole image decoded whatever its size.
  */
 object OcrImages {
     /**
-     * Pixels decoded at most: 16 million, 64 MB of ARGB. ML Kit reads a latin character well from 16 pixels
-     * high and gains nothing above 24 (its input image guidelines); a page photographed whole by a 12 Mpx
-     * sensor — the S9's 4032 × 3024 — gives its body text about that size, so such a photo is read WHOLE,
-     * and one of 48 to 50 Mpx (the full-resolution mode of newer sensors) is halved to 12, its characters as
-     * large as on the first. A budget of pixels, not of side: a 1080 × 20 000 screenshot halves to
-     * 540 × 10 000, where a limit of 4096 pixels a side would divide its text by eight.
+     * Pixels decoded at most: 16 million, 64 MB of ARGB — and no other resizing for Tesseract. A page
+     * photographed whole by a 12 Mpx sensor (the S9's 4032 × 3024) gives its 11-point body text capitals of
+     * about 25 to 35 pixels, so such a photo is read WHOLE, and one of 48 to 50 Mpx (the full-resolution mode of newer
+     * sensors) is halved to 12, its characters as large as on the first. Measured on the oracle
+     * (tools/oracles/ocr_oracle.py, emulator, 2026-10-23): Tesseract read capitals from about 9 pixels (Times
+     * 26 px at half size) to 54 (the 48 Mpx page halved) at 98.4 to 100 % of the words; doubled to 108, 95 %.
+     * Halving the 12 Mpx photo kept its words and took 0.25 s instead of 0.6, but would bring a page's small
+     * print below those 9 pixels: not done. A budget of pixels, not of side: a 1080 × 20 000 screenshot halves
+     * to 540 × 10 000, where a limit of 4096 pixels a side would divide its text by eight.
      */
     const val MAX_PIXELS = 16_000_000L
 
@@ -49,7 +52,7 @@ object OcrImages {
     fun decode(file: File): Bitmap {
         val flat = ImageExport.opaque(ImageDecoding.still(file, ::sampleFor))
         if (flat.config == Bitmap.Config.ARGB_8888) return flat
-        // A 16-bit PNG or a 10-bit HEIF decodes to RGBA_F16 (or 1010102): ML Kit reads 8 bits a channel.
+        // A 16-bit PNG or a 10-bit HEIF decodes to RGBA_F16 (or 1010102): Tesseract's binding takes 8 bits a channel.
         return ImageExport.replaced(flat) {
             it.copy(Bitmap.Config.ARGB_8888, false) ?: throw UnreadableFileException("not converted")
         }

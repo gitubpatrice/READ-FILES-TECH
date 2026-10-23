@@ -43,14 +43,8 @@
 # (measured by the prototype, also in negative). Never reached: the viewer renders with PdfRenderer.
 -dontwarn com.gemalto.jp2.**
 
-# ---- ML Kit text recognition 16.0.1 (the OCR: docs D-031) ---------------------------------------------
-# ML Kit finds its parts through firebase-components: the registrars named in the manifest's meta-data
-# (MlKitComponentDiscoveryService) are created by reflection, by their no-argument constructor. The rule
-# firebase-components 16.1.0 ships keeps the classes and NOT that constructor, which R8's full mode then
-# removes: with no rule, the `check` build failed at the first recognition (NullPointerException in
-# TextRecognition.getClient: the text component never registered — measured on the emulator, 2026-10-22).
-# The 2.15.3's three `-keep class … { *; }` (its proguard-rules.pro:35-37) are NOT enough, and are not
-# needed: with them, ML Kit's own registrar still failed and the app died at start (unsatisfied
-# ExecutorSelector). This line alone: the oracle passes on the emulator and the S9 (tools/oracles/ocr_oracle.py).
-# The native pipeline's callbacks are kept by ML Kit's own @UsedByNative rules (mlkit common's proguard.txt).
--keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
+# ---- Tesseract4Android 4.9.0 (the OCR: docs D-032) -----------------------------------------------------
+# No rule of ours. Its native code finds the Java side by name: the `native` methods, kept with their
+# classes by proguard-android-optimize.txt, and the one method it calls back, TessBaseAPI.onProgressValues,
+# annotated @Keep (androidx.annotation's own rules keep it). The OCR's oracle runs on the `check` build,
+# the release as R8 makes it: it reads its pictures there (tools/oracles/ocr_oracle.py).

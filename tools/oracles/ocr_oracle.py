@@ -1,9 +1,14 @@
 """The OCR's oracle (phase 5): pictures of KNOWN text, drawn by Pillow — an independent writer, not the code
 that reads them — read on a device by the app's own pipeline (OcrCheck, in the `debug` or `check` build:
-`content call --method ocr`), the text judged here.
+`content call --method ocr`), the text judged here. The engine is Tesseract (docs D-032).
 
 Usage:
     python -I tools/oracles/ocr_oracle.py --serial emulator-5554 [--package <applicationId>] [--grant] [--keep DIR]
+        [--lang eng+fra] [--tessdata FILE.traineddata ...] [--psm N] [--scale F] [--scan]
+
+What the app does is the default. To MEASURE what it does not: --lang and --tessdata (other trained data,
+pushed to the device; the app needs all-files access, --grant), --psm (another page segmentation mode),
+--scale (the decoded picture resized by F), --scan (the picture first made a page by the scanner's code).
 
 The pictures (made in a scratch folder, `--keep DIR` to keep a copy):
   a-arial-36.png         eight lines of Arial 36 px, black on white, 1400 x 700
@@ -17,12 +22,17 @@ The pictures (made in a scratch folder, `--keep DIR` to keep a copy):
   g-100mpx.png           10 000 x 10 000 (100 megapixels, a few hundred KB): refused before any decode
   h-empty.png            0 bytes;  i-garbage.jpg  random bytes;  j-cut.jpg  half of b-times-26.jpg;
   k-jpeg-named-png.png   b-times-26.jpg under a .png name
+  l-other-latin.png      eight lines of German, Spanish, Portuguese, Danish, Polish and Czech, Arial 36 px
 
 What passes:
-  - each picture of text: at least 95 % of its words found, IN READING ORDER (the longest common subsequence
-    of the words expected and the words found, over the words expected); words compared case-folded,
-    punctuation around them dropped, accents kept; and the size decoded where it is the point (DECODED):
-    c-exif-6 upright, the 12 Mpx photo whole, the 48 Mpx one halved;
+  - each CLEAN page (a, b, c): at least 95 % of its words found, IN READING ORDER (the longest common
+    subsequence of the words expected and the words found, over the words expected); words compared
+    case-folded, punctuation around them dropped, accents kept. ML Kit, the 2.15.3's engine, read every
+    picture of text at 98.4 to 100 %; 95 % is the bar Tesseract was given (docs D-032);
+  - the photo-like page, the 48 Mpx one and the other latin languages (d, e, l): read (outcome ok), their
+    share of words MEASURED and reported, not judged against the bar;
+  - every picture of text: the size decoded where it is the point (DECODED): c-exif-6 upright, the 12 Mpx
+    photo whole, the 48 Mpx one halved; and read in 10 s at most, decode and recognition together;
   - the picture without text: outcome ok, text empty (the screen then says "No text found in this image");
   - 100 megapixels: refused (too_many_pixels), the app alive; the hostile files: refused or read, never a crash.
 Exit code 0 only if everything passes.
@@ -43,6 +53,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 DEFAULT_PACKAGE = "com.readfilestech.read_files_tech.next"
 DEVICE_DIR = "/sdcard/Download/rft-ocr"
+# Other trained data, for --tessdata: Tesseract reads `<data path>/tessdata/<lang>.traineddata`.
+DEVICE_DATA = "/sdcard/Download/rft-ocr-data"
 FONT_DIRS = [pathlib.Path("C:/Windows/Fonts"), pathlib.Path("/usr/share/fonts/truetype/msttcorefonts")]
 
 LINES = [
@@ -55,10 +67,28 @@ LINES = [
     "Pack my box with five dozen liquor jugs",
     "Nothing in this picture leaves the phone",
 ]
+# Six other languages of the latin alphabet, with their own letters: what the 2.15.3's engine read (ML Kit's
+# latin model) and what trained data for English and French alone may not (docs D-032). Measured only.
+OTHER_LATIN = [
+    "Zwölf Boxkämpfer jagen Viktor quer über den Sylter Deich",
+    "Die große Straße führt zum Fuß des Berges",
+    "El veloz murciélago hindú comía feliz cardillo y kiwi",
+    "La cigüeña tocaba el saxofón detrás del palenque",
+    "Luís argüia à Júlia que fé chá óxido pôr zângão",
+    "Høj bly gom vandt fræk sexquiz på wc",
+    "Pchnąć w tę łódź jeża lub ośm skrzyń fig",
+    "Příliš žluťoučký kůň úpěl ďábelské ódy",
+]
 PASS_RATIO = 0.95
-# The size the app must decode, where it is the point: upright (ML Kit reads sideways text as well as upright —
-# measured on the emulator, 100 % of the words of c-exif-6 WITHOUT its tag — so only the size tells the EXIF
-# orientation was applied), whole at 12 Mpx, halved at 48 Mpx.
+# The pages measured, not judged against PASS_RATIO (docs D-032): the photo-like one, the 48 Mpx one, and the
+# other latin languages.
+MEASURED = ("d-photo-12mpx.jpg", "e-48mpx.jpg", "l-other-latin.png")
+EXPECTED = {"l-other-latin.png": OTHER_LATIN}
+# A page read in more than this, decode and recognition together, fails (docs D-032).
+MAX_MILLIS = 10_000
+# The size the app must decode, where it is the point: upright (an engine may read sideways text — ML Kit did,
+# 100 % of the words of c-exif-6 WITHOUT its tag — so only the size tells the EXIF orientation was applied),
+# whole at 12 Mpx, halved at 48 Mpx. Checked unless --scale or --scan change the size on purpose.
 DECODED = {"c-exif-6.jpg": "1400x700", "d-photo-12mpx.jpg": "4032x3024", "e-48mpx.jpg": "4000x3000"}
 
 
@@ -143,6 +173,8 @@ def make(out):
     cases["f-no-text.png"] = "empty"
     Image.new("L", (10_000, 10_000), 255).save(out / "g-100mpx.png", optimize=True)
     cases["g-100mpx.png"] = "refused"
+    page((1400, 700), "arial.ttf", 36, 40, lines=OTHER_LATIN).save(out / "l-other-latin.png")
+    cases["l-other-latin.png"] = "text"
 
     (out / "h-empty.png").write_bytes(b"")
     (out / "i-garbage.jpg").write_bytes(bytes(rng.randrange(256) for _ in range(50_000)))
@@ -186,17 +218,22 @@ def report_of(output):
     return json.loads(base64.b64decode(match.group(1)).decode("utf-8")) if match else None
 
 
-def judge(name, kind, result):
+def judge(name, kind, result, check_size=True):
     """None when the result is what [kind] asks, else why not."""
     outcome, text = result["outcome"], result["text"]
     if kind == "text":
         if outcome != "ok":
             return "outcome %s" % outcome
-        if result["decoded"] != DECODED.get(name, result["decoded"]):
+        if check_size and result["decoded"] != DECODED.get(name, result["decoded"]):
             return "decoded %s, expected %s" % (result["decoded"], DECODED[name])
-        expected = words(" ".join(LINES))
+        expected = words(" ".join(EXPECTED.get(name, LINES)))
         ratio = in_order(expected, words(text)) / len(expected)
         result["ratio"] = ratio
+        millis = (result["decodeMillis"] or 0) + (result["recognizeMillis"] or 0)
+        if millis > MAX_MILLIS:
+            return "read in %d ms, more than %d" % (millis, MAX_MILLIS)
+        if name in MEASURED:
+            return None
         return None if ratio >= PASS_RATIO else "%.1f %% of the words in order" % (100 * ratio)
     if kind == "empty":
         return None if outcome == "ok" and text == "" else "outcome %s, text %r" % (outcome, text)
@@ -212,6 +249,11 @@ def main():
     parser.add_argument("--package", default=DEFAULT_PACKAGE)
     parser.add_argument("--grant", action="store_true", help="appops MANAGE_EXTERNAL_STORAGE allow")
     parser.add_argument("--keep", help="a folder to copy the pictures to")
+    parser.add_argument("--lang", help="Tesseract's languages, e.g. Latin (default: the app's)")
+    parser.add_argument("--tessdata", nargs="+", help="trained data files to read instead of the app's")
+    parser.add_argument("--psm", type=int, help="Tesseract's page segmentation mode (default: the app's)")
+    parser.add_argument("--scale", type=float, help="the decoded picture resized by this factor")
+    parser.add_argument("--scan", action="store_true", help="the picture first made a page by the scanner")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -231,24 +273,45 @@ def main():
             adb(args.serial, "shell", "appops", "set", args.package, "MANAGE_EXTERNAL_STORAGE", "allow")
         adb(args.serial, "shell", "rm", "-rf", DEVICE_DIR)
         adb(args.serial, "push", str(out), DEVICE_DIR)
+    extras = []
+    if args.tessdata:
+        adb(args.serial, "shell", "rm", "-rf", DEVICE_DATA)
+        adb(args.serial, "shell", "mkdir", "-p", DEVICE_DATA + "/tessdata")
+        for model in args.tessdata:
+            adb(args.serial, "push", model, DEVICE_DATA + "/tessdata/" + pathlib.Path(model).name)
+        extras += ["--extra", "tessdata:s:" + DEVICE_DATA]
+    if args.lang:
+        extras += ["--extra", "lang:s:" + args.lang]
+    if args.psm is not None:
+        extras += ["--extra", "psm:i:%d" % args.psm]
+    if args.scale is not None:
+        extras += ["--extra", "scale:f:%s" % args.scale]
+    if args.scan:
+        extras += ["--extra", "scan:b:true"]
     uri = "content://%s.portcheck" % args.package
-    output = adb(args.serial, "shell", "content", "call", "--uri", uri, "--method", "ocr", "--arg", DEVICE_DIR, check=False)
+    output = adb(args.serial, "shell", "content", "call", "--uri", uri, "--method", "ocr", "--arg", DEVICE_DIR, *extras, check=False)
     adb(args.serial, "shell", "rm", "-rf", DEVICE_DIR, check=False)
     report = report_of(output)
     if report is None:
         print("THE APP DIED during the oracle (no report):\n" + output[-2000:])
         return 1
+    print("options: %s" % (" ".join(extras[1::2]) or "the app's"))
+    print("trained data checked (or copied) in %s ms%s" % (
+        report.get("prepareMillis"), ", FAILED: %s" % report["prepared"] if report.get("prepared") else ""))
     results = {r["file"]: r for r in report["results"]}
-    failures = 0
+    failures = 0 if not report.get("prepared") else 1
     print("%-22s %-8s %-16s %-11s %7s %7s  %s" % ("file", "kind", "outcome", "decoded", "dec ms", "ocr ms", "verdict"))
     for name, kind in cases.items():
         result = results.get(name)
-        problem = "no result" if result is None else judge(name, kind, result)
+        check_size = args.scale is None and not args.scan
+        problem = "no result" if result is None else judge(name, kind, result, check_size)
         failures += problem is not None
         r = result or {}
-        verdict = "OK" if problem is None else "FAIL " + problem
+        verdict = ("MEASURED" if name in MEASURED else "OK") if problem is None else "FAIL " + problem
         if "ratio" in r:
             verdict += " (%.1f %% of the words in order)" % (100 * r["ratio"])
+        if r.get("detail"):
+            verdict += " [%s]" % r["detail"]
         print("%-22s %-8s %-16s %-11s %7s %7s  %s" % (
             name, kind, r.get("outcome"), r.get("decoded"), r.get("decodeMillis"), r.get("recognizeMillis"), verdict))
     print()

@@ -15,8 +15,8 @@ import java.io.IOException
 class OcrUiTest {
     @Test
     fun `a picture that gives no text says why in words, never the exception's own text`() {
-        // ML Kit's failure is its own, not the file's.
-        assertThat(ocrReason(RecognitionFailedException(IllegalStateException("Failed to init thin text model"))))
+        // The engine's failure is its own, not the file's.
+        assertThat(ocrReason(RecognitionFailedException(RuntimeException("Failed to read bitmap"))))
             .isEqualTo(uiText(R.string.ocr_recognition_failed))
         // The decoder's refusals, as the image viewer and the image tools say them: 100 megapixels, too heavy, damaged.
         val maxMegapixels = FileCaps.IMAGE_PIXELS / 1_000_000
