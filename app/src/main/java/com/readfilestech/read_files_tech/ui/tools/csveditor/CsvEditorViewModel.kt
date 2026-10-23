@@ -119,12 +119,6 @@ class CsvEditorViewModel @Inject constructor(
         }
     }
 
-    /** The edits of [chosen] and its stamp, read together; the stamp first: a change while it is read is a change. */
-    private suspend fun read(chosen: File): Pair<CsvEdits, FileStamp> {
-        val opened = FileStamp.of(chosen)
-        return CsvEdits.read(StorageFileSource(chosen)) to opened
-    }
-
     /**
      * A change to the edits — a cell typed, a row or a column inserted or deleted — and what it gave (the
      * cell's [CellChange], for its dialog to close or to say why not); null while the file is written.
@@ -170,12 +164,13 @@ class CsvEditorViewModel @Inject constructor(
      * ask again. "Cancel": nothing written, and the next save asks again.
      */
     fun answerOverCap(saveAnyway: Boolean) {
-        val target = file ?: return
-        if (mutableState.value.askOverCap == null) return
+        val target = file
+        if (target == null || mutableState.value.askOverCap == null) return
         mutableState.update { it.copy(askOverCap = null) }
-        if (!saveAnyway) return
-        handle[KEY_SAVE_UNCOPIED] = target.path
-        save(askedThenLeave)
+        if (saveAnyway) {
+            handle[KEY_SAVE_UNCOPIED] = target.path
+            save(askedThenLeave)
+        }
     }
 
     private suspend fun saved(target: File, thenLeave: Boolean, written: CsvEdits) {
@@ -263,6 +258,15 @@ class CsvEditorViewModel @Inject constructor(
         /** The file whose saves over the history's cap the user accepted, without a copy of what they replace. */
         const val KEY_SAVE_UNCOPIED = "csv_editor_save_uncopied"
     }
+}
+
+/**
+ * The edits of [chosen] and its stamp, read together; the stamp first: a change while it is read is a change.
+ * Out of the view model, which needs nothing of it, and stays within detekt's count of functions.
+ */
+private suspend fun read(chosen: File): Pair<CsvEdits, FileStamp> {
+    val opened = FileStamp.of(chosen)
+    return CsvEdits.read(StorageFileSource(chosen)) to opened
 }
 
 /** The encoding the user chose for the file, kept while it is open — read again after a save, restored. */
