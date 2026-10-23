@@ -122,6 +122,52 @@ class VaultBackupsTest {
     }
 
     @Test
+    fun `D2 - after a reboot the restore lockout lasts its delay by the wall clock, as the unlock one`() = runBlocking<Unit> {
+        val backup = exportOf(mapOf("x.txt" to byteArrayOf(1)))
+        val target = vault("target")
+        target.clock.mono = 10L * 24 * 3_600_000 // ten days of uptime when the lockout is armed
+        repeat(5) { assertThrows<VaultAuthenticationException> { runBlocking { target.backups.restore(backup, "wrong") } } }
+        // Armed: the right password is refused before any derivation.
+        assertThrows<VaultLockoutException> { runBlocking { target.backups.restore(backup, EXPORT_PASSWORD) } }
+        // Reboot: elapsedRealtime restarts near zero; the wall clock moved on by 10 s.
+        target.clock.mono = 5_000
+        target.clock.wall += 10_000
+        val refused = assertThrows<VaultLockoutException> { runBlocking { target.backups.restore(backup, EXPORT_PASSWORD) } }
+        assertThat(refused.remainingMs).isEqualTo(50_000)
+        target.clock.wall += 60_000
+        assertThat(target.backups.restore(backup, EXPORT_PASSWORD).restored).isEqualTo(1)
+    }
+
+    @Test
+    fun `D1 - a restore a lock interrupts publishes nothing, at its start or once the tag is checked`() = runBlocking<Unit> {
+        val backup = exportOf(mapOf("r1.txt" to "un".toByteArray(), "r2.txt" to "deux".toByteArray()))
+        val target = vault("target")
+        val moments = mapOf<String, () -> Unit>(
+            // As the restore starts, before its first entry: the 2.15.3's case.
+            "at the start" to {
+                target.argon2.onCanAfford = {
+                    target.argon2.onCanAfford = null
+                    target.service.lock()
+                }
+            },
+            // At the commit that clears the restore lockout, after the tag: only publication is left.
+            "before publication" to {
+                target.raw.onCommit = {
+                    target.raw.onCommit = null
+                    target.service.lock()
+                }
+            },
+        )
+        for ((moment, arm) in moments) {
+            arm()
+            assertThrows<LockedDuringOperationException>(moment) { runBlocking { target.backups.restore(backup, EXPORT_PASSWORD) } }
+            assertThat(target.service.unlock(PASSWORD)).isTrue()
+            assertThat(target.files.list()).isEmpty()
+            assertThat(target.vaultEntries()).containsExactly(VaultNames.SENTINEL_FILE)
+        }
+    }
+
+    @Test
     fun `files already there are kept unless overwrite is asked`() = runBlocking<Unit> {
         val backup = exportOf(mapOf("a.txt" to "from backup".toByteArray(), "b.txt" to "b".toByteArray()))
         val target = vault("target")
