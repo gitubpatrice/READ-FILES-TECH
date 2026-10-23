@@ -214,7 +214,9 @@ fun ExplorerScreen(
         },
         // The home's tabs, when this is its third: ONE scaffold, so one bar, one button and one message
         // host — the 2.15.x stacked two of each (inventory F29).
-        bottomBar = { if (state.pick == null) navigationBar() else PickBottomBar(state, picked, onFolderChosen, onFilesChosen) },
+        bottomBar = {
+            if (state.pick == null) navigationBar() else PickBottomBar(state, picked, onFolderChosen, onFilesChosen)
+        },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Breadcrumb(state.dir) { browser.open(it) }

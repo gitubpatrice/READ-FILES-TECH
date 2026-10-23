@@ -165,19 +165,18 @@ class CsvEditorViewModel @Inject constructor(
     }
 
     /**
-     * "Save anyway": the save asked about goes on, and the answer is kept for the rest of this file's session —
-     * in the saved state, so a process death does not ask again.
+     * The answer to [CsvEditorState.askOverCap]. "Save anyway" ([saveAnyway]): the save asked about goes on, and
+     * the answer is kept for the rest of this file's session — in the saved state, so a process death does not
+     * ask again. "Cancel": nothing written, and the next save asks again.
      */
-    fun saveOverCap() {
+    fun answerOverCap(saveAnyway: Boolean) {
         val target = file ?: return
         if (mutableState.value.askOverCap == null) return
-        handle[KEY_SAVE_UNCOPIED] = target.path
         mutableState.update { it.copy(askOverCap = null) }
+        if (!saveAnyway) return
+        handle[KEY_SAVE_UNCOPIED] = target.path
         save(askedThenLeave)
     }
-
-    /** "Cancel": nothing written, and the next save asks again. */
-    fun cancelOverCap() = mutableState.update { it.copy(askOverCap = null) }
 
     private suspend fun saved(target: File, thenLeave: Boolean, written: CsvEdits) {
         restored = false

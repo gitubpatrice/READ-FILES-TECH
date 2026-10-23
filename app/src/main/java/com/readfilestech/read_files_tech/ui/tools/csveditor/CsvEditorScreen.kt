@@ -148,17 +148,17 @@ fun CsvEditorScreen(
     }
     state.versions?.let { HistoryDialog(it, onRestore = viewModel::restore, onDismiss = viewModel::hideHistory) }
     // After the leave dialog: over it, when its "Save" asked.
-    state.askOverCap?.let { OverCapDialog(it, onSave = viewModel::saveOverCap, onCancel = viewModel::cancelOverCap) }
+    state.askOverCap?.let { OverCapDialog(it, onAnswer = viewModel::answerOverCap) }
 }
 
 /** The first save of a file over the history's cap: the version it replaces cannot be kept — said, and asked, once. */
 @Composable
-private fun OverCapDialog(capMb: Int, onSave: () -> Unit, onCancel: () -> Unit) {
+private fun OverCapDialog(capMb: Int, onAnswer: (saveAnyway: Boolean) -> Unit) {
     AlertDialog(
-        onDismissRequest = onCancel,
+        onDismissRequest = { onAnswer(false) },
         text = { Text(stringResource(R.string.csv_editor_over_cap, capMb)) },
-        confirmButton = { Button(onClick = onSave) { Text(stringResource(R.string.action_save)) } },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { Button(onClick = { onAnswer(true) }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = { TextButton(onClick = { onAnswer(false) }) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
