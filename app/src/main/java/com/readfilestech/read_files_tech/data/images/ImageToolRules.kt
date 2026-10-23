@@ -15,9 +15,11 @@ enum class ImageFormat(val extension: String) {
  */
 object ImageToolRules {
     /**
-     * What Compress takes, and the OCR: what the platform decodes (HEIC and HEIF from Android 9) — both decode
-     * through [ImageDecoding]. The 2.15.3 took any picture its picker offered and failed on HEIC, which its
-     * `image` package does not read.
+     * What Compress takes, and the OCR, and the scanner's import: what the platform decodes (HEIC and HEIF from
+     * Android 9; a GIF's first frame) — all decode through [ImageDecoding]. The 2.15.3 took any picture its
+     * picker offered and failed on HEIC, which its `image` package does not read. The scanner's import took
+     * the five its gallery import took (jpg, jpeg, png, webp, bmp), though its pages decode as Compress's
+     * pictures do and are re-encoded as JPEG (`ScanPages.render`), whatever they were.
      */
     val COMPRESS_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "heic", "heif", "bmp", "gif")
 
@@ -27,13 +29,6 @@ object ImageToolRules {
      * into its first frame).
      */
     val METADATA_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
-
-    /**
-     * What the scanner imports: the images the 2.15.3's gallery import took (ML Kit's document scanner) that
-     * Android decodes. Its pages are decoded through [ImageDecoding] as Compress's pictures are, so HEIC, HEIF
-     * and GIF would decode too; the 2.15.3's set is kept.
-     */
-    val SCANNER_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp")
 
     const val QUALITY_MIN = 10
     const val QUALITY_MAX = 100

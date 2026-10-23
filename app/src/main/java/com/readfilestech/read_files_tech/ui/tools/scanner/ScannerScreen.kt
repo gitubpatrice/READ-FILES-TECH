@@ -110,7 +110,8 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             }
         }
     }
-    val importImages = { onNavigate(Routes.picker(PickMode.FILES, ImageToolRules.SCANNER_EXTENSIONS, title)) }
+    // What the decoder takes, as Compress: each page is decoded by ImageDecoding and re-encoded as a JPEG.
+    val importImages = { onNavigate(Routes.picker(PickMode.FILES, ImageToolRules.COMPRESS_EXTENSIONS, title)) }
     // Pages not yet in a PDF: leaving asks first.
     val leave = { if (state.pages.isEmpty()) onBack() else confirmLeave = true }
     val editor = state.editor
