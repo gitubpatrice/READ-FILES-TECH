@@ -201,7 +201,7 @@ class DuplicateFinderTest {
 
     @Test
     fun `the full digest is the file's SHA-256`() {
-        val digest = runBlocking { DuplicateFinder.sha256("abc".byteInputStream()) }
+        val digest = FileHashes.sha256("abc".byteInputStream())
         assertThat(digest).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
     }
 }

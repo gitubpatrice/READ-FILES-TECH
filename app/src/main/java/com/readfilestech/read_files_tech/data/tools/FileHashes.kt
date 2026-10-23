@@ -2,6 +2,8 @@ package com.readfilestech.read_files_tech.data.tools
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 import java.security.MessageDigest
 
@@ -36,6 +38,27 @@ object FileHashes {
         }
         return ALGORITHMS.zip(digests) { name, digest -> FileHash(name, digest.digest().toHex()) }
     }
+
+    /**
+     * The SHA-256 of everything [input] gives, in lower-case hex, read by pieces — never the whole in
+     * memory. [checkpoint] runs before each piece: where a caller checks for a stop. The one such loop of
+     * the app: the duplicate finder's full digest, the OCR's trained data, the CSV editor's file, the move
+     * of the 2.15.x's extractions.
+     */
+    fun sha256(input: InputStream, checkpoint: () -> Unit = {}): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(PIECE)
+        while (true) {
+            checkpoint()
+            val n = input.read(buffer)
+            if (n == -1) break
+            digest.update(buffer, 0, n)
+        }
+        return digest.digest().toHex()
+    }
+
+    /** [sha256] of [file]'s content. */
+    fun sha256(file: File, checkpoint: () -> Unit = {}): String = FileInputStream(file).use { sha256(it, checkpoint) }
 }
 
 /** A digest in lower-case hex, as the hash tool and the duplicate finder show and compare them. */

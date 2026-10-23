@@ -81,4 +81,26 @@ class FileHashesTest {
             over.set(true)
         }
     }
+
+    /** The one streamed SHA-256 (the duplicate finder, the OCR's data, the CSV editor): a stop between two pieces. */
+    @Test
+    fun `the SHA-256 of a stream checks for a stop before each piece, and stops there`() {
+        val pieces = 3
+        val bytes = ByteArray(pieces * 64 * 1024 - 10) { it.toByte() }
+        var checks = 0
+        FileHashes.sha256(ByteArrayInputStream(bytes)) { checks++ }
+        // Before each of the three pieces, and before the read that finds the end.
+        assertThat(checks).isEqualTo(pieces + 1)
+
+        var read = 0
+        val counting = object : InputStream() {
+            override fun read(): Int = throw UnsupportedOperationException()
+            override fun read(b: ByteArray, off: Int, len: Int): Int = len.also { read += it }
+        }
+        val stopped = runCatching { FileHashes.sha256(counting) { if (read > 0) throw IllegalStateException("stop") } }
+        assertThat(stopped.exceptionOrNull()).hasMessageThat().isEqualTo("stop")
+        assertThat(read).isEqualTo(64 * 1024)
+        assertThat(FileHashes.sha256("abc".byteInputStream()))
+            .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
 }

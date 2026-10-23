@@ -5,10 +5,8 @@ import com.readfilestech.read_files_tech.data.search.FolderWalk
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
-import java.io.InputStream
 import java.io.RandomAccessFile
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -61,7 +59,6 @@ sealed interface DuplicateProgress {
  */
 object DuplicateFinder {
     private const val SAMPLE = 64 * 1024
-    private const val PIECE = 64 * 1024
 
     /** @throws FileNotFoundException [root] is not a folder (the 2.15.3's "Dossier introuvable"). */
     suspend fun find(
@@ -143,18 +140,9 @@ object DuplicateFinder {
     }
 
     /** SHA-256 of the whole file, by pieces: never the file in memory (a video of 2 GB). */
-    private suspend fun digest(file: DuplicateFile): String = FileInputStream(file.path).use { sha256(it) }
-
-    internal suspend fun sha256(input: InputStream): String {
-        val digest = MessageDigest.getInstance(SHA_256)
-        val buffer = ByteArray(PIECE)
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val n = input.read(buffer)
-            if (n == -1) break
-            digest.update(buffer, 0, n)
-        }
-        return digest.digest().toHex()
+    private suspend fun digest(file: DuplicateFile): String {
+        val context = currentCoroutineContext()
+        return FileHashes.sha256(File(file.path)) { context.ensureActive() }
     }
 
     private fun RandomAccessFile.readUpTo(buffer: ByteArray, wanted: Int): Int {

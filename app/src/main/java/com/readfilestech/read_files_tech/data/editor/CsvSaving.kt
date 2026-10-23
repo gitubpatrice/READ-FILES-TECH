@@ -5,7 +5,7 @@ import com.readfilestech.read_files_tech.data.files.BoundedInputStream
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.history.EditorHistory
-import com.readfilestech.read_files_tech.data.tools.toHex
+import com.readfilestech.read_files_tech.data.tools.FileHashes
 import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
@@ -13,7 +13,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.OutputStream
-import java.security.MessageDigest
 
 /**
  * A file as it was when an editor opened it — its size, its time and the SHA-256 of its content — to see
@@ -26,8 +25,6 @@ data class FileStamp(val length: Long, val modifiedMs: Long, val sha256: String)
         file.isFile && file.length() == length && file.lastModified() == modifiedMs && sha256Of(file) == sha256
 
     companion object {
-        private const val PIECE = 64 * 1024
-
         /** Size and time first, then the content: a change while it is read is a change. */
         fun of(file: File): FileStamp {
             val length = file.length()
@@ -40,16 +37,7 @@ data class FileStamp(val length: Long, val modifiedMs: Long, val sha256: String)
          * a file past it is refused ([FileTooLargeException]), as the editor refuses it.
          */
         private fun sha256Of(file: File): String {
-            val digest = MessageDigest.getInstance("SHA-256")
-            BoundedInputStream(FileInputStream(file), FileCaps.CSV_FILE).use { input ->
-                val buffer = ByteArray(PIECE)
-                while (true) {
-                    val n = input.read(buffer)
-                    if (n == -1) break
-                    digest.update(buffer, 0, n)
-                }
-            }
-            return digest.digest().toHex()
+            return BoundedInputStream(FileInputStream(file), FileCaps.CSV_FILE).use { FileHashes.sha256(it) }
         }
     }
 }

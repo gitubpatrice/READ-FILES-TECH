@@ -1,8 +1,8 @@
 package com.readfilestech.read_files_tech.data.extractions
 
 import com.readfilestech.read_files_tech.data.files.FileTrees
+import com.readfilestech.read_files_tech.data.tools.FileHashes
 import java.io.File
-import java.io.FileInputStream
 import java.io.IOException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -11,7 +11,6 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
 
 /**
  * The "Extract all" folders of the 2.15.x (docs D-022): `app_flutter/<archive>_extracted/`, private —
@@ -117,7 +116,7 @@ class LegacyExtractions(
     private fun copyVerified(source: File, target: File) {
         target.parentFile?.mkdirs()
         copy(source.toPath(), target.toPath())
-        val same = source.length() == target.length() && Trees.sha256(source).contentEquals(Trees.sha256(target))
+        val same = source.length() == target.length() && FileHashes.sha256(source) == FileHashes.sha256(target)
         if (!same) throw IOException("the copy of ${source.name} differs from it")
     }
 
@@ -131,21 +130,6 @@ class LegacyExtractions(
 
 /** Walking an extraction folder: never following a link, going on past what cannot be read. */
 private object Trees {
-    private const val BUFFER = 64 * 1024
-
-    fun sha256(file: File): ByteArray {
-        val digest = MessageDigest.getInstance("SHA-256")
-        FileInputStream(file).use { input ->
-            val buffer = ByteArray(BUFFER)
-            while (true) {
-                val n = input.read(buffer)
-                if (n == -1) break
-                digest.update(buffer, 0, n)
-            }
-        }
-        return digest.digest()
-    }
-
     /** The folders the move emptied, deepest first; anything still holding something stays with it. */
     fun removeEmptyFolders(root: File) {
         Files.walkFileTree(

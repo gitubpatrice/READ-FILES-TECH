@@ -2,13 +2,12 @@ package com.readfilestech.read_files_tech.data.ocr
 
 import android.content.Context
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
-import com.readfilestech.read_files_tech.data.tools.DuplicateFinder
+import com.readfilestech.read_files_tech.data.tools.FileHashes
 import com.readfilestech.read_files_tech.data.tools.toHex
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import java.io.File
-import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -85,8 +84,10 @@ internal object OcrModels {
     }
 
     /** Whether [file] is [model], byte for byte as far as its SHA-256 tells. */
-    suspend fun isIntact(file: File, model: OcrModel): Boolean =
-        file.isFile && file.length() == model.size && FileInputStream(file).use { DuplicateFinder.sha256(it) } == model.sha256
+    suspend fun isIntact(file: File, model: OcrModel): Boolean {
+        val context = currentCoroutineContext()
+        return file.isFile && file.length() == model.size && FileHashes.sha256(file) { context.ensureActive() } == model.sha256
+    }
 
     private suspend fun copy(model: OcrModel, target: File, open: (String) -> InputStream) {
         val job = currentCoroutineContext().job
