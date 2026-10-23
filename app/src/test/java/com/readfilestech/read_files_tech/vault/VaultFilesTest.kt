@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.vault
 
 import com.google.common.truth.Truth.assertThat
 import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
+import com.readfilestech.read_files_tech.vault.format.VaultFormatException
 import com.readfilestech.read_files_tech.vault.format.VaultNames
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assumptions.assumeTrue
@@ -65,6 +66,86 @@ class VaultFilesTest {
         assertThat(out.list()!!.toList()).isEmpty()
         assertThrows<VaultAuthenticationException> { runBlocking { vault.files.decryptToCache(stored) } }
         assertThat(File(vault.dirs.cache, VaultFiles.DECRYPT_DIR).list().orEmpty().toList()).isEmpty()
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = [TestVault.ONE_BLOCK, TestVault.STREAMED])
+    fun `a byte changed in the nonce or the ciphertext is refused and leaves nothing, on both engines`(heap: Long) = runBlocking<Unit> {
+        val vault = openVault(heap)
+        val data = ByteArray(20_000) { 0x41 }
+        val out = File(root, "out").apply { mkdirs() }
+        // 4: the first byte of the nonce, right after the magic. 10 000: the middle of the ciphertext,
+        // so that it is the authentication of the content that refuses, not that of the tag.
+        for (offset in listOf(4, 10_000)) {
+            val stored = vault.files.import("doc-$offset.bin", data.size.toLong(), { data.inputStream() })
+            val bytes = stored.readBytes()
+            bytes[offset] = (bytes[offset].toInt() xor 1).toByte()
+            stored.writeBytes(bytes)
+            assertThrows<VaultAuthenticationException>("byte $offset") { runBlocking { vault.files.export(stored, out) } }
+            assertThrows<VaultAuthenticationException>("byte $offset") { runBlocking { vault.files.decryptToCache(stored) } }
+        }
+        assertThat(out.list()!!.toList()).isEmpty()
+        assertThat(File(vault.dirs.cache, VaultFiles.DECRYPT_DIR).list().orEmpty().toList()).isEmpty()
+    }
+
+    @Test
+    fun `a vault file renamed on disk no longer decrypts - the AAD binds its name`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("facture.pdf", 1_024, { ByteArray(1_024) { 0x50 }.inputStream() })
+        // Someone who can write the vault folder renames it, to pass it off as another document.
+        val renamed = File(vault.dirs.vault, "releve.pdf.enc")
+        assertThat(stored.renameTo(renamed)).isTrue()
+        val out = File(root, "out").apply { mkdirs() }
+        assertThrows<VaultAuthenticationException> { runBlocking { vault.files.export(renamed, out) } }
+        assertThrows<VaultAuthenticationException> { runBlocking { vault.files.decryptToCache(renamed) } }
+        assertThat(out.list()!!.toList()).isEmpty()
+    }
+
+    @Test
+    fun `a vault the port created refuses a v1 blob - a file stripped of its magic`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("note.txt", 7, { "contenu".byteInputStream() })
+        // Without "RFT2" the blob reads as the v1 format, which has no AAD: on this vault, a substitution.
+        stored.writeBytes(stored.readBytes().copyOfRange(4, stored.length().toInt()))
+        val out = File(root, "out").apply { mkdirs() }
+        assertThrows<VaultFormatException> { runBlocking { vault.files.export(stored, out) } }
+        assertThrows<VaultFormatException> { runBlocking { vault.files.decryptToCache(stored) } }
+        assertThat(out.list()!!.toList()).isEmpty()
+    }
+
+    @Test
+    fun `D1 - a lock during a decryption to the cache stops it and leaves no plaintext`() = runBlocking<Unit> {
+        val vault = openVault()
+        val text = "clair à ne pas laisser".toByteArray()
+        val stored = vault.files.import("d1-cache.txt", text.size.toLong(), { text.inputStream() })
+        // The vault locks once the decryption is under way: its output is open in the cache.
+        val locking = object : File(stored.path) {
+            private var fired = false
+
+            override fun length(): Long {
+                if (!fired) {
+                    fired = true
+                    vault.service.lock()
+                }
+                return super.length()
+            }
+        }
+        assertThrows<LockedDuringOperationException> { runBlocking { vault.files.decryptToCache(locking) } }
+        assertThat(File(vault.dirs.cache, VaultFiles.DECRYPT_DIR).walk().filter { it.isFile }.toList()).isEmpty()
+    }
+
+    @Test
+    fun `a locked vault decrypts nothing - export, cache and backup refused`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("g.txt", 9, { "contenu G".byteInputStream() })
+        vault.service.lock()
+        val out = File(root, "out").apply { mkdirs() }
+        assertThrows<VaultLockedException> { runBlocking { vault.files.export(stored, out) } }
+        assertThrows<VaultLockedException> { runBlocking { vault.files.decryptToCache(stored) } }
+        assertThrows<VaultLockedException> {
+            runBlocking { vault.backups.export("x", VaultBackups.Destination(out) { File(out, "coffre.rftvault") }) }
+        }
+        assertThat(out.list()!!.toList()).isEmpty()
     }
 
     @Test
