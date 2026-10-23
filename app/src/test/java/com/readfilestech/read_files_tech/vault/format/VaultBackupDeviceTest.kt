@@ -39,9 +39,11 @@ class VaultBackupDeviceTest {
         val key = VaultKdf.argon2id(password, header.salt, header.params.memoryKB, header.params.iterations)
         val payload = VaultBackupFormat.decryptPayload(raw, header, key)
         val reencoded = VaultBackupPayload.encodePayload(VaultBackupPayload.parsePayload(payload).entries)
-        assertThat(reencoded).isEqualTo(payload)
+        // Compared by digest: Truth formatting two arrays of 8 MB that differ runs the test JVM out of
+        // memory, and every test after this one is then lost (seen under a byte-order sabotage).
+        assertThat(sha256(reencoded)).isEqualTo(sha256(payload))
         val rewritten = VaultBackupFormat.writeV2(reencoded, key, header.salt, header.nonce, header.params)
-        assertThat(rewritten).isEqualTo(raw)
+        assertThat(sha256(rewritten)).isEqualTo(sha256(raw))
     }
 
     @Test
@@ -80,7 +82,7 @@ class VaultBackupDeviceTest {
             entries.forEach { entry -> writer.entry(entry.name, entry.data.size.toLong()) { it.write(entry.data) } }
             writer.finish()
         }
-        assertThat(out.toByteArray()).isEqualTo(raw)
+        assertThat(sha256(out.toByteArray())).isEqualTo(sha256(raw)) // by digest, as above
     }
 
     private fun decrypt(header: VaultBackupFormat.Header): ByteArray {
