@@ -45,7 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.FileCaps
-import com.readfilestech.read_files_tech.data.search.FileSearch
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.tools.DiffKind
 import com.readfilestech.read_files_tech.data.tools.DiffRow
 import com.readfilestech.read_files_tech.data.tools.LineComparison
@@ -79,7 +79,7 @@ fun DiffScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -
     val fileB = stringResource(R.string.diff_file_b)
     val choose = { slot: DiffSlot ->
         viewModel.picking(slot)
-        onNavigate(Routes.picker(PickMode.FILE, extensions = FileSearch.TEXT_EXTENSIONS, title = if (slot == DiffSlot.A) fileA else fileB))
+        onNavigate(Routes.picker(PickMode.FILE, extensions = TextFiles.EXTENSIONS, title = if (slot == DiffSlot.A) fileA else fileB))
     }
     Scaffold(
         topBar = {

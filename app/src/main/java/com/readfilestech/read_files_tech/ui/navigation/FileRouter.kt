@@ -28,14 +28,10 @@ object FileRouter {
     /**
      * What the app's viewers open (`FileViewerRouter` of the 2.15.3, the table that disagreed with the
      * home's copy — S6): the home's "Open a file" offers these, `heic` no more — it was offered, then
-     * refused (F17). Those whose viewer is not ported yet open in another app; at the end of phase 4,
-     * this is the union of the viewers' extensions (ViewerKindTest keeps every viewer's inside it).
+     * refused (F17). Every viewer is ported since the end of phase 4: the union of their extensions, read
+     * from [ViewerKind] rather than copied — a copy had to follow each extension a viewer took by hand.
      */
-    val VIEWABLE: Set<String> = setOf(
-        "jpg", "jpeg", "png", "gif", "webp", "bmp",
-        "txt", "md", "csv", "xml", "json", "html", "htm", "css", "js", "php", "dart", "yaml", "yml", "log", "ini", "conf",
-        "docx", "doc", "odt", "odp", "xlsx", "xls", "ods", "pdf", "zip", "epub",
-    )
+    val VIEWABLE: Set<String> = ViewerKind.entries.flatMapTo(LinkedHashSet()) { it.extensions }
 
     /**
      * @param gallery how the explorer shows the folder, given by the explorer only: an image opens among

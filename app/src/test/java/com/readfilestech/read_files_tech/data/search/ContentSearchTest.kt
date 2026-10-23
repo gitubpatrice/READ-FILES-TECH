@@ -52,6 +52,17 @@ class ContentSearchTest {
         assertThat(names(word("NEEDLE", matchCase = true))).containsExactly("a.txt")
     }
 
+    /** The one list of text files (TextFiles): these were read by the global search only; a `.ts` is left alone. */
+    @Test
+    fun `the text files of the one list are searched`() {
+        text("Main.kt", "val needle = 1")
+        text("run.py", "needle = 1")
+        text("table.tsv", "needle\t1")
+        text("paper.tex", "needle")
+        text("recording.ts", "needle")
+        assertThat(names(word("needle"))).containsExactly("Main.kt", "paper.tex", "run.py", "table.tsv")
+    }
+
     /** D35: the 2.15.3 decoded strict UTF-8, and a Windows-1252 text threw — never found, without a word. */
     @Test
     fun `an accented word is found in Windows-1252, UTF-8 and UTF-16 texts`() {

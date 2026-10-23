@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.tools.TextStats
 import com.readfilestech.read_files_tech.data.viewer.sheet.cut
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -65,9 +66,6 @@ import com.readfilestech.read_files_tech.ui.tools.ToolIntro
 import java.text.NumberFormat
 
 private const val PERCENT = 100
-
-/** The files the 2.15.3's picker offered (`txt_tools_screen.dart:42`). */
-private val TEXT_EXTENSIONS = setOf("txt", "md", "csv", "xml", "json")
 
 /**
  * `TxtToolsScreen` of the 2.15.3: a text chosen in the app's picker, its statistics, a search counted as it is
@@ -95,7 +93,7 @@ fun TxtToolsScreen(
     LaunchedEffect(fields.search) { viewModel.search(fields.search) }
     val title = stringResource(R.string.feature_txt_tools)
     val pickTitle = stringResource(R.string.txt_pick_title)
-    val choose = { onNavigate(Routes.picker(PickMode.FILE, TEXT_EXTENSIONS, pickTitle)) }
+    val choose = { onNavigate(Routes.picker(PickMode.FILE, TextFiles.EXTENSIONS, pickTitle)) }
     Scaffold(
         topBar = {
             TopAppBar(

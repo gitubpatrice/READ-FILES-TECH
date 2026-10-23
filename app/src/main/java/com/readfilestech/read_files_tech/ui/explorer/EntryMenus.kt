@@ -27,8 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
-import com.readfilestech.read_files_tech.data.browse.TextPreview
-import com.readfilestech.read_files_tech.data.editor.EditedFile
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.ui.theme.BrandColors
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
@@ -43,9 +42,9 @@ fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (Entr
         val item = MenuItems(entry, onAction, dismiss)
         item(EntryAction.OPEN, R.string.action_open, Icons.AutoMirrored.Outlined.OpenInNew)
         item(EntryAction.OPEN_WITH, R.string.action_open_with, Icons.Outlined.Apps)
-        if (entry.extension in TextPreview.EXTENSIONS) item(EntryAction.PREVIEW, R.string.action_preview, Icons.Outlined.Visibility)
+        if (entry.extension in TextFiles.EXTENSIONS) item(EntryAction.PREVIEW, R.string.action_preview, Icons.Outlined.Visibility)
         // `canEdit` of the 2.15.3 (`file_row.dart:108, 296`): the code editor, for a text file.
-        if (entry.extension in EditedFile.EXTENSIONS) item(EntryAction.EDIT, R.string.action_edit, Icons.Outlined.Edit)
+        if (entry.extension in TextFiles.EXTENSIONS) item(EntryAction.EDIT, R.string.action_edit, Icons.Outlined.Edit)
         if (entry.extension == "pdf") {
             item(EntryAction.EDIT_IN_PDF_TECH, R.string.action_edit_in_pdf_tech, Icons.Outlined.PictureAsPdf, BrandColors.PdfTech)
         }

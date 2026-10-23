@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.search
 
 import com.readfilestech.read_files_tech.data.browse.FileNames
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -44,12 +45,6 @@ sealed interface ContentEvent {
  * as in the 2.15.3. Cancelled by cancelling its collector, a long line included.
  */
 object ContentSearch {
-    /** The 2.15.3's `_textExts` (`content_search_screen.dart:30-50`). */
-    val TEXT_EXTENSIONS = setOf(
-        "txt", "md", "csv", "xml", "json", "html", "htm", "css", "js", "php", "dart", "ts", "yaml", "yml", "ini", "conf", "log",
-        "sh", "bat",
-    )
-
     fun run(root: File, pattern: SearchPattern, maxFiles: Int = FileCaps.SEARCH_RESULTS): Flow<ContentEvent> = flow {
         val search = Search(pattern, currentCoroutineContext())
         val batches = SearchBatches<ContentHit>({ emit(ContentEvent.Found(it)) }, { emit(ContentEvent.Scanned(it)) })
@@ -76,7 +71,7 @@ object ContentSearch {
 
         fun look(path: Path, attributes: BasicFileAttributes): ContentHit? {
             val name = path.fileName?.toString().orEmpty()
-            if (FileNames.extension(name) !in TEXT_EXTENSIONS) return null
+            if (FileNames.extension(name) !in TextFiles.EXTENSIONS) return null
             scanned++
             val text = if (attributes.size() > FileCaps.SEARCH_CONTENT) {
                 tooLarge++

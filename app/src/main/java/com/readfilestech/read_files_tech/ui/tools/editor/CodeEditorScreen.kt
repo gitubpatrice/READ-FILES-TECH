@@ -70,7 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
-import com.readfilestech.read_files_tech.data.editor.EditedFile
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -139,7 +139,7 @@ fun CodeEditorScreen(
                     Icons.Outlined.Edit,
                     stringResource(R.string.feature_editor),
                     state.failure?.resolve() ?: stringResource(R.string.editor_intro),
-                    { onNavigate(Routes.picker(PickMode.FILE, extensions = EditedFile.EXTENSIONS, title = chooseTitle)) },
+                    { onNavigate(Routes.picker(PickMode.FILE, extensions = TextFiles.EXTENSIONS, title = chooseTitle)) },
                     isError = state.failure != null,
                 )
             }

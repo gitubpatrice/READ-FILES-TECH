@@ -9,11 +9,17 @@ package com.readfilestech.read_files_tech.ui.viewer
  * would lead nowhere).
  */
 enum class ViewerKind(val extensions: Set<String>) {
-    /** `TxtViewerScreen` of the 2.15.3: plain text, and the code it coloured (css, js, php, xml, dart). */
-    TEXT(setOf("txt", "log", "ini", "conf", "yaml", "yml", "xml", "css", "js", "php", "dart")),
+    /**
+     * `TxtViewerScreen` of the 2.15.3: plain text, and the code it coloured (css, js, php, xml, dart). Also the
+     * text files no other viewer claims ([com.readfilestech.read_files_tech.data.files.TextFiles]: py, java, kt,
+     * sh, bat, rst, tex), which the 2.15.3 searched and handed to another app to show.
+     */
+    TEXT(
+        setOf("txt", "log", "ini", "conf", "yaml", "yml", "xml", "css", "js", "php", "dart", "py", "java", "kt", "sh", "bat", "rst", "tex"),
+    ),
 
-    /** `CsvViewerScreen` of the 2.15.3. */
-    CSV(setOf("csv")),
+    /** `CsvViewerScreen` of the 2.15.3; a tab-separated file too, its separator found as a comma's is (`CsvRows.dialectOf`). */
+    CSV(setOf("csv", "tsv")),
 
     /** `ImageViewerScreen` of the 2.15.3: a gallery over the images of the folder, zoom, info, share. */
     IMAGE(setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")),

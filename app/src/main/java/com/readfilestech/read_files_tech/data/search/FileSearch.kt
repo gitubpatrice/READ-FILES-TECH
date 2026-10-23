@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.search
 
 import com.readfilestech.read_files_tech.data.browse.FileNames
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.io.File
@@ -38,12 +39,6 @@ sealed interface SearchEvent {
  * Cancelled by cancelling its collector.
  */
 object FileSearch {
-    /** The 2.15.x `_textExts`: the only files whose content is read. */
-    val TEXT_EXTENSIONS = setOf(
-        "txt", "md", "csv", "xml", "json", "html", "htm", "css", "js", "php", "dart", "yaml", "yml", "ini", "conf", "log",
-        "tsv", "rst", "tex", "sh", "py", "java", "kt",
-    )
-
     /** A larger text file is matched on its name only (2.15.x: 2 MiB). */
     const val MAX_CONTENT_BYTES = FileCaps.SEARCH_CONTENT
 
@@ -82,7 +77,7 @@ object FileSearch {
         }
 
         private fun contentReadable(fileName: String, attributes: BasicFileAttributes): Boolean =
-            FileNames.extension(fileName) in TEXT_EXTENSIONS && attributes.size() <= query.maxContentBytes
+            FileNames.extension(fileName) in TextFiles.EXTENSIONS && attributes.size() <= query.maxContentBytes
 
         /** The first line holding [pattern], cut at 200 characters. */
         private fun snippetOf(path: Path, pattern: String): String? = try {

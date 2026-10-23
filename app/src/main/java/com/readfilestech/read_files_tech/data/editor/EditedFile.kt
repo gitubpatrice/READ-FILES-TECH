@@ -1,6 +1,5 @@
 package com.readfilestech.read_files_tech.data.editor
 
-import com.readfilestech.read_files_tech.data.browse.TextPreview
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileBytes
 import com.readfilestech.read_files_tech.data.files.FileCaps
@@ -96,14 +95,6 @@ class EditedFile private constructor(
     private class ChangedMeanwhile : IOException("the file changed during the save")
 
     companion object {
-        /**
-         * The files the editor is offered for — the explorer's "Edit", the picker's, its own picker's filter:
-         * `editableExts` of the 2.15.3 (`file_viewer_router.dart:23-40`), the same sixteen as the preview's.
-         * Its picker offered ten of them (`code_editor_screen.dart:50-61`), and its recents' "Modify" any
-         * file at all (F34). What opens is decided by the content ([EditableText.of]), never by the name.
-         */
-        val EXTENSIONS: Set<String> = TextPreview.EXTENSIONS
-
         /**
          * Reads [file] for the editor.
          *

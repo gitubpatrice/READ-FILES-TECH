@@ -50,6 +50,14 @@ class FileSearchTest {
         assertThat(hit.snippet).isEqualTo("SIRET 123 456")
     }
 
+    /** The one list of text files (TextFiles): a batch file's content was read by the content search only. */
+    @Test
+    fun `the content of every text file of the one list is read`() {
+        file("run.bat", "set SIRET=123")
+        file("clip.ts", "SIRET in a video")
+        assertThat(names(SearchQuery(root, content = "siret"))).containsExactly("run.bat")
+    }
+
     /** A content pattern alone used to keep EVERY file in the 2.15.x before its fix: absent is neutral, not a match. */
     @Test
     fun `a name or a content, either matching keeps the file`() {
