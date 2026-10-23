@@ -10,8 +10,16 @@ import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.NullSource
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 
 class VaultServiceTest {
     @TempDir
@@ -86,6 +94,116 @@ class VaultServiceTest {
         assertThat(refused.remainingMs).isEqualTo(MINUTE - 10_000)
         vault.clock.wall += MINUTE
         assertThat(vault.service.unlock(PASSWORD)).isTrue()
+    }
+
+    @Test
+    fun `a wrong password leaves the vault locked - no file of it can be read`() = runBlocking<Unit> {
+        vault.service.setup(PASSWORD)
+        val stored = vault.files.import("carte.txt", 19, { "4111 1111 1111 1111".byteInputStream() })
+        vault.service.lock()
+        assertThat(vault.service.unlock("wrong")).isFalse()
+        assertThat(vault.session.unlocked.value).isFalse()
+        // No key held: every operation refuses, none hands out a partial plaintext.
+        assertThrows<VaultLockedException> { runBlocking { vault.files.decryptToCache(stored) } }
+        assertThrows<VaultLockedException> { runBlocking { vault.files.export(stored, File(root, "out")) } }
+        assertThat(File(root, "out").exists()).isFalse()
+    }
+
+    @Test
+    fun `a wall-clock deadline moved into the past does not lift the lockout - the monotonic one holds`() = runBlocking<Unit> {
+        vault.service.setup(PASSWORD)
+        vault.service.lock()
+        repeat(5) { vault.service.unlock("wrong") }
+        // "Settings, Date & time": the wall deadline is long past; the monotonic one did not move.
+        vault.plant(VaultKeys.LOCKOUT_UNTIL, 0L)
+        assertThrows<VaultLockoutException> { runBlocking { vault.service.unlock(PASSWORD) } }
+        assertThat(vault.session.unlocked.value).isFalse()
+    }
+
+    @Test
+    fun `a reset leaves no unlock lockout behind - the next vault opens at once`() = runBlocking<Unit> {
+        vault.service.setup(PASSWORD)
+        vault.service.lock()
+        repeat(5) { vault.service.unlock("wrong") } // the fifth arms it
+        assertThat(vault.stored(VaultKeys.LOCKOUT_UNTIL_ELAPSED)).isNotNull()
+        vault.service.reset()
+        // V-L5 of the 2.15.x: checked after the reset itself, not only once a new setup cleared it.
+        VaultKeys.UNLOCK_LOCKOUT.all.forEach { assertThat(vault.stored(it)).isNull() }
+        vault.service.setup("after the reset")
+        vault.service.lock()
+        assertThat(vault.service.unlock("after the reset")).isTrue()
+    }
+
+    @Test
+    fun `a reset erases the restore lockout too`() = runBlocking<Unit> {
+        vault.service.setup(PASSWORD)
+        repeat(5) { vault.lockouts.recordFailure(VaultKeys.BACKUP_LOCKOUT, vault.lockouts.now()) }
+        assertThat(vault.stored("vault_backup_fails")).isEqualTo(5L)
+        vault.service.reset()
+        // The Dart keys spelt out: checked against VaultKeys' own list, a key that list forgot would
+        // pass unseen (the reset test above iterates VAULT_STATE).
+        val backupLockout = listOf(
+            "vault_backup_fails",
+            "vault_backup_lockout_until_ms",
+            "vault_backup_lockout_until_elapsed",
+            "vault_backup_lockout_armed_elapsed",
+        )
+        backupLockout.forEach { assertThat(vault.stored(it)).isNull() }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Vaults of the Flutter app's past versions
+    // ---------------------------------------------------------------------------------------------
+
+    /** Null: no `vault_kdf_version` at all, as before 2.6.0 (the key came with Argon2id); "pbkdf2": the Dart test's. */
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = ["pbkdf2"])
+    fun `a PBKDF2 vault of the 2_5_4, with a v1 sentinel, still opens with its password`(kdfVersion: String?) = runBlocking<Unit> {
+        plantPbkdf2Vault(LEGACY_PASSWORD, kdfVersion)
+        assertThat(vault.service.isSetUp()).isTrue()
+        assertThat(vault.service.unlock(LEGACY_PASSWORD)).isTrue()
+        assertThat(vault.session.unlocked.value).isTrue()
+    }
+
+    @Test
+    fun `a PBKDF2 vault of the 2_5_4 still refuses a wrong password, and counts it`() = runBlocking<Unit> {
+        plantPbkdf2Vault(LEGACY_PASSWORD)
+        assertThat(vault.service.unlock("other")).isFalse()
+        assertThat(vault.session.unlocked.value).isFalse()
+        assertThat(vault.stored(VaultKeys.UNLOCK_FAILS)).isEqualTo(1L)
+    }
+
+    @Test
+    fun `a file imported into a vault of the 2_5_4 is written as v2`() = runBlocking<Unit> {
+        plantPbkdf2Vault(LEGACY_PASSWORD)
+        vault.service.unlock(LEGACY_PASSWORD)
+        val text = "écrit aujourd'hui".toByteArray()
+        val stored = vault.files.import("nouveau.txt", text.size.toLong(), { text.inputStream() })
+        // New writes are v2 even where v1 is still read: bound to their name by the AAD.
+        assertThat(String(stored.readBytes().copyOf(4), Charsets.US_ASCII)).isEqualTo("RFT2")
+        assertThat(vault.files.decryptToCache(stored).readBytes()).isEqualTo(text)
+    }
+
+    /**
+     * A vault as the 2.5.4 left it, stated INDEPENDENTLY of the port's code (the JCA, not VaultKdf nor
+     * VaultCrypto; the Dart keys spelt out): PBKDF2-HMAC-SHA256 × 600 000, a v1 sentinel (`nonce ‖
+     * ciphertext ‖ tag`, empty AAD, no magic), no `vault_v2_only`. Built by the port's own code, it would
+     * stay green the day that code changed format — the day it should turn red (`writeLegacyPbkdf2Vault`
+     * of the Dart test).
+     */
+    private fun plantPbkdf2Vault(password: String, kdfVersion: String? = null) {
+        val salt = ByteArray(16) { (it * 17 + 3).toByte() }
+        val spec = PBEKeySpec(password.toCharArray(), salt, 600_000, 256)
+        val key = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+        val nonce = ByteArray(12) { (it * 31 + 7).toByte() }
+        val gcm = Cipher.getInstance("AES/GCM/NoPadding")
+        gcm.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
+        vault.dirs.vault.mkdirs()
+        File(vault.dirs.vault, "_check.enc").writeBytes(nonce + gcm.doFinal("read_files_tech_vault_v1".toByteArray()))
+        vault.plant("vault_salt_v1", Base64.getEncoder().encodeToString(salt))
+        kdfVersion?.let { vault.plant("vault_kdf_version", it) }
+        vault.plant("vault_setup_v1", true)
     }
 
     @Test
@@ -244,6 +362,7 @@ class VaultServiceTest {
 
     private companion object {
         const val PASSWORD = "Coffre été 🔐 2026"
+        const val LEGACY_PASSWORD = "mot de passe historique"
         const val MINUTE = 60_000L
     }
 }
