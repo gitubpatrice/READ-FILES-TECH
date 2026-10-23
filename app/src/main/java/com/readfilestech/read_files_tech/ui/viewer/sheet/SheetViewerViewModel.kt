@@ -47,8 +47,9 @@ data class SheetShown(val index: Int, val sheet: Sheet? = null, val failure: Vie
 class SheetViewerViewModel @Inject constructor(
     private val handle: SavedStateHandle,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     val content = ViewerContent(viewModelScope, io) {
         val workbook = keep(Workbook.open(requireNotNull(source) { "no file in the route" }))

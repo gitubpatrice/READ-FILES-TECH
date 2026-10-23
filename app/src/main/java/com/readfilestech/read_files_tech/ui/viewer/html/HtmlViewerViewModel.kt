@@ -47,8 +47,9 @@ class HtmlViewerViewModel @Inject constructor(
     private val launching: EntryLaunching,
     private val messages: UserMessages,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     /** The reader's route on this same page: its reading mode (`html_viewer_screen.dart:375-384`). */
     val readingRoute: String? =

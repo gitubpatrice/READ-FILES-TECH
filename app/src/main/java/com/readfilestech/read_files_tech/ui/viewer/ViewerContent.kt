@@ -11,11 +11,15 @@ import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
 import com.readfilestech.read_files_tech.data.viewer.TooManyItemsException
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import com.readfilestech.read_files_tech.data.viewer.UnsupportedFormatException
+import com.readfilestech.read_files_tech.data.viewer.VaultFileSource
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.ui.common.IoErrors
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.vault.VaultCipher
+import com.readfilestech.read_files_tech.vault.VaultDirs
+import com.readfilestech.read_files_tech.vault.VaultFiles
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
 
 /** Why a viewer shows no content. */
 sealed interface ViewerFailure {
@@ -47,13 +52,21 @@ sealed interface ViewerState<out T> {
 }
 
 /**
- * The source of the viewer at a route's arguments — a file of the storage today; the vault's branch
- * comes with phase 6 (D-028), here and nowhere else.
+ * The source of the viewer at a route's arguments: a file of the storage ([Routes.ARG_PATH]), or a file of
+ * the vault ([Routes.ARG_VAULT], docs D-028) — here and nowhere else. A vault route naming no file of the
+ * vault has no source: the viewer says it cannot read it.
  */
-object ViewerSources {
-    fun from(
-        handle: SavedStateHandle
-    ): ViewerSource? = handle.get<String>(Routes.ARG_PATH)?.takeIf(String::isNotEmpty)?.let { StorageFileSource(File(it)) }
+class ViewerSources @Inject constructor(private val files: VaultFiles, private val dirs: VaultDirs, private val cipher: VaultCipher) {
+    fun from(handle: SavedStateHandle): ViewerSource? {
+        val inVault = handle.get<String>(Routes.ARG_VAULT)
+        if (inVault != null) return dirs.fileNamed(inVault)?.let { VaultFileSource(files, cipher, it) }
+        return handle.get<String>(Routes.ARG_PATH)?.takeIf(String::isNotEmpty)?.let { StorageFileSource(File(it)) }
+    }
+
+    companion object {
+        /** Whether the route at [handle] is a vault file's: its viewer is secured, and closes when the vault locks. */
+        fun isVault(handle: SavedStateHandle): Boolean = handle.get<String>(Routes.ARG_VAULT) != null
+    }
 }
 
 /**

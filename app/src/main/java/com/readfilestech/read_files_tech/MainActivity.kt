@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
 import com.readfilestech.read_files_tech.ui.theme.ReadFilesTechTheme
 import com.readfilestech.read_files_tech.ui.theme.ThemeSettings
+import com.readfilestech.read_files_tech.vault.VaultAutoLock
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
@@ -45,6 +47,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var startupCleanup: StartupCleanup
+
+    @Inject
+    lateinit var autoLock: VaultAutoLock
 
     private val shortcut = MutableStateFlow<Feature?>(null)
     private var accessGranted = false
@@ -94,6 +99,23 @@ class MainActivity : ComponentActivity() {
      */
     private fun dropExtras(intent: Intent?) {
         intent?.replaceExtras(null as Bundle?)
+    }
+
+    /** The vault's own locks (VaultAutoLock): the app back on screen, checked before anything is shown. */
+    override fun onStart() {
+        super.onStart()
+        autoLock.appStarted()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        autoLock.appStopped()
+    }
+
+    /** Every finger put down on the app, on whatever screen, starts the vault's idle time again (2.15.3). */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) autoLock.touched()
+        return super.dispatchTouchEvent(event)
     }
 
     /**

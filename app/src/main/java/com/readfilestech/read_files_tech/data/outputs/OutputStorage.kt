@@ -88,6 +88,32 @@ class OutputStorage(
     }
 
     /**
+     * The folder an output of [category] goes to now: the first of [bases] that takes it. For a writer
+     * that makes its temporary file there and reserves the output only once it is written, with
+     * [reserveAt] — the vault's backup: a lock during its export must leave nothing in `Files Tech/`
+     * (2.15.3, `exportToBackup`).
+     *
+     * @throws NoOutputLocationException no folder could take it.
+     */
+    fun folderFor(category: OutputCategory): File {
+        var failure: IOException? = null
+        for (base in bases()) {
+            val dir = File(base, category.folderName)
+            try {
+                Files.createDirectories(dir.toPath())
+                return dir
+            } catch (e: IOException) {
+                failure = e
+            }
+        }
+        throw NoOutputLocationException(failure)
+    }
+
+    /** A new, empty file reserved as [reserve] does, but in [folder] — the one [folderFor] gave. */
+    fun reserveAt(folder: File, suggestedName: String, extension: String): File =
+        reserveIn(folder, "${sanitize(suggestedName)}_${clock().format(STAMP)}", sanitize(extension))
+
+    /**
      * Writes the output into its [reservation], atomically: a temporary file beside it, synced, then
      * moved over the reservation in one step — and only while the reservation is still the empty file
      * reserved: what took its place during the write is left alone. One instant remains, between that

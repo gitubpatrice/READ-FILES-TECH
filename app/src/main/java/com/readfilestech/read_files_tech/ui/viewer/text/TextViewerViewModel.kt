@@ -32,8 +32,9 @@ class TextViewerViewModel @Inject constructor(
     handle: SavedStateHandle,
     private val messages: UserMessages,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     val content = ViewerContent(viewModelScope, io) { TextDocument.read(requireNotNull(source) { "no file in the route" }) }
         .also(::addCloseable)

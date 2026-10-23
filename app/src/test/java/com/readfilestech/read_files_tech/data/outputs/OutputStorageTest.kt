@@ -89,6 +89,20 @@ class OutputStorageTest {
         assertThat(storage().bases()).containsExactly(File(tmp, "blocked"), File(private, "Files Tech")).inOrder()
     }
 
+    /** The vault's backup: its temporary file written in the folder first, the output reserved only at the end. */
+    @Test
+    fun `a writer that reserves last gets the folder first - the one reserve uses, its fallbacks too`() {
+        val folder = storage().folderFor(OutputCategory.VAULT_BACKUPS)
+        assertThat(folder).isEqualTo(File(primary, "Files Tech/Sauvegardes coffre"))
+        assertThat(storage().reserveAt(folder, "coffre", "rftvault")).isEqualTo(File(folder, "coffre_20261012_140305.rftvault"))
+        assertThat(storage().reserveAt(folder, "coffre", "rftvault").name).isEqualTo("coffre_20261012_140305_1.rftvault")
+        prefs.commit { putString(OutputStorage.KEY_BASE_PATH, File(tmp, "blocked").apply { writeText("x") }.path) }
+        assertThat(storage().folderFor(OutputCategory.VAULT_BACKUPS)).isEqualTo(File(external, "Files Tech/Sauvegardes coffre"))
+        externalMounted = false
+        private = File(tmp, "nothing").apply { writeText("x") }
+        assertThrows<NoOutputLocationException> { storage().folderFor(OutputCategory.VAULT_BACKUPS) }
+    }
+
     @Test
     fun `nowhere to write is said, not hidden`() {
         primary = File(tmp, "nothing").apply { writeText("x") }

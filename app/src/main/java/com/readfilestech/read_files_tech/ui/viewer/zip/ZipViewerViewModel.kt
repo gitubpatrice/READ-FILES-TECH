@@ -89,8 +89,9 @@ class ZipViewerViewModel @Inject constructor(
     private val messages: UserMessages,
     val launching: EntryLaunching,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     val content = ViewerContent(viewModelScope, io) {
         keep(ZipArchive.open(requireNotNull(source) { "no file in the route" }))

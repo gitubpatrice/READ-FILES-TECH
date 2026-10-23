@@ -1,8 +1,10 @@
 package com.readfilestech.read_files_tech.vault
 
+import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.files.LimitedInput
 import com.readfilestech.read_files_tech.vault.format.Gcm
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
+import com.readfilestech.read_files_tech.vault.format.VaultNames
 import java.io.DataInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -18,7 +20,18 @@ class VaultDirs(
     val vault: File,
     /** `cache/`: where a file opened from the vault is decrypted for a viewer or a share. */
     val cache: File,
-)
+) {
+    /** Whether [file] is one of the user's files in the vault: right in it, a regular file, not the sentinel nor a residue. */
+    fun holds(file: File): Boolean =
+        file.parentFile?.canonicalFile == vault.canonicalFile && FileTrees.isRegularFile(file) && VaultNames.isVaultFile(file.name)
+
+    /**
+     * The vault's file named [encryptedName] (`photo.jpg.enc`) — how a viewer's route names the file chosen
+     * in the vault's list —, or null when none answers to it: a path, `..`, the sentinel, a residue, a link.
+     */
+    fun fileNamed(encryptedName: String): File? =
+        File(vault, encryptedName).takeIf { encryptedName.none { it == '/' || it == '\\' } && holds(it) }
+}
 
 /**
  * Encrypting and decrypting vault files, by the engine their size allows (docs D-023): one block when
@@ -93,6 +106,16 @@ class VaultCipher @Inject constructor(private val memory: DeviceMemory) {
             VaultCrypto.encryptV2(exact, out, key, nonce, fileName)
             exact.ensureEnd()
         }
+    }
+
+    /**
+     * The size of the vault file [file]'s plaintext: its length less the header and the tag of its format,
+     * told by its first bytes — no key needed.
+     */
+    fun plainLength(file: File): Long {
+        val length = file.length()
+        val v2 = VaultCrypto.isV2(length, head(file, VaultCrypto.V2_OVERHEAD))
+        return (length - if (v2) VaultCrypto.V2_OVERHEAD else VaultCrypto.V1_OVERHEAD).coerceAtLeast(0)
     }
 
     /** The first bytes of [file], up to [count]: enough to tell a v2 blob or read a backup header. */

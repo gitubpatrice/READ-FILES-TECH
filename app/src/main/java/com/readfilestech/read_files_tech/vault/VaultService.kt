@@ -164,8 +164,8 @@ class VaultService @Inject constructor(
     }
 
     /**
-     * Deletes the plaintext copies left in the cache: `vault_decrypt/` (VaultFiles), and what the
-     * Flutter app left there — `share_plus/` (the plugin copies every shared file), `share/` (an older
+     * Deletes the plaintext copies left in the cache: `vault_decrypt/` and `vault_shared/` (VaultFiles),
+     * and what the Flutter app left there — `share_plus/` (the plugin copies every shared file), `share/` (an older
      * name), `exports/` (the old staging of `.rftvault` exports). On lock, on panic and at startup;
      * never on a mere trip to the background, which would delete a file under the app receiving it.
      */
@@ -199,7 +199,10 @@ class VaultService @Inject constructor(
     }
 
     companion object {
-        /** The cache folders that may hold vault plaintext: purged here, and never served to another app (PathGuard). */
-        val PLAINTEXT_CACHE_DIRS = listOf(VaultFiles.DECRYPT_DIR, "share_plus", "share", "exports")
+        /**
+         * The cache folders that may hold vault plaintext: purged here, and never served to another app by
+         * PathGuard — `vault_shared/` leaves only through the share the user asked for (docs D-034).
+         */
+        val PLAINTEXT_CACHE_DIRS = listOf(VaultFiles.DECRYPT_DIR, VaultFiles.SHARE_DIR, "share_plus", "share", "exports")
     }
 }

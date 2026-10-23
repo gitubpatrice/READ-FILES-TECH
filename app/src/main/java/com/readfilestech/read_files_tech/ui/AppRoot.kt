@@ -188,7 +188,7 @@ private fun Destinations(navController: NavHostController) {
             Routes.VIEWER,
             arguments = listOf(
                 navArgument(Routes.ARG_VIEWER) { type = NavType.StringType },
-            ) + listOf(Routes.ARG_PATH, Routes.ARG_GALLERY).map { name ->
+            ) + listOf(Routes.ARG_PATH, Routes.ARG_GALLERY, Routes.ARG_VAULT).map { name ->
                 navArgument(name) {
                     type = NavType.StringType
                     nullable = true

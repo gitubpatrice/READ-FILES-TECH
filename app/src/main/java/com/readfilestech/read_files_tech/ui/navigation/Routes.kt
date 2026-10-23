@@ -44,13 +44,19 @@ object Routes {
     /** How the explorer showed the folder of an image it opened: the image viewer's gallery (GalleryOrder). */
     const val ARG_GALLERY = "gallery"
 
-    /** The viewer named [ARG_VIEWER] (a [ViewerKind]), on the file at [ARG_PATH]. */
-    const val VIEWER = "viewer/{$ARG_VIEWER}?$ARG_PATH={$ARG_PATH}&$ARG_GALLERY={$ARG_GALLERY}"
+    /** A viewer's file in the vault, by its name there (`photo.jpg.enc`) — never a path (docs D-028). */
+    const val ARG_VAULT = "vault"
+
+    /** The viewer named [ARG_VIEWER] (a [ViewerKind]), on the file at [ARG_PATH] or the vault's [ARG_VAULT]. */
+    const val VIEWER = "viewer/{$ARG_VIEWER}?$ARG_PATH={$ARG_PATH}&$ARG_GALLERY={$ARG_GALLERY}&$ARG_VAULT={$ARG_VAULT}"
 
     fun viewer(kind: ViewerKind, path: String, gallery: String? = null): String = buildString {
         append("viewer/${kind.name}?$ARG_PATH=${encode(path)}")
         if (gallery != null) append("&$ARG_GALLERY=${encode(gallery)}")
     }
+
+    /** The viewer [kind] on the vault's file named [encryptedName]. */
+    fun vaultViewer(kind: ViewerKind, encryptedName: String): String = "viewer/${kind.name}?$ARG_VAULT=${encode(encryptedName)}"
 
     /**
      * A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. A tool

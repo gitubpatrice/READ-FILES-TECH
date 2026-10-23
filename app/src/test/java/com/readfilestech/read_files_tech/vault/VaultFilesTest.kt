@@ -291,6 +291,42 @@ class VaultFilesTest {
         assertThat(vault.vaultEntries().filter { it.endsWith(".tmp") }).isEmpty()
     }
 
+    @Test
+    fun `a viewer's route finds a file of the vault by its name, and nothing else`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("photo.jpg", 3, { byteArrayOf(1, 2, 3).inputStream() })
+        File(vault.dirs.vault, "dossier.enc").mkdirs()
+        assertThat(vault.dirs.fileNamed("photo.jpg.enc")).isEqualTo(stored)
+        for (name in listOf(VaultNames.SENTINEL_FILE, "absent.enc", "dossier.enc", "../vault/photo.jpg.enc", "a/photo.jpg.enc", "..", "")) {
+            assertThat(vault.dirs.fileNamed(name)).isNull()
+        }
+    }
+
+    @Test
+    fun `the size shown is the plaintext's, for a v2 file and for a v1 one, without the key`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("notes.txt", 1_000, { ByteArray(1_000).inputStream() })
+        // A 2.5.4's v1 file: no magic, a 12-byte nonce and a 16-byte tag around its ciphertext.
+        val old = File(vault.dirs.vault, "ancien.txt.enc").apply { writeBytes(ByteArray(100) { 7 }) }
+        vault.service.lock()
+        assertThat(vault.cipher.plainLength(stored)).isEqualTo(1_000)
+        assertThat(vault.cipher.plainLength(old)).isEqualTo(72)
+    }
+
+    @Test
+    fun `a share's copy goes apart from the viewers', and a lock purges both (docs D-034)`() = runBlocking<Unit> {
+        val vault = openVault()
+        val stored = vault.files.import("relevé.pdf", 4, { byteArrayOf(9, 8, 7, 6).inputStream() })
+        val shared = vault.files.copy(stored, VaultFiles.Copy.SHARE)
+        val viewed = vault.files.decryptToCache(stored)
+        assertThat(shared.parentFile?.parentFile).isEqualTo(File(vault.dirs.cache, VaultFiles.SHARE_DIR))
+        assertThat(viewed.parentFile?.parentFile).isEqualTo(File(vault.dirs.cache, VaultFiles.DECRYPT_DIR))
+        assertThat(shared.readBytes()).isEqualTo(byteArrayOf(9, 8, 7, 6))
+        vault.service.lock()
+        assertThat(File(vault.dirs.cache, VaultFiles.SHARE_DIR).exists()).isFalse()
+        assertThat(File(vault.dirs.cache, VaultFiles.DECRYPT_DIR).exists()).isFalse()
+    }
+
     private suspend fun openVault(heap: Long = TestVault.ONE_BLOCK): TestVault {
         val vault = TestVault(root, heap)
         vault.service.setup(PASSWORD)

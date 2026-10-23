@@ -22,8 +22,9 @@ import javax.inject.Inject
 class ImageViewerViewModel @Inject constructor(
     handle: SavedStateHandle,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
     private val order = GalleryOrder.fromArgument(handle.get<String>(Routes.ARG_GALLERY))
 
     /** The images to swipe through: listing the folder, when the explorer opened the image — no pixel yet. */

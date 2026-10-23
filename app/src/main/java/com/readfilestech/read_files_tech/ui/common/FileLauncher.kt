@@ -13,6 +13,9 @@ import com.readfilestech.read_files_tech.data.sharing.AppSignatures
 import com.readfilestech.read_files_tech.data.sharing.KnownApps
 import com.readfilestech.read_files_tech.data.sharing.MimeTypes
 import com.readfilestech.read_files_tech.data.sharing.PathGuard
+import com.readfilestech.read_files_tech.data.sharing.VaultShares
+import com.readfilestech.read_files_tech.vault.VaultDirs
+import com.readfilestech.read_files_tech.vault.VaultFiles
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,6 +38,7 @@ enum class LaunchOutcome { STARTED, NO_APP, NOT_INSTALLED, REFUSED, FAILED }
 class FileLauncher @Inject constructor(
     private val guard: PathGuard,
     private val signatures: AppSignatures,
+    private val vaultDirs: VaultDirs,
 ) {
     fun view(from: Context, file: File, chooser: Boolean): LaunchOutcome {
         val (uri, mime) = served(from, file) ?: return LaunchOutcome.REFUSED
@@ -55,6 +59,20 @@ class FileLauncher @Inject constructor(
         send.type = MimeTypes.common(served.map { it.second })
         // The grant travels with the chooser only through ClipData.
         send.clipData = clip(served.map { it.first })
+        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return start(from, Intent.createChooser(send, from.getString(R.string.share_title)))
+    }
+
+    /**
+     * The share sheet for [copy], a vault file decrypted for this share (VaultFiles.copy for a share, docs
+     * D-034): the one way out for the vault's plaintext, which PathGuard refuses everywhere else. Only a
+     * file of a slot of `cache/vault_shared/`, resolved, links followed — anything else is refused.
+     */
+    fun shareVaultCopy(from: Context, copy: File): LaunchOutcome {
+        val uri = VaultShares.resolve(copy, File(vaultDirs.cache, VaultFiles.SHARE_DIR))?.let { uriOf(from, it) }
+            ?: return LaunchOutcome.REFUSED
+        val send = Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uri).setType(mimeOf(copy.name))
+        send.clipData = clip(listOf(uri))
         send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         return start(from, Intent.createChooser(send, from.getString(R.string.share_title)))
     }
@@ -88,8 +106,6 @@ class FileLauncher @Inject constructor(
             start(from, view)
         } ?: LaunchOutcome.REFUSED
     }
-
-    fun isInstalled(packageName: String): Boolean = signatures.isInstalled(packageName)
 
     /** The guarded file's content URI and type, or null when it may not leave the app. */
     private fun served(from: Context, file: File): Pair<Uri, String>? =

@@ -95,8 +95,9 @@ class PdfViewerViewModel @Inject constructor(
     handle: SavedStateHandle,
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     val content = ViewerContent(viewModelScope, io) {
         PdfViewer.load(context, requireNotNull(source) { "no file in the route" }, this, io).also { outlineOf(it.phase.value) }

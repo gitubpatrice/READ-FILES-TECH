@@ -39,6 +39,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
+import com.readfilestech.read_files_tech.ui.common.SecureWindow
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import java.io.File
@@ -63,6 +64,14 @@ fun <T> ViewerScaffold(
 ) {
     val viewModel: ViewerActionsViewModel = hiltViewModel()
     LaunchedEffect(shareable) { viewModel.load(shareable) }
+    // A vault file's (docs D-028): no screenshot, and gone the moment the vault locks — 30 s away, 3 min
+    // without a touch, the lock button, the panic: its plaintext leaves the screen, the viewer the stack.
+    val vaultOpen by viewModel.vaultOpen.collectAsStateWithLifecycle()
+    val hidden = viewModel.inVault && !vaultOpen
+    if (viewModel.inVault) {
+        SecureWindow()
+        LaunchedEffect(hidden) { if (hidden) onBack() }
+    }
     val leavable by viewModel.leavable.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
@@ -101,6 +110,7 @@ fun <T> ViewerScaffold(
         },
         snackbarHost = { AppSnackbarHost() },
     ) { padding ->
+        if (hidden) return@Scaffold
         when (state) {
             ViewerState.Loading -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()

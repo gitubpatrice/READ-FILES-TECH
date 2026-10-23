@@ -3,17 +3,20 @@ package com.readfilestech.read_files_tech.ui.explorer
 import android.content.Context
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.sharing.AppSignatures
 import com.readfilestech.read_files_tech.data.sharing.PathGuard
 import com.readfilestech.read_files_tech.ui.common.FileLauncher
 import com.readfilestech.read_files_tech.ui.common.LaunchOutcome
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
+import java.io.File
 import javax.inject.Inject
 
 /** The explorer's ways out to other apps, each saying why when it cannot. The activity is passed, never kept. */
 class EntryLaunching @Inject constructor(
     private val launcher: FileLauncher,
     private val guard: PathGuard,
+    private val signatures: AppSignatures,
     private val messages: UserMessages,
 ) {
     /** Opens [entry] in another app; the chooser asks which ("Open with…"). True when an app was started. */
@@ -33,12 +36,15 @@ class EntryLaunching @Inject constructor(
         say(launcher.share(from, files.map(FileEntry::file)))
     }
 
+    /** The share sheet for a vault file decrypted for this share ([FileLauncher.shareVaultCopy], docs D-034). */
+    fun shareVaultCopy(from: Context, copy: File) = say(launcher.shareVaultCopy(from, copy))
+
     fun sendTo(from: Context, entry: FileEntry, packageName: String, appName: String) =
         say(launcher.sendTo(from, entry.file, packageName), appName)
 
     fun editInPdfTech(from: Context, entry: FileEntry) = say(launcher.editInPdfTech(from, entry.file), PDF_TECH_NAME)
 
-    fun isInstalled(packageName: String): Boolean = launcher.isInstalled(packageName)
+    fun isInstalled(packageName: String): Boolean = signatures.isInstalled(packageName)
 
     /** Whether [entry] may be handed to another app at all: the guard each action goes through first. */
     fun canLeave(entry: FileEntry): Boolean = guard.resolve(entry.file) != null

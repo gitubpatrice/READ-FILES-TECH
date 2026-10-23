@@ -17,8 +17,9 @@ import javax.inject.Inject
 class DocumentViewerViewModel @Inject constructor(
     handle: SavedStateHandle,
     @param:IoDispatcher io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     val content = ViewerContent(viewModelScope, io) { DocumentText.read(requireNotNull(source) { "no file in the route" }) }
         .also(::addCloseable)

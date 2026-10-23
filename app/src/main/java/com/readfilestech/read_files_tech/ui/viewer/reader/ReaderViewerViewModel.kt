@@ -42,8 +42,9 @@ object ReaderOpening {
 class ReaderViewerViewModel @Inject constructor(
     private val handle: SavedStateHandle,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    sources: ViewerSources,
 ) : ViewModel() {
-    val source: ViewerSource? = ViewerSources.from(handle)
+    val source: ViewerSource? = sources.from(handle)
 
     val content = ViewerContent(viewModelScope, io) {
         keep(ReaderOpening.open(requireNotNull(source) { "no file in the route" }))

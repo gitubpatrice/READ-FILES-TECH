@@ -69,15 +69,35 @@ class VaultFiles @Inject constructor(
     suspend fun import(source: File, overwrite: Boolean = false): File =
         import(source.name, source.length(), { FileInputStream(source) }, overwrite)
 
+    /** What a plaintext copy of a vault file is for: where it goes, and who may read it there. */
+    enum class Copy(val folder: String) {
+        /**
+         * `cache/vault_decrypt/`: what a viewer of the app reads (docs D-028), deleted when it closes;
+         * nothing serves that folder to another app (PathGuard, file_paths.xml).
+         */
+        VIEWER(DECRYPT_DIR),
+
+        /**
+         * `cache/vault_shared/`: a share the user asked for (docs D-034), the one folder of the vault's
+         * plaintext the FileProvider serves, and only for the URI that share grants
+         * (FileLauncher.shareVaultCopy).
+         */
+        SHARE(SHARE_DIR),
+    }
+
+    /** [copy] of [encrypted], for a viewer of the app: see [copy]. */
+    suspend fun decryptToCache(encrypted: File): File = withContext(dispatcher) { copy(encrypted, Copy.VIEWER) }
+
     /**
-     * Decrypts [encrypted] to its own new folder of the cache, under its plain name — for a viewer or a
-     * share. Each call gets its own folder: two shares of the same file never write the same path.
-     * Purged on lock (VaultService.purgeDecrypted); a failure removes the folder at once.
+     * Decrypts [encrypted] to its own new folder of the [use]'s, under its plain name. Each call gets its
+     * own folder: two openings or two shares of the same file never write the same path. Purged when the
+     * vault locks (VaultService.purgeDecrypted), at the panic and at every start; a failure removes the
+     * folder at once. Blocking: off the main thread.
      */
-    suspend fun decryptToCache(encrypted: File): File = withContext(dispatcher) {
+    fun copy(encrypted: File, use: Copy): File =
         session.open().use { op ->
             val plainName = checkedPlainName(encrypted)
-            val slot = File(File(dirs.cache, DECRYPT_DIR), slotName())
+            val slot = File(File(dirs.cache, use.folder), slotName())
             slot.mkdirs()
             var kept = false
             try {
@@ -91,7 +111,6 @@ class VaultFiles @Inject constructor(
                 if (!kept) FileTrees.delete(slot)
             }
         }
-    }
 
     /**
      * Decrypts [encrypted] into [destDir] under its plain name. Never over an existing file unless
@@ -117,7 +136,7 @@ class VaultFiles @Inject constructor(
     /** Deletes a file of the vault — only one, and only while the vault is open. */
     suspend fun delete(encrypted: File) = withContext(dispatcher) {
         session.open().use { op ->
-            require(isInVault(encrypted)) { "not a file of the vault" }
+            require(dirs.holds(encrypted)) { "not a file of the vault" }
             session.whileOpen(op) { encrypted.delete() }
         }
     }
@@ -131,13 +150,10 @@ class VaultFiles @Inject constructor(
 
     /** The name to decrypt [encrypted] under: a control character a 2.15.x let in becomes `_`, never a refusal. */
     private fun checkedPlainName(encrypted: File): String {
-        require(isInVault(encrypted)) { "not a file of the vault" }
+        require(dirs.holds(encrypted)) { "not a file of the vault" }
         return VaultNames.readableName(encrypted.name)
             ?: throw NameRefusedException(encrypted.name, "no single file name can hold it")
     }
-
-    private fun isInVault(file: File) =
-        file.parentFile?.canonicalFile == dirs.vault.canonicalFile && FileTrees.isRegularFile(file) && VaultNames.isVaultFile(file.name)
 
     /** A fresh folder name of the decrypt cache: random, so two openings never share a path. */
     private fun slotName(): String = Base64.getUrlEncoder().withoutPadding().encodeToString(cipher.randomBytes(SLOT_BYTES))
@@ -145,6 +161,9 @@ class VaultFiles @Inject constructor(
     companion object {
         /** `cache/vault_decrypt/`, the Flutter app's name: its purge covers what the 2.15.x left. */
         const val DECRYPT_DIR = "vault_decrypt"
+
+        /** `cache/vault_shared/`: the copies the user shares, named in `res/xml/file_paths.xml` too. */
+        const val SHARE_DIR = "vault_shared"
 
         /** `FileCaps.vaultBackup` of the 2.15.x: 100 MiB per imported file. */
         const val IMPORT_MAX_BYTES = 100L * 1024 * 1024

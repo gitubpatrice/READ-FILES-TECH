@@ -20,8 +20,13 @@
       (ScanFiles), the OCR deletes it once decoded. PathGuard lets nothing of cache/ but
       zip_shared/ out: no other way out of the app reaches these files.
 
+    - cache-path "vault_shared/": the copies of vault files the user chose to share, decrypted on demand
+      (docs D-034; VaultFiles.decryptForShare), each in a folder of its own, purged when the vault locks,
+      at the panic and at every start. PathGuard refuses this folder like the others below: only
+      FileLauncher.shareVaultCopy serves it, for the URI of the share asked for.
+
     Nothing else private is listed: not files/ (the vault, the history), not the rest of cache/
-    (decrypted vault files).
+    (the vault files decrypted for the app's own viewers, cache/vault_decrypt/).
 -->
 <paths>
     <external-path
@@ -36,4 +41,7 @@
     <cache-path
         name="scanner_capture"
         path="scanner/capture/" />
+    <cache-path
+        name="vault_shared"
+        path="vault_shared/" />
 </paths>
