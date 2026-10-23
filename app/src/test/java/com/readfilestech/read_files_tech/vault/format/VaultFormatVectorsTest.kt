@@ -152,6 +152,38 @@ class VaultFormatVectorsTest {
         }
     }
 
+    /**
+     * `vault_blob_test.dart`, "un blob trop court est refusé, pas interprété": a FORMAT error, never a
+     * read out of bounds nor a refused tag — a short sentinel must not count as a wrong password.
+     */
+    @Test
+    fun `a blob too short is refused as a format error, in one block and as a stream`() {
+        val key = ByteArray(VaultCrypto.KEY_LEN)
+        for (n in listOf(0, 1, 11, VaultCrypto.NONCE_LEN + VaultCrypto.TAG_LEN - 1)) {
+            assertThrows<VaultFormatException>("$n bytes") { VaultCrypto.decryptAuto(ByteArray(n), key, "x", v2Only = false) }
+            assertThrows<VaultFormatException>("$n bytes, streamed") {
+                VaultCrypto.decryptAuto(ByteArrayInputStream(ByteArray(n)), n.toLong(), ByteArrayOutputStream(), key, "x", v2Only = false)
+            }
+        }
+    }
+
+    /** `vault_blob_test.dart`, "un magic tronqué ne passe pas pour du v2": `RFT3`, one byte off. */
+    @Test
+    fun `a magic one byte off is not v2 - refused on a v2-only vault as a format error`() {
+        val almost = "RFT3".toByteArray() + ByteArray(VaultCrypto.NONCE_LEN + VaultCrypto.TAG_LEN)
+        assertThat(VaultCrypto.isV2(almost.size.toLong(), almost)).isFalse()
+        assertThrows<VaultFormatException> {
+            VaultCrypto.decryptAuto(almost, ByteArray(VaultCrypto.KEY_LEN), "x", v2Only = true)
+        }
+    }
+
+    /** `vault_blob_test.dart`, "startsWithMagic refuse un tampon plus court que le magic". */
+    @Test
+    fun `a head shorter than the magic is not v2, whatever the length says`() {
+        assertThat(VaultCrypto.isV2(1_000, "RF".toByteArray())).isFalse()
+        assertThat(VaultCrypto.isV2(1_000, ByteArray(0))).isFalse()
+    }
+
     @Test
     fun `rftvault v2 and v1 backups open`() {
         val backup = vectors.getJSONObject("backup")
