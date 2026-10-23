@@ -202,6 +202,11 @@ android {
             // bcprov, bcpkix and bcutil 1.86 each ship the SAME `META-INF/LICENSE.md`: one is kept (prototype).
             pickFirsts += "META-INF/LICENSE.md"
         }
+        // The universal APK holds the ABIs the splits make and no other: Tesseract4Android also ships 32-bit
+        // x86, which no split covers and the 2.15.3 never shipped (7.8 MB stored in the universal APK).
+        jniLibs {
+            excludes += "lib/x86/**"
+        }
     }
 
     // The predefined CJK CMaps of PdfBox-Android (docs D-005: -1.26 MB of APK). Kept: Identity-H/V, which
