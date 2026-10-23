@@ -9,6 +9,7 @@ import com.readfilestech.read_files_tech.data.editor.CsvEdits
 import com.readfilestech.read_files_tech.data.editor.CsvSaving
 import com.readfilestech.read_files_tech.data.editor.FileChangedException
 import com.readfilestech.read_files_tech.data.editor.FileStamp
+import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
 import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.history.EditorHistory
@@ -40,6 +41,8 @@ import javax.inject.Inject
  *   changes meanwhile.
  * @param saveFailure why the last save wrote nothing — said in the leave dialog, which stays (D3).
  * @param left saved from the leave dialog: the screen goes.
+ * @param askOverCap a save waiting for the user's answer: the file is over the history's cap — this many MB
+ *   ([FileCaps.EDITOR_HISTORY_COPY]) —, and the version it replaces cannot be kept.
  */
 data class CsvEditorState(
     val name: String = "",
@@ -52,6 +55,7 @@ data class CsvEditorState(
     val saveFailure: UiText? = null,
     val left: Boolean = false,
     val versions: List<HistoryCopy>? = null,
+    val askOverCap: Int? = null,
 )
 
 /**
@@ -83,6 +87,9 @@ class CsvEditorViewModel @Inject constructor(
     /** A version of the history loaded: there is something to save, though no cell was typed. */
     private var restored = false
 
+    /** The save [askOverCap] holds: from the leave dialog or not. */
+    private var askedThenLeave = false
+
     init {
         (handle.get<String>(KEY_PATH) ?: handle.get<String>(Routes.ARG_PATH)?.takeIf(String::isNotEmpty))?.let(::open)
     }
@@ -91,6 +98,8 @@ class CsvEditorViewModel @Inject constructor(
     fun open(path: String) {
         if (mutableState.value.saving) return
         val serial = ++loads
+        // Another file, another session: its own answer. The same one (restored after a process death) keeps it.
+        if (handle.get<String>(KEY_PATH) != path) handle[KEY_SAVE_UNCOPIED] = null
         handle[KEY_PATH] = path
         val chosen = File(path)
         file = chosen
@@ -128,13 +137,22 @@ class CsvEditorViewModel @Inject constructor(
         return result
     }
 
-    /** Writes the file; [thenLeave] from the leave dialog, which the screen leaves on success only. */
+    /**
+     * Writes the file; [thenLeave] from the leave dialog, which the screen leaves on success only. The first
+     * save of a file over the history's cap asks first ([askOverCap]): the version it replaces cannot be kept,
+     * which the save did without a word.
+     */
     fun save(thenLeave: Boolean = false) {
         val current = mutableState.value
         val edits = current.edits?.takeUnless { current.saving }
         val target = file
         val opened = stamp
         if (edits == null || target == null || opened == null) return
+        if (!CsvSaving.keepsCopy(opened) && handle.get<String>(KEY_SAVE_UNCOPIED) != target.path) {
+            askedThenLeave = thenLeave
+            mutableState.value = current.copy(askOverCap = (FileCaps.EDITOR_HISTORY_COPY / MIB).toInt())
+            return
+        }
         // A restore still being read lands no more: the save writes what is shown (Claude review R21).
         ++loads
         mutableState.value = current.copy(saving = true, saveFailure = null)
@@ -145,6 +163,21 @@ class CsvEditorViewModel @Inject constructor(
             if (error == null) saved(target, thenLeave, edits) else failed(error, thenLeave)
         }
     }
+
+    /**
+     * "Save anyway": the save asked about goes on, and the answer is kept for the rest of this file's session —
+     * in the saved state, so a process death does not ask again.
+     */
+    fun saveOverCap() {
+        val target = file ?: return
+        if (mutableState.value.askOverCap == null) return
+        handle[KEY_SAVE_UNCOPIED] = target.path
+        mutableState.update { it.copy(askOverCap = null) }
+        save(askedThenLeave)
+    }
+
+    /** "Cancel": nothing written, and the next save asks again. */
+    fun cancelOverCap() = mutableState.update { it.copy(askOverCap = null) }
 
     private suspend fun saved(target: File, thenLeave: Boolean, written: CsvEdits) {
         restored = false
@@ -227,6 +260,9 @@ class CsvEditorViewModel @Inject constructor(
 
     private companion object {
         const val KEY_PATH = "csv_editor_path"
+
+        /** The file whose saves over the history's cap the user accepted, without a copy of what they replace. */
+        const val KEY_SAVE_UNCOPIED = "csv_editor_save_uncopied"
     }
 }
 

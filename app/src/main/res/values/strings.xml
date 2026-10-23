@@ -400,6 +400,7 @@
     <string name="csv_editor_history_hint">Restoring loads the version in the editor: your unsaved changes go to the history first, and the file is written only when you save.</string>
     <string name="csv_editor_restored">Earlier version loaded: save to keep it.</string>
     <string name="csv_editor_unsaved_too_large">your unsaved changes are over %1$d MB, too large to be kept in the history — save them first</string>
+    <string name="csv_editor_over_cap">This file is over %1$d MB: its current version cannot be kept in the history. Save anyway?</string>
 
     <string name="document_no_text">This document contains no text.</string>
 

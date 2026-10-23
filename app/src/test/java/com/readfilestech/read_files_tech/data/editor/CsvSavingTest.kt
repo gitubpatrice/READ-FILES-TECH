@@ -66,6 +66,44 @@ class CsvSavingTest {
         assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
     }
 
+    /** [file] rewritten as another app that keeps the date would: other bytes, the same size, the same time. */
+    private fun rewriteKeepingSizeAndDate(file: File, text: String) {
+        val time = file.lastModified()
+        val size = file.length()
+        file.writeText(text)
+        file.setLastModified(time)
+        assertThat(file.length()).isEqualTo(size)
+        assertThat(file.lastModified()).isEqualTo(time)
+    }
+
+    /** Size and date said nothing of a file rewritten with the same ones: its content now does. */
+    @Test
+    fun `a file rewritten with the same size and date is not overwritten`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        rewriteKeepingSizeAndDate(file, "a,b\n3,4\n")
+        assertThrows<FileChangedException> { CsvSaving.save(file, stamp, history, edits::writeTo) }
+        assertThat(file.readText()).isEqualTo("a,b\n3,4\n")
+        assertThat(history.versions(file.absolutePath)).isEmpty()
+    }
+
+    /** The same, during the save: the content is read again just before the new file takes its place. */
+    @Test
+    fun `a file rewritten with the same size and date during the save is not replaced`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        assertThrows<FileChangedException> {
+            CsvSaving.save(file, stamp, history) { out ->
+                edits.writeTo(out)
+                rewriteKeepingSizeAndDate(file, "a,b\n5,6\n")
+            }
+        }
+        assertThat(file.readText()).isEqualTo("a,b\n5,6\n")
+        assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+    }
+
     /** Cells not saved, kept before a restore: up to the history's cap, and past it nowhere — the restore refused. */
     @Test
     fun `cells not saved are kept up to the history's cap`() {
