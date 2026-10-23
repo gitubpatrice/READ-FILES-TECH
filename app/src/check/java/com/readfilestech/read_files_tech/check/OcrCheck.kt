@@ -38,8 +38,9 @@ class OcrCheck(private val context: Context, private val options: Bundle?) {
         val external = options?.getString(TESSDATA)?.let(::File)
         val engine = OcrEngine(
             dataPath = { external ?: OcrModels.prepare(context) },
-            languages = options?.getString(LANG) ?: OcrModels.LANGUAGES,
+            preferred = OcrEngine.appLanguage(context),
             pageSegMode = options?.getInt(PSM, OcrEngine.PAGE_SEG_MODE) ?: OcrEngine.PAGE_SEG_MODE,
+            fixedLanguages = options?.getString(LANG),
         )
         return engine.use {
             val images = dir.listFiles { f -> f.isFile && f.name != MANIFEST }.orEmpty().sortedBy { it.name }
@@ -74,6 +75,7 @@ class OcrCheck(private val context: Context, private val options: Bundle?) {
             "decoded" to size,
             "decodeMillis" to if (size != null) decodedAt - start else null,
             "recognizeMillis" to if (size != null && failure == null) end - decodedAt else null,
+            "readings" to if (size != null && failure == null) engine.lastReadings else null,
         )
     }
 

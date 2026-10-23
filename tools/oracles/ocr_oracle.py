@@ -79,11 +79,48 @@ OTHER_LATIN = [
     "Pchnąć w tę łódź jeża lub ośm skrzyń fig",
     "Příliš žluťoučký kůň úpěl ďábelské ódy",
 ]
+# The app's three other languages (docs D-033), each a page of its own letters — ä ö ü ß, à è é ì ò ù,
+# á é í ó ú ñ ü ¿ ¡ — judged like the French and English ones: an accent read wrong is a word wrong.
+LANGUAGE_PAGES = {
+    "m-deutsch.png": [
+        "Zwölf Boxkämpfer jagen Viktor quer über den Sylter Deich",
+        "Die Größe der Straße hängt vom Maß des Fußwegs ab",
+        "Österreich und die Schweiz liegen südlich von München",
+        "Der Bäcker öffnet um sieben Uhr, die Tür ist grün",
+        "Rechnung Nummer 4821 vom 22. Oktober 2026",
+        "Gesamtbetrag 1234,56 EUR fällig am Freitag",
+        "Übermäßige Ärgernisse führen zu schlechter Laune",
+        "Nichts auf diesem Bild verlässt das Telefon",
+    ],
+    "n-italiano.png": [
+        "Il vecchio pescatore guardò il mare, poi tornò a casa",
+        "Perché la città è più bella di sera, così dicono",
+        "Il caffè è già pronto, però manca lo zucchero",
+        "Fattura numero 4821 del 22 ottobre 2026",
+        "Importo totale 1234,56 EUR entro venerdì",
+        "Lunedì andrò all'università con l'autobus",
+        "La qualità del servizio è stata ottima",
+        "Niente di questa immagine lascia il telefono",
+    ],
+    "o-espanol.png": [
+        "El veloz murciélago hindú comía feliz cardillo y kiwi",
+        "La cigüeña tocaba el saxofón detrás del palenque",
+        "¿Dónde está la estación? ¡Qué lástima, ya salió!",
+        "Factura número 4821 del 22 de octubre de 2026",
+        "Importe total 1234,56 EUR antes del viernes",
+        "El niño comió más piña y jamón en el almuerzo",
+        "Mañana iré a la reunión con mis compañeros",
+        "Nada de esta imagen sale del teléfono",
+    ],
+}
+# The language each of them must end read with, first (docs D-033: the engine tells a page's language and
+# reads it again with it first). Not checked under --lang, which fixes Tesseract's languages.
+PAGE_LANGUAGE = {"m-deutsch.png": "deu", "n-italiano.png": "ita", "o-espanol.png": "spa"}
 PASS_RATIO = 0.95
 # The pages measured, not judged against PASS_RATIO (docs D-032): the photo-like one, the 48 Mpx one, and the
 # other latin languages.
 MEASURED = ("d-photo-12mpx.jpg", "e-48mpx.jpg", "l-other-latin.png")
-EXPECTED = {"l-other-latin.png": OTHER_LATIN}
+EXPECTED = {"l-other-latin.png": OTHER_LATIN, **LANGUAGE_PAGES}
 # A page read in more than this, decode and recognition together, fails (docs D-032).
 MAX_MILLIS = 10_000
 # The size the app must decode, where it is the point: upright (an engine may read sideways text — ML Kit did,
@@ -175,6 +212,9 @@ def make(out):
     cases["g-100mpx.png"] = "refused"
     page((1400, 700), "arial.ttf", 36, 40, lines=OTHER_LATIN).save(out / "l-other-latin.png")
     cases["l-other-latin.png"] = "text"
+    for name, lines in LANGUAGE_PAGES.items():
+        page((1400, 700), "arial.ttf", 36, 40, lines=lines).save(out / name)
+        cases[name] = "text"
 
     (out / "h-empty.png").write_bytes(b"")
     (out / "i-garbage.jpg").write_bytes(bytes(rng.randrange(256) for _ in range(50_000)))
@@ -189,7 +229,7 @@ def make(out):
 def words(text):
     found = []
     for raw in unicodedata.normalize("NFC", text).split():
-        word = raw.strip(".,;:!?\"'()[]«»").casefold()
+        word = raw.strip(".,;:!?¿¡\"'()[]«»").casefold()
         if word:
             found.append(word)
     return found
@@ -305,13 +345,18 @@ def main():
         result = results.get(name)
         check_size = args.scale is None and not args.scan
         problem = "no result" if result is None else judge(name, kind, result, check_size)
-        failures += problem is not None
         r = result or {}
+        read_with = [reading.split("+")[0] for reading in r.get("readings") or []]
+        if problem is None and not args.lang and name in PAGE_LANGUAGE and read_with[-1:] != [PAGE_LANGUAGE[name]]:
+            problem = "read last with %s, not %s first" % (read_with[-1:] or "nothing", PAGE_LANGUAGE[name])
+        failures += problem is not None
         verdict = ("MEASURED" if name in MEASURED else "OK") if problem is None else "FAIL " + problem
         if "ratio" in r:
             verdict += " (%.1f %% of the words in order)" % (100 * r["ratio"])
         if r.get("detail"):
             verdict += " [%s]" % r["detail"]
+        if read_with:
+            verdict += " read with %s first" % ", then ".join(read_with)
         print("%-22s %-8s %-16s %-11s %7s %7s  %s" % (
             name, kind, r.get("outcome"), r.get("decoded"), r.get("decodeMillis"), r.get("recognizeMillis"), verdict))
     print()

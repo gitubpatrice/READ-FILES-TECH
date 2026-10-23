@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -123,7 +124,8 @@ fun OcrScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () ->
         val modifier = Modifier.padding(padding)
         if (state.untouched) {
             // The picture is chosen or taken with the bottom bar's buttons.
-            ToolIntro(Icons.Outlined.DocumentScanner, title, stringResource(R.string.ocr_intro), onChoose = null, modifier)
+            val languages = ocrLanguageNames(LocalConfiguration.current.locales[0])
+            ToolIntro(Icons.Outlined.DocumentScanner, title, stringResource(R.string.ocr_intro, languages), onChoose = null, modifier)
         } else {
             Column(
                 modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),

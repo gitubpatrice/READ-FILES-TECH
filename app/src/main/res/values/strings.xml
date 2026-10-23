@@ -681,7 +681,7 @@
         <item quantity="other">Its %d pages have not been saved as a PDF.</item>
     </plurals>
     <string name="scanner_discard">Discard</string>
-    <string name="ocr_intro">Take a photo of a page or choose an image: its text, in French or English, is recognised on this phone. Nothing leaves it.</string>
+    <string name="ocr_intro">Take a photo of a page or choose an image: its text (%1$s) is recognised on this phone. Nothing leaves it.</string>
     <string name="ocr_choose_image">Choose an image</string>
     <string name="ocr_image_read">The image read</string>
     <string name="ocr_working">Recognising the text…</string>

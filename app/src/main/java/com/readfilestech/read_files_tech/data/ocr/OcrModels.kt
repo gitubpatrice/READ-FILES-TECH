@@ -21,12 +21,11 @@ internal class OcrModel(val file: String, val size: Long, val sha256: String)
 class ModelMismatchException(file: String) : Exception("trained data $file does not match")
 
 /**
- * The OCR's trained data (docs D-032): Tesseract's `tessdata_fast` models for French and English
- * (Apache-2.0), shipped in the APK's assets and copied ONCE into the app's no-backup files, where
- * Tesseract reads them by path — it cannot read an asset.
+ * The OCR's trained data (docs D-032, D-033): Tesseract's `tessdata_fast` model of each language of
+ * [OcrLanguages] (Apache-2.0, pinned there), shipped in the APK's assets and copied ONCE into the app's
+ * no-backup files, where Tesseract reads them by path — it cannot read an asset.
  *
- * Taken from github.com/tesseract-ocr/tessdata_fast at commit 87416418657359cb625c412a48b6e1d6d41c29bd
- * (2024-08-01, the head of its `main`); their sizes and SHA-256 below are those of that commit.
+ * Why per-language models (measured when there were two, French and English):
  *
  * Measured on the oracle (tools/oracles/ocr_oracle.py, emulator API 36, 2026-10-23), the share of words
  * read in order on the clean pages, the photo-like one, the 48 Mpx one, and a page of six other latin
@@ -36,26 +35,21 @@ class ModelMismatchException(file: String) : Exception("trained data $file does 
  *  - `script/Latin`, every language of the latin alphabet as ML Kit's latin model read them (the 2.15.3):
  *    100 % everywhere, the other languages too — but 89 MB (41 MB in each APK, 89 MB more copied) and
  *    1.2 to 1.7 times slower.
- * French first, then English: the app's two languages, at a seventeenth of the size. The other languages of
- * the latin alphabet lose their own letters — a regression from the 2.15.3, said in the screen's intro.
+ * The app's own languages at a fraction of the size. With German, Italian and Spanish (D-033, 11.8 MB): each
+ * of the five read at 95 % at least with French first, 98.4 % at least with its own first (S9); Portuguese,
+ * Danish, Polish and Czech still lose their own letters (66 %) — the screen's intro names the five.
  *
  * A model is used only once its size and SHA-256 are those listed, checked each time an engine opens
- * (≈ 5 MB read). A copy is written atomically ([AtomicFiles]) and checked as it is written: a copy cut by
+ * (≈ 12 MB read). A copy is written atomically ([AtomicFiles]) and checked as it is written: a copy cut by
  * a process death leaves a temporary file, removed at the next preparation, never a model; a model whose
  * bytes changed on the disk is copied again.
  */
 internal object OcrModels {
-    /** Tesseract's languages, the first one primary. */
-    const val LANGUAGES = "fra+eng"
-
     /** The assets' folder, and the one under the data path that Tesseract reads. */
     const val TESSDATA = "tessdata"
 
-    @Suppress("MagicNumber") // the sizes of the files, as their source lists them
-    val MODELS = listOf(
-        OcrModel("fra.traineddata", 1_130_365, "ced037562e8c80c13122dece28dd477d399af80911a28791a66a63ac1e3445ca"),
-        OcrModel("eng.traineddata", 4_113_088, "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"),
-    )
+    /** One model per language the OCR reads. */
+    val MODELS = OcrLanguages.ALL.map(OcrLanguage::model)
 
     private const val PIECE = 64 * 1024
 

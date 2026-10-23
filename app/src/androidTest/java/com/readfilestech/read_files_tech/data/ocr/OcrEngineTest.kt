@@ -19,9 +19,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 /**
- * Tesseract on the device (docs D-032), through the app's engine: it reads, and leaving STOPS it — a
- * recognition cancelled, or its engine closed, returns at Tesseract's next word, not at the end of the page.
- * Timed against the same page read whole, on the same device: the stop must come well before.
+ * Tesseract on the device (docs D-032), through the app's engine: it reads, a page in another language than
+ * the app's is read again with its own first (D-033), and leaving STOPS it — a recognition cancelled, or its
+ * engine closed, returns at Tesseract's next word, not at the end of the page. Timed against the same page
+ * read whole, on the same device: the stop must come well before.
  */
 class OcrEngineTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
@@ -33,6 +34,39 @@ class OcrEngineTest {
                 val text = engine.recognize(page(LINES, LINES.size))
                 assertThat(text).contains("The quick brown fox jumps over the lazy dog")
                 assertThat(text).contains("Nothing in this picture leaves the phone")
+            }
+        }
+    }
+
+    @Test
+    fun aPageInAnotherLanguageIsReadAgainWithItsOwnFirst() {
+        val french = OcrLanguages.order(OcrLanguages.FRENCH)
+        val german = OcrLanguages.order(OcrLanguages.GERMAN)
+        runBlocking {
+            OcrEngine({ OcrModels.prepare(context) }, { OcrLanguages.FRENCH }, OcrEngine.PAGE_SEG_MODE).use { engine ->
+                // A German page on a French phone: told German, read again — French first gives "Osterreich".
+                val germanPage = page(GERMAN, GERMAN.size)
+                assertThat(engine.recognize(germanPage)).contains("Österreich und die Schweiz")
+                assertThat(engine.lastReadings).containsExactly(french, german).inOrder()
+                // The next German page: once, German first.
+                engine.recognize(germanPage)
+                assertThat(engine.lastReadings).containsExactly(german)
+                // A picture without text: not read again, no language would find any — nor the guess changed.
+                assertThat(engine.recognize(page(FRENCH, 0)).trim()).isEmpty()
+                assertThat(engine.lastReadings).containsExactly(german)
+                // Text, but no language's words: read again with the app's language first.
+                val figures = page(FIGURES, FIGURES.size)
+                assertThat(engine.recognize(figures)).contains("4821")
+                assertThat(engine.lastReadings).containsExactly(german, french).inOrder()
+                // Its like after it (a series of receipts): once, with the app's language first.
+                engine.recognize(figures)
+                assertThat(engine.lastReadings).containsExactly(french)
+                // A German page again: guessed French, told German, read again.
+                assertThat(engine.recognize(germanPage)).contains("Österreich und die Schweiz")
+                assertThat(engine.lastReadings).containsExactly(french, german).inOrder()
+                // Then a French page: guessed German, told French, read again with French first.
+                assertThat(engine.recognize(page(FRENCH, FRENCH.size))).contains("envoyée à Marseille en été")
+                assertThat(engine.lastReadings).containsExactly(german, french).inOrder()
             }
         }
     }
@@ -116,6 +150,19 @@ class OcrEngineTest {
             "Invoice number 4821 dated 22 October 2026",
             "Portez ce vieux whisky au juge blond qui fume",
             "Nothing in this picture leaves the phone",
+        )
+        val GERMAN = listOf(
+            "Zwölf Boxkämpfer jagen Viktor quer über den Sylter Deich",
+            "Österreich und die Schweiz liegen südlich von München",
+            "Der Bäcker öffnet um sieben Uhr, die Tür ist grün",
+            "Nichts auf diesem Bild verlässt das Telefon",
+        )
+        val FIGURES = listOf("4821 1234,56 EUR", "22.10.2026 15:30", "0042 7315 9960")
+        val FRENCH = listOf(
+            "Portez ce vieux whisky au juge blond qui fume",
+            "Une lettre envoyée à Marseille en été",
+            "Il est très tard et nous sommes dans la rue",
+            "Rien de cette image ne quitte le téléphone",
         )
 
         /** A page of 120 lines: seconds of recognition, so that a stop shows. */

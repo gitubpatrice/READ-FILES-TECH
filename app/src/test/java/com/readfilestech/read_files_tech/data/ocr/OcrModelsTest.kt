@@ -122,8 +122,8 @@ class OcrModelsTest {
             }
         }
         assertThat(File(ASSETS).list()).asList().containsExactlyElementsIn(OcrModels.MODELS.map { it.file })
-        // Tesseract's languages are the models', primary first.
-        assertThat(OcrModels.LANGUAGES.split('+').map { "$it.traineddata" }).isEqualTo(OcrModels.MODELS.map { it.file })
+        // One per language, named as Tesseract reads it: `<code>.traineddata`.
+        assertThat(OcrLanguages.ALL.map { "${it.tesseract}.traineddata" }).isEqualTo(OcrModels.MODELS.map { it.file })
     }
 
     private companion object {

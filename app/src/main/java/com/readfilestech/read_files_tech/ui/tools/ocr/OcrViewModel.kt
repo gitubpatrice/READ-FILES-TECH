@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.ocr.OcrEngine
 import com.readfilestech.read_files_tech.data.ocr.OcrImages
+import com.readfilestech.read_files_tech.data.ocr.OcrLanguages
 import com.readfilestech.read_files_tech.data.ocr.OcrOutput
 import com.readfilestech.read_files_tech.data.ocr.RecognitionFailedException
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
@@ -41,6 +42,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 import javax.inject.Inject
 
 data class OcrState(
@@ -59,6 +61,13 @@ data class OcrState(
     /** Nothing chosen yet, nothing saved: the screen introduces the tool. */
     val untouched: Boolean get() = !working && text == null && failure == null && saved == null
 }
+
+/**
+ * The languages the OCR reads ([OcrLanguages], docs D-033), named in [locale] — the app's: "français, anglais,
+ * allemand, italien, espagnol". From the table, so that a language added there is said here too.
+ */
+internal fun ocrLanguageNames(locale: Locale): String =
+    OcrLanguages.ALL.joinToString(", ") { Locale.forLanguageTag(it.iso).getDisplayLanguage(locale) }
 
 /** Why a picture gave no text, in words: the decoder's refusal as the image tools say it, or Tesseract's failure. */
 internal fun ocrReason(error: Throwable): UiText =
