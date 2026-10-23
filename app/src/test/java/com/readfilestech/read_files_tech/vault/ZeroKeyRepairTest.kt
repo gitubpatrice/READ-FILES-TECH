@@ -3,6 +3,11 @@ package com.readfilestech.read_files_tech.vault
 import com.google.common.truth.Truth.assertThat
 import com.readfilestech.read_files_tech.data.prefs.FlutterPrefsFormat
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -108,6 +113,52 @@ class ZeroKeyRepairTest {
         assertThrows<VaultLockedException> { runBlocking { vault.repair.runOnce() } }
         assertThat(vault.service.unlock(PASSWORD)).isTrue()
         assertThat(vault.repair.runOnce()!!.repaired).containsExactly("a.txt")
+    }
+
+    @Test
+    fun `a file broken for another reason is examined, counted, and left byte for byte`() = runBlocking<Unit> {
+        val vault = olderVault()
+        vault.files.import("sound.txt", 4, { "sain".byteInputStream() })
+        plantZeroKey(vault, "damaged.bin", ByteArray(3_000) { (it * 7).toByte() })
+        // A v2 magic over anything: no key opens it, the zero key included.
+        val broken = File(vault.dirs.vault, "broken.bin.enc").apply { writeBytes("RFT2".toByteArray() + ByteArray(64) { 7 }) }
+        val before = broken.readBytes()
+        val result = vault.repair.runOnce()!!
+        assertThat(result.scanned).isEqualTo(3)
+        assertThat(result.repaired).containsExactly("damaged.bin")
+        assertThat(result.unexamined).isEmpty()
+        assertThat(broken.readBytes()).isEqualTo(before)
+    }
+
+    @Test
+    fun `a vault older than the 2_12, which still reads v1, is repaired too`() = runBlocking<Unit> {
+        val vault = olderVault()
+        vault.plant(VaultKeys.V2_ONLY, false)
+        vault.service.lock()
+        assertThat(vault.service.unlock(PASSWORD)).isTrue()
+        plantZeroKey(vault, "l.bin", "legacy".toByteArray())
+        assertThat(vault.repair.runOnce()!!.repaired).containsExactly("l.bin")
+        assertThat(vault.files.decryptToCache(File(vault.dirs.vault, "l.bin.enc")).readText()).isEqualTo("legacy")
+    }
+
+    @Test
+    fun `two calls during the same unlock share one pass`() = runBlocking<Unit> {
+        // On threads: on the caller's own, a pass would end before a second call could come.
+        val vault = TestVault(root, dispatcher = Dispatchers.Default)
+        vault.service.setup(PASSWORD)
+        vault.raw.edit().remove("flutter." + VaultKeys.ZERO_KEY_REPAIR_DONE).commit()
+        plantZeroKey(vault, "p.bin", byteArrayOf(1))
+        // The second call comes while the first pass works on the file (its name just recorded).
+        var second: Deferred<ZeroKeyRepair.Result?>? = null
+        vault.raw.onCommit = { keys ->
+            if ("flutter." + VaultKeys.ZERO_KEY_REPAIR_CURRENT in keys) {
+                vault.raw.onCommit = null
+                second = CoroutineScope(Dispatchers.Default).async(start = CoroutineStart.UNDISPATCHED) { vault.repair.runOnce() }
+            }
+        }
+        val first = vault.repair.runOnce()
+        assertThat(first!!.repaired).containsExactly("p.bin")
+        assertThat(second!!.await()).isSameInstanceAs(first)
     }
 
     /** A vault from before the 2.15.3: never repaired. */
