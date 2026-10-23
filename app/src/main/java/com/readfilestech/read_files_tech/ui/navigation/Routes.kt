@@ -58,6 +58,11 @@ object Routes {
     /** The viewer [kind] on the vault's file named [encryptedName]. */
     fun vaultViewer(kind: ViewerKind, encryptedName: String): String = "viewer/${kind.name}?$ARG_VAULT=${encode(encryptedName)}"
 
+    /** The files of the folder at [ARG_PATH], to encrypt into the open vault (`VaultImportFolderScreen` of the 2.15.3). */
+    const val VAULT_IMPORT = "vault/import?$ARG_PATH={$ARG_PATH}"
+
+    fun vaultImport(folder: String): String = "vault/import?$ARG_PATH=${encode(folder)}"
+
     /**
      * A tool, a tile or a menu entry ([Feature]): its screen, or "not available yet" until its phase. A tool
      * opened on a file — by the explorer's menu (Remove EXIF), by a viewer (the CSV viewer's "Edit") — gets

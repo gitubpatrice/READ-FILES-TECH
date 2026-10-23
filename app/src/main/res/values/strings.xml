@@ -997,4 +997,159 @@
         <item quantity="one">This table would make more than %1$,d page: too large to export here.</item>
         <item quantity="other">This table would make more than %1$,d pages: too large to export here.</item>
     </plurals>
+    <!-- The vault (phase 6; VaultScreen of the 2.15.3). -->
+    <string name="vault_setup_title">Create a vault</string>
+    <string name="vault_setup_body">The vault encrypts your files with AES-256-GCM. Its key is derived from your password on this phone (Argon2id, tuned to this device: a few seconds), and the password is never stored.</string>
+    <string name="vault_password">Password</string>
+    <string name="vault_password_confirm">Confirm</string>
+    <string name="vault_password_min">At least 8 characters</string>
+    <string name="vault_password_show">Show the password</string>
+    <string name="vault_password_hide">Hide the password</string>
+    <string name="vault_password_too_short">The password needs at least 8 characters.</string>
+    <string name="vault_password_mismatch">The passwords do not match.</string>
+    <string name="vault_create">Create the vault</string>
+    <string name="vault_creating">Creating the vault…</string>
+    <string name="vault_creating_detail">Tuning to this phone</string>
+    <string name="vault_no_recovery">No recovery is possible: if you forget the password, the encrypted files are lost for good.</string>
+    <string name="vault_created">Vault created</string>
+    <string name="vault_setup_failed">Could not create the vault: %1$s</string>
+    <string name="vault_locked_title">Vault locked</string>
+    <string name="vault_unlock">Unlock</string>
+    <string name="vault_wrong_password">Wrong password.</string>
+    <string name="vault_lockout">Too many attempts. Try again in %1$s.</string>
+    <string name="vault_corrupted">The vault\'s data is damaged: it cannot be opened. You can reset it, and its files are then lost.</string>
+    <string name="vault_unlock_failed">Could not open the vault: %1$s</string>
+    <string name="vault_reset">Reset the vault</string>
+    <string name="vault_reset_title">Reset the vault?</string>
+    <string name="vault_reset_message">Every encrypted file will be deleted. This cannot be undone.</string>
+    <string name="vault_reset_confirm">Reset</string>
+    <string name="vault_reset_done">Vault reset</string>
+    <string name="vault_reset_failed">Could not reset the vault: %1$s</string>
+    <string name="vault_lock">Lock</string>
+    <string name="vault_empty">The vault is empty</string>
+    <string name="vault_empty_hint">Import a file to encrypt it.</string>
+    <string name="vault_import">Import</string>
+    <string name="vault_import_pick_title">Import into the vault</string>
+    <string name="vault_import_folder">Import a folder</string>
+    <string name="vault_import_folder_hint">Encrypt many files at once</string>
+    <string name="vault_import_folder_pick_title">Choose a folder to encrypt</string>
+    <string name="vault_importing">Encrypting %1$d of %2$d…</string>
+    <string name="vault_backup">Back up the vault</string>
+    <string name="vault_backup_hint">An encrypted .rftvault file</string>
+    <string name="vault_restore">Restore a backup</string>
+    <string name="vault_restore_hint">From a .rftvault file</string>
+    <string name="vault_open">Open</string>
+    <string name="vault_share">Share (decrypted)</string>
+    <string name="vault_export">Export…</string>
+    <string name="vault_not_viewable">This kind of file does not open in the app: share it or export it.</string>
+    <string name="vault_namesake_title">Already there</string>
+    <string name="vault_namesake_message">“%1$s” is already in the vault. Replace it?</string>
+    <string name="vault_export_namesake_message">“%1$s” already exists in that folder. Replace it?</string>
+    <string name="vault_keep">Keep</string>
+    <string name="vault_replace">Replace</string>
+    <string name="vault_export_pick_title">Export to a folder</string>
+    <string name="vault_exported">Exported: %1$s</string>
+    <string name="vault_export_cancelled">Export cancelled: your file is kept.</string>
+    <string name="vault_export_failed">Could not export the file: %1$s</string>
+    <string name="vault_share_failed">Could not decrypt the file to share: %1$s</string>
+    <string name="vault_delete_title">Delete from the vault</string>
+    <string name="vault_delete_message">Delete “%1$s”? This cannot be undone.</string>
+    <string name="vault_delete_failed">Could not delete the file: %1$s</string>
+    <string name="vault_list_failed">Could not list the vault\'s files: %1$s</string>
+    <string name="vault_backup_empty">The vault is empty: nothing to back up.</string>
+    <string name="vault_backup_password_info">Choose a password for the backup: you will need it to restore it.\n\nIt is not the vault\'s password. Choose it well: without it, the backup cannot be opened.\n\nThe file goes to Files Tech/Sauvegardes coffre/.</string>
+    <string name="vault_backup_go">Back up</string>
+    <string name="vault_backing_up">Backing up the vault…</string>
+    <string name="vault_backup_done_title">Vault backed up</string>
+    <string name="vault_backup_done_body">Its backup is in Files Tech/Sauvegardes coffre.</string>
+    <string name="vault_backup_failed">Could not back up the vault: %1$s</string>
+    <string name="vault_restore_pick_title">Choose a .rftvault backup</string>
+    <string name="vault_restore_extension_title">Unexpected extension</string>
+    <string name="vault_restore_extension_message">The file does not end in .rftvault. Continue anyway?</string>
+    <string name="vault_restore_password_info">Enter the password chosen when the backup was made. Files already in the vault are skipped, not replaced.</string>
+    <string name="vault_restore_go">Restore</string>
+    <string name="vault_restoring">Restoring the backup…</string>
+    <string name="vault_restore_failed">Could not restore the backup: %1$s</string>
+    <string name="vault_restore_nothing_title">Nothing restored</string>
+    <plurals name="vault_restore_nothing_message">
+        <item quantity="one">%d file of the backup is already in the vault. Replace it with the backup\'s?</item>
+        <item quantity="other">%d files of the backup are already in the vault. Replace them with the backup\'s?</item>
+    </plurals>
+    <string name="vault_restore_replace_title">Replace the files?</string>
+    <string name="vault_restore_replace_message">The vault\'s files of the same names will be replaced by the backup\'s. This cannot be undone.</string>
+    <string name="vault_restore_check_space">%1$s: check the free space.</string>
+    <plurals name="vault_imported">
+        <item quantity="one">%d encrypted</item>
+        <item quantity="other">%d encrypted</item>
+    </plurals>
+    <plurals name="vault_kept">
+        <item quantity="one">%d kept</item>
+        <item quantity="other">%d kept</item>
+    </plurals>
+    <plurals name="vault_restored">
+        <item quantity="one">%d restored</item>
+        <item quantity="other">%d restored</item>
+    </plurals>
+    <plurals name="vault_already_there">
+        <item quantity="one">%d already there</item>
+        <item quantity="other">%d already there</item>
+    </plurals>
+    <plurals name="vault_left_out">
+        <item quantity="one">%d left out: no file name can hold it</item>
+        <item quantity="other">%d left out: no file name can hold them</item>
+    </plurals>
+    <string name="vault_reason_locked">the vault locked meanwhile</string>
+    <string name="vault_reason_corrupted">the vault\'s data is damaged</string>
+    <string name="vault_reason_storage">the phone refused to write</string>
+    <string name="vault_reason_too_large">beyond the limit of %1$d %2$s</string>
+    <string name="vault_reason_name">no file name can hold it</string>
+    <string name="vault_reason_backup_name">a restore would refuse the name of “%1$s”: export it, then import it again under another name</string>
+    <string name="vault_reason_auth">wrong password, or the backup was altered</string>
+    <string name="vault_reason_format">not a readable .rftvault backup</string>
+    <string name="vault_reason_too_costly">it needs more memory than this phone has</string>
+    <string name="vault_reason_lockout">too many attempts, try again in %1$s</string>
+    <plurals name="vault_wait_seconds">
+        <item quantity="one">%d second</item>
+        <item quantity="other">%d seconds</item>
+    </plurals>
+    <plurals name="vault_wait_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="vault_repair_title">Vault repair</string>
+    <string name="vault_repair_intro">Versions 2.5.5 to 2.15.2 could save a file of the vault under a key of zeros, when the vault locked during an import or a restore.</string>
+    <string name="vault_repair_repaired">Repaired, they open with your password again:\n%1$s\n\nThese files no longer opened since that incident. If one of them opened normally just before the update, do not rely on its content.</string>
+    <string name="vault_repair_unexamined">Not checked (too large, or a reading error):\n%1$s\n\nIf they do not open, import the original again if it still exists, or restore your .rftvault backup.</string>
+    <string name="vault_folder_include_sub">Include subfolders</string>
+    <string name="vault_folder_delete_originals">Delete the originals afterwards</string>
+    <string name="vault_folder_delete_originals_hint">Asked again before anything is deleted</string>
+    <string name="vault_folder_cap">The limit of %1$d files is reached. Choose a more precise subfolder to see everything.</string>
+    <string name="vault_folder_empty">No file</string>
+    <string name="vault_folder_empty_recursive">The folder and its subfolders hold no file.</string>
+    <string name="vault_folder_empty_flat">The folder holds no file. Include its subfolders?</string>
+    <string name="vault_folder_select_all">Select all</string>
+    <string name="vault_folder_select_none">Select none</string>
+    <string name="vault_folder_none_selected">No file selected</string>
+    <plurals name="vault_folder_encrypt">
+        <item quantity="one">Encrypt %1$d file (%2$s)</item>
+        <item quantity="other">Encrypt %1$d files (%2$s)</item>
+    </plurals>
+    <string name="vault_folder_progress">Encrypting… %1$d %%</string>
+    <string name="vault_folder_delete_title">Delete the originals?</string>
+    <plurals name="vault_folder_delete_message">
+        <item quantity="one">Once encrypted, %d file will be deleted from its folder. This cannot be undone.</item>
+        <item quantity="other">Once encrypted, %d files will be deleted from their folder. This cannot be undone.</item>
+    </plurals>
+    <string name="vault_folder_delete_confirm">Delete after encrypting</string>
+    <plurals name="vault_originals_deleted">
+        <item quantity="one">%d original deleted</item>
+        <item quantity="other">%d originals deleted</item>
+    </plurals>
+    <plurals name="vault_namesakes_kept">
+        <item quantity="one">%d kept (already in the vault)</item>
+        <item quantity="other">%d kept (already in the vault)</item>
+    </plurals>
+    <string name="vault_continue">Continue</string>
+    <string name="vault_folder_unreadable">This folder cannot be read.</string>
+    <string name="vault_folder_locked">The vault locked: the encryption stopped, and the originals not yet encrypted are untouched.</string>
 </resources>

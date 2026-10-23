@@ -51,6 +51,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.picker.PickerScreen
 import com.readfilestech.read_files_tech.ui.search.SearchScreen
 import com.readfilestech.read_files_tech.ui.trash.TrashScreen
+import com.readfilestech.read_files_tech.ui.vault.VaultImportFolderScreen
 import com.readfilestech.read_files_tech.ui.viewer.ViewerHost
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import kotlinx.coroutines.Dispatchers
@@ -203,6 +204,12 @@ private fun Destinations(navController: NavHostController) {
             )
         }
         composable(Routes.TRASH) { entry -> TrashScreen(onBack = { navController.leave(entry) }) }
+        composable(
+            Routes.VAULT_IMPORT,
+            arguments = listOf(navArgument(Routes.ARG_PATH) { type = NavType.StringType }),
+        ) { entry ->
+            VaultImportFolderScreen(onDone = { navController.leave(entry) })
+        }
         composable(Routes.SEARCH) { entry ->
             val picked = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
             SearchScreen(

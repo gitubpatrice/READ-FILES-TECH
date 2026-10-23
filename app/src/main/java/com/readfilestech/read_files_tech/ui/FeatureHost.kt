@@ -19,6 +19,7 @@ import com.readfilestech.read_files_tech.ui.tools.images.ExifScreen
 import com.readfilestech.read_files_tech.ui.tools.ocr.OcrScreen
 import com.readfilestech.read_files_tech.ui.tools.scanner.ScannerScreen
 import com.readfilestech.read_files_tech.ui.tools.texttools.TxtToolsScreen
+import com.readfilestech.read_files_tech.ui.vault.VaultScreen
 
 /**
  * The screen of each [Feature] — a tool of the home's grid, a quick-settings tile, a menu entry. A tool
@@ -47,6 +48,7 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.OCR -> OcrScreen(picked, onNavigate, onBack)
         Feature.TXT_TOOLS -> TxtToolsScreen(picked, onNavigate, onBack)
         Feature.CSV_TOOLS -> CsvToolsScreen(picked, onNavigate, onBack)
+        Feature.VAULT -> VaultScreen(picked, onNavigate, onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

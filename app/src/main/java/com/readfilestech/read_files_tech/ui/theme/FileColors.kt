@@ -5,6 +5,10 @@ import androidx.compose.ui.graphics.Color
 /** `kDangerRed` of the 2.15.x (#C62828), white text on it: an irreversible action never looks like "Cancel". */
 val DangerRed = Color(0xFFC62828)
 
+/** The 2.15.x's warnings: `Colors.amber` (no way back), `Colors.orange` (a limit reached). */
+val CautionAmber = Color(0xFFFFC107)
+val CautionOrange = Color(0xFFFF9800)
+
 /** The brands' own colours for "Send to…" and "Edit in PDF Tech" (2.15.x `file_row.dart`). */
 object BrandColors {
     val KDrive = Color(0xFF0098FF)
