@@ -97,7 +97,7 @@ class FileHashesTest {
             override fun read(): Int = throw UnsupportedOperationException()
             override fun read(b: ByteArray, off: Int, len: Int): Int = len.also { read += it }
         }
-        val stopped = runCatching { FileHashes.sha256(counting) { if (read > 0) throw IllegalStateException("stop") } }
+        val stopped = runCatching { FileHashes.sha256(counting) { if (read > 0) error("stop") } }
         assertThat(stopped.exceptionOrNull()).hasMessageThat().isEqualTo("stop")
         assertThat(read).isEqualTo(64 * 1024)
         assertThat(FileHashes.sha256("abc".byteInputStream()))
