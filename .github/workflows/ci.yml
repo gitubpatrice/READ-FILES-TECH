@@ -120,9 +120,20 @@ jobs:
         run: python3 tools/check-manifest-permissions.py
 
       # What a permission list cannot see: Android backup (default ON), cleartext, debuggable, the task
-      # affinity of the launcher activity, and the exact set of exported components.
+      # affinity of the launcher activity, the exact set of exported components, and no component or
+      # meta-data of ML Kit, Play services, Firebase or Google's telemetry (docs D-032).
       - name: Assert the shape of the merged release manifest
         run: python3 tools/check-manifest-shape.py
+
+      # What a manifest cannot see either: a library of those groups needs no component to do its work
+      # (ML Kit reported each use through a binding to Play services). Every artefact the release
+      # packages, transitive ones included, as Gradle resolved them; the guard's negative control first,
+      # against this very report.
+      - name: Assert the release classpath holds nothing of ML Kit, Play services or Firebase
+        run: |
+          ./gradlew --no-daemon -q :app:dependencies --configuration releaseRuntimeClasspath > "$RUNNER_TEMP/classpath.txt"
+          python3 tools/check-guards-negative-control.py --real-classpath "$RUNNER_TEMP/classpath.txt"
+          python3 tools/check-release-classpath.py "$RUNNER_TEMP/classpath.txt"
 
       # The phase 2 check entry point (src/check, debug and `check` builds only) must never reach a
       # release. Proved on the real artefact: the shape guard, run on the `check` variant's merged

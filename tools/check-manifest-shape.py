@@ -25,9 +25,11 @@ What is checked
    attribute counts as exported (the pre-Android 12 default), so an omission cannot hide one.
 4. The FileProvider (phase 3): once, authority `<package>.fileprovider`, not exported, per-URI grants;
    and `<queries>`: exactly the packages the explorer sends files to by name.
-5. No component at all, exported or not, of Google's telemetry transport (`datatransport`, pulled by
-   ML Kit for the OCR, docs D-031): the main manifest removes its three by name (phase 5). Nor ML Kit's
-   own init provider, which would start it on the application, its Play services binding allowed.
+5. Nothing of Google's services (docs D-032): no component, exported or not, and no meta-data of ML Kit
+   (`com.google.mlkit`), Play services (`com.google.android.gms`), its telemetry transport
+   (`com.google.android.datatransport`) or Firebase (`com.google.firebase`). ML Kit, the OCR's engine until
+   phase 5, brought all four — its init provider, Firebase's component discovery, the transport's
+   schedulers. tools/check-release-classpath.py refuses their artefacts before the manifest is merged.
 
 Usage
 -----
@@ -100,14 +102,15 @@ EXPORTED = {
 
 COMPONENT_TAGS = ("activity", "activity-alias", "service", "receiver", "provider")
 
-# Packages no component may come from, exported or not. Google's telemetry transport, pulled by ML Kit (the
-# OCR, docs D-031): its backend's registration and its upload schedulers are removed in the main manifest by
-# name — a new component of a later ML Kit would arrive under a name no removal names, and only this sees it.
-FORBIDDEN_COMPONENT_PACKAGES = ("com.google.android.datatransport.",)
-
-# Components no manifest may hold. ML Kit's own provider would start it on the application at every launch,
-# before the OCR starts it on a context that refuses Play services' telemetry binding (Claude review R25).
-FORBIDDEN_COMPONENTS = ("com.google.mlkit.common.internal.MlKitInitProvider",)
+# Packages no component and no meta-data may come from, exported or not (docs D-032): ML Kit, Play services,
+# its telemetry transport, Firebase. A prefix, not a list of names: a library of theirs arrives under names
+# nobody reviewed.
+FORBIDDEN_PACKAGES = (
+    "com.google.mlkit.",
+    "com.google.android.gms.",
+    "com.google.android.datatransport.",
+    "com.google.firebase.",
+)
 
 IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
 
@@ -210,11 +213,11 @@ def main(argv: list[str]) -> int:
                 problems.append(f"{name}: android:{attribute} is {value!r}, expected {expected!r}.")
 
     problems += file_provider_problems(application, expected_package)
-    for tag in COMPONENT_TAGS:
+    for tag in COMPONENT_TAGS + ("meta-data",):
         for element in application.iter(tag):
             name = element.get(A + "name") or ""
-            if name.startswith(FORBIDDEN_COMPONENT_PACKAGES) or name in FORBIDDEN_COMPONENTS:
-                problems.append(f"telemetry component in the manifest: <{tag}> {name}")
+            if name.startswith(FORBIDDEN_PACKAGES):
+                problems.append(f"Google component in the manifest: <{tag}> {name}")
     queried = {p.get(A + "name") for q in root.iter("queries") for p in q.iter("package")}
     if queried != QUERIED_PACKAGES:
         problems.append(f"<queries> packages are {sorted(queried)}, expected {sorted(QUERIED_PACKAGES)}.")

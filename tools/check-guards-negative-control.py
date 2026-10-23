@@ -17,17 +17,22 @@ Guards covered:
   - tools/check-manifest-shape.py        (backup off, nothing debuggable, the exported components)
   - tools/check-release-apks.py          (package and versionCode of every release APK)
   - tools/check-test-results.py          (a test run that executed zero tests)
+  - tools/check-release-classpath.py     (nothing of ML Kit, Play services, Firebase, Google's telemetry)
 
 Against REAL artefacts, which proves each guard reads what the build produces, not only a fixture:
   --real-manifest PATH         the manifest of a release APK (apkanalyzer): the permission guard
                                passes on it, and fails once INTERNET is injected into a copy; the shape
                                guard (--apk, where resource references are ids) passes on it, and fails
-                               once an exported activity, allowBackup or a missing rule is injected.
+                               once an exported activity, allowBackup, a missing rule or a component of
+                               Google's services is injected.
   --real-merged-manifest PATH  the merged release manifest: the same, the shape guard as it is.
+  --real-classpath PATH        the report of `:app:dependencies --configuration releaseRuntimeClasspath`:
+                               the classpath guard passes on it, and fails once ML Kit, or Play services
+                               deep in the tree, is injected into a copy.
 
 Adapted from App Manager Tech. No dependencies, never touches the repository.
 
-    python3 tools/check-guards-negative-control.py [--real-manifest PATH | --real-merged-manifest PATH]
+    python3 tools/check-guards-negative-control.py [--real-manifest PATH | --real-merged-manifest PATH | --real-classpath PATH]
 """
 
 from __future__ import annotations
@@ -47,6 +52,7 @@ MANIFEST_CHECK = os.path.join(HERE, "check-manifest-permissions.py")
 SHAPE_CHECK = os.path.join(HERE, "check-manifest-shape.py")
 APKS_CHECK = os.path.join(HERE, "check-release-apks.py")
 TESTS_CHECK = os.path.join(HERE, "check-test-results.py")
+CLASSPATH_CHECK = os.path.join(HERE, "check-release-classpath.py")
 VERSION_PROPERTIES = os.path.join(os.path.dirname(HERE), "version.properties")
 
 # The guards print `::error::` annotations and write the job summary under GitHub Actions. The
@@ -170,18 +176,26 @@ IMPLICITLY_EXPORTED = (
     '        </activity>\n'
 )
 EXPORTED_PROVIDER = '        <provider android:name="com.example.Provider" android:exported="true" />\n'
-# What ML Kit's transport adds when the main manifest's removal is gone (the OCR, docs D-031): not exported.
+# What ML Kit brought into the merged manifest until phase 5 (docs D-032), each NOT exported: the telemetry
+# transport's scheduler, ML Kit's init provider, Firebase's component discovery and its registrars.
 TELEMETRY_SERVICE = (
     '        <service android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"\n'
     '            android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />\n'
 )
-
-# ML Kit's own init provider, back: it would start ML Kit on the application at every launch, its Play
-# services telemetry binding allowed (Claude review R25).
 MLKIT_INIT_PROVIDER = (
     '        <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider"\n'
     '            android:authorities="x.mlkitinitprovider" android:exported="false" />\n'
 )
+FIREBASE_DISCOVERY = (
+    '        <service android:name="com.google.firebase.components.ComponentDiscoveryService" android:exported="false">\n'
+    '            <meta-data android:name="com.google.firebase.components:com.google.mlkit.vision.text.internal.TextRegistrar"\n'
+    '                android:value="com.google.firebase.components.ComponentRegistrar" />\n'
+    '        </service>\n'
+)
+# Play services' version, as its libraries declare it: a meta-data, no component at all.
+PLAY_SERVICES_VERSION = '        <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version" />\n'
+# Another library of Google's, not one of its services: not refused.
+MATERIAL_ACTIVITY = '        <activity android:name="com.google.android.material.datepicker.Picker" android:exported="false" />\n'
 
 # --- Release APK fixtures (aapt2 badging output) -------------------------------------------------
 
@@ -238,6 +252,39 @@ REPORTS_OK = {
 }
 
 
+# --- Release classpath fixtures (`:app:dependencies --configuration releaseRuntimeClasspath`) ------
+
+CLASSPATH_HEADER = (
+    "------------------------------------------------------------\n"
+    "Project ':app'\n"
+    "------------------------------------------------------------\n"
+    "\n"
+    "releaseRuntimeClasspath - Runtime classpath of '/release'.\n"
+)
+CLASSPATH_TREE = (
+    "+--- org.jetbrains.kotlin:kotlin-stdlib:2.4.10\n"
+    "|    +--- org.jetbrains:annotations:13.0 -> 23.0.0\n"
+    "|    \\--- org.jetbrains.kotlin:kotlin-stdlib-common:2.4.10 (c)\n"
+    "+--- androidx.core:core-ktx:1.19.1\n"
+    "|    \\--- androidx.core:core:1.19.1\n"
+    "|         \\--- androidx.annotation:annotation:1.10.0\n"
+    "+--- org.bouncycastle:bcutil-jdk15to18:1.72 -> org.bouncycastle:bcutil-jdk18on:1.86 (*)\n"
+    "\\--- cz.adaptech.tesseract4android:tesseract4android:4.9.0\n"
+    "     \\--- androidx.annotation:annotation:1.3.0 -> 1.10.0 (*)\n"
+)
+CLASSPATH_LEGEND = (
+    "\n"
+    "(c) - A dependency constraint, not a dependency. The dependency affected by the constraint occurs elsewhere in the tree.\n"
+    "(*) - Indicates repeated occurrences of a transitive dependency subtree.\n"
+)
+CLASSPATH_OK = CLASSPATH_HEADER + CLASSPATH_TREE + CLASSPATH_LEGEND
+
+
+def classpath_with(lines: str) -> str:
+    """The healthy report with [lines] as the first dependencies of the tree."""
+    return CLASSPATH_HEADER + lines + CLASSPATH_TREE + CLASSPATH_LEGEND
+
+
 # --- Harness -------------------------------------------------------------------------------------
 
 def write(path: str, content: str) -> None:
@@ -257,6 +304,15 @@ def run(script: str, target: str, extra: list[str]) -> tuple[int, str]:
 def manifest_case(work: str, content: str | None) -> str:
     """Writes the manifest (None = no file at all) and returns its path."""
     path = os.path.join(work, "manifest", "AndroidManifest.xml")
+    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+    if content is not None:
+        write(path, content)
+    return path
+
+
+def report_case(work: str, content: str | None) -> str:
+    """Writes a dependency report (None = no file at all) and returns its path."""
+    path = os.path.join(work, "classpath", "release-runtime-classpath.txt")
     shutil.rmtree(os.path.dirname(path), ignore_errors=True)
     if content is not None:
         write(path, content)
@@ -374,10 +430,19 @@ def shape_cases(work: str) -> list[tuple]:
              1, "outside the reviewed list: com.example.Implicit"),
         case("an exported provider", in_application(SHAPE_OK, EXPORTED_PROVIDER),
              1, "outside the reviewed list: com.example.Provider"),
-        case("ML Kit's telemetry scheduler, not exported", in_application(SHAPE_OK, TELEMETRY_SERVICE),
-             1, "telemetry component in the manifest: <service> com.google.android.datatransport."),
+        case("the telemetry transport's scheduler, not exported", in_application(SHAPE_OK, TELEMETRY_SERVICE),
+             1, "Google component in the manifest: <service> com.google.android.datatransport."),
         case("ML Kit's init provider, not exported", in_application(SHAPE_OK, MLKIT_INIT_PROVIDER),
-             1, "telemetry component in the manifest: <provider> com.google.mlkit.common.internal.MlKitInitProvider"),
+             1, "Google component in the manifest: <provider> com.google.mlkit.common.internal.MlKitInitProvider"),
+        case("Firebase's component discovery, not exported", in_application(SHAPE_OK, FIREBASE_DISCOVERY),
+             1, "Google component in the manifest: <service> com.google.firebase.components.ComponentDiscoveryService"),
+        case("an ML Kit registrar named in a meta-data", in_application(SHAPE_OK, FIREBASE_DISCOVERY.replace(
+             "com.google.firebase.components.ComponentDiscoveryService", "com.example.Discovery")),
+             1, "Google component in the manifest: <meta-data> com.google.firebase.components:com.google.mlkit."),
+        case("Play services' version, a meta-data alone", in_application(SHAPE_OK, PLAY_SERVICES_VERSION),
+             1, "Google component in the manifest: <meta-data> com.google.android.gms.version"),
+        case("another library of Google's (Material) is not refused", in_application(SHAPE_OK, MATERIAL_ACTIVITY),
+             0, "OK: backup off"),
         case("ProfileInstallReceiver without its permission",
              SHAPE_OK.replace(' android:permission="android.permission.DUMP"', ""),
              1, "ProfileInstallReceiver is guarded by None"),
@@ -466,6 +531,45 @@ def test_cases(work: str) -> list[tuple]:
     ]
 
 
+def classpath_cases(work: str) -> list[tuple]:
+    def case(label: str, content: str | None, code: int, text: str) -> tuple:
+        return (f"classpath: {label}", CLASSPATH_CHECK, [], lambda: report_case(work, content), code, text)
+
+    found = "Google artefact in the release classpath: "
+    return [
+        case("POSITIVE WITNESS", CLASSPATH_OK, 0, "OK: nothing of ML Kit"),
+        case("ML Kit's text recognition, declared", classpath_with("+--- com.google.mlkit:text-recognition:16.0.1\n"),
+             1, found + "com.google.mlkit:text-recognition:16.0.1"),
+        case("Play services, three levels down, its version raised",
+             classpath_with("+--- com.example:lib:1.0\n|    \\--- com.example:inner:1.0\n"
+                            "|         \\--- com.google.android.gms:play-services-basement:18.4.0 -> 18.5.0 (*)\n"),
+             1, found + "com.google.android.gms:play-services-basement:18.5.0"),
+        case("the telemetry transport", classpath_with("+--- com.google.android.datatransport:transport-backend-cct:3.1.9\n"),
+             1, found + "com.google.android.datatransport:transport-backend-cct:3.1.9"),
+        case("Firebase's components", classpath_with("+--- com.google.firebase:firebase-components:16.1.0\n"),
+             1, found + "com.google.firebase:firebase-components:16.1.0"),
+        case("ML Kit's on-device runtime (odml)", classpath_with("+--- com.google.android.odml:image:1.0.0-beta1\n"),
+             1, found + "com.google.android.odml:image:1.0.0-beta1"),
+        case("a sub-group of a forbidden group", classpath_with("+--- com.google.firebase.example:lib:1.0\n"),
+             1, found + "com.google.firebase.example:lib:1.0"),
+        case("a module SUBSTITUTED by one of Play services",
+             classpath_with("+--- com.example:stub:1.0 -> com.google.android.gms:play-services-base:18.5.0\n"),
+             1, found + "com.google.android.gms:play-services-base:18.5.0"),
+        case("a rich version (strictly)", classpath_with("+--- com.google.mlkit:vision-common:{strictly 17.3.0} -> 17.3.0\n"),
+             1, found + "com.google.mlkit:vision-common:17.3.0"),
+        case("a constraint alone, not a dependency, is not counted",
+             classpath_with("+--- com.google.android.gms:play-services-base:18.5.0 (c)\n"), 0, "OK: nothing of ML Kit"),
+        case("another library of Google's (Material) is not refused",
+             classpath_with("+--- com.google.android.material:material:1.12.0\n"), 0, "OK: nothing of ML Kit"),
+        case("a report of another configuration",
+             CLASSPATH_OK.replace("releaseRuntimeClasspath - Runtime classpath of '/release'.", "debugRuntimeClasspath - x"),
+             1, "is not a report of releaseRuntimeClasspath"),
+        case("a resolution FAILED", classpath_with("+--- com.example:missing:1.0 FAILED\n"), 1, "a resolution FAILED"),
+        case("no dependency at all", CLASSPATH_HEADER + "No dependencies\n", 1, "lists no dependency"),
+        case("file missing", None, 1, "dependency report not found"),
+    ]
+
+
 def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
     with open(path, encoding="utf-8") as f:
         real = f.read()
@@ -495,25 +599,54 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
         (f"REAL {kind} without its data extraction rules", SHAPE_CHECK, shape,
          lambda: manifest_case(work, re.sub(r'\s*android:dataExtractionRules="[^"]*"', "", real, count=1)),
          1, "android:dataExtractionRules> is None"),
-        (f"REAL {kind} + ML Kit's telemetry scheduler", SHAPE_CHECK, shape,
+        (f"REAL {kind} + the telemetry transport's scheduler", SHAPE_CHECK, shape,
          lambda: manifest_case(work, real.replace("</application>", TELEMETRY_SERVICE + "    </application>", 1)),
-         1, "telemetry component in the manifest"),
+         1, "Google component in the manifest: <service> com.google.android.datatransport."),
         (f"REAL {kind} + ML Kit's init provider", SHAPE_CHECK, shape,
          lambda: manifest_case(work, real.replace("</application>", MLKIT_INIT_PROVIDER + "    </application>", 1)),
-         1, "telemetry component in the manifest"),
+         1, "Google component in the manifest: <provider> com.google.mlkit."),
+        (f"REAL {kind} + Play services' version", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real.replace("</application>", PLAY_SERVICES_VERSION + "    </application>", 1)),
+         1, "Google component in the manifest: <meta-data> com.google.android.gms.version"),
     ]
     return cases
 
 
+def real_classpath_cases(work: str, path: str) -> list[tuple] | None:
+    with open(path, encoding="utf-8") as f:
+        real = f.read()
+    if "\n\\--- " not in real and "\n+--- " not in real:
+        return None
+    # Appended as the tree's first dependencies: ML Kit directly, Play services three levels down.
+    head, sep, tail = real.partition("releaseRuntimeClasspath - Runtime classpath of '/release'.\n")
+    if not sep:
+        return None
+
+    def injected(lines: str) -> str:
+        return head + sep + lines + tail
+
+    return [
+        ("REAL classpath: POSITIVE WITNESS", CLASSPATH_CHECK, [], lambda: report_case(work, real), 0, "OK: nothing of ML Kit"),
+        ("REAL classpath + ML Kit's text recognition", CLASSPATH_CHECK, [],
+         lambda: report_case(work, injected("+--- com.google.mlkit:text-recognition:16.0.1\n")),
+         1, "Google artefact in the release classpath: com.google.mlkit:text-recognition:16.0.1"),
+        ("REAL classpath + Play services deep in the tree", CLASSPATH_CHECK, [],
+         lambda: report_case(work, injected(
+             "+--- androidx.example:lib:1.0\n|    \\--- androidx.example:inner:1.0\n"
+             "|         \\--- com.google.android.gms:play-services-basement:18.4.0 -> 18.5.0 (*)\n")),
+         1, "Google artefact in the release classpath: com.google.android.gms:play-services-basement:18.5.0"),
+    ]
+
+
 def main(argv: list[str]) -> int:
     real_path, merged = None, False
-    if len(argv) == 3 and argv[1] in ("--real-manifest", "--real-merged-manifest"):
+    if len(argv) == 3 and argv[1] in ("--real-manifest", "--real-merged-manifest", "--real-classpath"):
         real_path, merged = argv[2], argv[1] == "--real-merged-manifest"
     elif len(argv) != 1:
         print(__doc__)
         return 2
 
-    for script in (MANIFEST_CHECK, SHAPE_CHECK, APKS_CHECK, TESTS_CHECK):
+    for script in (MANIFEST_CHECK, SHAPE_CHECK, APKS_CHECK, TESTS_CHECK, CLASSPATH_CHECK):
         if not os.path.isfile(script):
             print(f"ERROR: {script} not found.")
             return 2
@@ -523,11 +656,12 @@ def main(argv: list[str]) -> int:
         return 1
 
     work = tempfile.mkdtemp(prefix="ci-guards-")
-    cases = permission_cases(work) + shape_cases(work) + apk_cases(work) + test_cases(work)
+    cases = permission_cases(work) + shape_cases(work) + apk_cases(work) + test_cases(work) + classpath_cases(work)
     if real_path is not None:
-        extra = real_cases(work, real_path, merged)
+        classpath = argv[1] == "--real-classpath"
+        extra = real_classpath_cases(work, real_path) if classpath else real_cases(work, real_path, merged)
         if extra is None:
-            print(f"ERROR: {real_path} has no <application> element to inject into.")
+            print(f"ERROR: {real_path} has no {'dependency tree' if classpath else '<application> element'} to inject into.")
             shutil.rmtree(work, ignore_errors=True)
             return 1
         cases += extra
