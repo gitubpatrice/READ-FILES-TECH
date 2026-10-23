@@ -42,13 +42,14 @@ class ExplorerViewModel @Inject constructor(
     private val state = MutableStateFlow(
         ExplorerUiState(
             pick = PickMode.of(savedState.get<String>(Routes.ARG_PICK)),
-            // Kept across a process death while choosing, as a transfer is.
-            picked = savedState.get<ArrayList<String>>(KEY_PICKED).orEmpty(),
             extensions = Routes.extensionsOf(savedState.get<String>(Routes.ARG_EXTENSIONS)),
             title = savedState.get<String>(Routes.ARG_TITLE),
         ),
     )
     val uiState: StateFlow<ExplorerUiState> = state.asStateFlow()
+
+    /** The files chosen in [PickMode.FILES], across folders: kept across a process death, as a transfer is. */
+    val picked = PickedFiles(savedState)
 
     val browser = FolderBrowser(viewModelScope, state, access::isGranted, volumes::list, io)
 
@@ -69,12 +70,6 @@ class ExplorerViewModel @Inject constructor(
     fun selectAll() = state.update { it.allSelected() }
 
     fun clearSelection() = state.update { it.copy(selection = emptySet()) }
-
-    /** A file chosen, or un-chosen, when choosing several for another screen. */
-    fun togglePicked(entry: FileEntry) {
-        state.update { it.togglePicked(entry) }
-        savedState[KEY_PICKED] = ArrayList(state.value.picked)
-    }
 
     fun createFolder(name: String) {
         state.value.dir?.let { operations.createFolder(it, name.trim()) }
@@ -123,6 +118,5 @@ class ExplorerViewModel @Inject constructor(
     private companion object {
         const val KEY_TRANSFER_MOVE = "transfer_move"
         const val KEY_TRANSFER_PATHS = "transfer_paths"
-        const val KEY_PICKED = "picked"
     }
 }

@@ -123,6 +123,8 @@ private fun Destinations(navController: NavHostController) {
             },
         ) { entry ->
             val picked = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
+            val startPicked = entry.picked<ArrayList<String>>(Routes.START_PICKED_FILES)
+            val several = PickMode.of(entry.arguments?.getString(Routes.ARG_PICK)) == PickMode.FILES
             ExplorerScreen(
                 pickedFolder = picked.value,
                 onPickedFolderUsed = picked.consume,
@@ -130,9 +132,17 @@ private fun Destinations(navController: NavHostController) {
                 onOpenSearch = { navController.navigate(Routes.SEARCH) { launchSingleTop = true } },
                 onChooseFolder = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
                 onFolderChosen = { navController.handBack(entry, Routes.RESULT_PICKED_FOLDER, it) },
-                onFilesChosen = { navController.handBack(entry, Routes.RESULT_PICKED_FILES, ArrayList(it)) },
+                onFilesChosen = {
+                    if (several) {
+                        navController.handBackPastPicker(entry, ArrayList(it))
+                    } else {
+                        navController.handBack(entry, Routes.RESULT_PICKED_FILES, ArrayList(it))
+                    }
+                },
                 onNavigate = { navController.navigate(it) },
                 onLeave = { navController.leave(entry) },
+                startPicked = startPicked.value,
+                onStartPickedUsed = startPicked.consume,
             )
         }
         composable(
@@ -155,7 +165,16 @@ private fun Destinations(navController: NavHostController) {
                     folder.consume()
                     files.consume()
                 },
-                onBrowse = { navController.navigate(it) },
+                onBrowse = { route, chosen ->
+                    navController.navigate(route)
+                    // The choice so far goes with it, on the new entry (Routes.START_PICKED_FILES).
+                    if (chosen.isNotEmpty()) {
+                        navController.currentBackStackEntry
+                            ?.takeIf { it.id != entry.id }
+                            ?.savedStateHandle
+                            ?.set(Routes.START_PICKED_FILES, ArrayList(chosen))
+                    }
+                },
                 onNavigate = { navController.navigate(it) },
                 onFilesPicked = { navController.handBack(entry, Routes.RESULT_PICKED_FILES, ArrayList(it)) },
                 onFolderPicked = { navController.handBack(entry, Routes.RESULT_PICKED_FOLDER, it) },
@@ -240,6 +259,22 @@ private fun NavHostController.handBack(from: NavBackStackEntry, key: String, val
     if (currentBackStackEntry?.id != from.id) return
     previousBackStackEntry?.savedStateHandle?.set(key, value)
     popBackStack()
+}
+
+/**
+ * The files an explorer chose for the picker that opened it, choosing several: the WHOLE choice — the explorer
+ * started from the picker's ([Routes.START_PICKED_FILES]) —, handed at once to whoever asked the picker. Both
+ * leave together, the picker is not shown again: it waited for a second "Confirm", and the first seemed only to
+ * go back (seen on the S9). Not opened by a picker: handed back as any chooser's result.
+ */
+private fun NavHostController.handBackPastPicker(from: NavBackStackEntry, files: ArrayList<String>) {
+    val picker = previousBackStackEntry
+    if (currentBackStackEntry?.id != from.id || picker?.destination?.route != Routes.PICKER) {
+        handBack(from, Routes.RESULT_PICKED_FILES, files)
+        return
+    }
+    popBackStack()
+    handBack(picker, Routes.RESULT_PICKED_FILES, files)
 }
 
 /** Leaves [from], if it is still the screen on top (the same double tap, on a back or a cancel button). */

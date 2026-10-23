@@ -18,7 +18,6 @@ import com.readfilestech.read_files_tech.ui.explorer.allSelected
 import com.readfilestech.read_files_tech.ui.explorer.isVolumeParent
 import com.readfilestech.read_files_tech.ui.explorer.listed
 import com.readfilestech.read_files_tech.ui.explorer.sortedBy
-import com.readfilestech.read_files_tech.ui.explorer.togglePicked
 import com.readfilestech.read_files_tech.ui.explorer.toggled
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
@@ -145,21 +144,6 @@ class UiLogicTest {
         assertThat(onlyPdf.filteredOut).isFalse()
         assertThat(ExplorerUiState().listed(File("/d"), listing, denied = false, mounted = emptyList(), canGoBack = false).filteredOut)
             .isFalse()
-    }
-
-    /** Several files chosen for another screen: kept from folder to folder, in the order chosen. */
-    @Test
-    fun `the files chosen survive a change of folder`() {
-        val chosen = ExplorerUiState(pick = PickMode.FILES).togglePicked(entry("b.txt")).togglePicked(entry("a.txt"))
-        val elsewhere = chosen.listed(
-            File("/e"),
-            Listing.Listed(File("/e"), emptyList()),
-            denied = false,
-            mounted = emptyList(),
-            canGoBack = true
-        )
-        assertThat(elsewhere.picked).containsExactly("/d/b.txt", "/d/a.txt").inOrder()
-        assertThat(elsewhere.togglePicked(entry("b.txt")).picked).containsExactly("/d/a.txt")
     }
 
     @Test

@@ -70,6 +70,7 @@ import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.explorer.AccessBanner
 import com.readfilestech.read_files_tech.ui.explorer.EntryRow
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
+import com.readfilestech.read_files_tech.ui.explorer.PickedFiles
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
@@ -81,8 +82,11 @@ import java.io.File
  * made — and "Browse" — shortcuts, the other volumes, the folders of the primary one —, each folder opened
  * in the explorer choosing for this screen. Choosing a folder shows "Browse" only.
  *
+ * Choosing several, ONE choice ([PickedFiles]): the files chosen here go with the explorer it opens, which
+ * starts from them, and the explorer's "Confirm" ends the choice — `AppRoot` hands its files past this screen.
+ *
  * @param pickedFiles what the explorer handed back, until [onResultUsed].
- * @param onBrowse opens an explorer route (choosing for this screen).
+ * @param onBrowse opens an explorer route (choosing for this screen), with the files chosen so far for it to start from.
  * @param onFilesPicked the files chosen: this screen's result.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +95,7 @@ fun PickerScreen(
     pickedFiles: List<String>?,
     pickedFolder: String?,
     onResultUsed: () -> Unit,
-    onBrowse: (String) -> Unit,
+    onBrowse: (route: String, picked: List<String>) -> Unit,
     onNavigate: (String) -> Unit,
     onFilesPicked: (List<String>) -> Unit,
     onFolderPicked: (String) -> Unit,
@@ -99,6 +103,7 @@ fun PickerScreen(
     viewModel: PickerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val picked by viewModel.picked.paths.collectAsStateWithLifecycle()
     val mode = viewModel.mode
     val folderMode = mode == PickMode.FOLDER
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -109,9 +114,11 @@ fun PickerScreen(
                 onResultUsed()
                 onFolderPicked(pickedFolder)
             }
+            // Choosing several too: the explorer started from this screen's choice, what it hands back is the
+            // whole of it — not more to add here and confirm a second time (seen on the S9).
             pickedFiles != null -> {
                 onResultUsed()
-                if (mode == PickMode.FILES) viewModel.addPicked(pickedFiles) else onFilesPicked(pickedFiles)
+                onFilesPicked(pickedFiles)
             }
         }
     }
@@ -140,10 +147,10 @@ fun PickerScreen(
         bottomBar = {
             if (mode == PickMode.FILES) {
                 Button(
-                    onClick = { onFilesPicked(state.picked) },
-                    enabled = state.picked.isNotEmpty(),
+                    onClick = { onFilesPicked(picked) },
+                    enabled = picked.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                ) { Text(pluralStringResource(R.plurals.action_confirm_files, state.picked.size, state.picked.size)) }
+                ) { Text(pluralStringResource(R.plurals.action_confirm_files, picked.size, picked.size)) }
             }
         },
     ) { padding ->
@@ -156,10 +163,12 @@ fun PickerScreen(
             }
             when {
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                !folderMode && tab == 0 -> RecentsTab(state, mode, viewModel, onNavigate, onFilesPicked)
+                !folderMode && tab == 0 -> RecentsTab(state, picked, mode, viewModel, onNavigate, onFilesPicked)
                 else -> {
-                    fun browse(dir: File, label: String, filter: Set<String>?) =
-                        onBrowse(Routes.explorer(dir.path, pick = mode, extensions = filter ?: viewModel.extensions, title = label))
+                    fun browse(dir: File, label: String, filter: Set<String>?) = onBrowse(
+                        Routes.explorer(dir.path, pick = mode, extensions = filter ?: viewModel.extensions, title = label),
+                        viewModel.picked.paths.value,
+                    )
                     BrowseTab(
                         state = state,
                         extensions = viewModel.extensions,
@@ -179,6 +188,7 @@ fun PickerScreen(
 @Composable
 private fun RecentsTab(
     state: PickerUiState,
+    picked: List<String>,
     mode: PickMode,
     viewModel: PickerViewModel,
     onNavigate: (String) -> Unit,
@@ -212,10 +222,10 @@ private fun RecentsTab(
         items(state.recents, key = FileEntry::path) { entry ->
             EntryRow(
                 entry = entry,
-                selected = entry.path in state.picked,
+                selected = entry.path in picked,
                 enabled = true,
                 thumbnails = viewModel.thumbnails,
-                onClick = { if (mode == PickMode.FILES) viewModel.togglePicked(entry.path) else onFilesPicked(listOf(entry.path)) },
+                onClick = { if (mode == PickMode.FILES) viewModel.picked.toggle(entry.path) else onFilesPicked(listOf(entry.path)) },
                 onLongClick = null,
                 // Choosing several, a tap toggles: the menu would only get in the way.
                 menu = if (mode == PickMode.FILES) {

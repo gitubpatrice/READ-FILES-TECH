@@ -19,6 +19,13 @@ object Routes {
     /** The same for files: an ArrayList of paths, in the order chosen. */
     const val RESULT_PICKED_FILES = "picked_files"
 
+    /**
+     * The other way: set on the NEW entry's saved state by the picker, right after it opens an explorer to browse
+     * choosing several — its choice so far, an ArrayList of paths, which the explorer starts from. Not an argument
+     * of the route: a route is no place for hundreds of paths; the entry's saved state outlives a process death.
+     */
+    const val START_PICKED_FILES = "start_picked_files"
+
     const val EXPLORER = "explorer?$ARG_PATH={$ARG_PATH}&$ARG_PICK={$ARG_PICK}&$ARG_EXTENSIONS={$ARG_EXTENSIONS}&$ARG_TITLE={$ARG_TITLE}"
 
     /** The start: home, tools, explorer (`HomeScreen` of the 2.15.x). */

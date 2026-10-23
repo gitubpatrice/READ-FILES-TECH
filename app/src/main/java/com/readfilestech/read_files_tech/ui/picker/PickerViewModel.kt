@@ -15,6 +15,7 @@ import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
+import com.readfilestech.read_files_tech.ui.explorer.PickedFiles
 import com.readfilestech.read_files_tech.ui.explorer.Thumbnails
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -35,8 +35,6 @@ data class PickerUiState(
     val recents: List<FileEntry> = emptyList(),
     val shortcuts: List<PickerShortcut> = emptyList(),
     val folders: List<File> = emptyList(),
-    /** The files chosen so far, choosing several: in the order chosen. */
-    val picked: List<String> = emptyList(),
     val granted: Boolean = true,
     /**
      * Recents that may not leave the app (an output kept in its private fallback): no "Share", no other
@@ -48,7 +46,7 @@ data class PickerUiState(
 /** The picker: `RftPickerScreen.pickOne` / `pickMany` / `pickFolder` of the 2.15.3, its route's arguments. */
 @HiltViewModel
 class PickerViewModel @Inject constructor(
-    private val savedState: SavedStateHandle,
+    savedState: SavedStateHandle,
     recents: RecentFiles,
     outputs: OutputStorage,
     volumes: StorageVolumes,
@@ -66,8 +64,11 @@ class PickerViewModel @Inject constructor(
     val extensions: Set<String>? = Routes.extensionsOf(savedState.get<String>(Routes.ARG_EXTENSIONS))
     val title: String? = savedState.get<String>(Routes.ARG_TITLE)
 
-    private val state = MutableStateFlow(PickerUiState(picked = savedState.get<ArrayList<String>>(KEY_PICKED).orEmpty()))
+    private val state = MutableStateFlow(PickerUiState())
     val uiState: StateFlow<PickerUiState> = state.asStateFlow()
+
+    /** The files chosen so far, choosing several: the explorer this screen opens to browse starts from them. */
+    val picked = PickedFiles(savedState)
 
     /** Read again on each return: a file opened or made meanwhile shows. */
     fun reload() {
@@ -85,7 +86,7 @@ class PickerViewModel @Inject constructor(
                     cannotLeave = recents.filterNot(launching::canLeave).mapTo(HashSet(), FileEntry::path),
                 )
             }
-            state.update { loaded.copy(picked = it.picked) }
+            state.value = loaded
         }
     }
 
@@ -95,17 +96,6 @@ class PickerViewModel @Inject constructor(
             messages.info(uiText(R.string.picker_removed))
             reload()
         }
-    }
-
-    fun togglePicked(path: String) = setPicked(state.value.picked.let { if (path in it) it - path else it + path })
-
-    /** Files chosen in the explorer, added after those already chosen, once each. */
-    fun addPicked(paths: List<String>) = setPicked(state.value.picked + paths.filterNot { it in state.value.picked })
-
-    private fun setPicked(paths: List<String>) {
-        state.update { it.copy(picked = paths) }
-        // Kept across a process death while choosing.
-        savedState[KEY_PICKED] = ArrayList(paths)
     }
 
     /** "Files Tech" is created when opened, as the 2.15.x did; a folder that cannot be is still opened, empty. */
@@ -122,9 +112,5 @@ class PickerViewModel @Inject constructor(
             }
             then()
         }
-    }
-
-    private companion object {
-        const val KEY_PICKED = "picked"
     }
 }

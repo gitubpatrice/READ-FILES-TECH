@@ -73,7 +73,10 @@ private sealed interface ExplorerDialog {
  * @param pickedFolder the destination the chooser handed back (copy / move to), until [onPickedFolderUsed].
  * @param onChooseFolder opens this screen in folder-choosing mode, starting at the given folder.
  * @param onFolderChosen the folder chosen, in folder-choosing mode.
- * @param onFilesChosen the files chosen, in file-choosing mode ([PickMode.FILE], [PickMode.FILES]).
+ * @param onFilesChosen the files chosen, in file-choosing mode ([PickMode.FILE], [PickMode.FILES]): in
+ *   [PickMode.FILES], ALL of them, those [startPicked] brought included.
+ * @param startPicked the picker's choice, choosing several, which this screen starts from ([PickedFiles]), until
+ *   [onStartPickedUsed].
  * @param navigationBar the home's tabs, when this screen is the home's explorer tab.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,10 +91,13 @@ fun ExplorerScreen(
     onFilesChosen: (List<String>) -> Unit,
     onNavigate: (String) -> Unit,
     onLeave: () -> Unit,
+    startPicked: List<String>? = null,
+    onStartPickedUsed: () -> Unit = {},
     viewModel: ExplorerViewModel = hiltViewModel(),
     navigationBar: @Composable () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val picked by viewModel.picked.paths.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     // The name filter keeps the focus otherwise: the keyboard came back after a menu, and a tap meant
@@ -106,6 +112,12 @@ fun ExplorerScreen(
         if (pickedFolder != null) {
             viewModel.onFolderPicked(pickedFolder)
             onPickedFolderUsed()
+        }
+    }
+    LaunchedEffect(startPicked) {
+        if (startPicked != null) {
+            viewModel.picked.startFrom(startPicked)
+            onStartPickedUsed()
         }
     }
     LifecycleResumeEffect(Unit) {
@@ -130,7 +142,7 @@ fun ExplorerScreen(
             state.selecting -> viewModel.toggleSelection(entry)
             entry.isDirectory -> browser.open(entry.file)
             state.pick == PickMode.FILE -> onFilesChosen(listOf(entry.path))
-            state.pick == PickMode.FILES -> viewModel.togglePicked(entry)
+            state.pick == PickMode.FILES -> viewModel.picked.toggle(entry.path)
             else -> open(entry)
         }
     }
@@ -202,7 +214,7 @@ fun ExplorerScreen(
         },
         // The home's tabs, when this is its third: ONE scaffold, so one bar, one button and one message
         // host — the 2.15.x stacked two of each (inventory F29).
-        bottomBar = { if (state.pick == null) navigationBar() else PickBottomBar(state, onFolderChosen, onFilesChosen) },
+        bottomBar = { if (state.pick == null) navigationBar() else PickBottomBar(state, picked, onFolderChosen, onFilesChosen) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Breadcrumb(state.dir) { browser.open(it) }
@@ -231,7 +243,7 @@ fun ExplorerScreen(
                         items(state.visible, key = FileEntry::path) { entry ->
                             EntryRow(
                                 entry = entry,
-                                selected = entry.path in state.selection || entry.path in state.picked,
+                                selected = entry.path in state.selection || entry.path in picked,
                                 enabled = entry.isDirectory || !state.pickFolder,
                                 thumbnails = viewModel.thumbnails,
                                 onClick = { click(entry) },

@@ -188,7 +188,12 @@ private fun pickTitleOf(pick: PickMode?): Int = when (pick) {
  * the tap is the choice.
  */
 @Composable
-fun PickBottomBar(state: ExplorerUiState, onFolderChosen: (String) -> Unit, onFilesChosen: (List<String>) -> Unit) {
+fun PickBottomBar(
+    state: ExplorerUiState,
+    picked: List<String>,
+    onFolderChosen: (String) -> Unit,
+    onFilesChosen: (List<String>) -> Unit,
+) {
     val modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)
     when (state.pick) {
         PickMode.FOLDER -> Button(
@@ -197,10 +202,10 @@ fun PickBottomBar(state: ExplorerUiState, onFolderChosen: (String) -> Unit, onFi
             modifier = modifier,
         ) { Text(stringResource(R.string.action_choose_this_folder)) }
         PickMode.FILES -> Button(
-            onClick = { onFilesChosen(state.picked) },
-            enabled = state.picked.isNotEmpty(),
+            onClick = { onFilesChosen(picked) },
+            enabled = picked.isNotEmpty(),
             modifier = modifier,
-        ) { Text(pluralStringResource(R.plurals.action_confirm_files, state.picked.size, state.picked.size)) }
+        ) { Text(pluralStringResource(R.plurals.action_confirm_files, picked.size, picked.size)) }
         PickMode.FILE, null -> Unit
     }
 }

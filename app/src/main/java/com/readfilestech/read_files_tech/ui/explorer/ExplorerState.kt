@@ -45,10 +45,11 @@ data class ExplorerUiState(
     val sort: SortMode = SortMode.NAME,
     val selection: Set<String> = emptySet(),
     val canGoBack: Boolean = false,
-    /** What the explorer chooses for another screen, if anything: no menu, no selection, no action. */
+    /**
+     * What the explorer chooses for another screen, if anything: no menu, no selection, no action. The files
+     * chosen in [PickMode.FILES] are not here but in [PickedFiles]: what a change of folder sets, it cannot touch.
+     */
     val pick: PickMode? = null,
-    /** The files chosen so far in [PickMode.FILES], in the order chosen, across folders. */
-    val picked: List<String> = emptyList(),
     /** Only files of these extensions are shown, folders always (a quick access, a picker's filter). */
     val extensions: Set<String>? = null,
     /** The caller's name for this place ("Videos"), shown instead of the explorer's. */
@@ -98,10 +99,6 @@ fun ExplorerUiState.listed(dir: File, listing: Listing, denied: Boolean, mounted
 }
 
 fun ExplorerUiState.refiltered(): ExplorerUiState = copy(visible = EntryOrder.filter(entries, showHidden, query, extensions))
-
-/** A file chosen, or un-chosen, in [PickMode.FILES]. */
-fun ExplorerUiState.togglePicked(entry: FileEntry): ExplorerUiState =
-    copy(picked = if (entry.path in picked) picked - entry.path else picked + entry.path)
 
 fun ExplorerUiState.sortedBy(mode: SortMode): ExplorerUiState = copy(sort = mode, entries = EntryOrder.sort(entries, mode)).refiltered()
 
