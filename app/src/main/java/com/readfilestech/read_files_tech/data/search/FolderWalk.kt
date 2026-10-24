@@ -13,7 +13,8 @@ import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
- * THE walk of a folder tree — the global search, the content search and the duplicate finder: breadth
+ * THE walk of a folder tree — the global search, the content search, the duplicate finder and the vault's
+ * folder import: breadth
  * first from [root], over the regular files found. It never follows a link: a link to a folder is not
  * entered, a link to a file not read. A folder it cannot list is skipped, counted, and the walk goes on:
  * the content search and the duplicate finder of the 2.15.3 stopped at the first one (`Android/data` on
@@ -21,11 +22,13 @@ import java.nio.file.attribute.BasicFileAttributes
  *
  * @param skipHidden whether entries whose name starts with a dot are skipped below the root — a root the
  *   user chose inside a hidden folder is walked.
+ * @param recursive false: the root's own files only, its folders not entered (the vault's folder import).
  * @param skipFolder folders left out whole ([isTrash], [isAppData]).
  */
 class FolderWalk(
     private val root: File,
     private val skipHidden: Boolean,
+    private val recursive: Boolean = true,
     private val skipFolder: (Path) -> Boolean = { false },
 ) {
     /** Folders that could not be listed so far, the root included. */
@@ -87,7 +90,7 @@ class FolderWalk(
         return when {
             attributes == null || (skipHidden && child.fileName?.toString().orEmpty().startsWith('.')) -> true
             attributes.isDirectory -> {
-                if (!skipFolder(child)) folders.addLast(child)
+                if (recursive && !skipFolder(child)) folders.addLast(child)
                 true
             }
             attributes.isRegularFile -> onFile(child, attributes)

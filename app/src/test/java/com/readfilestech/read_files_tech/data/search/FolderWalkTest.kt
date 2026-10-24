@@ -65,6 +65,15 @@ class FolderWalkTest {
         assertThat(names(walk)).containsExactly("keep/a.txt", "Android/media/a.txt")
     }
 
+    @Test
+    fun `not recursive, the root's own files only`() {
+        file("a.txt")
+        file("sub/b.txt")
+        file("sub/deeper/c.txt")
+        assertThat(names(FolderWalk(tmp, skipHidden = false, recursive = false))).containsExactly("a.txt")
+        assertThat(names(FolderWalk(File(tmp, "sub"), skipHidden = false, recursive = false))).containsExactly("sub/b.txt")
+    }
+
     /** GPT review R24: the rule held below the root only — the trash chosen as the folder was walked. */
     @Test
     fun `a root left out, or inside a folder left out, is not walked`() {

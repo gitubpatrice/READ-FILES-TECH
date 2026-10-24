@@ -7,8 +7,8 @@ import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
+import com.readfilestech.read_files_tech.testing.HeldDispatcher
 import com.readfilestech.read_files_tech.ui.common.UserMessages
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -20,26 +20,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.io.IOException
-import kotlin.coroutines.CoroutineContext
 
 /** Claude reviews R20, R21: loads that overlap, a file opened while another is written, restores in the way. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CsvEditorViewModelTest {
     @TempDir
     lateinit var dir: File
-
-    /** The IO dispatcher: its work waits, and the test runs it in the order it chooses. */
-    private class HeldDispatcher : CoroutineDispatcher() {
-        val tasks = ArrayDeque<Runnable>()
-
-        override fun dispatch(context: CoroutineContext, block: Runnable) {
-            tasks += block
-        }
-
-        fun runAll() {
-            while (tasks.isNotEmpty()) tasks.removeFirst().run()
-        }
-    }
 
     private val io = HeldDispatcher()
 

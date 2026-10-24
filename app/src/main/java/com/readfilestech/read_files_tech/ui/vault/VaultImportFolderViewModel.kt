@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.search.FolderWalk
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.UserMessage
@@ -18,22 +19,16 @@ import com.readfilestech.read_files_tech.vault.VaultService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
-import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.SimpleFileVisitor
-import java.nio.file.attribute.BasicFileAttributes
 import javax.inject.Inject
 
 /** A file of the folder, and whether it is to be encrypted. */
@@ -198,54 +193,37 @@ class VaultImportFolderViewModel @Inject constructor(
 }
 
 /**
- * The files of a folder for the vault's import: links never followed, the system's folders and the app's
- * trash left out, at most [MAX_ENTRIES], sorted by path. A folder it cannot read is skipped, not fatal.
+ * The files of a folder for the vault's import, over the app's one walk (FolderWalk): links never followed,
+ * hidden files listed, the folders below left out, at most [MAX_ENTRIES], sorted by path. A subfolder it
+ * cannot read is passed by, as the 2.15.3 did.
  */
 internal object FolderScan {
     const val MAX_ENTRIES = 5_000
 
-    /**
-     * Not for the vault: other apps' data, thumbnails, caches, the system's trash (the 2.15.3's list) — and
-     * the app's own trash, whose items and metadata are its own files.
-     */
-    private val EXCLUDED = listOf("/Android/data/", "/Android/obb/", "/.thumbnails/", "/.cache/", "/.trash/", "/.RFT_Corbeille/")
+    /** The 2.15.3's system folders: thumbnails, caches, a trash. */
+    private val SYSTEM_FOLDERS = setOf(".thumbnails", ".cache", ".trash")
 
+    /** [capReached]: a file beyond [MAX_ENTRIES] was left out — the 2.15.3 also said so at exactly 5 000. */
     class Listing(val entries: List<FolderEntry>, val capReached: Boolean)
 
-    /** @throws IOException [folder] itself cannot be read. */
+    /** @throws IOException [folder] itself cannot be listed. */
     suspend fun list(folder: File, recursive: Boolean): Listing {
         val root = folder.toPath()
-        if (!Files.isDirectory(root)) throw IOException("not a folder")
-        val collector = Collector(root, currentCoroutineContext().job)
-        Files.walkFileTree(root, emptySet(), if (recursive) Int.MAX_VALUE else 1, collector)
-        return Listing(collector.found.sortedBy(FolderEntry::path), collector.capReached)
-    }
-
-    /** The walk: links are not followed (no FOLLOW_LINKS), a folder it cannot enter is passed by. */
-    private class Collector(private val root: Path, private val job: Job) : SimpleFileVisitor<Path>() {
+        Files.newDirectoryStream(root).close()
         val found = mutableListOf<FolderEntry>()
         var capReached = false
-
-        override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
-            job.ensureActive()
-            return if (dir != root && excluded(dir)) FileVisitResult.SKIP_SUBTREE else FileVisitResult.CONTINUE
+        FolderWalk(folder, skipHidden = false, skipFolder = ::leftOut, recursive = recursive).forEachFile { path, attributes ->
+            capReached = found.size == MAX_ENTRIES
+            if (!capReached) found += FolderEntry(path.toString(), root.relativize(path).toString(), attributes.size())
+            !capReached
         }
-
-        override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-            if (attrs.isRegularFile && !excluded(file)) {
-                found += FolderEntry(file.toString(), root.relativize(file).toString(), attrs.size())
-                capReached = found.size >= MAX_ENTRIES
-            }
-            return if (capReached) FileVisitResult.TERMINATE else FileVisitResult.CONTINUE
-        }
-
-        override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = FileVisitResult.CONTINUE
-
-        override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult = FileVisitResult.CONTINUE
+        return Listing(found.sortedBy(FolderEntry::path), capReached)
     }
 
-    private fun excluded(path: Path): Boolean {
-        val slashed = path.toString().replace('\\', '/') + "/"
-        return EXCLUDED.any { slashed.contains(it) }
-    }
+    /**
+     * Not for the vault: the apps' data, the system's folders (the 2.15.3's list), and the app's own trash
+     * under both its names — its items are the app's copies, which the 2.15.3 listed.
+     */
+    private fun leftOut(dir: Path): Boolean =
+        FolderWalk.isTrash(dir) || FolderWalk.isAppData(dir) || dir.fileName?.toString() in SYSTEM_FOLDERS
 }
