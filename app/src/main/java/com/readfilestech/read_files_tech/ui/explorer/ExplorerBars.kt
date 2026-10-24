@@ -64,6 +64,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,8 +141,16 @@ fun SelectionTopBar(
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_clear_selection))
             }
         },
+        // The number alone, as Material's contextual bar: beside six actions, "1 sélectionné" broke in the middle
+        // of the word on three lines (360-411 dp). TalkBack still reads the words.
         title = {
-            Text(pluralStringResource(R.plurals.selected_count, count, count), style = MaterialTheme.typography.titleMedium)
+            val said = pluralStringResource(R.plurals.selected_count, count, count)
+            Text(
+                count.toString(),
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                modifier = Modifier.semantics { contentDescription = said },
+            )
         },
         actions = {
             IconButton(

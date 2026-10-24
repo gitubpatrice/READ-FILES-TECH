@@ -694,7 +694,7 @@
     <string name="editor_overwrite">Écraser</string>
     <string name="editor_leave_title">Modifications non enregistrées</string>
     <string name="editor_leave_message">Enregistrer avant de quitter ?</string>
-    <string name="editor_discard">Ignorer</string>
+    <string name="editor_discard">Ne pas enregistrer</string>
     <string name="editor_history">Historique</string>
     <string name="editor_history_empty">Aucune version enregistrée : chaque enregistrement garde la version qu\'il remplace, les %1$d dernières.</string>
     <string name="editor_history_hint">Touchez une version pour voir son début. La restaurer la charge dans l\'éditeur : votre texte va d\'abord dans l\'historique, et le fichier n\'est écrit que lorsque vous enregistrez.</string>
