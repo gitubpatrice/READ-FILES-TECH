@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.ui
 
 import androidx.compose.runtime.Composable
 import com.readfilestech.read_files_tech.ui.navigation.Feature
+import com.readfilestech.read_files_tech.ui.settings.SettingsScreen
 import com.readfilestech.read_files_tech.ui.tools.color.ColorPickerScreen
 import com.readfilestech.read_files_tech.ui.tools.convert.ConvertScreen
 import com.readfilestech.read_files_tech.ui.tools.csveditor.CsvEditorScreen
@@ -49,6 +50,7 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.TXT_TOOLS -> TxtToolsScreen(picked, onNavigate, onBack)
         Feature.CSV_TOOLS -> CsvToolsScreen(picked, onNavigate, onBack)
         Feature.VAULT -> VaultScreen(picked, onNavigate, onBack)
+        Feature.SETTINGS -> SettingsScreen(onBack)
         // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
         else -> PendingScreen(feature, onBack)
     }

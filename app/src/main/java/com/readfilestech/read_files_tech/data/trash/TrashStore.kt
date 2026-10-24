@@ -39,6 +39,7 @@ class TrashException(message: String) : IOException(message)
  * @param primary the current user's primary volume, the one `/sdcard` names: `/storage/emulated/0` for
  *   the owner, `/storage/emulated/10` in a work profile.
  */
+@Suppress("TooManyFunctions") // the trash's operations, the panic's erasure among them; each a few lines
 class TrashStore(
     private val names: SharedStorageNames,
     private val fallbackBase: File,
@@ -147,6 +148,13 @@ class TrashStore(
         }
         return (entries.size - failed) to failed
     }
+
+    /**
+     * Deletes this build's trash folders whole, on every volume and in [fallbackBase] — the entries [list]
+     * cannot read with them, which [emptyAll] keeps (docs D-019): the panic. True when none is left.
+     */
+    fun eraseAll(): Boolean =
+        existingTrashRoots(volumeBases() + fallbackBase, names.trashDir).map(FileTrees::delete).all { it }
 
     /**
      * The trash folder itself, one of its parents, or a volume root. Both the real name and this

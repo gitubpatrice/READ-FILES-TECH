@@ -32,6 +32,8 @@ class PortCheckRequest(
     val restores: List<String>,
     /** File names the 2.15.x editor saved copies of: the old copies of EACH are listed (docs D-021). */
     val historyNames: List<String>,
+    /** The report written to a file on the device instead of returned (PortCheckProvider.reportToFile). */
+    val reportToFile: Boolean = false,
 ) {
     companion object {
         fun decode(json: String): PortCheckRequest {
@@ -42,6 +44,7 @@ class PortCheckRequest(
                 repair = map["repair"] == true,
                 restores = strings(map["restores"]),
                 historyNames = strings(map["historyNames"]),
+                reportToFile = map["reportToFile"] == true,
             )
         }
 

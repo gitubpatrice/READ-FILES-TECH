@@ -48,10 +48,6 @@ class LegacyExtractions(
 
     fun delete(folder: Folder): Boolean = FileTrees.delete(folder.dir)
 
-    /** `<archive>_extracted`, a folder itself (not a link to one), with an archive name before the suffix. */
-    private fun isExtractionFolder(dir: File) =
-        Files.isDirectory(dir.toPath(), LinkOption.NOFOLLOW_LINKS) && dir.name.endsWith(SUFFIX) && dir.name.length > SUFFIX.length
-
     /**
      * Moves [folder] into a NEW folder of [extractionsRoot] — never over an existing one: `name`, then
      * `name (2)`, `name (3)`… Each file is copied, checked (size and SHA-256) and only then removed from
@@ -125,6 +121,13 @@ class LegacyExtractions(
         const val SUFFIX = "_extracted"
         const val EXTRACTIONS_DIR = "Extractions"
         private const val MAX_CANDIDATES = 1_000
+
+        /**
+         * `<archive>_extracted`, a folder itself (not a link to one), with an archive name before the suffix —
+         * here and for the panic, which erases them (D16 of the inventory).
+         */
+        fun isExtractionFolder(dir: File) =
+            Files.isDirectory(dir.toPath(), LinkOption.NOFOLLOW_LINKS) && dir.name.endsWith(SUFFIX) && dir.name.length > SUFFIX.length
     }
 }
 

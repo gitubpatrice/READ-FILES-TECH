@@ -85,7 +85,8 @@ class PortCheckProvider : ContentProvider() {
         val request = PortCheckRequest.decode(String(Base64.decode(arg, Base64.NO_WRAP), Charsets.UTF_8))
         val app = requireNotNull(context).applicationContext
         val observation = PortObservation(dirsOf(app), EntryPointAccessors.fromApplication(app, PortCheckEntryPoint::class.java))
-        return report(runBlocking { observation.observe(request) })
+        val result = runBlocking { observation.observe(request) }
+        return if (request.reportToFile) reportToFile(app, result) else report(result)
     }
 
     /** The hostile corpus of phase 4 (CorpusCheck), in the folder [dir] of the device. */
@@ -127,6 +128,17 @@ class PortCheckProvider : ContentProvider() {
             }
         }
 
+        /**
+         * The report in `Android/data/<package>/files/port-check/report.json`, its path under [KEY_REPORT_FILE]:
+         * a vault of thousands of files makes a report beyond what one call can carry (a binder transaction).
+         */
+        fun reportToFile(app: Context, result: Map<String, Any?>): Bundle {
+            val file = File(requireNotNull(app.getExternalFilesDir(null)) { "shared storage unmounted" }, "port-check/report.json")
+            requireNotNull(file.parentFile).mkdirs()
+            file.writeText(DartJson.encode(result), Charsets.UTF_8)
+            return Bundle().apply { putString(KEY_REPORT_FILE, file.path) }
+        }
+
         /** `Process.SHELL_UID` (public from API 29 only) and `Process.ROOT_UID`. */
         const val SHELL_UID = 2000
         const val ROOT_UID = 0
@@ -136,5 +148,6 @@ class PortCheckProvider : ContentProvider() {
         /** The OCR's oracle (OcrCheck), on the images of the folder [call]'s argument names, its extras its options. */
         const val METHOD_OCR = "ocr"
         const val KEY_REPORT = "report"
+        const val KEY_REPORT_FILE = "reportFile"
     }
 }

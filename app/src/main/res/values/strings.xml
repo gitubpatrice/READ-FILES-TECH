@@ -24,6 +24,7 @@
     <string name="entry_selected">Selected</string>
     <!-- Two texts side by side, "3 copied · 1 error". -->
     <string name="joined_dot" translatable="false">%1$s · %2$s</string>
+    <string name="joined_comma" translatable="false">%1$s, %2$s</string>
 
     <!-- Size units (binary, as the 2.15.x) -->
     <string name="unit_bytes">B</string>
@@ -294,6 +295,21 @@
     <string name="feature_duplicates">Duplicates &amp; large files</string>
     <string name="feature_settings">Settings</string>
     <string name="feature_about">About</string>
+    <string name="settings_security">Security</string>
+    <string name="panic_title">Panic mode — erase everything</string>
+    <string name="panic_summary">The vault, the settings, the temporary files, the history and the trash, at once</string>
+    <string name="panic_confirm_title">Panic mode</string>
+    <string name="panic_confirm_body">This erases AT ONCE and FOR GOOD:\n\n• the whole vault, every encrypted file and its keys\n• every setting, the recent files among them\n• the temporary files: decrypted copies, unlocked PDFs, scanned pages\n• the code editor\'s history\n• the folders of \"Extract all\" kept by the earlier versions\n• the trash\n\nYour files and what the tools saved in Files Tech are not touched. Nothing can be recovered without a .rftvault backup.\n\nContinue?</string>
+    <string name="panic_confirm">Erase everything</string>
+    <string name="panic_erasing">Erasing…</string>
+    <string name="panic_done">Everything was erased.</string>
+    <string name="panic_incomplete">Not everything could be erased: %1$s. Try again.</string>
+    <string name="panic_part_vault">the vault</string>
+    <string name="panic_part_preferences">the settings</string>
+    <string name="panic_part_cache">the temporary files</string>
+    <string name="panic_part_history">the editor\'s history</string>
+    <string name="panic_part_extractions">the old extractions</string>
+    <string name="panic_part_trash">the trash</string>
     <string name="tool_hint_color_picker">HEX, RGB, HSL</string>
     <string name="tool_hint_txt_tools">Words, search, PDF</string>
     <string name="tool_hint_csv_tools">Stats, PDF, merge</string>
