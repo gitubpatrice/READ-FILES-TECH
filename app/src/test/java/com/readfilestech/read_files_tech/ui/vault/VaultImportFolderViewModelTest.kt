@@ -122,7 +122,8 @@ class VaultImportFolderViewModelTest {
         original("c.txt")
         val viewModel = viewModel()
         io.held = true
-        deletingOriginals(viewModel) // a.txt encrypted; its original's deletion waits on the IO dispatcher
+        deletingOriginals(viewModel)
+        io.tasks.removeFirst().run() // a.txt read and encrypted; its original's deletion waits on the IO dispatcher
         vault.service.lock()
         io.held = false
         io.runAll()
@@ -133,6 +134,38 @@ class VaultImportFolderViewModelTest {
         val said = UiText.Joined(summary, uiText(R.string.vault_folder_locked), R.string.joined_dot)
         assertThat(shown.last()).isEqualTo(UserMessage(said, isError = true))
         assertThat(viewModel.state.value.done).isTrue()
+    }
+
+    /** GPT and Claude reviews: a file still being written, or replaced by a sync, was deleted with a copy of what it was. */
+    @Test
+    fun `an original changed while its copy was made is left in place, and said`() {
+        val a = original("a.txt", "as read")
+        val viewModel = viewModel()
+        io.held = true
+        deletingOriginals(viewModel)
+        io.tasks.removeFirst().run() // its identity read, then the copy made
+        a.appendText(", then longer")
+        io.held = false
+        io.runAll()
+
+        assertThat(a.readText()).isEqualTo("as read, then longer")
+        assertThat(inVault()).containsExactly("a.txt", "as read")
+        // Written out, not computed by VaultMessages: the part that says it must be there.
+        val said = UiText.Joined(
+            UiText.Plural(R.plurals.vault_imported, 1),
+            UiText.Plural(R.plurals.vault_originals_not_deleted, 1),
+            R.string.joined_dot,
+        )
+        assertThat(shown.last()).isEqualTo(UserMessage(said, isError = true))
+    }
+
+    @Test
+    fun `a second tap on the confirmation runs nothing more`() {
+        original("a.txt")
+        val viewModel = viewModel()
+        deletingOriginals(viewModel)
+        viewModel.confirmDelete(yes = true)
+        assertThat(shown).hasSize(1)
     }
 
     @Test

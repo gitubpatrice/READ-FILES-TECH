@@ -1,6 +1,5 @@
 package com.readfilestech.read_files_tech.ui.vault
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
@@ -105,7 +104,6 @@ data class VaultState(
 @HiltViewModel
 @Suppress("TooManyFunctions") // one entry per action of the screen, each a few lines
 class VaultViewModel @Inject constructor(
-    private val handle: SavedStateHandle,
     private val vault: VaultService,
     private val files: VaultFiles,
     private val dirs: VaultDirs,
@@ -121,6 +119,10 @@ class VaultViewModel @Inject constructor(
 
     private var job: Job? = null
     private var question: CompletableDeferred<Boolean>? = null
+
+    /** What the picker is open for, and the file to export (pickFor). */
+    private var pending: VaultPick? = null
+    private var exporting: String? = null
 
     /** The backup's password between "nothing restored" and "replace": memory only, dropped with the question. */
     private var restoreRetry: Pair<String, String>? = null
@@ -158,8 +160,9 @@ class VaultViewModel @Inject constructor(
             val created = loadOrFailure { vault.setup(password) }
             created.onSuccess { open ->
                 messages.info(uiText(R.string.vault_created))
-                // Locked during the derivation (the idle time, the panic): created, but to be opened.
-                mutableState.update { it.copy(work = null, phase = if (open) VaultPhase.OPEN else VaultPhase.LOCKED) }
+                // Locked during the derivation (the idle time, the panic) or since: created, but to be opened.
+                val phase = if (open && vault.unlocked.value) VaultPhase.OPEN else VaultPhase.LOCKED
+                mutableState.update { it.copy(work = null, phase = phase) }
             }.onFailure { error ->
                 if (error is VaultAlreadySetUpException) {
                     mutableState.update { it.copy(work = null, phase = VaultPhase.LOCKED) }
@@ -214,17 +217,23 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    /** The picker is opened for [pick]; [item] is the file to export. */
+    /**
+     * The picker is opened for [pick]; [item] is the file to export. Kept in memory only, dropped at a lock:
+     * a name of the vault has no place in the saved state, and after the process died the vault is locked.
+     */
     fun pickFor(pick: VaultPick, item: VaultItem? = null) {
-        handle[KEY_PICK] = pick.name
-        if (item != null) handle[KEY_EXPORT] = item.encryptedName
+        pending = pick
+        exporting = item?.encryptedName
     }
 
-    /** What the picker handed back, dispatched to the action it was opened for. */
+    /** What the picker handed back, dispatched to the action it was opened for — while the vault is open. */
     fun picked(paths: List<String>?, folder: String?) {
-        val pick = handle.get<String>(KEY_PICK)?.let { name -> VaultPick.entries.find { it.name == name } } ?: return
-        handle.remove<String>(KEY_PICK)
-        val exported = handle.remove<String>(KEY_EXPORT)
+        val pick = pending ?: return
+        val exported = exporting
+        pending = null
+        exporting = null
+        // locked() drops the wait; this covers the picker's answer arriving before its collector ran.
+        if (!vault.unlocked.value) return
         when (pick) {
             VaultPick.IMPORT -> paths?.takeIf { it.isNotEmpty() }?.let(::import)
             VaultPick.RESTORE -> paths?.firstOrNull()?.let(::restoreChosen)
@@ -279,7 +288,8 @@ class VaultViewModel @Inject constructor(
         if (busy) return
         run(VaultWork.Working) {
             val copy = loadOrFailure { withContext(io) { files.copy(encrypted(item), VaultFiles.Copy.SHARE) } }
-            copy.onSuccess { file -> mutableState.update { it.copy(share = file.path) } }
+            // Locked while it decrypted: the copy is purged, nothing to hand over.
+            copy.onSuccess { file -> if (vault.unlocked.value) mutableState.update { it.copy(share = file.path) } }
                 .onFailure { messages.error(uiText(R.string.vault_share_failed, vaultReason(it))) }
         }
     }
@@ -364,8 +374,11 @@ class VaultViewModel @Inject constructor(
             refresh()
             restored.onSuccess { result ->
                 if (!overwrite && allAlreadyThere(result)) {
-                    restoreRetry = path to password
-                    show(VaultDialog.RestoreAllThere(result.skipped))
+                    // Locked meanwhile: no "Replace?" over a locked vault, its backup's password not kept.
+                    if (vault.unlocked.value) {
+                        restoreRetry = path to password
+                        show(VaultDialog.RestoreAllThere(result.skipped))
+                    }
                 } else {
                     say(VaultMessages.restored(result), isError = result.failed.isNotEmpty())
                 }
@@ -381,9 +394,9 @@ class VaultViewModel @Inject constructor(
 
     /** A yes or no to the question on screen; any other dialog closed. */
     fun answer(yes: Boolean) {
-        val pending = question
-        if (pending != null) {
-            pending.complete(yes)
+        val asked = question
+        if (asked != null) {
+            asked.complete(yes)
         } else {
             dismiss()
         }
@@ -415,9 +428,11 @@ class VaultViewModel @Inject constructor(
         question?.complete(false)
         question = null
         restoreRetry = null
+        pending = null
+        exporting = null
         mutableState.update { current ->
             val phase = if (current.phase == VaultPhase.OPEN) VaultPhase.LOCKED else current.phase
-            current.copy(phase = phase, files = emptyList(), dialog = null, share = null)
+            current.copy(phase = phase, files = emptyList(), dialog = null, share = null, folderToImport = null)
         }
     }
 
@@ -444,15 +459,19 @@ class VaultViewModel @Inject constructor(
 
     private fun show(dialog: VaultDialog) = mutableState.update { it.copy(dialog = dialog) }
 
-    /** Shows [dialog] and waits for its answer: false when dismissed, or when the vault locks meanwhile. */
+    /**
+     * Shows [dialog] and waits for its answer: false when dismissed, or when the vault locks meanwhile — or
+     * has locked already, between the call that raised the question and now: then nothing is shown.
+     */
     private suspend fun ask(dialog: VaultDialog): Boolean {
-        val pending = CompletableDeferred<Boolean>()
-        question = pending
+        if (!vault.unlocked.value) return false
+        val answer = CompletableDeferred<Boolean>()
+        question = answer
         show(dialog)
         return try {
-            pending.await()
+            answer.await()
         } finally {
-            if (question === pending) question = null
+            if (question === answer) question = null
             mutableState.update { if (it.dialog == dialog) it.copy(dialog = null) else it }
         }
     }
@@ -473,8 +492,6 @@ class VaultViewModel @Inject constructor(
     }
 
     private companion object {
-        const val KEY_PICK = "vault_pick"
-        const val KEY_EXPORT = "vault_export"
         const val BACKUP_NAME = "coffre"
         const val BACKUP_EXTENSION = "rftvault"
     }

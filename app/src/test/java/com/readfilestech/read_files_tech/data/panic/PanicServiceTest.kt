@@ -114,6 +114,25 @@ class PanicServiceTest {
         assertThat(vault.dirs.cache.list()).isEmpty()
     }
 
+    /** Without the access to every file, a trash folder may be there unseen: not known erased (Claude review). */
+    @Test
+    fun `without the access to every file, the trash is not said erased`() {
+        used()
+        val blind = TrashStore(
+            SharedStorageNames(replacesFlutterApp = false),
+            fallbackBase = appFlutter,
+            privateRoots = listOf(root),
+            visibility = { false },
+            volumeBases = { listOf(volume) },
+            primary = volume,
+        )
+        val history = EditorHistory(File(appFlutter, "history"), File(root, "files/editor_history"))
+        val blindPanic = PanicService(vault.service, vault.dirs, vault.prefs, history, blind, Dispatchers.Unconfined)
+        val report = runBlocking { blindPanic.wipeAll() }
+        assertThat(report.trash).isFalse()
+        assertThat(report.copy(trash = true)).isEqualTo(ALL_ERASED)
+    }
+
     @Test
     fun `on a device where the app kept nothing, the panic is complete`() {
         assertThat(wipe().isComplete).isTrue()

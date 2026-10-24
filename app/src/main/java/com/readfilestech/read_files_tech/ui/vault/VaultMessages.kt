@@ -14,6 +14,7 @@ internal object VaultMessages {
     /**
      * [stoppedByLock]: the vault locked during the import, which stopped there — said, not counted as errors.
      * [keptLabel] says why a file was kept: a namesake the user chose to keep, or one already there.
+     * [notDeleted]: originals to delete that were left in place — changed since read, or refused.
      */
     @Suppress("LongParameterList") // the counts of one import, each said apart
     fun imported(
@@ -23,10 +24,12 @@ internal object VaultMessages {
         stoppedByLock: Boolean,
         deleted: Int = 0,
         @PluralsRes keptLabel: Int = R.plurals.vault_kept,
+        notDeleted: Int = 0,
     ): UiText? = joined(
         buildList {
             if (done > 0) add(UiText.Plural(R.plurals.vault_imported, done))
             if (deleted > 0) add(UiText.Plural(R.plurals.vault_originals_deleted, deleted))
+            if (notDeleted > 0) add(UiText.Plural(R.plurals.vault_originals_not_deleted, notDeleted))
             if (kept > 0) add(UiText.Plural(keptLabel, kept))
             if (failed > 0) add(UiText.Plural(R.plurals.errors_count, failed))
             if (stoppedByLock) add(uiText(R.string.vault_reason_locked))

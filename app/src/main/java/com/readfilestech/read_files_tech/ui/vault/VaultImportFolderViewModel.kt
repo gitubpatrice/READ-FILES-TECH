@@ -28,7 +28,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
 import javax.inject.Inject
 
 /** A file of the folder, and whether it is to be encrypted. */
@@ -114,6 +117,8 @@ class VaultImportFolderViewModel @Inject constructor(
     }
 
     fun confirmDelete(yes: Boolean) {
+        // A second tap before the dialog is gone: one run only.
+        if (mutableState.value.confirmDelete == null) return
         mutableState.update { it.copy(confirmDelete = null) }
         if (yes) run(mutableState.value)
     }
@@ -137,19 +142,22 @@ class VaultImportFolderViewModel @Inject constructor(
     private fun run(state: FolderImportState) {
         val chosen = state.selected
         val deleteOriginals = state.deleteOriginals
-        if (chosen.isEmpty()) return
+        if (chosen.isEmpty() || running?.isActive == true) return
         mutableState.update { it.copy(progress = 0f) }
         running = viewModelScope.launch {
             val tally = Tally()
             for ((index, entry) in chosen.withIndex()) {
                 val source = File(entry.path)
+                val read = if (deleteOriginals) withContext(io) { FileIdentity.of(source) } else null
                 val outcome = loadOrFailure { files.import(source) }
                 val error = outcome.exceptionOrNull()
                 when {
                     // Encrypted, in the vault under the live key: only now may its original go.
                     error == null -> {
                         tally.done++
-                        if (deleteOriginals && withContext(io) { source.delete() }) tally.deleted++
+                        if (deleteOriginals) {
+                            if (withContext(io) { deleteIfUnchanged(source, read) }) tally.deleted++ else tally.notDeleted++
+                        }
                     }
                     error is NameTakenException -> tally.kept++
                     error is VaultLockedException -> {
@@ -173,6 +181,7 @@ class VaultImportFolderViewModel @Inject constructor(
             stoppedByLock = false,
             deleted = tally.deleted,
             keptLabel = R.plurals.vault_namesakes_kept,
+            notDeleted = tally.notDeleted,
         )
         val locked = uiText(R.string.vault_folder_locked)
         val text: UiText? = when {
@@ -180,7 +189,8 @@ class VaultImportFolderViewModel @Inject constructor(
             summary == null -> locked
             else -> UiText.Joined(summary, locked, R.string.joined_dot)
         }
-        if (text != null) messages.post(UserMessage(text, isError = tally.failed > 0 || tally.stoppedByLock))
+        val isError = tally.failed > 0 || tally.notDeleted > 0 || tally.stoppedByLock
+        if (text != null) messages.post(UserMessage(text, isError = isError))
     }
 
     private class Tally {
@@ -188,9 +198,32 @@ class VaultImportFolderViewModel @Inject constructor(
         var kept = 0
         var failed = 0
         var deleted = 0
+        var notDeleted = 0
         var stoppedByLock = false
     }
 }
+
+/**
+ * A file as it was when its copy was read: size, time, and the file system's own key (device and inode)
+ * when it has one. Another app replacing or still writing the file changes one of them.
+ */
+private data class FileIdentity(val size: Long, val modified: FileTime, val key: Any?) {
+    companion object {
+        fun of(file: File): FileIdentity? = try {
+            val attributes = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            FileIdentity(attributes.size(), attributes.lastModifiedTime(), attributes.fileKey())
+        } catch (expected: IOException) {
+            null
+        }
+    }
+}
+
+/**
+ * Deletes [source] only if it is still the file whose copy went into the vault: one that changed since —
+ * a download still being written, a file a sync replaced — would be lost with a copy of what it was.
+ */
+private fun deleteIfUnchanged(source: File, read: FileIdentity?): Boolean =
+    read != null && FileIdentity.of(source) == read && source.delete()
 
 /**
  * The files of a folder for the vault's import, over the app's one walk (FolderWalk): links never followed,

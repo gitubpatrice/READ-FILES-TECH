@@ -161,9 +161,12 @@ private fun Question(title: String, message: String, yes: String, no: String, da
             }
             Button(onClick = { onAnswer(true) }, colors = colors) { Text(yes) }
         },
-        dismissButton = { TextButton(onClick = { onAnswer(false) }, modifier = Modifier.focusRequester(focus)) { Text(no) } },
+        dismissButton = {
+            TextButton(onClick = { onAnswer(false) }, modifier = Modifier.focusRequester(focus)) { Text(no) }
+            // In the dialog's own composition, where the requester has its node.
+            if (danger) LaunchedEffect(Unit) { focus.requestFocus() }
+        },
     )
-    if (danger) LaunchedEffect(Unit) { focus.requestFocus() }
 }
 
 /**

@@ -79,7 +79,8 @@ fun ConfirmDangerDialog(title: String, message: String, confirmLabel: String, on
             TextButton(onClick = onDismiss, modifier = Modifier.focusRequester(focus)) {
                 Text(stringResource(R.string.action_cancel))
             }
+            // In the dialog's own composition, where the requester has its node.
+            LaunchedEffect(Unit) { focus.requestFocus() }
         },
     )
-    LaunchedEffect(Unit) { focus.requestFocus() }
 }

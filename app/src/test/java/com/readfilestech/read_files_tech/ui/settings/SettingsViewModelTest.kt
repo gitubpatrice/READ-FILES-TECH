@@ -83,14 +83,14 @@ class SettingsViewModelTest {
         val viewModel = ViewModelProvider.create(store, factory)[SettingsViewModel::class]
 
         viewModel.askPanic()
-        assertThat(viewModel.state.value.confirmPanic).isTrue()
+        assertThat(viewModel.confirmPanic.value).isTrue()
         viewModel.panic()
-        assertThat(viewModel.state.value).isEqualTo(SettingsState(confirmPanic = false, erasing = true))
+        assertThat(viewModel.confirmPanic.value).isFalse()
         store.clear()
         held.runAll()
 
         assertThat(vault.service.isSetUp()).isFalse()
-        assertThat(viewModel.state.value.erasing).isFalse()
+        assertThat(panic.erasing.value).isFalse()
         CoroutineScope(Dispatchers.Unconfined).launch { messages.showEach { shown += it } }.cancel()
         assertThat(shown).containsExactly(UserMessage(uiText(R.string.panic_done)))
     }

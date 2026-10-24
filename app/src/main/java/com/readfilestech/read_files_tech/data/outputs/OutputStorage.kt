@@ -101,7 +101,9 @@ class OutputStorage(
             val dir = File(base, category.folderName)
             try {
                 Files.createDirectories(dir.toPath())
-                return dir
+                // There but refusing writes: the next base, as reserve() falls through on its own.
+                if (Files.isWritable(dir.toPath())) return dir
+                failure = IOException("not writable: ${category.folderName}")
             } catch (e: IOException) {
                 failure = e
             }

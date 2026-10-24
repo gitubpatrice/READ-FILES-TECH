@@ -1,6 +1,5 @@
 package com.readfilestech.read_files_tech.ui.vault
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.initializer
@@ -41,7 +40,6 @@ class VaultViewModelTest {
     private lateinit var vault: TestVault
     private val messages = UserMessages()
     private val shown = mutableListOf<UserMessage>()
-    private val handle = SavedStateHandle()
     private val store = ViewModelStore()
     private lateinit var listening: Job
 
@@ -65,7 +63,7 @@ class VaultViewModelTest {
         val outputs = OutputStorage(vault.prefs, { File(dir, "storage") }, { null }, File(dir, "app_flutter"))
         val factory = viewModelFactory {
             initializer {
-                with(vault) { VaultViewModel(handle, service, files, dirs, cipher, backups, repair, outputs, messages, io) }
+                with(vault) { VaultViewModel(service, files, dirs, cipher, backups, repair, outputs, messages, io) }
             }
         }
         return ViewModelProvider.create(store, factory)[VaultViewModel::class]
@@ -244,7 +242,7 @@ class VaultViewModelTest {
     }
 
     @Test
-    fun `no password is kept in the state, the saved state or a message`() {
+    fun `no password is kept in the state or a message`() {
         val viewModel = opened()
         viewModel.unlock("wrong password")
         vault.service.lock()
@@ -253,11 +251,29 @@ class VaultViewModelTest {
         viewModel.unlock(PASSWORD)
         viewModel.allAlreadyThere()
 
-        val kept = listOf(viewModel.state.value.toString(), shown.toString()) +
-            handle.keys().map { "$it=${handle.get<Any>(it)}" }
+        val kept = listOf(viewModel.state.value.toString(), shown.toString())
         for (password in listOf(PASSWORD, BACKUP_PASSWORD, "wrong password")) {
             assertThat(kept.filter { password in it }).isEmpty()
         }
+    }
+
+    /** Claude review of the phase: the picker's answer after a lock opened "the backup's password" over the unlock form. */
+    @Test
+    fun `what the picker hands back after a lock is dropped`() {
+        val viewModel = opened()
+        viewModel.import(source("a.txt", "one"))
+        viewModel.pickFor(VaultPick.RESTORE)
+        vault.service.lock()
+        viewModel.unlock(PASSWORD)
+        viewModel.picked(listOf("/storage/emulated/0/Download/coffre.rftvault"), folder = null)
+        assertThat(viewModel.state.value.dialog).isNull()
+
+        // Nothing done, so nothing said: an export tried on the locked vault would report its failure.
+        val said = shown.size
+        viewModel.pickFor(VaultPick.EXPORT, viewModel.item("a.txt"))
+        vault.service.lock()
+        viewModel.picked(paths = null, folder = File(dir, "out").apply { mkdirs() }.path)
+        assertThat(shown).hasSize(said)
     }
 
     @Test

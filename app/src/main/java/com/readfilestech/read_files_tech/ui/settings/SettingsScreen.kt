@@ -38,7 +38,8 @@ import com.readfilestech.read_files_tech.ui.theme.DangerRed
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val confirmPanic by viewModel.confirmPanic.collectAsStateWithLifecycle()
+    val erasing by viewModel.erasing.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,7 +64,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             )
             Card(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.fillMaxWidth().clickable(enabled = !state.erasing, onClick = viewModel::askPanic).padding(16.dp),
+                    Modifier.fillMaxWidth().clickable(enabled = !erasing, onClick = viewModel::askPanic).padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -76,7 +77,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             }
         }
     }
-    if (state.confirmPanic) {
+    if (confirmPanic) {
         ConfirmDangerDialog(
             title = stringResource(R.string.panic_confirm_title),
             message = stringResource(R.string.panic_confirm_body),
@@ -85,7 +86,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             onDismiss = viewModel::cancelPanic,
         )
     }
-    if (state.erasing) {
+    if (erasing) {
         AlertDialog(
             onDismissRequest = {},
             confirmButton = {},

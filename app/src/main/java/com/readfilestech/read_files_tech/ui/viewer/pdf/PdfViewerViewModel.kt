@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.viewer.VaultFileSource
 import com.readfilestech.read_files_tech.data.viewer.ViewerSource
 import com.readfilestech.read_files_tech.data.viewer.pdf.PdfConnection
 import com.readfilestech.read_files_tech.data.viewer.pdf.PdfDocument
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 /** Where the PDF viewer is, once its file is loaded. */
@@ -65,7 +67,13 @@ class PdfViewer internal constructor(
         suspend fun load(context: Context, source: ViewerSource, resources: ViewerResources, io: CoroutineDispatcher): PdfViewer {
             val connection = resources.keep(PdfConnection(context))
             val file = resources.keep(source.acquireFile(FileCaps.PDF_VIEWER))
-            val opening = PdfOpening(connection, file.file, PdfUnlocked.under(context.cacheDir)) { resources.keep(it) }
+            // A vault file's unlocked copy goes in its own slot (docs D-028), purged with it at the lock.
+            val unlocked = if (source is VaultFileSource) {
+                PdfUnlocked(File(requireNotNull(file.file.parentFile), PdfUnlocked.CACHE_DIR))
+            } else {
+                PdfUnlocked.under(context.cacheDir)
+            }
+            val opening = PdfOpening(connection, file.file, unlocked) { resources.keep(it) }
             val first = try {
                 opened(opening.start(), resources, io)
             } catch (e: PdfRefusalException) {

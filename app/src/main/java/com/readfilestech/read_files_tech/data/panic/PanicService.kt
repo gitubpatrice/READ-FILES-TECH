@@ -10,6 +10,13 @@ import com.readfilestech.read_files_tech.vault.VaultDirs
 import com.readfilestech.read_files_tech.vault.VaultService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -52,28 +59,44 @@ class PanicService @Inject constructor(
         val isComplete: Boolean get() = vault && preferences && cache && history && extractions && trash
     }
 
-    suspend fun wipeAll(): Report = withContext(io) {
-        Report(
-            // The reset locks first, before it waits for a creation under way: an import or a restore
-            // stops before its next write. Then it erases the keys and the files; refused, the files are
-            // deleted here all the same, and their keys go with the preferences.
-            vault = attempt {
-                vault.reset()
-                true
-            } || attempt { FileTrees.delete(dirs.vault) },
-            // Every key, the recents among them, then read again: what counts is that nothing is left.
-            preferences = attempt {
-                prefs.clearAllExcept(emptySet())
-                prefs.clearAllExcept(emptySet()) == 0
-            },
-            cache = attempt { emptied(dirs.cache) },
-            history = attempt { history.deleteLegacy() && history.deleteNew() },
-            extractions = attempt {
-                appFlutter.listFiles().orEmpty().filter(LegacyExtractions::isExtractionFolder).map(FileTrees::delete).all { it }
-            },
-            trash = attempt { trash.eraseAll() },
-        )
+    private val running = MutableStateFlow(false)
+
+    /** A panic under way, whichever screen started it: a second one waits for it. */
+    val erasing: StateFlow<Boolean> = running.asStateFlow()
+
+    private val oneAtATime = Mutex()
+
+    suspend fun wipeAll(): Report {
+        // At once, before anything is dispatched: the key is wiped now, not once a busy thread is free.
+        vault.lock()
+        return oneAtATime.withLock {
+            running.value = true
+            try {
+                withContext(io) { erase() }
+            } finally {
+                running.value = false
+            }
+        }
     }
+
+    private suspend fun erase() = Report(
+        // The reset locks again, then waits for a creation under way, and erases the keys and the files;
+        // refused, the files are deleted here all the same, and their keys go with the preferences.
+        vault = attempt {
+            vault.reset()
+            true
+        } || attempt { FileTrees.delete(dirs.vault) },
+        // Every key, the recents among them, then read again: what counts is that nothing is left.
+        preferences = attempt {
+            prefs.clearAllExcept(emptySet())
+            prefs.clearAllExcept(emptySet()) == 0
+        },
+        cache = attempt { emptied(dirs.cache) },
+        // Both tried, whatever the first did.
+        history = attempt { history.deleteLegacy() } and attempt { history.deleteNew() },
+        extractions = attempt { extractionsGone() },
+        trash = attempt { trash.eraseAll() },
+    )
 
     /** [cache] itself kept, everything in it deleted; true when it is listed, and empty. */
     private fun emptied(cache: File): Boolean {
@@ -81,12 +104,24 @@ class PanicService @Inject constructor(
         return cache.list()?.isEmpty() ?: !FileTrees.exists(cache)
     }
 
-    /** One step: what it says, or false when it fails — a failure never keeps the next step from running. */
+    /** True when `app_flutter/` holds no extraction folder — it listed, or it is not there at all. */
+    private fun extractionsGone(): Boolean {
+        val children = appFlutter.listFiles() ?: return !FileTrees.exists(appFlutter)
+        children.filter(LegacyExtractions::isExtractionFolder).forEach(FileTrees::delete)
+        return appFlutter.listFiles()?.none(LegacyExtractions::isExtractionFolder) ?: false
+    }
+
+    /**
+     * One step: what it says, or false when it fails — a failure never keeps the next step from running. A
+     * `CancellationException` thrown by blocking code is a failure too; only this coroutine's cancellation
+     * stops the panic.
+     */
     @Suppress("TooGenericExceptionCaught", "SwallowedException") // reported as a step not done: the others still run
-    private inline fun attempt(step: () -> Boolean): Boolean = try {
+    private suspend inline fun attempt(step: () -> Boolean): Boolean = try {
         step()
     } catch (e: CancellationException) {
-        throw e
+        currentCoroutineContext().ensureActive()
+        false
     } catch (e: Exception) {
         false
     }

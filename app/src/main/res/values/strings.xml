@@ -1161,6 +1161,10 @@
         <item quantity="one">%d original deleted</item>
         <item quantity="other">%d originals deleted</item>
     </plurals>
+    <plurals name="vault_originals_not_deleted">
+        <item quantity="one">%d original left in place (changed meanwhile, or refused)</item>
+        <item quantity="other">%d originals left in place (changed meanwhile, or refused)</item>
+    </plurals>
     <plurals name="vault_namesakes_kept">
         <item quantity="one">%d kept (already in the vault)</item>
         <item quantity="other">%d kept (already in the vault)</item>

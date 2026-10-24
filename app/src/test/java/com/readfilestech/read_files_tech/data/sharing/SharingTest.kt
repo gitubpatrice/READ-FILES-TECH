@@ -1,6 +1,8 @@
 package com.readfilestech.read_files_tech.data.sharing
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.vault.VaultFiles
+import com.readfilestech.read_files_tech.vault.VaultService
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -59,6 +61,20 @@ class SharingTest {
             writeText("x")
         }
         assertThat(guard.resolve(sibling)).isNotNull()
+    }
+
+    /** The app's own list (SharingModule): the viewers' copies and the share copies (docs D-028, D-034) never leave by it. */
+    @Test
+    fun `the app's list of plaintext caches holds the vault's copies`() {
+        val cache = File(tmp, "cache").canonicalFile
+        val guard = PathGuard(listOf(tmp.canonicalFile), VaultService.PLAINTEXT_CACHE_DIRS.map { File(cache, it) }, pkg)
+        for (folder in listOf(VaultFiles.DECRYPT_DIR, VaultFiles.SHARE_DIR)) {
+            val copy = File(cache, "$folder/1/secret.pdf").apply {
+                parentFile.mkdirs()
+                writeText("x")
+            }
+            assertThat(guard.resolve(copy)).isNull()
+        }
     }
 
     @Test

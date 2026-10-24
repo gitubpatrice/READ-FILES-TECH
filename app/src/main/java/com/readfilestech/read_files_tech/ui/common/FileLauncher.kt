@@ -16,6 +16,7 @@ import com.readfilestech.read_files_tech.data.sharing.PathGuard
 import com.readfilestech.read_files_tech.data.sharing.VaultShares
 import com.readfilestech.read_files_tech.vault.VaultDirs
 import com.readfilestech.read_files_tech.vault.VaultFiles
+import com.readfilestech.read_files_tech.vault.VaultSession
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +40,7 @@ class FileLauncher @Inject constructor(
     private val guard: PathGuard,
     private val signatures: AppSignatures,
     private val vaultDirs: VaultDirs,
+    private val session: VaultSession,
 ) {
     fun view(from: Context, file: File, chooser: Boolean): LaunchOutcome {
         val (uri, mime) = served(from, file) ?: return LaunchOutcome.REFUSED
@@ -69,7 +71,10 @@ class FileLauncher @Inject constructor(
      * file of a slot of `cache/vault_shared/`, resolved, links followed — anything else is refused.
      */
     fun shareVaultCopy(from: Context, copy: File): LaunchOutcome {
-        val uri = VaultShares.resolve(copy, File(vaultDirs.cache, VaultFiles.SHARE_DIR))?.let { uriOf(from, it) }
+        // Locked since the copy was made: its purge may not have run yet — no URI is granted to it.
+        val uri = VaultShares.resolve(copy, File(vaultDirs.cache, VaultFiles.SHARE_DIR))
+            ?.takeIf { session.unlocked.value }
+            ?.let { uriOf(from, it) }
             ?: return LaunchOutcome.REFUSED
         val send = Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uri).setType(mimeOf(copy.name))
         send.clipData = clip(listOf(uri))

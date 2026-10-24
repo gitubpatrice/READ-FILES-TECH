@@ -151,10 +151,13 @@ class TrashStore(
 
     /**
      * Deletes this build's trash folders whole, on every volume and in [fallbackBase] — the entries [list]
-     * cannot read with them, which [emptyAll] keeps (docs D-019): the panic. True when none is left.
+     * cannot read with them, which [emptyAll] keeps (docs D-019): the panic. True when none is left — never
+     * without the access to every file, which may hide a trash folder that is there.
      */
-    fun eraseAll(): Boolean =
-        existingTrashRoots(volumeBases() + fallbackBase, names.trashDir).map(FileTrees::delete).all { it }
+    fun eraseAll(): Boolean {
+        val erased = existingTrashRoots(volumeBases() + fallbackBase, names.trashDir).map(FileTrees::delete).all { it }
+        return erased && visibility.seesEverything()
+    }
 
     /**
      * The trash folder itself, one of its parents, or a volume root. Both the real name and this

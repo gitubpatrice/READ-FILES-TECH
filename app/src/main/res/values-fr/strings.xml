@@ -1208,6 +1208,11 @@
         <item quantity="many">%d originaux supprimés</item>
         <item quantity="other">%d originaux supprimés</item>
     </plurals>
+    <plurals name="vault_originals_not_deleted">
+        <item quantity="one">%d original laissé en place (modifié entre-temps, ou refusé)</item>
+        <item quantity="many">%d originaux laissés en place (modifiés entre-temps, ou refusés)</item>
+        <item quantity="other">%d originaux laissés en place (modifiés entre-temps, ou refusés)</item>
+    </plurals>
     <plurals name="vault_namesakes_kept">
         <item quantity="one">%d ignoré (déjà dans le coffre)</item>
         <item quantity="many">%d ignorés (déjà dans le coffre)</item>

@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,12 +66,17 @@ fun <T> ViewerScaffold(
     val viewModel: ViewerActionsViewModel = hiltViewModel()
     LaunchedEffect(shareable) { viewModel.load(shareable) }
     // A vault file's (docs D-028): no screenshot, and gone the moment the vault locks — 30 s away, 3 min
-    // without a touch, the lock button, the panic: its plaintext leaves the screen, the viewer the stack.
-    val vaultOpen by viewModel.vaultOpen.collectAsStateWithLifecycle()
+    // without a touch, the lock button, the panic: its plaintext and its name leave the screen, the viewer
+    // the stack. Collected in the background too: locked while away, the first frame back shows nothing.
+    val vaultOpen by viewModel.vaultOpen.collectAsState()
     val hidden = viewModel.inVault && !vaultOpen
     if (viewModel.inVault) {
         SecureWindow()
         LaunchedEffect(hidden) { if (hidden) onBack() }
+    }
+    if (hidden) {
+        Box(Modifier.fillMaxSize())
+        return
     }
     val leavable by viewModel.leavable.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -110,7 +116,6 @@ fun <T> ViewerScaffold(
         },
         snackbarHost = { AppSnackbarHost() },
     ) { padding ->
-        if (hidden) return@Scaffold
         when (state) {
             ViewerState.Loading -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()

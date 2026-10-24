@@ -120,11 +120,12 @@ fun VaultScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                actions = { if (open) VaultMenu(viewModel, onNavigate, pickTitles) },
+                actions = { if (open) VaultMenu(viewModel, onNavigate, pickTitles, busy) },
             )
         },
         floatingActionButton = {
-            if (open) {
+            // While a work runs, no other one is offered: it would be ignored (one at a time).
+            if (open && !busy) {
                 ExtendedFloatingActionButton(onClick = {
                     viewModel.pickFor(VaultPick.IMPORT)
                     onNavigate(Routes.picker(PickMode.FILES, title = pickTitles.import))
@@ -155,9 +156,9 @@ fun VaultScreen(
 internal class PickTitles(val import: String, val folder: String, val export: String, val restore: String)
 
 @Composable
-private fun VaultMenu(viewModel: VaultViewModel, onNavigate: (String) -> Unit, titles: PickTitles) {
+private fun VaultMenu(viewModel: VaultViewModel, onNavigate: (String) -> Unit, titles: PickTitles, busy: Boolean) {
     var menu by remember { mutableStateOf(false) }
-    IconButton(onClick = { menu = true }) {
+    IconButton(onClick = { menu = true }, enabled = !busy) {
         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
     }
     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -238,14 +239,14 @@ private fun VaultFiles(
         // Room under the last file for the import button.
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
             items(state.files, key = VaultItem::encryptedName) { item ->
-                VaultRow(item, viewModel, onNavigate, titles)
+                VaultRow(item, viewModel, onNavigate, titles, busy = state.work != null)
             }
         }
     }
 }
 
 @Composable
-private fun VaultRow(item: VaultItem, viewModel: VaultViewModel, onNavigate: (String) -> Unit, titles: PickTitles) {
+private fun VaultRow(item: VaultItem, viewModel: VaultViewModel, onNavigate: (String) -> Unit, titles: PickTitles, busy: Boolean) {
     var menu by remember { mutableStateOf(false) }
     val open = {
         val viewer = item.viewer
@@ -258,7 +259,8 @@ private fun VaultRow(item: VaultItem, viewModel: VaultViewModel, onNavigate: (St
         leadingContent = { Icon(Icons.Outlined.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = {
             Box {
-                IconButton(onClick = { menu = true }) {
+                // Share, export, delete: one work at a time, the others would be ignored.
+                IconButton(onClick = { menu = true }, enabled = !busy) {
                     Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
