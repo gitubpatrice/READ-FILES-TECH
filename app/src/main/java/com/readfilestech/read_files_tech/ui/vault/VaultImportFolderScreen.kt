@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.ui.vault
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -66,6 +67,8 @@ fun VaultImportFolderScreen(onDone: () -> Unit, viewModel: VaultImportFolderView
     SecureWindow()
     LaunchedEffect(state.done) { if (state.done) onDone() }
     val running = state.progress != null
+    // As the bar's arrow: leaving would stop the encryption without saying where it stopped.
+    BackHandler(enabled = running) { }
     Scaffold(
         topBar = {
             TopAppBar(

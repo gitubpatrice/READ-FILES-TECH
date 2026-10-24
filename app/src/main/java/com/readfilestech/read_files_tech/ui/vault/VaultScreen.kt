@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.ui.vault
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -107,12 +108,15 @@ fun VaultScreen(
     )
     val open = state.phase == VaultPhase.OPEN
     val title = if (state.phase == VaultPhase.SETUP) R.string.vault_setup_title else R.string.feature_vault
+    // Leaving locks the vault: an import would stop there without saying where.
+    val busy = state.work != null
+    BackHandler(enabled = busy) { }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !busy) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },

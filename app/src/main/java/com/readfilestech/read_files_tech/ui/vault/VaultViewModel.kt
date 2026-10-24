@@ -396,10 +396,12 @@ class VaultViewModel @Inject constructor(
         mutableState.update { it.copy(dialog = null) }
     }
 
-    /** Leaving the vault's screen locks it: the 2.15.x left it open, to be reopened without a password (V-H1). */
-    override fun onCleared() {
-        if (vault.unlocked.value) vault.lock()
-    }
+    /**
+     * Leaving the vault's screen locks it: the 2.15.x left it open, to be reopened without a password (V-H1).
+     * Whether or not it is open yet: an unlock or a creation under way installs its key at the end of its
+     * derivation unless a lock came meanwhile — left during one, the vault would open with no screen.
+     */
+    override fun onCleared() = vault.lock()
 
     private fun opened() {
         if (mutableState.value.phase == VaultPhase.CHECKING) return

@@ -116,6 +116,23 @@ class VaultViewModelTest {
         assertThat(vault.service.unlocked.value).isFalse()
     }
 
+    /** The unlock installs its key once derived: the screen left before, the vault opened with no screen. */
+    @Test
+    fun `leaving the screen during an unlock leaves the vault locked`() {
+        val viewModel = opened()
+        vault.service.lock()
+        var left = false
+        vault.clock.onWallRead = {
+            if (!left) {
+                left = true
+                store.clear()
+            }
+        }
+        viewModel.unlock(PASSWORD)
+        assertThat(left).isTrue()
+        assertThat(vault.service.unlocked.value).isFalse()
+    }
+
     /** The list read before the lock lands after it: the names would come back over a locked vault. */
     @Test
     fun `a list read while the vault locks stays off the screen`() {
