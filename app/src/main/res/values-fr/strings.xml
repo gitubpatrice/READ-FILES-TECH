@@ -796,6 +796,7 @@
     <string name="ocr_choose_image">Choisir une image</string>
     <string name="ocr_image_read">L\'image lue</string>
     <string name="ocr_working">Reconnaissance du texte…</string>
+    <string name="ocr_cancelled">Reconnaissance annulée : rien n\'a été gardé.</string>
     <string name="ocr_no_text">Aucun texte trouvé dans cette image.</string>
     <string name="ocr_failed">Impossible de lire le texte de cette image : %1$s</string>
     <string name="ocr_recognition_failed">la reconnaissance du texte a échoué sur ce téléphone</string>
@@ -1313,4 +1314,6 @@
     <string name="vault_continue">Continuer</string>
     <string name="vault_folder_unreadable">Ce dossier ne peut pas être lu.</string>
     <string name="vault_folder_locked">Le coffre s\'est verrouillé : le chiffrement s\'est arrêté, et les originaux non encore chiffrés sont intacts. Importez à nouveau le dossier pour continuer : les fichiers déjà dans le coffre sont ignorés.</string>
+    <string name="vault_folder_stopping">Arrêt après le fichier en cours… %1$d %%</string>
+    <string name="vault_folder_stopped">Arrêté : les originaux non encore chiffrés sont intacts. Importez à nouveau le dossier pour continuer : les fichiers déjà dans le coffre sont ignorés.</string>
 </resources>

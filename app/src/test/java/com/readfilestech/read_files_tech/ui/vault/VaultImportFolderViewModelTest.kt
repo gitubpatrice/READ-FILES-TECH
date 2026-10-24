@@ -148,6 +148,38 @@ class VaultImportFolderViewModelTest {
         assertThat(viewModel.state.value.done).isTrue()
     }
 
+    /**
+     * "Stop", or the back key: the file under way is finished — encrypted, its original deleted as asked — and no
+     * other is started; said, with the way to go on. The 2.15.3 could not stop it; the port swallowed the back key.
+     */
+    @Test
+    fun `a stop finishes the file under way, starts no other, and says how to go on`() {
+        original("a.txt")
+        original("b.txt")
+        original("c.txt")
+        val viewModel = viewModel()
+        io.held = true
+        deletingOriginals(viewModel)
+        io.tasks.removeFirst().run() // a.txt read and encrypted
+        viewModel.stop()
+        assertThat(viewModel.state.value.stopping).isTrue()
+        io.held = false
+        io.runAll()
+
+        assertThat(folder.list()).asList().containsExactly("b.txt", "c.txt")
+        assertThat(inVault()).containsExactly("a.txt", "a.txt")
+        val summary = VaultMessages.imported(1, 0, 0, stoppedByLock = false, deleted = 1, keptLabel = R.plurals.vault_namesakes_kept)!!
+        val said = UiText.Joined(summary, uiText(R.string.vault_folder_stopped), R.string.joined_dot)
+        assertThat(shown.last()).isEqualTo(UserMessage(said, isError = false))
+        assertThat(viewModel.state.value.done).isTrue()
+
+        // Imported again: the stop asked before is forgotten, every file goes in.
+        val again = viewModel()
+        again.encrypt()
+        io.runAll()
+        assertThat(inVault().keys).containsExactly("a.txt", "b.txt", "c.txt")
+    }
+
     /** GPT and Claude reviews: a file still being written, or replaced by a sync, was deleted with a copy of what it was. */
     @Test
     fun `an original changed while its copy was made is left in place, and said`() {

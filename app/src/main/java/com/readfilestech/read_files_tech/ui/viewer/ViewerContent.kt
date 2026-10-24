@@ -97,23 +97,63 @@ suspend fun <T> loadOrFailure(block: suspend () -> T): Result<T> = try {
  * while the load ran.
  */
 class ViewerContent<T : Any>(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    /**
+     * The file shown when the app may change it behind the viewer — its "Edit" opens an editor on it: read again
+     * by [reloadIfChanged] once its size or time changed. The 2.15.3's CSV viewer showed the table of before.
+     */
+    private val watched: File? = null,
     private val load: suspend ViewerResources.() -> T,
 ) : AutoCloseable {
-    private val resources = ViewerResources()
     private val mutableState = MutableStateFlow<ViewerState<T>>(ViewerState.Loading)
     val state: StateFlow<ViewerState<T>> = mutableState.asStateFlow()
-    private val job: Job = scope.launch {
-        mutableState.value = loadOrFailure { withContext(io) { resources.load() } }
-            .fold({ ViewerState.Ready(it) }, { ViewerState.Failed(ViewerErrors.failureOf(it)) })
+    private var resources = ViewerResources()
+
+    /** The [watched] file's size and time when it was read. */
+    private var stamp: Pair<Long, Long>? = null
+    private var job: Job = start()
+
+    private fun start(): Job {
+        val opened = resources
+        return scope.launch {
+            stamp = watched?.let { withContext(io) { stampOf(it) } }
+            mutableState.value = loadOrFailure { withContext(io) { opened.load() } }
+                .fold({ ViewerState.Ready(it) }, { ViewerState.Failed(ViewerErrors.failureOf(it)) })
+        }
+    }
+
+    /**
+     * Reads the [watched] file again if its size or time changed since it was read; nothing while it is read. The
+     * check runs off the main thread: its job, which a test waits for; null when nothing is watched.
+     */
+    fun reloadIfChanged(): Job? {
+        val file = watched ?: return null
+        return scope.launch {
+            val now = withContext(io) { stampOf(file) }
+            if (job.isCompleted && stamp != null && now != stamp) reload()
+        }
+    }
+
+    private fun reload() {
+        val previous = job
+        val opened = resources
+        previous.cancel()
+        previous.invokeOnCompletion { opened.close() }
+        resources = ViewerResources()
+        mutableState.value = ViewerState.Loading
+        job = start()
     }
 
     override fun close() {
-        job.cancel()
+        val last = job
+        val opened = resources
+        last.cancel()
         // At once when the job is over; else when the blocking call it is in returns.
-        job.invokeOnCompletion { resources.close() }
+        last.invokeOnCompletion { opened.close() }
     }
+
+    private fun stampOf(file: File): Pair<Long, Long> = file.length() to file.lastModified()
 }
 
 /** What a viewer's load opened, closed with the viewer. */

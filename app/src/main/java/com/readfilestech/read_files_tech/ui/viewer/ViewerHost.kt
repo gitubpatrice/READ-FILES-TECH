@@ -16,12 +16,12 @@ import com.readfilestech.read_files_tech.ui.viewer.zip.ZipViewerScreen
 
 /**
  * The screen of each viewer: one branch per [ViewerKind], added with its entry. [onNavigate] leads to
- * another destination of the app (the CSV viewer's editor, the folder a ZIP extraction wrote).
+ * another destination of the app (the editor of the text and CSV viewers, the folder a ZIP extraction wrote).
  */
 @Composable
 fun ViewerHost(kind: ViewerKind?, onBack: () -> Unit, onNavigate: (String) -> Unit) {
     when (kind) {
-        ViewerKind.TEXT -> TextViewerScreen(onBack)
+        ViewerKind.TEXT -> TextViewerScreen(onBack, onNavigate)
         ViewerKind.CSV -> CsvViewerScreen(onBack, onNavigate)
         ViewerKind.IMAGE -> ImageViewerScreen(onBack)
         ViewerKind.ZIP -> ZipViewerScreen(onBack, onNavigate)

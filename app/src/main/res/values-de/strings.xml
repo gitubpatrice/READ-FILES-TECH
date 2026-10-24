@@ -767,6 +767,7 @@
     <string name="ocr_choose_image">Bild wählen</string>
     <string name="ocr_image_read">Das gelesene Bild</string>
     <string name="ocr_working">Text wird erkannt…</string>
+    <string name="ocr_cancelled">Erkennung abgebrochen: Es wurde nichts behalten.</string>
     <string name="ocr_no_text">In diesem Bild wurde kein Text gefunden.</string>
     <string name="ocr_failed">Der Text dieses Bildes kann nicht gelesen werden: %1$s</string>
     <string name="ocr_recognition_failed">die Texterkennung ist auf diesem Telefon fehlgeschlagen</string>
@@ -1236,4 +1237,6 @@
     <string name="vault_continue">Fortfahren</string>
     <string name="vault_folder_unreadable">Dieser Ordner kann nicht gelesen werden.</string>
     <string name="vault_folder_locked">Der Tresor wurde gesperrt: Die Verschlüsselung wurde abgebrochen, und die noch nicht verschlüsselten Originale sind unberührt. Importieren Sie den Ordner erneut, um fortzufahren: Die Dateien, die bereits im Tresor sind, werden übersprungen.</string>
+    <string name="vault_folder_stopping">Wird nach der aktuellen Datei angehalten… %1$d %%</string>
+    <string name="vault_folder_stopped">Angehalten: Die noch nicht verschlüsselten Originale sind unberührt. Importieren Sie den Ordner erneut, um fortzufahren: Die Dateien, die bereits im Tresor sind, werden übersprungen.</string>
 </resources>

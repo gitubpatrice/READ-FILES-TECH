@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.storage.StorageVolumes
 import com.readfilestech.read_files_tech.data.tools.DuplicateFinder
+import com.readfilestech.read_files_tech.data.tools.DuplicateLists
 import com.readfilestech.read_files_tech.data.tools.DuplicateProgress
 import com.readfilestech.read_files_tech.data.tools.DuplicateReport
 import com.readfilestech.read_files_tech.data.tools.DuplicateSelection
@@ -44,6 +45,8 @@ data class DuplicatesState(
      * review R24).
      */
     val trashing: Boolean = false,
+    /** The files sent to the trash since the scan: listed no more, until an "Undo" brings them back. */
+    val gone: Set<String> = emptySet(),
 ) {
     val scanning: Boolean get() = progress != null
 }
@@ -67,6 +70,15 @@ class DuplicatesViewModel @Inject constructor(
     val state: StateFlow<DuplicatesState> = mutableState.asStateFlow()
     private var job: Job? = null
 
+    /** The report as the scan made it: what the screen shows is it without [DuplicatesState.gone]. */
+    @Volatile
+    private var scanned: DuplicateReport? = null
+
+    init {
+        // The trash's "Undo" puts files back: they return to the lists — the 2.15.x showed them only after a scan.
+        viewModelScope.launch { operations.changes.collect { returned() } }
+    }
+
     /** The folder chosen in the picker; a scan running goes on with the one it started on. */
     fun setRoot(folder: String) {
         handle[KEY_ROOT] = folder
@@ -76,13 +88,15 @@ class DuplicatesViewModel @Inject constructor(
     fun scan() {
         if (job?.isCompleted == false) return
         val root = File(mutableState.value.root)
+        scanned = null
         mutableState.update {
             it.copy(
                 progress = DuplicateProgress.Listing(0),
                 report = null,
                 ticked = emptySet(),
                 failure = null,
-                selection = DuplicateSelection(emptyList())
+                selection = DuplicateSelection(emptyList()),
+                gone = emptySet(),
             )
         }
         job = viewModelScope.launch {
@@ -91,7 +105,10 @@ class DuplicatesViewModel @Inject constructor(
                     withContext(io) { DuplicateFinder.find(root, onProgress = { p -> mutableState.update { it.copy(progress = p) } }) }
                 }
                 outcome.fold(
-                    { report -> mutableState.update { it.copy(report = report, selection = DuplicateSelection(report.groups)) } },
+                    { report ->
+                        scanned = report
+                        mutableState.update { shown(it.copy(gone = emptySet())) }
+                    },
                     { error -> mutableState.update { it.copy(failure = failureOf(error)) } },
                 )
             } finally {
@@ -130,22 +147,32 @@ class DuplicatesViewModel @Inject constructor(
         }
     }
 
-    /**
-     * The files gone to the trash leave the lists; a group left with one copy is no longer listed, but its
-     * copy stays its last: never ticked, in either tab (Claude review R24 — dissolved, it could follow).
-     */
+    /** The files gone to the trash leave the lists. */
     private fun dropped(paths: Set<String>) = mutableState.update { state ->
-        val report = state.report ?: return@update state.copy(trashing = false)
-        val groups = report.groups.map { group ->
-            group.copy(
-                files = group.files.filterNot { it.path in paths }
-            )
-        }.filter { it.files.size >= 2 }
-        state.copy(
-            report = report.copy(groups = groups, largest = report.largest.filterNot { it.path in paths }),
-            ticked = state.ticked - paths,
-            selection = state.selection.without(paths),
-            trashing = false,
+        shown(state.copy(gone = state.gone + paths, ticked = state.ticked - paths, trashing = false))
+    }
+
+    /**
+     * The files gone to the trash and back where they were, as they were (size and date: the trash moves, it does
+     * not copy) — an "Undo" — return to the lists; one changed meanwhile stays out, as a scan would compare it again.
+     */
+    private suspend fun returned() {
+        val report = scanned ?: return
+        val gone = mutableState.value.gone.takeIf { it.isNotEmpty() } ?: return
+        val back = withContext(io) { DuplicateLists.returned(report, gone) }
+        if (back.isNotEmpty()) mutableState.update { shown(it.copy(gone = it.gone - back)) }
+    }
+
+    /**
+     * [state] showing the scan's report without its [DuplicatesState.gone] files. A group left with one copy is no
+     * longer listed, but its copy stays its last: never ticked, in either tab (Claude review R24 — dissolved, it
+     * could follow).
+     */
+    private fun shown(state: DuplicatesState): DuplicatesState {
+        val report = scanned ?: return state
+        return state.copy(
+            report = DuplicateLists.without(report, state.gone),
+            selection = DuplicateSelection(report.groups).without(state.gone),
         )
     }
 

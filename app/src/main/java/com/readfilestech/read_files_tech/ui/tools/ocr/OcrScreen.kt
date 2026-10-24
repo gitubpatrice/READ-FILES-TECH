@@ -29,11 +29,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -157,7 +159,11 @@ private fun Read(state: OcrState, viewModel: OcrViewModel) {
         state.working -> Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(stringResource(R.string.ocr_working), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+            TextButton(onClick = viewModel::cancel, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.action_cancel))
+            }
         }
+        state.cancelled -> Text(stringResource(R.string.ocr_cancelled), style = MaterialTheme.typography.bodyMedium)
         state.failure != null -> Text(state.failure.resolve(), color = MaterialTheme.colorScheme.error)
         text == null -> Unit
         text.isEmpty() -> Text(

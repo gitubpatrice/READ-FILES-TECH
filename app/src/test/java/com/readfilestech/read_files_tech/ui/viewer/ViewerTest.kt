@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.nio.file.AccessDeniedException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -116,6 +117,45 @@ class ViewerTest {
         assertThat(closed.await(200, TimeUnit.MILLISECONDS)).isFalse()
         release.countDown()
         assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue()
+    }
+
+    /**
+     * The CSV and text viewers' "Edit": back from the editor, the file saved is read again — the 2.15.3's CSV viewer
+     * showed the table of before, as if the save had done nothing — and what the first read kept is closed.
+     */
+    @Test
+    fun `a watched file is read again once it changed, not before, and the first read's resources are closed`(): Unit = runBlocking {
+        val file = File.createTempFile("viewer", ".csv").apply { writeText("one") }
+        try {
+            var reads = 0
+            var closed = 0
+            val content = ViewerContent(this, Dispatchers.Unconfined, file) {
+                keep(AutoCloseable { closed++ })
+                reads++
+                file.readText()
+            }
+            assertThat(content.state.first { it !is ViewerState.Loading }).isEqualTo(ViewerState.Ready("one"))
+            content.reloadIfChanged()!!.join()
+            assertThat(reads).isEqualTo(1)
+
+            file.writeText("two, longer")
+            content.reloadIfChanged()!!.join()
+            assertThat(content.state.first { it !is ViewerState.Loading }).isEqualTo(ViewerState.Ready("two, longer"))
+            assertThat(reads).isEqualTo(2)
+            assertThat(closed).isEqualTo(1)
+            content.close()
+            assertThat(closed).isEqualTo(2)
+
+            // Nothing watched: never read again.
+            val unwatched = ViewerContent(this, Dispatchers.Unconfined) { reads++ }
+            unwatched.state.first { it !is ViewerState.Loading }
+            file.writeText("three, longer still")
+            assertThat(unwatched.reloadIfChanged()).isNull()
+            assertThat(reads).isEqualTo(3)
+            unwatched.close()
+        } finally {
+            file.delete()
+        }
     }
 
     /** What a load opened is closed with the viewer — even what it opens after the viewer left. */

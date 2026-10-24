@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Lock
@@ -28,6 +29,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,14 +69,15 @@ fun VaultImportFolderScreen(onDone: () -> Unit, viewModel: VaultImportFolderView
     SecureWindow()
     LaunchedEffect(state.done) { if (state.done) onDone() }
     val running = state.progress != null
-    // As the bar's arrow: leaving would stop the encryption without saying where it stopped.
-    BackHandler(enabled = running) { }
+    // Back while it runs asks it to stop, as the bar's arrow does: the screen goes once the file under way is
+    // written, and says where it stopped — the back key was swallowed without a word.
+    BackHandler(enabled = running) { viewModel.stop() }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(File(state.folder).name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
-                    IconButton(onClick = onDone, enabled = !running) {
+                    IconButton(onClick = { if (running) viewModel.stop() else onDone() }, enabled = !state.stopping) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
@@ -90,7 +93,7 @@ fun VaultImportFolderScreen(onDone: () -> Unit, viewModel: VaultImportFolderView
                 },
             )
         },
-        bottomBar = { EncryptBar(state, viewModel::encrypt) },
+        bottomBar = { EncryptBar(state, viewModel::encrypt, viewModel::stop) },
         snackbarHost = { AppSnackbarHost() },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
@@ -177,16 +180,24 @@ private fun Empty(text: String) {
 }
 
 @Composable
-private fun EncryptBar(state: FolderImportState, onEncrypt: () -> Unit) {
+private fun EncryptBar(state: FolderImportState, onEncrypt: () -> Unit, onStop: () -> Unit) {
     val selected = state.selected
     Surface(tonalElevation = 3.dp) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             state.progress?.let { progress ->
                 LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
                 Text(
-                    stringResource(R.string.vault_folder_progress, (progress * PERCENT).toInt()),
+                    stringResource(
+                        if (state.stopping) R.string.vault_folder_stopping else R.string.vault_folder_progress,
+                        (progress * PERCENT).toInt(),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                 )
+                // Not red: stopping destroys nothing, what is encrypted stays (2.15.x, C-C8).
+                FilledTonalButton(onClick = onStop, enabled = !state.stopping, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Stop, contentDescription = null)
+                    Text(stringResource(R.string.action_stop), Modifier.padding(start = 8.dp))
+                }
             }
             val enabled = state.progress == null && !state.scanning && selected.isNotEmpty()
             val total = formatBytes(selected.sumOf(FolderEntry::size))

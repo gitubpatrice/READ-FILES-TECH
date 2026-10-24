@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.ui.navigation
 
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.viewer.image.GalleryOrder
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 
@@ -24,6 +25,7 @@ sealed interface FileTarget {
  */
 object FileRouter {
     private const val APK = "apk"
+    private const val CSV = "csv"
 
     /**
      * What the app's viewers open (`FileViewerRouter` of the 2.15.3, the table that disagreed with the
@@ -55,5 +57,17 @@ object FileRouter {
      * except an APK, which the system's installer would cancel in silence without the app's permission
      * (Claude review R5).
      */
+    /**
+     * The editor of a file the user asks to edit, wherever from — the explorer, the picker, a viewer: the CSV
+     * editor for a CSV, as the CSV viewer always opened it; the code editor for any other text file
+     * ([TextFiles.EXTENSIONS]); null for a file neither edits. The explorer and the picker sent a CSV to the code
+     * editor, its viewer to the CSV editor.
+     */
+    fun editorFor(path: String, extension: String): String? = when (extension) {
+        CSV -> Routes.feature(Feature.CSV_EDITOR, path)
+        in TextFiles.EXTENSIONS -> Routes.feature(Feature.EDITOR, path)
+        else -> null
+    }
+
     fun chooserTargetFor(entry: FileEntry): FileTarget = if (entry.extension == APK) targetFor(entry) else FileTarget.External
 }

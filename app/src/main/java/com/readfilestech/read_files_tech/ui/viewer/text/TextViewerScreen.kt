@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorText
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.DropdownMenu
@@ -56,10 +57,12 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.viewer.text.TextColor
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
+import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.viewer.ViewerMessage
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import kotlinx.coroutines.launch
@@ -78,8 +81,13 @@ private const val PLAIN_LINE_HEIGHT = 1.6f
  * laid out lazily — only those on screen exist — and coloured as they show.
  */
 @Composable
-fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltViewModel()) {
+fun TextViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel: TextViewerViewModel = hiltViewModel()) {
     val state by viewModel.content.state.collectAsStateWithLifecycle()
+    // Back from its "Edit": the text the editor saved, not the one of before.
+    LifecycleResumeEffect(Unit) {
+        viewModel.content.reloadIfChanged()
+        onPauseOrDispose { }
+    }
     val colors by viewModel.colors.collectAsStateWithLifecycle()
     val codeColours by viewModel.codeColours.collectAsStateWithLifecycle()
     var fontSize by rememberSaveable { mutableIntStateOf(DEFAULT_FONT_SIZE) }
@@ -96,6 +104,12 @@ fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltVi
         state = state,
         onBack = onBack,
         actions = {
+            // Edited in place, a file of the storage only: one of the vault has no place to be — as the CSV viewer.
+            source?.shareable?.let { FileRouter.editorFor(it.path, source.extension) }?.let { editor ->
+                IconButton(onClick = { onNavigate(editor) }) {
+                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
+                }
+            }
             if (code) {
                 ToggleAction(Icons.Outlined.FormatColorText, stringResource(R.string.text_syntax_colours), !syntaxHidden) {
                     syntaxHidden = !syntaxHidden

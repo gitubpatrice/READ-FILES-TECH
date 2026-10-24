@@ -810,6 +810,7 @@
     <string name="ocr_choose_image">Elegir una imagen</string>
     <string name="ocr_image_read">La imagen leída</string>
     <string name="ocr_working">Reconociendo el texto…</string>
+    <string name="ocr_cancelled">Reconocimiento cancelado: no se ha conservado nada.</string>
     <string name="ocr_no_text">No se ha encontrado texto en esta imagen.</string>
     <string name="ocr_failed">No se puede leer el texto de esta imagen: %1$s</string>
     <string name="ocr_recognition_failed">el reconocimiento de texto ha fallado en este teléfono</string>
@@ -1327,4 +1328,6 @@
     <string name="vault_continue">Continuar</string>
     <string name="vault_folder_unreadable">No se puede leer esta carpeta.</string>
     <string name="vault_folder_locked">La caja fuerte se ha bloqueado: el cifrado se ha detenido, y los originales aún no cifrados están intactos. Vuelva a importar la carpeta para continuar: los archivos que ya están en la caja fuerte se omiten.</string>
+    <string name="vault_folder_stopping">Deteniendo tras el archivo en curso… %1$d %%</string>
+    <string name="vault_folder_stopped">Detenido: los originales aún no cifrados están intactos. Vuelva a importar la carpeta para continuar: los archivos que ya están en la caja fuerte se omiten.</string>
 </resources>

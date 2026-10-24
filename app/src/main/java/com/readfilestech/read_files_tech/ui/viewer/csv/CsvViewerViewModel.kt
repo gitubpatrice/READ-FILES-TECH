@@ -14,8 +14,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,7 +28,9 @@ class CsvViewerViewModel @Inject constructor(
 ) : ViewModel() {
     val source: ViewerSource? = sources.from(handle)
 
-    val content = ViewerContent(viewModelScope, io) { CsvTable.read(requireNotNull(source) { "no file in the route" }) }
+    val content = ViewerContent(viewModelScope, io, source?.shareable) {
+        CsvTable.read(requireNotNull(source) { "no file in the route" })
+    }
         .also(::addCloseable)
 
     // Kept across a process death, as the search field keeps its text.
@@ -42,9 +44,12 @@ class CsvViewerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val table = content.state.filterIsInstance<ViewerState.Ready<CsvTable>>().first().content
-            val sorts = sort.map { saved -> CsvSortChoice.fromSaved(saved)?.takeIf { it.column < table.columns } }
-            CsvBrowser(table, io).run(query, sorts) { mutableShown.value = it }
+            // Each table read — the first, and the one read again after the editor saved it.
+            content.state.filterIsInstance<ViewerState.Ready<CsvTable>>().collectLatest { ready ->
+                val table = ready.content
+                val sorts = sort.map { saved -> CsvSortChoice.fromSaved(saved)?.takeIf { it.column < table.columns } }
+                CsvBrowser(table, io).run(query, sorts) { mutableShown.value = it }
+            }
         }
     }
 

@@ -57,9 +57,11 @@ data class OcrState(
     val saved: String? = null,
     /** The .txt to share at once ("share automatically after creation"), once. */
     val share: String? = null,
+    /** The reading was cancelled: its picture shown, no text — said, as Convert's cancel is. */
+    val cancelled: Boolean = false,
 ) {
     /** Nothing chosen yet, nothing saved: the screen introduces the tool. */
-    val untouched: Boolean get() = !working && text == null && failure == null && saved == null
+    val untouched: Boolean get() = !working && text == null && failure == null && saved == null && !cancelled
 }
 
 /**
@@ -84,6 +86,8 @@ internal fun ocrReason(error: Throwable): UiText =
  * `ocr_screen.dart:52`); leaving the screen stops the recognition under way and recycles the engine.
  * And no longer ML Kit (D-032), which reported each use through Google Play services.
  */
+// One function per action of the screen: choose, take, cancel, copy, save, share — its surface, not a class doing too much.
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class OcrViewModel @Inject constructor(
     @param:ApplicationContext context: Context,
@@ -140,7 +144,8 @@ class OcrViewModel @Inject constructor(
         previous?.cancel()
         if (chosen) handle.remove<String>(KEY_SAVED)
         mutableState.update {
-            it.copy(preview = null, working = true, text = null, failure = null, saved = it.saved.takeUnless { chosen })
+            val saved = it.saved.takeUnless { chosen }
+            it.copy(preview = null, working = true, text = null, failure = null, cancelled = false, saved = saved)
         }
         job = viewModelScope.launch {
             val read = loadOrFailure {
@@ -165,6 +170,18 @@ class OcrViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * "Cancel" while a picture is read: Tesseract stops at its next word (OcrEngine's monitor), nothing is kept, and
+     * the picture is not read again after a process death. A large photo read in five languages can take long; the
+     * 2.15.3's ML Kit was quick enough not to need it — every other long tool can be cancelled.
+     */
+    fun cancel() {
+        if (!state.value.working) return
+        job?.cancel()
+        handle.remove<String>(KEY_PATH)
+        mutableState.update { it.copy(working = false, cancelled = true) }
     }
 
     /** What "Copy" puts in the clipboard: the text, or null (said) when the clipboard cannot take it. */

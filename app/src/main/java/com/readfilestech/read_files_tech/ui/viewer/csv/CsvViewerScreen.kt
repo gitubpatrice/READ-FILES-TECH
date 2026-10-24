@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.files.FileCaps
@@ -42,8 +43,7 @@ import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvView
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.FolderSearchField
-import com.readfilestech.read_files_tech.ui.navigation.Feature
-import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import com.readfilestech.read_files_tech.ui.viewer.table.TableCells
 import com.readfilestech.read_files_tech.ui.viewer.table.TableGrid
@@ -59,6 +59,11 @@ import com.readfilestech.read_files_tech.ui.viewer.table.TableMessage
 fun CsvViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel: CsvViewerViewModel = hiltViewModel()) {
     val state by viewModel.content.state.collectAsStateWithLifecycle()
     val shown by viewModel.shown.collectAsStateWithLifecycle()
+    // Back from its "Edit": the table the editor saved, not the one of before.
+    LifecycleResumeEffect(Unit) {
+        viewModel.content.reloadIfChanged()
+        onPauseOrDispose { }
+    }
     val source = viewModel.source
     ViewerScaffold(
         title = source?.name.orEmpty(),
@@ -67,9 +72,8 @@ fun CsvViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel:
         onBack = onBack,
         actions = {
             // Edited in place, a file of the storage only: one of the vault (phase 6) has no place to be.
-            val file = source?.shareable
-            if (file != null) {
-                IconButton(onClick = { onNavigate(Routes.feature(Feature.CSV_EDITOR, file.path)) }) {
+            source?.shareable?.let { FileRouter.editorFor(it.path, source.extension) }?.let { editor ->
+                IconButton(onClick = { onNavigate(editor) }) {
                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
                 }
             }

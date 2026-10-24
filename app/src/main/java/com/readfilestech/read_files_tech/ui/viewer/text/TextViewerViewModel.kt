@@ -18,11 +18,12 @@ import com.readfilestech.read_files_tech.ui.viewer.ViewerState
 import com.readfilestech.read_files_tech.ui.viewer.loadOrFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -36,7 +37,9 @@ class TextViewerViewModel @Inject constructor(
 ) : ViewModel() {
     val source: ViewerSource? = sources.from(handle)
 
-    val content = ViewerContent(viewModelScope, io) { TextDocument.read(requireNotNull(source) { "no file in the route" }) }
+    val content = ViewerContent(viewModelScope, io, source?.shareable) {
+        TextDocument.read(requireNotNull(source) { "no file in the route" })
+    }
         .also(::addCloseable)
 
     /** The language the file is coloured in: the 2.15.3 coloured css, js, php, xml and dart, in a fixed-width font. */
@@ -54,10 +57,15 @@ class TextViewerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val document = content.state.filterIsInstance<ViewerState.Ready<TextDocument>>().first().content
-            language?.let { rowColours.value = RowColours(document, it, viewModelScope, io) }
-            // Without colours rather than without the app: its failure was uncaught (Claude review R9).
-            found.value = loadOrFailure { withContext(io) { TextColors.extract(document) } }.getOrDefault(emptyList())
+            // Each text read — the first, and the one read again after the editor saved it (its "Edit").
+            content.state.filterIsInstance<ViewerState.Ready<TextDocument>>().collectLatest { ready ->
+                val document = ready.content
+                coroutineScope {
+                    rowColours.value = language?.let { RowColours(document, it, this, io) }
+                    // Without colours rather than without the app: its failure was uncaught (Claude review R9).
+                    found.value = loadOrFailure { withContext(io) { TextColors.extract(document) } }.getOrDefault(emptyList())
+                }
+            }
         }
     }
 

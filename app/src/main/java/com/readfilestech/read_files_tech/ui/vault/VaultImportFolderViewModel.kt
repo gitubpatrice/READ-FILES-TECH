@@ -49,6 +49,8 @@ data class FolderImportState(
     val unreadable: Boolean = false,
     /** The share done, from 0 to 1, while it encrypts; null otherwise. */
     val progress: Float? = null,
+    /** "Stop" asked: the file under way is finished, then the screen goes. */
+    val stopping: Boolean = false,
     /** How many originals "Delete the originals afterwards" is about to delete: the confirmation asked. */
     val confirmDelete: Int? = null,
     /** Finished, or the vault locked: the screen goes back to the vault's. */
@@ -67,6 +69,8 @@ data class FolderImportState(
  * the originals. Here the lock stops the import at once (VaultFiles' epoch, LockedDuringOperationException):
  * the file under way is not written, its original and every one after it stay, and it is said.
  */
+// One function per action of the screen: the choice of files, the options, encrypt and stop — its surface.
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class VaultImportFolderViewModel @Inject constructor(
     handle: SavedStateHandle,
@@ -81,6 +85,10 @@ class VaultImportFolderViewModel @Inject constructor(
 
     private var scanning: Job? = null
     private var running: Job? = null
+
+    /** "Stop" asked: the file being encrypted is finished, the next ones are not started (docs D-036: nothing is lost). */
+    @Volatile
+    private var stopAsked = false
 
     init {
         scan()
@@ -113,6 +121,17 @@ class VaultImportFolderViewModel @Inject constructor(
     }
 
     /** "Encrypt": at once, or after the confirmation that the originals will be deleted. */
+    /**
+     * Stops the encryption after the file under way, which is never left half-written: the originals not yet
+     * encrypted stay as they are, and importing the folder again goes on, the files already in the vault skipped.
+     * The 2.15.3 could not stop it, and the port's screen swallowed the back key without a word.
+     */
+    fun stop() {
+        if (running?.isActive != true) return
+        stopAsked = true
+        mutableState.update { it.copy(stopping = true) }
+    }
+
     fun encrypt() {
         val current = mutableState.value
         if (running?.isActive == true || current.scanning || current.selected.isEmpty()) return
@@ -146,35 +165,39 @@ class VaultImportFolderViewModel @Inject constructor(
         val chosen = state.selected
         val deleteOriginals = state.deleteOriginals
         if (chosen.isEmpty() || running?.isActive == true) return
-        mutableState.update { it.copy(progress = 0f) }
+        stopAsked = false
+        mutableState.update { it.copy(progress = 0f, stopping = false) }
         running = viewModelScope.launch {
             val tally = Tally()
             for ((index, entry) in chosen.withIndex()) {
-                val source = File(entry.path)
-                val read = if (deleteOriginals) withContext(io) { FileIdentity.of(source) } else null
-                val outcome = loadOrFailure { files.import(source) }
-                val error = outcome.exceptionOrNull()
-                when {
-                    // Encrypted, in the vault under the live key: only now may its original go.
-                    error == null -> {
-                        tally.done++
-                        if (deleteOriginals) {
-                            if (withContext(io) { deleteIfUnchanged(source, read) }) tally.deleted += source.path else tally.notDeleted++
-                        }
-                    }
-                    error is NameTakenException -> tally.kept++
-                    error is VaultLockedException -> {
-                        tally.stoppedByLock = true
-                        break
-                    }
-                    else -> tally.failed++
-                }
+                // Stopped by the user, or by the vault's lock on the last file: no next file is started.
+                if (stopAsked && !tally.stoppedByLock) tally.stopped = true
+                if (tally.stopped || tally.stoppedByLock) break
+                importOne(File(entry.path), deleteOriginals, tally)
                 mutableState.update { it.copy(progress = (index + 1f) / chosen.size) }
             }
             // Up to Android 10 the media index kept a deleted original's name, path and size (MediaIndex).
             withContext(io) { mediaIndex.forget(tally.deleted) }
             report(tally)
             mutableState.update { it.copy(progress = null, done = true) }
+        }
+    }
+
+    /** One file into the vault, counted in [tally]; its original deleted, if asked, once its copy is in the vault. */
+    private suspend fun importOne(source: File, deleteOriginals: Boolean, tally: Tally) {
+        val read = if (deleteOriginals) withContext(io) { FileIdentity.of(source) } else null
+        val error = loadOrFailure { files.import(source) }.exceptionOrNull()
+        when {
+            // Encrypted, in the vault under the live key: only now may its original go.
+            error == null -> {
+                tally.done++
+                if (deleteOriginals) {
+                    if (withContext(io) { deleteIfUnchanged(source, read) }) tally.deleted += source.path else tally.notDeleted++
+                }
+            }
+            error is NameTakenException -> tally.kept++
+            error is VaultLockedException -> tally.stoppedByLock = true
+            else -> tally.failed++
         }
     }
 
@@ -188,11 +211,15 @@ class VaultImportFolderViewModel @Inject constructor(
             keptLabel = R.plurals.vault_namesakes_kept,
             notDeleted = tally.notDeleted,
         )
-        val locked = uiText(R.string.vault_folder_locked)
+        val interrupted = when {
+            tally.stoppedByLock -> uiText(R.string.vault_folder_locked)
+            tally.stopped -> uiText(R.string.vault_folder_stopped)
+            else -> null
+        }
         val text: UiText? = when {
-            !tally.stoppedByLock -> summary
-            summary == null -> locked
-            else -> UiText.Joined(summary, locked, R.string.joined_dot)
+            interrupted == null -> summary
+            summary == null -> interrupted
+            else -> UiText.Joined(summary, interrupted, R.string.joined_dot)
         }
         val isError = tally.failed > 0 || tally.notDeleted > 0 || tally.stoppedByLock
         if (text != null) messages.post(UserMessage(text, isError = isError))
@@ -207,6 +234,7 @@ class VaultImportFolderViewModel @Inject constructor(
         val deleted = mutableListOf<String>()
         var notDeleted = 0
         var stoppedByLock = false
+        var stopped = false
     }
 }
 

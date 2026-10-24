@@ -161,7 +161,7 @@ fun ExplorerScreen(
                 FileTarget.External -> launching.view(context, entry, chooser = true)
             }
             EntryAction.PREVIEW -> dialog = ExplorerDialog.Preview(entry)
-            EntryAction.EDIT -> onNavigate(Routes.feature(Feature.EDITOR, entry.path))
+            EntryAction.EDIT -> FileRouter.editorFor(entry.path, entry.extension)?.let(onNavigate)
             EntryAction.EDIT_IN_PDF_TECH -> launching.editInPdfTech(context, entry)
             EntryAction.STRIP_METADATA -> onNavigate(Routes.feature(Feature.EXIF, entry.path))
             EntryAction.SHARE -> launching.share(context, listOf(entry))

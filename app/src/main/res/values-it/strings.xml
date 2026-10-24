@@ -811,6 +811,7 @@
     <string name="ocr_choose_image">Scegli un\'immagine</string>
     <string name="ocr_image_read">L\'immagine letta</string>
     <string name="ocr_working">Riconoscimento del testo…</string>
+    <string name="ocr_cancelled">Riconoscimento annullato: non è stato conservato nulla.</string>
     <string name="ocr_no_text">Nessun testo trovato in questa immagine.</string>
     <string name="ocr_failed">Impossibile leggere il testo di questa immagine: %1$s</string>
     <string name="ocr_recognition_failed">il riconoscimento del testo non è riuscito su questo telefono</string>
@@ -1328,4 +1329,6 @@
     <string name="vault_continue">Continua</string>
     <string name="vault_folder_unreadable">Questa cartella non può essere letta.</string>
     <string name="vault_folder_locked">La cassaforte si è bloccata: la cifratura si è interrotta, e gli originali non ancora cifrati sono intatti. Importi di nuovo la cartella per proseguire: i file già nella cassaforte vengono saltati.</string>
+    <string name="vault_folder_stopping">Interruzione dopo il file in corso… %1$d %%</string>
+    <string name="vault_folder_stopped">Interrotto: gli originali non ancora cifrati sono intatti. Importi di nuovo la cartella per proseguire: i file già nella cassaforte vengono saltati.</string>
 </resources>

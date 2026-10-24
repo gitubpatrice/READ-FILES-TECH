@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertWithMessage
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
+import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -13,6 +14,15 @@ import org.junit.jupiter.api.Test
 
 /** One set of text files, read by the preview, the editor, both searches and the TXT tools — and each opens in a viewer that shows it. */
 class TextFilesTest {
+    /** One rule wherever "Edit" is offered: a CSV goes to the CSV editor — the explorer sent it to the code editor. */
+    @Test
+    fun `a CSV is edited in the CSV editor, another text file in the code editor, anything else in none`() {
+        assertThat(FileRouter.editorFor("/s/data.csv", "csv")).isEqualTo(Routes.feature(Feature.CSV_EDITOR, "/s/data.csv"))
+        assertThat(FileRouter.editorFor("/s/notes.txt", "txt")).isEqualTo(Routes.feature(Feature.EDITOR, "/s/notes.txt"))
+        assertThat(FileRouter.editorFor("/s/data.tsv", "tsv")).isEqualTo(Routes.feature(Feature.EDITOR, "/s/data.tsv"))
+        assertThat(FileRouter.editorFor("/s/doc.pdf", "pdf")).isNull()
+    }
+
     private fun entry(name: String) = FileEntry("/d/$name", name, false, 0, 0, isSymlink = false)
 
     @Test
