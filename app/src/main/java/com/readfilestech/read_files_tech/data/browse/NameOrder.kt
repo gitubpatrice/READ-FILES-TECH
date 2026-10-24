@@ -49,12 +49,15 @@ class NameOrder(locale: Locale = Locale.getDefault()) {
      * A name, or a folder of a path: its key in the language, then its text to settle what the language holds
      * equal — before the next segment, or two folders the language holds equal would mix their entries.
      */
-    private class Segment(val key: CollationKey, val text: String) : Comparable<Segment> {
+    private data class Segment(val key: CollationKey, val text: String) : Comparable<Segment> {
         override fun compareTo(other: Segment): Int = key.compareTo(other.key).takeIf { it != 0 } ?: text.compareTo(other.text)
     }
 
-    /** The segments in order; a folder before what it holds. */
-    private class NameKey(val segments: List<Segment>) : Comparable<NameKey> {
+    /**
+     * The segments in order; a folder before what it holds. Data classes, both: equal exactly when they compare
+     * as equal (the same texts give the same keys).
+     */
+    private data class NameKey(val segments: List<Segment>) : Comparable<NameKey> {
         override fun compareTo(other: NameKey): Int {
             for (i in 0 until minOf(segments.size, other.segments.size)) {
                 val order = segments[i].compareTo(other.segments[i])
