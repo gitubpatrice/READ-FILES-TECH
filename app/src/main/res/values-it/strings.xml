@@ -398,7 +398,7 @@
     <string name="about_contact">Contattare l\'assistenza</string>
     <string name="about_website">Sito ufficiale</string>
     <string name="about_report_bug">Segnalare un bug</string>
-    <string name="about_report_bug_summary">Un\'e-mail con la versione già compilata, che scrive e invia Lei stesso</string>
+    <string name="about_report_bug_summary">Un\'e-mail con le versioni dell\'app e di Android già compilate, che scrive e invia Lei stesso</string>
     <string name="about_mail_bug_body">Descriva il problema:\n\n\n— Versione: %1$s\n— Android: %2$s\n— Telefono: </string>
     <string name="about_no_mail_app">Nessuna app di posta: l\'indirizzo è stato copiato, %1$s.</string>
     <string name="about_legal">Note legali</string>
@@ -1271,6 +1271,7 @@
     <string name="vault_list_failed">Impossibile elencare i file della cassaforte: %1$s</string>
     <string name="vault_backup_empty">La cassaforte è vuota: non c\'è nulla di cui eseguire il backup.</string>
     <string name="vault_backup_password_info">Scelga una password per il backup: Le servirà per ripristinarlo.\n\nNon è la password della cassaforte. La scelga con cura: senza di essa, il backup non può essere aperto.\n\nIl file verrà salvato in %1$s.</string>
+    <string name="vault_backup_app_folder">⚠ Questa cartella appartiene all\'app: viene eliminata con essa, insieme al backup. Consenta l\'«Accesso a tutti i file», o scelga un\'altra cartella di destinazione nelle impostazioni, per conservare il backup se l\'app viene rimossa.</string>
     <string name="vault_backup_go">Esegui backup</string>
     <string name="vault_backing_up">Backup della cassaforte…</string>
     <string name="vault_backup_done_title">Backup della cassaforte eseguito</string>

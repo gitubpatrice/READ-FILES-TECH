@@ -26,7 +26,7 @@ L'application est mise à disposition **gratuitement** par un particulier, à ti
 - **Oublier le mot de passe du coffre rend ses fichiers illisibles pour toujours** : il n'est jamais enregistré, il sert seulement à dériver la clé. Aucune procédure de récupération n'existe. Il en va de même du mot de passe d'une sauvegarde `.rftvault`.
 - Le **mode panique** efface immédiatement et définitivement le coffre, les réglages, l'historique et la corbeille : **aucune récupération n'est possible**, c'est voulu. Faites d'abord une sauvegarde du coffre si vous voulez pouvoir le retrouver.
 - Un fichier mis à la **corbeille** peut être restauré tant que vous ne l'avez pas vidée. **Supprimer définitivement**, vider la corbeille ou remplacer un fichier sont irréversibles.
-- **Désinstaller l'application efface le coffre**, qui est dans son stockage privé : faites d'abord une sauvegarde.
+- **Désinstaller l'application efface le coffre**, qui est dans son stockage privé : faites d'abord une sauvegarde, et vérifiez qu'elle n'est pas dans un dossier de l'application, effacé lui aussi (le dialogue de la sauvegarde le signale).
 
 ## Fichiers d'origine inconnue
 
@@ -43,11 +43,11 @@ Les applications auxquelles vous confiez un fichier — partage, « Ouvrir avec 
 
 ## Responsabilité
 
-L'éditeur ne peut être tenu responsable des dommages directs ou indirects résultant de l'utilisation de l'application, dans les limites autorisées par le droit français (licence Apache 2.0, section 8). En particulier, **toute perte de données consécutive à un mode panique, à un mot de passe oublié, à une suppression définitive, à un remplacement de fichier ou à une désinstallation relève de la seule responsabilité de l'utilisateur**. Rien dans ces conditions ne limite une responsabilité que la loi ne permet pas de limiter.
+L'application est fournie gratuitement, par un particulier. Dans la mesure permise par la loi, l'éditeur n'est pas responsable des dommages indirects, ni des pertes de données dues à l'usage de fonctions conçues pour être irréversibles (mode panique, suppression définitive, remplacement d'un fichier, désinstallation) ou à un mot de passe oublié (licence Apache 2.0, section 8). Cette limite ne s'applique ni en cas de faute lourde ou dolosive, ni aux dommages que la loi interdit d'exclure.
 
 ## Propriété intellectuelle
 
-Le nom Read Files Tech, l'icône et les textes de l'application restent la propriété de leur auteur ; le code source est placé sous licence Apache 2.0.
+Le code, les textes et les images du dépôt des sources sont placés sous licence Apache 2.0. Comme le prévoit sa section 6, cette licence ne donne aucun droit d'utiliser les noms Read Files Tech et Files Tech, ni l'icône de l'application, pour désigner un autre produit.
 
 ## Données
 

@@ -114,7 +114,8 @@ internal fun VaultDialogs(dialog: VaultDialog?, viewModel: VaultViewModel) {
         is VaultDialog.BackupPassword -> PasswordDialog(
             title = stringResource(R.string.vault_backup),
             // The folder it really goes to, a name on the disk: never from the translation.
-            info = stringResource(R.string.vault_backup_password_info, dialog.folder),
+            info = stringResource(R.string.vault_backup_password_info, dialog.folder) +
+                if (dialog.appOwned) "\n\n" + stringResource(R.string.vault_backup_app_folder) else "",
             confirm = true,
             submitLabel = stringResource(R.string.vault_backup_go),
             onSubmit = viewModel::backup,

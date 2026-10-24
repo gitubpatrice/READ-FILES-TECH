@@ -235,6 +235,24 @@ class VaultViewModelTest {
         assertThat(viewModel.plain("a.txt")).isEqualTo("two")
     }
 
+    /**
+     * The outputs' folder refusing it, the backup would go to the app's own fallback, erased with the app — the very
+     * uninstall the terms say to back up before: the dialog says so (legal review, phase 8).
+     */
+    @Test
+    fun `a backup that would go to the app's own folder says it is erased with the app`() {
+        val viewModel = opened()
+        viewModel.import(source("a.txt", "one"))
+        viewModel.askBackup()
+        assertThat((viewModel.state.value.dialog as VaultDialog.BackupPassword).appOwned).isFalse()
+        viewModel.dismiss()
+        File(dir, "storage").deleteRecursively()
+        File(dir, "storage").writeText("not a folder")
+        viewModel.askBackup()
+        assertThat(viewModel.state.value.dialog)
+            .isEqualTo(VaultDialog.BackupPassword(File(dir, "app_flutter/Files Tech/Sauvegardes coffre").path, appOwned = true))
+    }
+
     /** The same backup restored again, up to "all already there"; the vault still holds "two". */
     private fun VaultViewModel.allAlreadyThereAgain() {
         val backup = File(dir, "storage").walk().single { it.extension == "rftvault" }.path

@@ -26,7 +26,7 @@ The app is made available **free of charge** by an individual, on a personal and
 - **Forgetting the vault's password makes its files unreadable forever**: it is never stored, it only derives the key. No recovery procedure exists. The same goes for the password of a `.rftvault` backup.
 - **Panic mode** erases the vault, the settings, the history and the trash at once and for good: **no recovery is possible**, by design. Back up the vault first if you want to be able to get it back.
 - A file moved to the **trash** can be restored as long as you have not emptied it. **Deleting permanently**, emptying the trash and replacing a file cannot be undone.
-- **Uninstalling the app erases the vault**, which is in its private storage: back it up first.
+- **Uninstalling the app erases the vault**, which is in its private storage: back it up first, and check the backup is not in a folder of the app, erased too (the backup's dialog says so).
 
 ## Files of unknown origin
 
@@ -43,11 +43,11 @@ The apps you hand a file to — sharing, "Open with", kDrive, Google Drive, Prot
 
 ## Liability
 
-The publisher cannot be held liable for any direct or indirect damage resulting from the use of the app, within the limits authorized by French law (Apache 2.0 license, section 8). In particular, **any data loss following a panic mode, a forgotten password, a permanent deletion, a replaced file or an uninstall is the sole responsibility of the user**. Nothing in these terms limits a liability that the law does not allow to be limited.
+The app is provided free of charge, by a private individual. To the extent permitted by law, the publisher is not liable for indirect damage, nor for data loss caused by using functions designed to be irreversible (panic mode, permanent deletion, replacing a file, uninstalling) or by a forgotten password (Apache 2.0 license, section 8). This limit applies neither to gross negligence or wilful misconduct, nor to damage the law forbids excluding.
 
 ## Intellectual property
 
-The Read Files Tech name, its icon and the app's texts remain the property of their author; the source code is placed under the Apache 2.0 license.
+The code, texts and images of the source repository are placed under the Apache 2.0 license. As its section 6 provides, this license grants no right to use the names Read Files Tech and Files Tech, nor the app's icon, to designate another product.
 
 ## Data
 

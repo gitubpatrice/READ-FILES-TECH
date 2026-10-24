@@ -10,7 +10,7 @@ Read Files Tech collects, sends and keeps no data on any server: the app has no 
 
 Read Files Tech is published by Patrice Haltaya (Files Tech), as an individual. Contact: **contact@files-tech.com**. The source code is public: https://github.com/gitubpatrice/READ-FILES-TECH.
 
-The developer receives no data from the app, so there is nothing about you for him to keep, look at or erase. Only an e-mail you choose to write to him reaches him.
+The developer receives no data from the app, so there is nothing about you for him to keep, look at or erase. Only an e-mail you choose to write to him reaches him — "Report a bug" adds the app's and Android's versions to it. That e-mail is used only to answer you; it is kept for the time of the exchange, then erased. You can ask for access to it or its erasure at the same address, and complain to the CNIL, the French data protection authority (www.cnil.fr), if you think your rights are not respected.
 
 ## What the app does not do
 
@@ -22,7 +22,7 @@ The developer receives no data from the app, so there is nothing about you for h
 
 ## What the app reads, and why
 
-Read Files Tech is a file explorer and reader. With your consent — "All files access" from Android 11 on, the storage permission before — it can read and change every file of the phone's shared storage, SD card included. It does so only for what you ask: browsing a folder, opening a file, converting it, searching, finding duplicates… It never serves other apps' `Android/data` and `Android/obb` folders.
+Read Files Tech is a file explorer and reader. With your consent — "All files access" from Android 11 on, the storage permission before — it can read and change every file of the phone's shared storage, SD card included. It does so only for what you ask: browsing a folder, opening a file, converting it, searching, finding duplicates… It never hands a file of other apps' `Android/data` or `Android/obb` folders to another app.
 
 ## What is kept on your phone
 
@@ -37,13 +37,15 @@ Read Files Tech is a file explorer and reader. With your consent — "All files 
 
 Files on shared storage — the `Files Tech` folder, the trash — can be read by any other app you gave access to your files.
 
+If the folder of the files the tools create refuses writes ("All files access" refused, card removed), the app writes to its own folder on shared storage (`Android/data/…/files/Files Tech`), then to its private storage; Settings says so, and so does the dialog of a vault backup. Those folders are erased with the app, and panic mode does not erase what they hold.
+
 ## The vault
 
 - Each file is encrypted with **AES-256-GCM**, with a key derived from your password by **Argon2id**. A vault created with an older version keeps the derivation it was created with (PBKDF2, or a lighter Argon2id). The password is never stored.
 - **Not encrypted**: the **names** of the vault's files, their **sizes**, their number and dates, nor the key derivation settings.
-- The vault locks 30 seconds after you leave the app, after 3 minutes without touching the screen, and when you leave its screen. After 5 wrong passwords, each attempt waits longer, up to 30 minutes.
+- The vault locks 30 seconds after you leave the app — the phone in deep sleep, when it wakes, and always before the vault shows again —, after 3 minutes without touching the screen, and when you leave its screen. After 5 wrong passwords, each attempt waits longer, up to 30 minutes.
 - The vault's screens, and the vault files opened in the app, cannot be captured and do not appear in the recent apps' preview.
-- A `.rftvault` **backup** is encrypted whole, names included, under a separate backup password; it is written to the vault backups' folder, on shared storage.
+- A `.rftvault` **backup** is encrypted whole, names included, under a separate backup password; it is written to the vault backups' folder, which the backup's dialog shows first: on shared storage or, when the output folder refuses writes, in a folder of the app, erased with it.
 - **Share (decrypted)** makes a temporary plain copy, deleted at the lock and at the next start. **Export** writes a permanent plain copy to the folder you choose. What the app receiving a file does with it no longer depends on Read Files Tech.
 
 ## When something leaves your phone
@@ -56,6 +58,7 @@ Always on an action of yours, and to the app you choose:
 - **Share automatically after creation**, if you turn this setting on (off by default).
 - **Taking a photo** for the scanner or the OCR: the phone's camera app writes the photo into a file Read Files Tech opens to it for that only.
 - **Links** — the releases page, the website, e-mail —: opened in your browser or your e-mail app, which connect by themselves. "Report a bug" prepares an e-mail you read and send yourself.
+- **A document's links**: a link you touch in an HTML page or a Markdown file opens in your browser, which connects to the site by itself.
 
 The HTML viewer shows a page without JavaScript and without any connection: only the files of the page's folder are loaded.
 
@@ -80,11 +83,11 @@ No camera, location, contacts, microphone, notifications or Internet.
 
 ## System log
 
-When an operation fails, the app writes one line to the system log: the type of the error, with no file name and no content.
+When an operation fails, the app writes one line to the system log: the type of the error, with no file name and no content. The library that reads PDFs may add its own warnings, and Android records a crash of the app there; the app sends this log nowhere.
 
 ## Data of earlier versions
 
-Version 3.0.0 takes over the data of the 2.x versions in place — preferences, vault, trash, history —: nothing is sent or copied elsewhere.
+Version 3.0.0 takes over the data of the 2.x versions in place — preferences, vault, trash, history —: nothing is sent or copied elsewhere, except the old extractions, which the app offers once to move into the `Extractions` folder of the files you create, or to erase: nothing is moved or erased without your consent.
 
 ## Your rights
 

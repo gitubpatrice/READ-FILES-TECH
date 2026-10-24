@@ -391,10 +391,10 @@
     <string name="about_contact">Contacter le support</string>
     <string name="about_website">Site officiel</string>
     <string name="about_report_bug">Signaler un bug</string>
-    <string name="about_report_bug_summary">Un e-mail avec la version déjà remplie, que vous rédigez et envoyez vous-même</string>
+    <string name="about_report_bug_summary">Un e-mail avec les versions de l\'application et d\'Android déjà remplies, que vous rédigez et envoyez vous-même</string>
     <string name="about_mail_bug_body">Décrivez le problème :\n\n\n— Version : %1$s\n— Android : %2$s\n— Téléphone : </string>
     <string name="about_no_mail_app">Aucune application d\'e-mail : l\'adresse est copiée, %1$s.</string>
-    <string name="about_legal">Mentions légales</string>
+    <string name="about_legal">Informations juridiques</string>
     <string name="legal_privacy">Politique de confidentialité</string>
     <string name="legal_terms">Conditions d\'utilisation</string>
     <string name="legal_notices">Licences des composants tiers</string>
@@ -451,7 +451,7 @@
     <string name="panic_title">Mode panique — tout effacer</string>
     <string name="panic_summary">Le coffre, les réglages, les fichiers temporaires, l\'historique et la corbeille, immédiatement</string>
     <string name="panic_confirm_title">Mode panique</string>
-    <string name="panic_confirm_body">Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n• le coffre entier, tous les fichiers chiffrés et leurs clés\n• tous les réglages, dont la liste des fichiers récents\n• les fichiers temporaires : copies déchiffrées, PDF déverrouillés, pages scannées\n• l\'historique des éditeurs, de code et CSV\n• les dossiers de « Tout extraire » gardés par les versions précédentes\n• la corbeille\n\nVos fichiers et ce que les outils ont enregistré dans le dossier Files Tech ne sont pas touchés. Aucune récupération possible sans sauvegarde .rftvault.\n\nContinuer ?</string>
+    <string name="panic_confirm_body">Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n• le coffre entier, tous les fichiers chiffrés et leurs clés\n• tous les réglages, dont la liste des fichiers récents\n• les fichiers temporaires : copies déchiffrées, PDF déverrouillés, pages scannées\n• l\'historique des éditeurs, de code et CSV\n• les dossiers de « Extraire tout » gardés par les versions précédentes\n• la corbeille\n\nVos fichiers et ce que les outils ont enregistré dans le dossier Files Tech ne sont pas touchés. Aucune récupération possible sans sauvegarde .rftvault.\n\nContinuer ?</string>
     <string name="panic_confirm">Tout effacer</string>
     <string name="panic_erasing">Effacement…</string>
     <string name="panic_done">Tout a été effacé.</string>
@@ -1256,6 +1256,7 @@
     <string name="vault_list_failed">Impossible de lister les fichiers du coffre : %1$s</string>
     <string name="vault_backup_empty">Coffre vide : rien à sauvegarder.</string>
     <string name="vault_backup_password_info">Choisissez un mot de passe pour la sauvegarde : il sera nécessaire pour la restaurer.\n\nCe n\'est pas le mot de passe du coffre. Choisissez-le bien : sans lui, la sauvegarde est irrécupérable.\n\nLe fichier sera écrit dans %1$s.</string>
+    <string name="vault_backup_app_folder">⚠ Ce dossier appartient à l\'application : il est effacé avec elle, la sauvegarde aussi. Autorisez « Accès à tous les fichiers », ou choisissez un autre dossier de sortie dans les réglages, pour garder la sauvegarde si l\'application part.</string>
     <string name="vault_backup_go">Sauvegarder</string>
     <string name="vault_backing_up">Sauvegarde du coffre…</string>
     <string name="vault_backup_done_title">Coffre sauvegardé</string>

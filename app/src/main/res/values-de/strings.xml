@@ -378,7 +378,7 @@
     <string name="about_contact">Support kontaktieren</string>
     <string name="about_website">Offizielle Website</string>
     <string name="about_report_bug">Fehler melden</string>
-    <string name="about_report_bug_summary">Eine E-Mail mit bereits eingetragener Version, die Sie selbst schreiben und senden</string>
+    <string name="about_report_bug_summary">Eine E-Mail mit bereits eingetragenen Versionen der App und von Android, die Sie selbst schreiben und senden</string>
     <string name="about_mail_bug_body">Beschreiben Sie das Problem:\n\n\n— Version: %1$s\n— Android: %2$s\n— Telefon: </string>
     <string name="about_no_mail_app">Keine E-Mail-App: Die Adresse wurde kopiert, %1$s.</string>
     <string name="about_legal">Rechtliches</string>
@@ -1186,6 +1186,7 @@
     <string name="vault_list_failed">Die Dateien des Tresors konnten nicht aufgelistet werden: %1$s</string>
     <string name="vault_backup_empty">Der Tresor ist leer: nichts zu sichern.</string>
     <string name="vault_backup_password_info">Wählen Sie ein Passwort für die Sicherung: Sie benötigen es, um sie wiederherzustellen.\n\nEs ist nicht das Passwort des Tresors. Wählen Sie es sorgfältig: Ohne dieses Passwort lässt sich die Sicherung nicht öffnen.\n\nDie Datei wird in %1$s abgelegt.</string>
+    <string name="vault_backup_app_folder">⚠ Dieser Ordner gehört der App: Er wird mit ihr gelöscht, die Sicherung auch. Erlauben Sie den „Zugriff auf alle Dateien“ oder wählen Sie in den Einstellungen einen anderen Ausgabeordner, um die Sicherung zu behalten, wenn die App entfernt wird.</string>
     <string name="vault_backup_go">Sichern</string>
     <string name="vault_backing_up">Tresor wird gesichert…</string>
     <string name="vault_backup_done_title">Tresor gesichert</string>

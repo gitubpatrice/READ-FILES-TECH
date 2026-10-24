@@ -26,7 +26,7 @@ L'app è messa a disposizione **gratuitamente** da un privato, a titolo personal
 - **Dimenticare la password della cassaforte rende i suoi file illeggibili per sempre**: non viene mai salvata, serve solo a derivare la chiave. Non esiste alcuna procedura di recupero. Lo stesso vale per la password di un backup `.rftvault`.
 - La **modalità panico** cancella subito e definitivamente la cassaforte, le impostazioni, la cronologia e il cestino: **nessun recupero è possibile**, è voluto. Faccia prima un backup della cassaforte se vuole poterla ritrovare.
 - Un file spostato nel **cestino** può essere ripristinato finché non lo ha svuotato. **Eliminare definitivamente**, svuotare il cestino e sostituire un file sono irreversibili.
-- **Disinstallare l'app cancella la cassaforte**, che si trova nella sua memoria privata: ne faccia prima un backup.
+- **Disinstallare l'app cancella la cassaforte**, che si trova nella sua memoria privata: ne faccia prima un backup, e verifichi che non sia in una cartella dell'app, cancellata anch'essa (la finestra del backup lo segnala).
 
 ## File di origine sconosciuta
 
@@ -43,11 +43,11 @@ Le app a cui affida un file — condivisione, «Apri con», kDrive, Google Drive
 
 ## Responsabilità
 
-L'editore non può essere ritenuto responsabile dei danni diretti o indiretti derivanti dall'uso dell'app, nei limiti consentiti dal diritto francese (licenza Apache 2.0, sezione 8). In particolare, **qualsiasi perdita di dati conseguente a una modalità panico, a una password dimenticata, a un'eliminazione definitiva, a un file sostituito o a una disinstallazione è sotto la sola responsabilità dell'utente**. Nulla in queste condizioni limita una responsabilità che la legge non consente di limitare.
+L'app è fornita gratuitamente, da un privato. Nella misura consentita dalla legge, l'editore non è responsabile dei danni indiretti, né delle perdite di dati dovute all'uso di funzioni concepite per essere irreversibili (modalità panico, eliminazione definitiva, sostituzione di un file, disinstallazione) o a una password dimenticata (licenza Apache 2.0, sezione 8). Questo limite non si applica né in caso di colpa grave o dolo, né ai danni che la legge vieta di escludere.
 
 ## Proprietà intellettuale
 
-Il nome Read Files Tech, la sua icona e i testi dell'app restano di proprietà del loro autore; il codice sorgente è rilasciato con la licenza Apache 2.0.
+Il codice, i testi e le immagini del repository dei sorgenti sono rilasciati con la licenza Apache 2.0. Come prevede la sua sezione 6, questa licenza non concede alcun diritto di usare i nomi Read Files Tech e Files Tech, né l'icona dell'app, per designare un altro prodotto.
 
 ## Dati
 

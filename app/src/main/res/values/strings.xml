@@ -385,7 +385,7 @@
     <string name="about_contact">Contact support</string>
     <string name="about_website">Official website</string>
     <string name="about_report_bug">Report a bug</string>
-    <string name="about_report_bug_summary">An e-mail with the version filled in, which you write and send yourself</string>
+    <string name="about_report_bug_summary">An e-mail with the app\'s and Android\'s versions filled in, which you write and send yourself</string>
     <string name="about_mail_bug_body">Describe the problem:\n\n\n— Version: %1$s\n— Android: %2$s\n— Phone: </string>
     <string name="about_no_mail_app">No e-mail app: the address is copied, %1$s.</string>
     <string name="about_legal">Legal</string>
@@ -1219,6 +1219,7 @@
     <string name="vault_list_failed">Could not list the vault\'s files: %1$s</string>
     <string name="vault_backup_empty">The vault is empty: nothing to back up.</string>
     <string name="vault_backup_password_info">Choose a password for the backup: you will need it to restore it.\n\nIt is not the vault\'s password. Choose it well: without it, the backup cannot be opened.\n\nThe file goes to %1$s.</string>
+    <string name="vault_backup_app_folder">⚠ This folder belongs to the app: it is erased with it, the backup too. Allow “All files access”, or choose another output folder in the settings, to keep the backup when the app goes.</string>
     <string name="vault_backup_go">Back up</string>
     <string name="vault_backing_up">Backing up the vault…</string>
     <string name="vault_backup_done_title">Vault backed up</string>

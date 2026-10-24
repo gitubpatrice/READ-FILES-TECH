@@ -64,8 +64,11 @@ sealed interface VaultDialog {
     data class ExportNamesake(val name: String) : VaultDialog
     data class ConfirmDelete(val item: VaultItem) : VaultDialog
 
-    /** The backup's password, [folder] being where it will be written — the one the settings chose, or a fallback. */
-    data class BackupPassword(val folder: String) : VaultDialog
+    /**
+     * The backup's password, [folder] being where it will be written — the one the settings chose, or a fallback;
+     * [appOwned] when it is one of the app's own fallbacks, erased with the app.
+     */
+    data class BackupPassword(val folder: String, val appOwned: Boolean = false) : VaultDialog
     data class UnexpectedExtension(val path: String) : VaultDialog
     data class RestorePassword(val path: String) : VaultDialog
     data class RestoreAllThere(val count: Int) : VaultDialog
@@ -340,8 +343,15 @@ class VaultViewModel @Inject constructor(
         viewModelScope.launch {
             // Where it goes, said before the password is typed: the output folder is a setting, and a fallback
             // takes the backup when that folder cannot (the 2.15.3 named `Files Tech/` whatever the setting).
-            loadOrFailure { withContext(io) { outputs.folderFor(OutputCategory.VAULT_BACKUPS) } }
-                .onSuccess { show(VaultDialog.BackupPassword(it.path)) }
+            // A fallback of the app's own goes with it: a backup there would not outlive an uninstall, the very
+            // thing the terms say to back up before — said in the dialog (legal review, phase 8).
+            loadOrFailure {
+                withContext(io) {
+                    val folder = outputs.folderFor(OutputCategory.VAULT_BACKUPS)
+                    folder to !folder.canonicalFile.toPath().startsWith(outputs.basePath().canonicalFile.toPath())
+                }
+            }
+                .onSuccess { (folder, appOwned) -> show(VaultDialog.BackupPassword(folder.path, appOwned)) }
                 .onFailure { messages.error(uiText(R.string.vault_backup_failed, backupReason(it))) }
         }
     }

@@ -26,7 +26,7 @@ Die App wird von einer Privatperson **kostenlos**, auf persönlicher und nicht k
 - **Wer das Passwort des Tresors vergisst, kann seine Dateien nie wieder lesen**: Es wird nie gespeichert, es dient nur der Ableitung des Schlüssels. Es gibt kein Wiederherstellungsverfahren. Dasselbe gilt für das Passwort einer Sicherung `.rftvault`.
 - Der **Panikmodus** löscht den Tresor, die Einstellungen, den Verlauf und den Papierkorb sofort und endgültig: **Eine Wiederherstellung ist nicht möglich**, so ist es gewollt. Sichern Sie den Tresor vorher, wenn Sie ihn zurückholen können möchten.
 - Eine in den **Papierkorb** verschobene Datei kann wiederhergestellt werden, solange Sie ihn nicht geleert haben. **Endgültiges Löschen**, das Leeren des Papierkorbs und das Ersetzen einer Datei lassen sich nicht rückgängig machen.
-- **Das Deinstallieren der App löscht den Tresor**, der sich in ihrem privaten Speicher befindet: Sichern Sie ihn vorher.
+- **Das Deinstallieren der App löscht den Tresor**, der sich in ihrem privaten Speicher befindet: Sichern Sie ihn vorher, und prüfen Sie, dass die Sicherung nicht in einem Ordner der App liegt, der ebenfalls gelöscht wird (der Dialog der Sicherung weist darauf hin).
 
 ## Dateien unbekannter Herkunft
 
@@ -43,11 +43,11 @@ Die Apps, denen Sie eine Datei übergeben — Teilen, „Öffnen mit“, kDrive,
 
 ## Haftung
 
-Der Herausgeber haftet nicht für direkte oder indirekte Schäden aus der Nutzung der App, in den vom französischen Recht erlaubten Grenzen (Apache-Lizenz 2.0, Abschnitt 8). Insbesondere **liegt jeder Datenverlust infolge eines Panikmodus, eines vergessenen Passworts, eines endgültigen Löschens, einer ersetzten Datei oder einer Deinstallation in der alleinigen Verantwortung des Nutzers**. Nichts in diesen Bedingungen beschränkt eine Haftung, deren Beschränkung das Gesetz nicht erlaubt.
+Die App wird kostenlos von einer Privatperson bereitgestellt. Soweit gesetzlich zulässig, haftet der Herausgeber nicht für indirekte Schäden und nicht für Datenverluste, die auf die Nutzung bewusst unwiderruflicher Funktionen (Panikmodus, endgültiges Löschen, Ersetzen einer Datei, Deinstallation) oder auf ein vergessenes Passwort zurückgehen (Apache-Lizenz 2.0, Abschnitt 8). Diese Beschränkung gilt weder bei grober Fahrlässigkeit oder Vorsatz noch für Schäden, deren Ausschluss das Gesetz verbietet.
 
 ## Geistiges Eigentum
 
-Der Name Read Files Tech, sein Symbol und die Texte der App bleiben Eigentum ihres Urhebers; der Quellcode steht unter der Apache-Lizenz 2.0.
+Der Code, die Texte und die Bilder des Quellcode-Repositorys stehen unter der Apache-Lizenz 2.0. Wie ihr Abschnitt 6 vorsieht, gewährt diese Lizenz kein Recht, die Namen Read Files Tech und Files Tech oder das Symbol der App zur Bezeichnung eines anderen Produkts zu verwenden.
 
 ## Daten
 

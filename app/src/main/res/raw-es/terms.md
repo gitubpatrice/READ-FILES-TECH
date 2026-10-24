@@ -26,7 +26,7 @@ La aplicación la pone a disposición **gratuitamente** un particular, a título
 - **Olvidar la contraseña de la caja fuerte hace sus archivos ilegibles para siempre**: nunca se guarda, solo sirve para derivar la clave. No existe ningún procedimiento de recuperación. Lo mismo ocurre con la contraseña de una copia de seguridad `.rftvault`.
 - El **modo pánico** borra de inmediato y para siempre la caja fuerte, los ajustes, el historial y la papelera: **no es posible ninguna recuperación**, es intencionado. Haga antes una copia de seguridad de la caja fuerte si quiere poder recuperarla.
 - Un archivo enviado a la **papelera** se puede restaurar mientras no la haya vaciado. **Eliminar definitivamente**, vaciar la papelera y reemplazar un archivo son irreversibles.
-- **Desinstalar la aplicación borra la caja fuerte**, que está en su almacenamiento privado: haga antes una copia de seguridad.
+- **Desinstalar la aplicación borra la caja fuerte**, que está en su almacenamiento privado: haga antes una copia de seguridad, y compruebe que no esté en una carpeta de la aplicación, que también se borra (el diálogo de la copia lo indica).
 
 ## Archivos de origen desconocido
 
@@ -43,11 +43,11 @@ Las aplicaciones a las que entrega un archivo — compartir, «Abrir con», kDri
 
 ## Responsabilidad
 
-El editor no puede ser considerado responsable de los daños directos o indirectos derivados del uso de la aplicación, dentro de los límites autorizados por el derecho francés (licencia Apache 2.0, sección 8). En particular, **cualquier pérdida de datos derivada de un modo pánico, de una contraseña olvidada, de una eliminación definitiva, de un archivo reemplazado o de una desinstalación es responsabilidad exclusiva del usuario**. Nada en estas condiciones limita una responsabilidad que la ley no permite limitar.
+La aplicación se ofrece gratuitamente, por un particular. En la medida en que la ley lo permita, el editor no es responsable de los daños indirectos, ni de las pérdidas de datos debidas al uso de funciones concebidas para ser irreversibles (modo pánico, eliminación definitiva, sustitución de un archivo, desinstalación) o a una contraseña olvidada (licencia Apache 2.0, sección 8). Esta limitación no se aplica en caso de culpa grave o dolo, ni a los daños que la ley prohíbe excluir.
 
 ## Propiedad intelectual
 
-El nombre Read Files Tech, su icono y los textos de la aplicación siguen siendo propiedad de su autor; el código fuente se publica bajo la licencia Apache 2.0.
+El código, los textos y las imágenes del repositorio de fuentes se publican bajo la licencia Apache 2.0. Como prevé su sección 6, esta licencia no otorga ningún derecho a usar los nombres Read Files Tech y Files Tech, ni el icono de la aplicación, para designar otro producto.
 
 ## Datos
 

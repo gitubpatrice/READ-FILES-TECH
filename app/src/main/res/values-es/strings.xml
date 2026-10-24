@@ -397,7 +397,7 @@
     <string name="about_contact">Contactar con el soporte</string>
     <string name="about_website">Sitio web oficial</string>
     <string name="about_report_bug">Informar de un error</string>
-    <string name="about_report_bug_summary">Un correo con la versión ya indicada, que usted redacta y envía</string>
+    <string name="about_report_bug_summary">Un correo con las versiones de la app y de Android ya indicadas, que usted redacta y envía</string>
     <string name="about_mail_bug_body">Describa el problema:\n\n\n— Versión: %1$s\n— Android: %2$s\n— Teléfono: </string>
     <string name="about_no_mail_app">Ninguna aplicación de correo: la dirección se ha copiado, %1$s.</string>
     <string name="about_legal">Información legal</string>
@@ -1270,6 +1270,7 @@
     <string name="vault_list_failed">No se han podido listar los archivos de la caja fuerte: %1$s</string>
     <string name="vault_backup_empty">La caja fuerte está vacía: no hay nada que copiar.</string>
     <string name="vault_backup_password_info">Elija una contraseña para la copia de seguridad: la necesitará para restaurarla.\n\nNo es la contraseña de la caja fuerte. Elíjala bien: sin ella, la copia de seguridad no se puede abrir.\n\nEl archivo se guarda en %1$s.</string>
+    <string name="vault_backup_app_folder">⚠ Esta carpeta pertenece a la app: se borra con ella, y la copia de seguridad también. Permita el «Acceso a todos los archivos», o elija otra carpeta de salida en los ajustes, para conservar la copia si la app se desinstala.</string>
     <string name="vault_backup_go">Crear copia</string>
     <string name="vault_backing_up">Creando la copia de seguridad…</string>
     <string name="vault_backup_done_title">Copia de seguridad creada</string>

@@ -10,7 +10,7 @@ Read Files Tech non raccoglie, non trasmette e non conserva alcun dato su un ser
 
 Read Files Tech è pubblicata da Patrice Haltaya (Files Tech), a titolo personale. Contatto: **contact@files-tech.com**. Il codice sorgente è pubblico: https://github.com/gitubpatrice/READ-FILES-TECH.
 
-Lo sviluppatore non riceve alcun dato dall'app: non ha quindi nulla da conservare, consultare o cancellare che La riguardi. Gli arriva solo un'e-mail che Lei sceglie di scrivergli.
+Lo sviluppatore non riceve alcun dato dall'app: non ha quindi nulla da conservare, consultare o cancellare che La riguardi. Gli arriva solo un'e-mail che Lei sceglie di scrivergli — «Segnalare un bug» vi aggiunge le versioni dell'app e di Android. Questa e-mail serve solo a risponderLe; è conservata per il tempo dello scambio, poi cancellata. Può chiederne l'accesso o la cancellazione allo stesso indirizzo, e rivolgersi alla CNIL, l'autorità francese per la protezione dei dati (www.cnil.fr), se ritiene che i Suoi diritti non siano rispettati.
 
 ## Ciò che l'app non fa
 
@@ -22,7 +22,7 @@ Lo sviluppatore non riceve alcun dato dall'app: non ha quindi nulla da conservar
 
 ## Ciò che l'app legge, e perché
 
-Read Files Tech è un esploratore e visualizzatore di file. Con il Suo consenso — «Accesso a tutti i file» da Android 11, l'autorizzazione alla memoria prima — può leggere e modificare tutti i file della memoria condivisa del telefono, scheda SD compresa. Lo fa solo per ciò che Lei chiede: sfogliare una cartella, aprire un file, convertirlo, cercare, trovare i duplicati… Non fornisce mai le cartelle `Android/data` e `Android/obb` delle altre app.
+Read Files Tech è un esploratore e visualizzatore di file. Con il Suo consenso — «Accesso a tutti i file» da Android 11, l'autorizzazione alla memoria prima — può leggere e modificare tutti i file della memoria condivisa del telefono, scheda SD compresa. Lo fa solo per ciò che Lei chiede: sfogliare una cartella, aprire un file, convertirlo, cercare, trovare i duplicati… Non affida mai a un'altra app un file delle cartelle `Android/data` o `Android/obb` delle altre app.
 
 ## Ciò che viene conservato sul Suo telefono
 
@@ -37,13 +37,15 @@ Read Files Tech è un esploratore e visualizzatore di file. Con il Suo consenso 
 
 I file della memoria condivisa — la cartella `Files Tech`, il cestino — sono leggibili da qualsiasi altra app a cui Lei abbia dato accesso ai Suoi file.
 
+Se la cartella dei file creati rifiuta la scrittura («Accesso a tutti i file» negato, scheda rimossa), l'app scrive nella propria cartella della memoria condivisa (`Android/data/…/files/Files Tech`), poi nella sua memoria privata; le Impostazioni lo segnalano, così come la finestra di un backup della cassaforte. Queste cartelle vengono cancellate con l'app, e la modalità panico non cancella ciò che contengono.
+
 ## La cassaforte
 
 - Ogni file è cifrato con **AES-256-GCM**, con una chiave derivata dalla Sua password tramite **Argon2id**. Una cassaforte creata con una versione precedente mantiene la derivazione con cui è stata creata (PBKDF2, o un Argon2id più leggero). La password non viene mai salvata.
 - **Non sono cifrati**: il **nome** dei file della cassaforte, la loro **dimensione**, il loro numero e le loro date, né le impostazioni di derivazione della chiave.
-- La cassaforte si blocca 30 secondi dopo che Lei ha lasciato l'app, dopo 3 minuti senza toccare lo schermo, e quando Lei lascia la sua schermata. Dopo 5 password errate, ogni tentativo attende più a lungo, fino a 30 minuti.
+- La cassaforte si blocca 30 secondi dopo che Lei ha lasciato l'app — con il telefono in sospensione profonda, al suo risveglio, e sempre prima che la cassaforte ricompaia —, dopo 3 minuti senza toccare lo schermo, e quando Lei lascia la sua schermata. Dopo 5 password errate, ogni tentativo attende più a lungo, fino a 30 minuti.
 - Le schermate della cassaforte, e i file della cassaforte aperti nell'app, non possono essere catturati e non compaiono nell'anteprima delle app recenti.
-- Un **backup** `.rftvault` è cifrato per intero, nomi compresi, con una password di backup distinta; viene scritto nella cartella dei backup della cassaforte, nella memoria condivisa.
+- Un **backup** `.rftvault` è cifrato per intero, nomi compresi, con una password di backup distinta; viene scritto nella cartella dei backup della cassaforte, che la finestra del backup mostra prima: nella memoria condivisa o, se la cartella di destinazione rifiuta la scrittura, in una cartella dell'app, cancellata con essa.
 - **Condividi (decifrato)** crea una copia in chiaro temporanea, cancellata al blocco e all'avvio successivo. **Esporta** scrive una copia in chiaro permanente nella cartella che Lei sceglie. Ciò che fa l'app che riceve un file non dipende più da Read Files Tech.
 
 ## Quando qualcosa lascia il Suo telefono
@@ -56,6 +58,7 @@ Sempre su una Sua azione, e verso l'app che Lei sceglie:
 - **Condividere automaticamente dopo la creazione**, se attiva questa impostazione (disattivata per impostazione predefinita).
 - **Scattare una foto** per lo scanner o l'OCR: l'app fotocamera del telefono scrive la foto in un file che Read Files Tech le apre solo a questo scopo.
 - **Link** — pagina delle versioni, sito, e-mail —: aperti nel Suo browser o nella Sua app di posta, che si connettono da soli. «Segnalare un bug» prepara un'e-mail che Lei rilegge e invia personalmente.
+- **Link di un documento**: un link che Lei tocca in una pagina HTML o in un file Markdown si apre nel Suo browser, che si connette da solo al sito.
 
 Il visualizzatore HTML mostra una pagina senza JavaScript e senza alcuna connessione: vengono caricati solo i file della cartella della pagina.
 
@@ -80,11 +83,11 @@ Né fotocamera, né posizione, né contatti, né microfono, né notifiche, né I
 
 ## Registro di sistema
 
-Quando un'operazione non riesce, l'app scrive una sola riga nel registro di sistema: il tipo dell'errore, senza nome di file né contenuto.
+Quando un'operazione non riesce, l'app scrive una sola riga nel registro di sistema: il tipo dell'errore, senza nome di file né contenuto. La libreria che legge i PDF può aggiungervi i propri avvisi, e Android vi registra un eventuale arresto anomalo dell'app; l'app non invia questo registro da nessuna parte.
 
 ## Dati delle versioni precedenti
 
-La versione 3.0.0 riprende sul posto i dati delle versioni 2.x — preferenze, cassaforte, cestino, cronologia —: nulla viene inviato né copiato altrove.
+La versione 3.0.0 riprende sul posto i dati delle versioni 2.x — preferenze, cassaforte, cestino, cronologia —: nulla viene inviato né copiato altrove, tranne le vecchie estrazioni, che l'app propone una volta di spostare nella cartella `Extractions` dei file che crea, o di cancellare: nulla viene spostato né cancellato senza il Suo consenso.
 
 ## I Suoi diritti
 
