@@ -959,7 +959,7 @@
         <item quantity="many">Sono stati confrontati solo i primi %1$,d di file.</item>
         <item quantity="other">Sono stati confrontati solo i primi %1$,d file.</item>
     </plurals>
-    <string name="duplicates_none">Nessun duplicato trovato</string>
+    <string name="duplicates_none">Nessun duplicato trovato.\nI file sotto i %1$s non vengono confrontati.</string>
     <string name="duplicates_no_files">Nessun file di %1$s o più in questa cartella</string>
     <plurals name="duplicates_group">
         <item quantity="one">%1$d copia · %2$s ciascuna · %3$s sprecati</item>

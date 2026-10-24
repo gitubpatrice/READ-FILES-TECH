@@ -944,7 +944,7 @@
         <item quantity="many">Seuls les %1$,d premiers fichiers ont été comparés.</item>
         <item quantity="other">Seuls les %1$,d premiers fichiers ont été comparés.</item>
     </plurals>
-    <string name="duplicates_none">Aucun doublon trouvé</string>
+    <string name="duplicates_none">Aucun doublon trouvé.\nLes fichiers de moins de %1$s ne sont pas comparés.</string>
     <string name="duplicates_no_files">Aucun fichier de %1$s ou plus dans ce dossier</string>
     <plurals name="duplicates_group">
         <item quantity="one">%1$d copie · %2$s chacune · %3$s gaspillés</item>

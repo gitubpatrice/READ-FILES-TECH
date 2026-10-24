@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -202,8 +204,12 @@ fun BulkRenameDialog(entries: List<FileEntry>, onRename: (List<RenameProposal>) 
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = keepExtension, onCheckedChange = { keepExtension = it })
+                // The label ticks too: the box alone was the target.
+                Row(
+                    Modifier.toggleable(value = keepExtension, role = Role.Checkbox, onValueChange = { keepExtension = it }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = keepExtension, onCheckedChange = null)
                     Text(stringResource(R.string.bulk_rename_keep_extension))
                 }
                 HorizontalDivider()

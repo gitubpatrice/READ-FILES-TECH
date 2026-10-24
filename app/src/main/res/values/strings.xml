@@ -930,7 +930,7 @@
         <item quantity="one">Only the first %1$,d file was compared.</item>
         <item quantity="other">Only the first %1$,d files were compared.</item>
     </plurals>
-    <string name="duplicates_none">No duplicates found</string>
+    <string name="duplicates_none">No duplicates found.\nFiles under %1$s are not compared.</string>
     <string name="duplicates_no_files">No file of %1$s or more in this folder</string>
     <plurals name="duplicates_group">
         <item quantity="one">%1$d copy · %2$s each · %3$s wasted</item>

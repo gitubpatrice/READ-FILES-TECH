@@ -958,7 +958,7 @@
         <item quantity="many">Solo se han comparado los primeros %1$,d de archivos.</item>
         <item quantity="other">Solo se han comparado los primeros %1$,d archivos.</item>
     </plurals>
-    <string name="duplicates_none">No se han encontrado duplicados</string>
+    <string name="duplicates_none">No se han encontrado duplicados.\nLos archivos de menos de %1$s no se comparan.</string>
     <string name="duplicates_no_files">No hay ningún archivo de %1$s o más en esta carpeta</string>
     <plurals name="duplicates_group">
         <item quantity="one">%1$d copia · %2$s cada una · %3$s desperdiciados</item>

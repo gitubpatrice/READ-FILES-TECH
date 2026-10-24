@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -48,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -108,12 +110,16 @@ fun VaultImportFolderScreen(onDone: () -> Unit, viewModel: VaultImportFolderView
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     items(state.entries, key = FolderEntry::path) { entry ->
                         ListItem(
-                            modifier = Modifier.clickable(enabled = !running) { viewModel.toggle(entry.path) },
+                            // One target, read by TalkBack as one checkbox (the box had its own, a second node).
+                            modifier = Modifier.toggleable(
+                                value = entry.selected,
+                                enabled = !running,
+                                role = Role.Checkbox,
+                                onValueChange = { viewModel.toggle(entry.path) },
+                            ),
                             headlineContent = { Text(entry.relative, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             supportingContent = { Text(formatBytes(entry.size)) },
-                            leadingContent = {
-                                Checkbox(checked = entry.selected, onCheckedChange = { viewModel.toggle(entry.path) }, enabled = !running)
-                            },
+                            leadingContent = { Checkbox(checked = entry.selected, onCheckedChange = null, enabled = !running) },
                         )
                     }
                 }

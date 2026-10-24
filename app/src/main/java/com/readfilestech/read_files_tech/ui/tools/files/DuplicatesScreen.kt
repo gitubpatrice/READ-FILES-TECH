@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -44,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -136,10 +139,12 @@ fun DuplicatesScreen(
             }
             val tick = { file: DuplicateFile -> viewModel.toggle(file.path) }
             val can = { file: DuplicateFile -> !state.trashing && state.selection.canToggle(file.path, state.ticked) }
+            val smallest = formatBytes(FileCaps.DUPLICATE_MIN_BYTES)
             when {
-                tab == 0 && report.groups.isEmpty() -> Centered(stringResource(R.string.duplicates_none))
-                tab == 1 && report.largest.isEmpty() ->
-                    Centered(stringResource(R.string.duplicates_no_files, formatBytes(FileCaps.DUPLICATE_MIN_BYTES)))
+                // Nothing compared says so, in either tab: "no duplicates" beside two identical small files misled.
+                report.filesListed == 0 || tab == 1 && report.largest.isEmpty() ->
+                    Centered(stringResource(R.string.duplicates_no_files, smallest))
+                tab == 0 && report.groups.isEmpty() -> Centered(stringResource(R.string.duplicates_none, smallest))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (tab == 0) groups(report.groups, state.ticked, can, tick) else largest(report.largest, state.ticked, can, tick)
                 }
@@ -291,8 +296,16 @@ private fun TickRow(
     trailing: String? = null,
 ) {
     val enabled = can(file)
+    val checked = file.path in ticked
+    // The whole row ticks, one target for a finger and for TalkBack: the box alone was 48 dp of a full-width row.
     ListItem(
-        leadingContent = { Checkbox(checked = file.path in ticked, onCheckedChange = { tick(file) }, enabled = enabled) },
+        modifier = Modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Checkbox,
+            onValueChange = { tick(file) },
+        ),
+        leadingContent = { Checkbox(checked = checked, onCheckedChange = null, enabled = enabled) },
         headlineContent = {
             Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
         },
@@ -308,6 +321,6 @@ private fun dateOf(file: DuplicateFile): String = DateFormat.getDateInstance(Dat
 @Composable
 private fun Centered(text: String) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }

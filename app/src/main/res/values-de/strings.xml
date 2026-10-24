@@ -897,7 +897,7 @@
         <item quantity="one">Nur %1$,d Datei wurde verglichen.</item>
         <item quantity="other">Nur die ersten %1$,d Dateien wurden verglichen.</item>
     </plurals>
-    <string name="duplicates_none">Keine Duplikate gefunden</string>
+    <string name="duplicates_none">Keine Duplikate gefunden.\nDateien unter %1$s werden nicht verglichen.</string>
     <string name="duplicates_no_files">Keine Datei von %1$s oder mehr in diesem Ordner</string>
     <plurals name="duplicates_group">
         <item quantity="one">%1$d Kopie · je %2$s · %3$s verschwendet</item>
