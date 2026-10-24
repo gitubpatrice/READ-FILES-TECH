@@ -1,0 +1,5 @@
+Version 3.0, neu in Kotlin geschrieben. Sie wird über 2.x installiert und behält Ihre Daten, den Tresor eingeschlossen.
+• Fünf Sprachen: Deutsch, Englisch, Französisch, Italienisch, Spanisch.
+• OCR und Scanner nutzen keinen Google-Dienst mehr; die OCR liest die fünf Sprachen.
+• Das Signieren von PDFs ist in PDF Tech umgezogen.
+• Was 2.x aus Archiven in einen privaten Ordner entpackt hat, lässt sich nach Files Tech/Extractions verschieben.

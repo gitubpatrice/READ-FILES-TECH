@@ -354,22 +354,38 @@ def check_cap(locale, path, label, cap):
                      "F-Droid cuts the text there" % (label, length, cap, length - cap))
 
 
-def check_fastlane():
+def check_fastlane(shipped):
     """8. Store-listing caps in CHARACTERS, files present, every changelog within 500.
 
     What fdroidserver does with these files (read in its source, 2.4.2, on 2026-10-04 for SMS Tech):
     `common.py` sets char_limits - title 50, summary 80, description 4000, whatsNew 500 - and
     `update.py` CUTS each text at `text[:limit]`, with no error and no warning. Python characters,
-    never bytes. The port has no store listing yet (phase 8); which changelog is "current" is decided
-    with it, so here every changelog present is held to the cap.
+    never bytes. Every changelog present is held to the cap.
+
+    And the listing follows the app: every shipped language has its locale (`fr` -> `fr-FR`), none is
+    kept for a language the app does not ship, and every changelog is in every locale - one in a single
+    language is a defect, not a translation pending (fastlane/README.md).
     """
     root = os.path.join(ROOT, "fastlane", "metadata", "android")
     if not os.path.isdir(root):
         return
-    for locale in sorted(os.listdir(root)):
+    locales = sorted(d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d)))
+    languages = {locale.split("-")[0] for locale in locales}
+    for lang in sorted((shipped | {"en"}) - languages):
+        fail(lang, "fastlane/metadata/android/ has no store listing for %s (a %s-XX/ folder)" % (lang, lang))
+    for locale in locales:
+        if locale.split("-")[0] not in shipped | {"en"}:
+            fail(locale, "fastlane/metadata/android/%s/ is the store listing of a language the app does not ship" % locale)
+    changelogs = {}
+    for locale in locales:
+        directory = os.path.join(root, locale, "changelogs")
+        changelogs[locale] = set(os.listdir(directory)) if os.path.isdir(directory) else set()
+    every = set().union(*changelogs.values())
+    for locale in locales:
+        for name in sorted(every - changelogs[locale]):
+            fail(locale, "fastlane/changelogs/%s missing: another locale has it" % name)
+    for locale in locales:
         directory = os.path.join(root, locale)
-        if not os.path.isdir(directory):
-            continue
         for name, cap in sorted(FASTLANE_CAPS.items()):
             path = os.path.join(directory, name)
             # A MISSING file must fail: skipping it would be the easiest hole not to see, since
@@ -565,7 +581,7 @@ def main():
         check_language(directory, ref_strings, ref_plurals)
 
     check_line_endings(directories)
-    check_fastlane()
+    check_fastlane(shipped)
 
     print()
     if errors:

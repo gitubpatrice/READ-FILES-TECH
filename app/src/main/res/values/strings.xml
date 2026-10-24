@@ -9,6 +9,7 @@
     <string name="action_allow">Allow</string>
     <string name="action_back">Back</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
     <string name="action_create">Create</string>
     <string name="action_delete">Delete</string>
     <string name="action_delete_forever">Delete permanently</string>
@@ -394,6 +395,43 @@
     <string name="legal_license">Licence of Read Files Tech</string>
     <string name="legal_license_summary">Apache License 2.0 — the source code is published on GitHub</string>
     <string name="settings_security">Security</string>
+    <string name="legacy_section">Earlier version (before 3.0)</string>
+    <string name="legacy_extractions_title">Old extractions</string>
+    <plurals name="legacy_extractions_summary">
+        <item quantity="one">%1$d file, %2$s, in a folder only this app can open</item>
+        <item quantity="other">%1$d files, %2$s, in a folder only this app can open</item>
+    </plurals>
+    <plurals name="legacy_extractions_body">
+        <item quantity="one">With “Extract all”, the earlier version put %1$d file (%2$s) in a folder private to the app: neither its explorer nor the other apps can open it.\n\nMoved into the folder below, it can be opened — by any app with storage access too.</item>
+        <item quantity="other">With “Extract all”, the earlier version put %1$d files (%2$s) in a folder private to the app: neither its explorer nor the other apps can open it.\n\nMoved into the folder below, they can be opened — by any app with storage access too.</item>
+    </plurals>
+    <string name="legacy_later_note">You will find them again in the settings.</string>
+    <string name="legacy_move">Move</string>
+    <string name="legacy_working">Please wait…</string>
+    <string name="legacy_extractions_delete_title">Delete the old extractions?</string>
+    <plurals name="legacy_extractions_delete_body">
+        <item quantity="one">%1$d file (%2$s) will be deleted for good: nothing goes to the trash. The archive it came from is not touched.</item>
+        <item quantity="other">%1$d files (%2$s) will be deleted for good: nothing goes to the trash. The archives they came from are not touched.</item>
+    </plurals>
+    <string name="legacy_extractions_move_stopped">Move stopped: %1$s. Moved: %2$d. Still in the private folder: %3$d.</string>
+    <plurals name="legacy_extractions_moved">
+        <item quantity="one">%1$d file moved to %2$s</item>
+        <item quantity="other">%1$d files moved to %2$s</item>
+    </plurals>
+    <string name="legacy_extractions_deleted">Old extractions deleted</string>
+    <string name="legacy_extractions_delete_failed">Some old extractions could not be deleted</string>
+    <string name="legacy_history_title">Delete the old history</string>
+    <plurals name="legacy_history_summary">
+        <item quantity="one">%1$d copy, %2$s, kept by the earlier version’s editor before a save</item>
+        <item quantity="other">%1$d copies, %2$s, kept by the earlier version’s editor before a save</item>
+    </plurals>
+    <string name="legacy_history_delete_title">Delete the old history?</string>
+    <plurals name="legacy_history_delete_body">
+        <item quantity="one">%1$d copy (%2$s) kept by the earlier version will be deleted for good. The history kept since 3.0 stays.</item>
+        <item quantity="other">%1$d copies (%2$s) kept by the earlier version will be deleted for good. The history kept since 3.0 stays.</item>
+    </plurals>
+    <string name="legacy_history_deleted">Old history deleted</string>
+    <string name="legacy_history_delete_failed">The old history could not be deleted entirely</string>
     <string name="panic_title">Panic mode — erase everything</string>
     <string name="panic_summary">The vault, the settings, the temporary files, the history and the trash, at once</string>
     <string name="panic_confirm_title">Panic mode</string>
@@ -478,7 +516,6 @@
     <!-- The CSV editor -->
     <string name="csv_editor_choose">Choose a CSV to edit</string>
     <string name="csv_editor_intro">Change cells, add or delete rows and columns. Saving writes back only what you changed: the rest of the file stays as it was.</string>
-    <string name="csv_editor_saved">Saved</string>
     <string name="csv_editor_cut_kept">What is not shown is saved as it was.</string>
     <string name="csv_editor_read_only_nul">This file holds NUL bytes: it is not a text of one byte per character (UTF-16 without a byte order mark, or not a text at all). It is shown, not edited.</string>
     <string name="csv_editor_read_only_dos">This file seems written in an MS-DOS or Mac code page, not in Windows-1252: what you typed would read wrong in it. It is shown, not edited.</string>
@@ -509,9 +546,11 @@
     <string name="csv_editor_insert_column">Insert a column after</string>
     <string name="csv_editor_delete_row">Delete this row</string>
     <string name="csv_editor_delete_column">Delete this column</string>
+    <string name="csv_editor_delete_row_title">Delete row %1$d?</string>
+    <string name="csv_editor_delete_column_title">Delete column %1$d?</string>
+    <string name="csv_editor_delete_body">Its cells leave the table. Nothing is written to the file before you save: leaving without saving keeps it as it is.</string>
     <string name="csv_editor_history_empty">No earlier version of this file yet. Each save keeps the version it replaces: the last %1$d, for files up to %2$d MB.</string>
     <string name="csv_editor_history_hint">Restoring loads the version in the editor: your unsaved changes go to the history first, and the file is written only when you save.</string>
-    <string name="csv_editor_restored">Earlier version loaded: save to keep it.</string>
     <string name="csv_editor_unsaved_too_large">your unsaved changes are over %1$d MB, too large to be kept in the history — save them first</string>
     <string name="csv_editor_over_cap">This file is over %1$d MB: its current version cannot be kept in the history. Save anyway?</string>
 
@@ -657,7 +696,7 @@
     <string name="editor_history_hint">Tap a version to see its beginning. Restoring loads it in the editor: your text goes to the history first, and the file is written only when you save.</string>
     <string name="editor_legacy_title">Old history (before 3.0)</string>
     <string name="editor_legacy_warning">Kept by the earlier version of the app under this file\'s name only: a copy may come from another file of the same name.</string>
-    <string name="editor_restored">Version loaded — save to keep it</string>
+    <string name="editor_restored">Earlier version loaded: save to keep it.</string>
     <string name="editor_restore_failed">Not restored: %1$s</string>
     <string name="editor_version_not_text">this version is not a text the editor opens</string>
     <string name="encoding_utf8" translatable="false">UTF-8</string>
@@ -703,7 +742,7 @@
         <item quantity="other">…and %1$d more</item>
     </plurals>
     <string name="zip_stop_total">The %1$s an extraction may write are reached: the entries after are not extracted.</string>
-    <string name="zip_stop_cancelled">Cancelled: the files written are kept, the one in progress is removed.</string>
+    <string name="zip_stop_cancelled">Stopped: the files written are kept, the one in progress is removed.</string>
     <string name="zip_stop_failed">Writing stopped: %1$s</string>
     <string name="zip_no_location">No folder of the storage could take the extraction.</string>
     <plurals name="zip_extract_left">
@@ -724,6 +763,9 @@
     <string name="scanner_move_earlier">Move earlier</string>
     <string name="scanner_move_later">Move later</string>
     <string name="scanner_delete_page">Delete page %1$d</string>
+    <string name="scanner_delete_page_title">Delete page %1$d?</string>
+    <string name="scanner_delete_page_owned">Its photo, taken here, is deleted for good.</string>
+    <string name="scanner_delete_page_external">It leaves the scan. The picture it was made from stays where it is on the phone.</string>
     <string name="scanner_adjust_title">Adjust the page</string>
     <string name="scanner_keep_page">Keep this page</string>
     <string name="scanner_detect_again">Detect again</string>

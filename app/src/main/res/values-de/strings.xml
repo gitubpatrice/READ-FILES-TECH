@@ -11,6 +11,7 @@
     <string name="action_allow">Zulassen</string>
     <string name="action_back">Zurück</string>
     <string name="action_cancel">Abbrechen</string>
+    <string name="action_close">Schließen</string>
     <string name="action_create">Erstellen</string>
     <string name="action_delete">Löschen</string>
     <string name="action_delete_forever">Endgültig löschen</string>
@@ -387,6 +388,43 @@
     <string name="legal_license">Lizenz von Read Files Tech</string>
     <string name="legal_license_summary">Apache-Lizenz 2.0 — der Quellcode ist auf GitHub veröffentlicht</string>
     <string name="settings_security">Sicherheit</string>
+    <string name="legacy_section">Frühere Version (vor 3.0)</string>
+    <string name="legacy_extractions_title">Alte Extraktionen</string>
+    <plurals name="legacy_extractions_summary">
+        <item quantity="one">%1$d Datei, %2$s, in einem Ordner, den nur diese App öffnen kann</item>
+        <item quantity="other">%1$d Dateien, %2$s, in einem Ordner, den nur diese App öffnen kann</item>
+    </plurals>
+    <plurals name="legacy_extractions_body">
+        <item quantity="one">Mit „Alle extrahieren“ hat die frühere Version %1$d Datei (%2$s) in einen privaten Ordner der App gelegt: Weder ihr Explorer noch andere Apps können ihn öffnen.\n\nIn den Ordner unten verschoben, lässt sie sich öffnen – auch von jeder App mit Speicherzugriff.</item>
+        <item quantity="other">Mit „Alle extrahieren“ hat die frühere Version %1$d Dateien (%2$s) in einen privaten Ordner der App gelegt: Weder ihr Explorer noch andere Apps können ihn öffnen.\n\nIn den Ordner unten verschoben, lassen sie sich öffnen – auch von jeder App mit Speicherzugriff.</item>
+    </plurals>
+    <string name="legacy_later_note">Sie finden sie später in den Einstellungen.</string>
+    <string name="legacy_move">Verschieben</string>
+    <string name="legacy_working">Bitte warten…</string>
+    <string name="legacy_extractions_delete_title">Alte Extraktionen löschen?</string>
+    <plurals name="legacy_extractions_delete_body">
+        <item quantity="one">%1$d Datei (%2$s) wird endgültig gelöscht: Nichts landet im Papierkorb. Das Archiv, aus dem sie stammt, bleibt unberührt.</item>
+        <item quantity="other">%1$d Dateien (%2$s) werden endgültig gelöscht: Nichts landet im Papierkorb. Die Archive, aus denen sie stammen, bleiben unberührt.</item>
+    </plurals>
+    <string name="legacy_extractions_move_stopped">Verschieben angehalten: %1$s. Verschoben: %2$d. Noch im privaten Ordner: %3$d.</string>
+    <plurals name="legacy_extractions_moved">
+        <item quantity="one">%1$d Datei nach %2$s verschoben</item>
+        <item quantity="other">%1$d Dateien nach %2$s verschoben</item>
+    </plurals>
+    <string name="legacy_extractions_deleted">Alte Extraktionen gelöscht</string>
+    <string name="legacy_extractions_delete_failed">Einige alte Extraktionen konnten nicht gelöscht werden</string>
+    <string name="legacy_history_title">Alten Verlauf löschen</string>
+    <plurals name="legacy_history_summary">
+        <item quantity="one">%1$d Kopie, %2$s, vom Editor der früheren Version vor einem Speichern angelegt</item>
+        <item quantity="other">%1$d Kopien, %2$s, vom Editor der früheren Version vor einem Speichern angelegt</item>
+    </plurals>
+    <string name="legacy_history_delete_title">Alten Verlauf löschen?</string>
+    <plurals name="legacy_history_delete_body">
+        <item quantity="one">%1$d Kopie (%2$s) der früheren Version wird endgültig gelöscht. Der Verlauf seit 3.0 bleibt.</item>
+        <item quantity="other">%1$d Kopien (%2$s) der früheren Version werden endgültig gelöscht. Der Verlauf seit 3.0 bleibt.</item>
+    </plurals>
+    <string name="legacy_history_deleted">Alter Verlauf gelöscht</string>
+    <string name="legacy_history_delete_failed">Der alte Verlauf konnte nicht vollständig gelöscht werden</string>
     <string name="panic_title">Panikmodus – alles löschen</string>
     <string name="panic_summary">Der Tresor, die Einstellungen, die temporären Dateien, der Verlauf und der Papierkorb, auf einmal</string>
     <string name="panic_confirm_title">Panikmodus</string>
@@ -467,7 +505,6 @@
     <!-- The CSV editor -->
     <string name="csv_editor_choose">CSV zum Bearbeiten wählen</string>
     <string name="csv_editor_intro">Ändern Sie Zellen, fügen Sie Zeilen und Spalten hinzu oder löschen Sie sie. Beim Speichern wird nur das zurückgeschrieben, was Sie geändert haben: Der Rest der Datei bleibt, wie er war.</string>
-    <string name="csv_editor_saved">Gespeichert</string>
     <string name="csv_editor_cut_kept">Was nicht angezeigt wird, wird unverändert gespeichert.</string>
     <string name="csv_editor_read_only_nul">Diese Datei enthält NUL-Bytes: Der Inhalt ist kein Text mit einem Byte pro Zeichen (UTF-16 ohne Byte-Order-Mark oder gar kein Text). Die Datei wird angezeigt, nicht bearbeitet.</string>
     <string name="csv_editor_read_only_dos">Diese Datei scheint in einer MS-DOS- oder Mac-Codepage geschrieben zu sein, nicht in Windows-1252: Was Sie eingeben, würde darin falsch gelesen. Die Datei wird angezeigt, nicht bearbeitet.</string>
@@ -498,9 +535,11 @@
     <string name="csv_editor_insert_column">Spalte danach einfügen</string>
     <string name="csv_editor_delete_row">Diese Zeile löschen</string>
     <string name="csv_editor_delete_column">Diese Spalte löschen</string>
+    <string name="csv_editor_delete_row_title">Zeile %1$d löschen?</string>
+    <string name="csv_editor_delete_column_title">Spalte %1$d löschen?</string>
+    <string name="csv_editor_delete_body">Ihre Zellen werden aus der Tabelle entfernt. In die Datei wird erst beim Speichern geschrieben: Ohne Speichern bleibt sie, wie sie ist.</string>
     <string name="csv_editor_history_empty">Noch keine frühere Version dieser Datei. Jedes Speichern bewahrt die Version auf, die es ersetzt: die letzten %1$d, für Dateien bis %2$d MB.</string>
     <string name="csv_editor_history_hint">Wiederherstellen lädt die Version in den Editor: Ihre ungespeicherten Änderungen kommen zuerst in den Verlauf, und die Datei wird erst geschrieben, wenn Sie speichern.</string>
-    <string name="csv_editor_restored">Frühere Version geladen: Speichern Sie, um sie zu behalten.</string>
     <string name="csv_editor_unsaved_too_large">Ihre ungespeicherten Änderungen sind größer als %1$d MB, zu groß für den Verlauf – speichern Sie sie zuerst</string>
     <string name="csv_editor_over_cap">Diese Datei ist größer als %1$d MB: Die aktuelle Version kann nicht im Verlauf aufbewahrt werden. Trotzdem speichern?</string>
 
@@ -634,7 +673,7 @@
     <string name="editor_history_hint">Tippen Sie auf eine Version, um ihren Anfang zu sehen. Wiederherstellen lädt sie in den Editor: Ihr Text kommt zuerst in den Verlauf, und die Datei wird erst geschrieben, wenn Sie speichern.</string>
     <string name="editor_legacy_title">Alter Verlauf (vor 3.0)</string>
     <string name="editor_legacy_warning">Von der früheren Version der App nur unter dem Namen dieser Datei aufbewahrt: Eine Kopie kann von einer anderen Datei mit demselben Namen stammen.</string>
-    <string name="editor_restored">Version geladen – speichern Sie, um sie zu behalten</string>
+    <string name="editor_restored">Frühere Version geladen: Speichern Sie, um sie zu behalten.</string>
     <string name="editor_restore_failed">Nicht wiederhergestellt: %1$s</string>
     <string name="editor_version_not_text">diese Version ist kein Text, den der Editor öffnet</string>
 
@@ -673,7 +712,7 @@
         <item quantity="other">…und %1$d weitere</item>
     </plurals>
     <string name="zip_stop_total">Die %1$s, die eine Extraktion schreiben darf, sind erreicht: Die folgenden Einträge werden nicht extrahiert.</string>
-    <string name="zip_stop_cancelled">Abgebrochen: Die geschriebenen Dateien bleiben erhalten, die angefangene wird entfernt.</string>
+    <string name="zip_stop_cancelled">Angehalten: Die geschriebenen Dateien bleiben erhalten, die angefangene wird entfernt.</string>
     <string name="zip_stop_failed">Schreiben abgebrochen: %1$s</string>
     <string name="zip_no_location">Kein Ordner des Speichers konnte die Extraktion aufnehmen.</string>
     <plurals name="zip_extract_left">
@@ -694,6 +733,9 @@
     <string name="scanner_move_earlier">Nach vorn verschieben</string>
     <string name="scanner_move_later">Nach hinten verschieben</string>
     <string name="scanner_delete_page">Seite %1$d löschen</string>
+    <string name="scanner_delete_page_title">Seite %1$d löschen?</string>
+    <string name="scanner_delete_page_owned">Ihr hier aufgenommenes Foto wird endgültig gelöscht.</string>
+    <string name="scanner_delete_page_external">Sie wird aus dem Scan entfernt. Das Bild, aus dem sie stammt, bleibt, wo es auf dem Telefon ist.</string>
     <string name="scanner_adjust_title">Seite anpassen</string>
     <string name="scanner_keep_page">Diese Seite behalten</string>
     <string name="scanner_detect_again">Erneut erkennen</string>

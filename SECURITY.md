@@ -13,9 +13,11 @@ Only the latest version published on GitHub Releases is maintained from a securi
 
 ## Reporting a vulnerability
 
-Please **do not open a public GitHub issue**. Instead:
+Please **do not open a public GitHub issue**. Two channels, either one:
 
-📧 **contact@files-tech.com**, subject `[SECURITY] Read Files Tech — <short description>`.
+- **GitHub private reporting**: the repository's *Security* tab, then *Report a vulnerability*
+  (https://github.com/gitubpatrice/READ-FILES-TECH/security/advisories/new) — seen by the maintainer only;
+- 📧 **email**: **contact@files-tech.com**, subject `[SECURITY] Read Files Tech — <short description>`.
 
 Please include a description, the steps to reproduce it, its impact, the affected version (shown in the app
 under About), and a suggested fix if you have one.

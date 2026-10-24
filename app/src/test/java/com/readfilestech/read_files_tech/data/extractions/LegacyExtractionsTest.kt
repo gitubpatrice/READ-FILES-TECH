@@ -23,7 +23,7 @@ class LegacyExtractionsTest {
     fun setUp() {
         appFlutter = File(tmp, "app_flutter").apply { mkdirs() }
         extractions = File(tmp, "Files Tech/Extractions")
-        legacy = LegacyExtractions(appFlutter, extractions)
+        legacy = LegacyExtractions(appFlutter, { extractions })
         File(appFlutter, "vault").mkdirs() // not an extraction
         File(appFlutter, "history").mkdirs()
     }
@@ -68,7 +68,7 @@ class LegacyExtractionsTest {
     fun `a move that stops - a full disk - leaves the files not yet moved in place, and no partial copy`() {
         val dir = extraction("docs", "1.txt" to "one", "2.txt" to "two", "3.txt" to "three")
         var copies = 0
-        val failing = LegacyExtractions(appFlutter, extractions) { from, to ->
+        val failing = LegacyExtractions(appFlutter, { extractions }) { from, to ->
             copies++
             Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING) // into its reservation
             if (copies == 2) throw IOException("No space left on device")
@@ -86,7 +86,7 @@ class LegacyExtractionsTest {
     @Test
     fun `a copy that differs from its source is not taken for a move`() {
         val dir = extraction("docs", "1.txt" to "one")
-        val corrupting = LegacyExtractions(appFlutter, extractions) { _, to -> to.toFile().writeText("0ne") }
+        val corrupting = LegacyExtractions(appFlutter, { extractions }) { _, to -> to.toFile().writeText("0ne") }
         val moved = corrupting.move(corrupting.find().single())
         assertThat(moved.moved).isEqualTo(0)
         assertThat(File(dir, "1.txt").readText()).isEqualTo("one")
@@ -97,7 +97,7 @@ class LegacyExtractionsTest {
         // `Notes.txt` then `notes.txt`: one name on FUSE casefold, sdcardfs, exFAT. Simulated by a copy
         // that, moving the first, makes the second's target appear — the moved file under its other case.
         val dir = extraction("docs", "1-Notes.txt" to "first", "2-notes.txt" to "second")
-        val folding = LegacyExtractions(appFlutter, extractions) { from, to ->
+        val folding = LegacyExtractions(appFlutter, { extractions }) { from, to ->
             Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING)
             if (from.fileName.toString() == "1-Notes.txt") Files.copy(from, to.resolveSibling("2-notes.txt"))
         }

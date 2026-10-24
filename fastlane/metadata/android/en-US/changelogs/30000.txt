@@ -1,0 +1,5 @@
+Version 3.0, rewritten in Kotlin. It installs over 2.x and keeps your data, the vault included.
+• Five languages: English, French, German, Italian, Spanish.
+• OCR and the scanner no longer use any Google service; OCR reads the five languages.
+• Signing PDFs has moved to PDF Tech.
+• What 2.x extracted from archives into a private folder can be moved to Files Tech/Extractions.

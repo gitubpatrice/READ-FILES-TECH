@@ -394,7 +394,7 @@ private fun HistoryDialog(versions: EditorVersions, onPreview: (HistoryCopy, Boo
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
     )
 }
 

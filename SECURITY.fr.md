@@ -13,9 +13,11 @@ Seule la dernière version publiée sur GitHub Releases est maintenue du point d
 
 ## Signaler une vulnérabilité
 
-Merci de **ne pas ouvrir de ticket GitHub public**. À la place :
+Merci de **ne pas ouvrir de ticket GitHub public**. Deux canaux, au choix :
 
-📧 **contact@files-tech.com**, objet `[SECURITY] Read Files Tech — <courte description>`.
+- **le signalement privé de GitHub** : onglet *Security* du dépôt, puis *Report a vulnerability*
+  (https://github.com/gitubpatrice/READ-FILES-TECH/security/advisories/new) — vu du seul mainteneur ;
+- 📧 **par courriel** : **contact@files-tech.com**, objet `[SECURITY] Read Files Tech — <courte description>`.
 
 Indiquez une description, les étapes pour la reproduire, son impact, la version concernée (affichée dans
 l'application sous À propos) et, si vous en avez une, une piste de correction.

@@ -1,0 +1,5 @@
+Versión 3.0, reescrita en Kotlin. Se instala sobre la 2.x y conserva sus datos, caja fuerte incluida.
+• Cinco idiomas: español, inglés, francés, alemán, italiano.
+• El OCR y el escáner ya no usan ningún servicio de Google; el OCR lee los cinco idiomas.
+• La firma de PDF pasa a PDF Tech.
+• Lo que la 2.x extrajo de archivos comprimidos en una carpeta privada puede moverse a Files Tech/Extractions.

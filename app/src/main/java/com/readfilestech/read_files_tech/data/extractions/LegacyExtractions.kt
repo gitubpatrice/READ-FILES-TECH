@@ -22,8 +22,12 @@ import java.nio.file.attribute.BasicFileAttributes
 class LegacyExtractions(
     /** `app_flutter/` of the 2.15.x. */
     private val appFlutter: File,
-    /** `Files Tech/Extractions/` on shared storage (suffixed in a `.next` build, docs D-017). */
-    private val extractionsRoot: File,
+    /**
+     * `Files Tech/Extractions/` on shared storage (suffixed in a `.next` build, docs D-017), asked at each move:
+     * the outputs' folder can change in the settings, and which one takes the files depends on storage access.
+     * It throws an [IOException] when no folder of shared storage can.
+     */
+    private val extractionsRoot: () -> File,
     /**
      * The copy of one file INTO its reservation (truncated, never unlinked first); a test passes one that
      * fails, as a full disk would.
@@ -53,10 +57,13 @@ class LegacyExtractions(
      * `name (2)`, `name (3)`… Each file is copied, checked (size and SHA-256) and only then removed from
      * the private folder. A failure — no space left — stops the move cleanly: the partial copy of the
      * file in hand is removed, the files not yet moved stay where they were.
+     *
+     * @throws IOException no folder could be made to move it into: nothing moved.
      */
     fun move(folder: Folder): Moved {
-        extractionsRoot.mkdirs()
-        val destination = reserveFolder(folder.archiveName)
+        val root = extractionsRoot()
+        root.mkdirs()
+        val destination = reserveFolder(root, folder.archiveName)
         // Every subfolder first, empty ones included: the private folder is deleted once its files are
         // moved, and an empty folder of the archive would be lost with it (GPT review R3).
         Trees.subfolders(folder.dir).forEach { File(destination, it.relativeTo(folder.dir).path).mkdirs() }
@@ -100,13 +107,13 @@ class LegacyExtractions(
         }
     }
 
-    private fun reserveFolder(name: String): File {
+    private fun reserveFolder(root: File, name: String): File {
         val candidates = sequenceOf(name) + (2..MAX_CANDIDATES).asSequence().map { "$name ($it)" }
         for (candidate in candidates) {
-            val dir = File(extractionsRoot, candidate)
+            val dir = File(root, candidate)
             if (runCatching { Files.createDirectory(dir.toPath()) }.isSuccess) return dir
         }
-        throw IOException("no free folder name for $name in ${extractionsRoot.path}")
+        throw IOException("no free folder name for $name in ${root.path}")
     }
 
     private fun copyVerified(source: File, target: File) {

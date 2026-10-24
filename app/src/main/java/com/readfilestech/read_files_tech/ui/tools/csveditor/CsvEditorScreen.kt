@@ -69,6 +69,7 @@ import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -248,13 +249,21 @@ private class EditorCells(private val edits: CsvEdits) : TableCells {
 private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel) {
     var editRow by rememberSaveable { mutableIntStateOf(NONE) }
     var editColumn by rememberSaveable { mutableIntStateOf(NONE) }
+    // A row or a column to delete, until confirmed: here, not in its cell, which scrolling may take away.
+    var deleteRow by rememberSaveable { mutableIntStateOf(NONE) }
+    var deleteColumn by rememberSaveable { mutableIntStateOf(NONE) }
     // Read from the edits, changed in place: composed again at each change, never skipped.
     key(version) { Summary(edits) }
     val cells = remember(edits, version) { EditorCells(edits) }
-    val actions = CellActions(edits) { position, column ->
-        editRow = position
-        editColumn = column
-    }
+    val actions = CellActions(
+        edits,
+        edit = { position, column ->
+            editRow = position
+            editColumn = column
+        },
+        deleteRow = { deleteRow = it },
+        deleteColumn = { deleteColumn = it },
+    )
     TableGrid(
         cells,
         rememberLazyListState(),
@@ -274,6 +283,32 @@ private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel)
             onConfirm = { typed -> viewModel.change { it.set(editRow, editColumn, typed) } ?: CellChange.UNCHANGED },
             onEncoding = { choice -> viewModel.change { it.chosenEncoding = choice } },
             onDismiss = close,
+        )
+    }
+    if (deleteRow != NONE) {
+        val row = deleteRow
+        ConfirmDangerDialog(
+            title = stringResource(R.string.csv_editor_delete_row_title, row),
+            message = stringResource(R.string.csv_editor_delete_body),
+            confirmLabel = stringResource(R.string.action_delete),
+            onConfirm = {
+                deleteRow = NONE
+                viewModel.change { if (it.canDeleteRow(row)) it.deleteRow(row) }
+            },
+            onDismiss = { deleteRow = NONE },
+        )
+    }
+    if (deleteColumn != NONE) {
+        val column = deleteColumn
+        ConfirmDangerDialog(
+            title = stringResource(R.string.csv_editor_delete_column_title, column + 1),
+            message = stringResource(R.string.csv_editor_delete_body),
+            confirmLabel = stringResource(R.string.action_delete),
+            onConfirm = {
+                deleteColumn = NONE
+                viewModel.change { if (it.canDeleteColumn && column < it.columnCount) it.deleteColumn(column) }
+            },
+            onDismiss = { deleteColumn = NONE },
         )
     }
 }
@@ -319,10 +354,18 @@ private fun readOnlyReason(readOnly: ReadOnly): Int = when (readOnly) {
     ReadOnly.DOS_CODE_PAGE -> R.string.csv_editor_read_only_dos
 }
 
-/** What a cell's tap and long press reach. */
-private class CellActions(val edits: CsvEdits, val edit: (position: Int, column: Int) -> Unit)
+/** What a cell's tap and long press reach: a deletion is asked first, then confirmed by the editor. */
+private class CellActions(
+    val edits: CsvEdits,
+    val edit: (position: Int, column: Int) -> Unit,
+    val deleteRow: (position: Int) -> Unit,
+    val deleteColumn: (column: Int) -> Unit,
+)
 
-/** A cell: a tap edits it; a long press inserts or deletes its row or its column — neither in a file shown only. */
+/**
+ * A cell: a tap edits it; a long press inserts or deletes its row or its column — neither in a file shown only.
+ * A deletion is confirmed first: the 2.15.3 deleted at the first tap of a small icon, a column and all its cells.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EditableCell(position: Int, column: Int, text: String, actions: CellActions, viewModel: CsvEditorViewModel) {
@@ -345,13 +388,13 @@ private fun EditableCell(position: Int, column: Int, text: String, actions: Cell
                 viewModel.change { it.insertRow(position) }
             }
             CellMenuItem(R.string.csv_editor_delete_row, edits.canDeleteRow(position), close) {
-                viewModel.change { it.deleteRow(position) }
+                actions.deleteRow(position)
             }
             CellMenuItem(R.string.csv_editor_insert_column, edits.canAddColumn, close) {
                 viewModel.change { it.insertColumn(column + 1) }
             }
             CellMenuItem(R.string.csv_editor_delete_column, edits.canDeleteColumn, close) {
-                viewModel.change { it.deleteColumn(column) }
+                actions.deleteColumn(column)
             }
         }
     }
@@ -547,6 +590,6 @@ private fun HistoryDialog(versions: List<HistoryCopy>, onRestore: (HistoryCopy) 
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
     )
 }

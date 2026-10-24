@@ -50,6 +50,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.picker.PickerScreen
 import com.readfilestech.read_files_tech.ui.search.SearchScreen
+import com.readfilestech.read_files_tech.ui.settings.LegacyDataNotice
 import com.readfilestech.read_files_tech.ui.trash.TrashScreen
 import com.readfilestech.read_files_tech.ui.vault.VaultImportFolderScreen
 import com.readfilestech.read_files_tech.ui.viewer.ViewerHost
@@ -94,7 +95,10 @@ fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<F
 
     CompositionLocalProvider(LocalAppSnackbar provides snackbar, LocalStorageSettings provides settings) {
         Destinations(navController)
-        FirstLaunchWelcome(access, settings)
+        // One question at a time: the old extractions' notice waits for the welcome to be answered.
+        var welcomed by rememberSaveable { mutableStateOf(false) }
+        FirstLaunchWelcome(access, settings, onDone = { welcomed = true })
+        if (welcomed) LegacyDataNotice()
     }
 }
 
@@ -319,13 +323,14 @@ private fun rememberStorageSettings(access: StorageAccess, messages: UserMessage
 
 /** The welcome of the first launch (`_requestStoragePermissions` of the 2.15.x), once in the app's life. */
 @Composable
-private fun FirstLaunchWelcome(access: StorageAccess, settings: StorageSettings) {
+private fun FirstLaunchWelcome(access: StorageAccess, settings: StorageSettings, onDone: () -> Unit) {
     var show by rememberSaveable { mutableStateOf(false) }
     var claimed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!claimed) {
             claimed = true
             show = withContext(Dispatchers.IO) { access.claimFirstRequest() }
+            if (!show) onDone()
         }
     }
     if (!show) return
@@ -335,10 +340,16 @@ private fun FirstLaunchWelcome(access: StorageAccess, settings: StorageSettings)
         icon = { Icon(Icons.Outlined.FolderOpen, contentDescription = null) },
         title = { Text(stringResource(R.string.welcome_title)) },
         text = { Text(stringResource(if (allFiles) R.string.welcome_body_all_files else R.string.welcome_body_storage)) },
-        dismissButton = { TextButton(onClick = { show = false }) { Text(stringResource(R.string.action_later)) } },
+        dismissButton = {
+            TextButton(onClick = {
+                show = false
+                onDone()
+            }) { Text(stringResource(R.string.action_later)) }
+        },
         confirmButton = {
             Button(onClick = {
                 show = false
+                onDone()
                 settings.request()
             }) { Text(stringResource(if (allFiles) R.string.action_open_settings else R.string.action_allow)) }
         },

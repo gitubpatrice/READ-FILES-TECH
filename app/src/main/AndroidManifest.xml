@@ -153,11 +153,15 @@
             is removed (docs D-037): it asks a downloadable-fonts provider for the emoji font — Google Play
             services', on most phones, by IPC; Android 10 and older see that provider without any <queries>.
             The platform's own emoji are drawn instead. The other initializers (lifecycle, profiles) stay.
+            MissingClass ignored: the provider is androidx.startup's, a RUNTIME dependency of emoji2 and
+            lifecycle that lint does not see on the compile classpath; R8 keeps it in the release APK
+            (seeds.txt, measured 2026-10-24) and this element only merges into the one they declare.
         -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false"
+            tools:ignore="MissingClass"
             tools:node="merge">
             <meta-data
                 android:name="androidx.emoji2.text.EmojiCompatInitializer"

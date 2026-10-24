@@ -1,0 +1,1 @@
+Gestor de archivos, visor, escáner, OCR y caja fuerte cifrada, sin conexión.

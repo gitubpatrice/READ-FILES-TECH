@@ -50,7 +50,8 @@ import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
 /**
  * Settings (`SettingsScreen` of the 2.15.3): the app's language (Android 13+), the files the tools create — their
- * folder, the automatic share — and the security section, the panic.
+ * folder, the automatic share —, what the 2.x left while some is (docs D-021, D-022), and the security section, the
+ * panic.
  *
  * @param picked the folder the picker handed back, for the outputs
  * @param onNavigate to the picker, or to the explorer on the outputs' folder
@@ -63,6 +64,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     outputs: OutputSettingsViewModel = hiltViewModel(),
+    legacy: LegacyDataViewModel = hiltViewModel(),
 ) {
     val confirmPanic by viewModel.confirmPanic.collectAsStateWithLifecycle()
     val erasing by viewModel.erasing.collectAsStateWithLifecycle()
@@ -76,6 +78,7 @@ fun SettingsScreen(
     // Storage access granted in Android's settings, a card put in: what takes the outputs is read again.
     LifecycleResumeEffect(Unit) {
         outputs.refresh()
+        legacy.refresh()
         onPauseOrDispose { }
     }
     val chooseTitle = stringResource(R.string.settings_output_choose)
@@ -114,6 +117,7 @@ fun SettingsScreen(
                 onChoose = { onNavigate(Routes.picker(PickMode.FOLDER, title = chooseTitle)) },
                 onOpen = { onNavigate(Routes.explorer(it.path)) },
             )
+            LegacyDataSection(legacy)
             SectionTitle(stringResource(R.string.settings_security))
             SettingRow(
                 icon = Icons.Outlined.WarningAmber,
@@ -155,7 +159,7 @@ internal fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun SettingRow(
+internal fun SettingRow(
     icon: ImageVector,
     title: String,
     summary: String,

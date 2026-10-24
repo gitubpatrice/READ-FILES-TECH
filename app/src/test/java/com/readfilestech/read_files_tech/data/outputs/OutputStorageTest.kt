@@ -103,6 +103,17 @@ class OutputStorageTest {
         assertThrows<NoOutputLocationException> { storage().folderFor(OutputCategory.VAULT_BACKUPS) }
     }
 
+    /** The old extractions leave `app_flutter/` for shared storage (docs D-022): never for another private folder. */
+    @Test
+    fun `a folder of shared storage only is the base's, then the app's own, never the private fallback`() {
+        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true)).isEqualTo(File(primary, "Files Tech/Extractions"))
+        prefs.commit { putString(OutputStorage.KEY_BASE_PATH, File(tmp, "blocked").apply { writeText("x") }.path) }
+        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true)).isEqualTo(File(external, "Files Tech/Extractions"))
+        externalMounted = false
+        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS)).isEqualTo(File(private, "Files Tech/Extractions"))
+        assertThrows<NoOutputLocationException> { storage().folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true) }
+    }
+
     @Test
     fun `nowhere to write is said, not hidden`() {
         primary = File(tmp, "nothing").apply { writeText("x") }

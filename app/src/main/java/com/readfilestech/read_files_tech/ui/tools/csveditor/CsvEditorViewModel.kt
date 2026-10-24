@@ -206,7 +206,7 @@ class CsvEditorViewModel @Inject constructor(
 
     private suspend fun saved(target: File, thenLeave: Boolean, written: CsvEdits) {
         restored = false
-        messages.info(uiText(R.string.csv_editor_saved))
+        messages.info(uiText(R.string.editor_saved))
         // Read again what was written: the next save starts from the file as it is now.
         val serial = ++loads
         val reread = loadOrFailure { withContext(io) { read(target) } }
@@ -289,7 +289,7 @@ class CsvEditorViewModel @Inject constructor(
         previous?.let { keepChoice(it, edits) }
         restored = true
         mutableState.update { it.copy(edits = edits, version = it.version + 1, modified = true) }
-        messages.info(uiText(R.string.csv_editor_restored))
+        messages.info(uiText(R.string.editor_restored))
     }
 
     private companion object {

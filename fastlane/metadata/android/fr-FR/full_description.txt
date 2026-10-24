@@ -1,0 +1,31 @@
+Read Files Tech est un couteau suisse pour les fichiers de votre téléphone Android : un explorateur, un lecteur universel, des éditeurs, un scanner de documents, l'OCR, un coffre chiffré et des outils de fichiers. Tout se passe sur le téléphone : l'application n'a pas la permission Internet.
+
+<b>Fonctions</b>
+
+<ul>
+<li>Explorateur — parcourir, rechercher, trier, sélectionner plusieurs fichiers, renommer, copier, déplacer, une corbeille avec annulation, et l'installation d'un APK confiée à l'installeur d'Android</li>
+<li>Lecteur — texte et code, Markdown, JSON, HTML, CSV, tableurs (XLSX, XLS, ODS), documents (DOCX, ODT, ODP), EPUB, PDF, ZIP, images</li>
+<li>Éditeurs — code et texte avec un historique automatique des versions, CSV en tableau modifiable</li>
+<li>Scanner de documents — bords trouvés, perspective redressée, enregistré en PDF</li>
+<li>OCR sur le téléphone (Tesseract), en français, anglais, allemand, italien et espagnol</li>
+<li>Coffre chiffré — AES-256-GCM, une clé dérivée de votre mot de passe par Argon2id, verrouillage automatique, et un effacement de panique</li>
+<li>Conversion — images en PDF, CSV en XLSX, texte en PDF, PDF et DOCX en texte, images en JPG ou PNG</li>
+<li>Photos — images allégées, et la position, la date et le modèle d'appareil retirés avant de partager</li>
+<li>Recherche globale par nom et par contenu, doublons trouvés par SHA-256, renommage en lot avec expressions régulières</li>
+<li>Outils — pipette de couleur, comparaison de deux fichiers, empreinte, encodages, mise en forme, création de ZIP, outils texte et CSV</li>
+<li>Tuiles des réglages rapides pour le scanner, l'OCR et le coffre</li>
+<li>En français, anglais, allemand, italien et espagnol</li>
+</ul>
+
+<b>Confidentialité</b>
+
+<ul>
+<li>Pas de permission Internet : l'application ne peut se connecter à rien, et sa construction le vérifie. Ni compte, ni statistiques, ni publicité, ni pistage</li>
+<li>Aucun service Google : l'OCR et le scanner sont des logiciels libres qui tournent dans l'application</li>
+<li>L'accès à tous les fichiers est demandé parce qu'un explorateur en a besoin ; rien n'est lu ni écrit en arrière-plan</li>
+<li>Envoyer un fichier vers une application de cloud est toujours votre geste, par la feuille de partage d'Android</li>
+<li>Mises à jour : À propos ouvre la page des versions dans votre navigateur</li>
+<li>Logiciel libre sous licence Apache 2.0 — https://github.com/gitubpatrice/READ-FILES-TECH</li>
+</ul>
+
+Site du projet : https://files-tech.com/read-files-tech.php

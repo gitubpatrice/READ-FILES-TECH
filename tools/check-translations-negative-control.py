@@ -204,7 +204,7 @@ def build():
     write(path("PRIVACY.md"), "policy\n")
     write(path("PRIVACY.fr.md"), "politique\n")
     write(path("SECURITY.md"), "security\n")
-    for locale in ("en-US", "de-DE"):
+    for locale in ("en-US", "de-DE", "fr-FR", "it-IT", "es-ES"):
         fastlane = path("fastlane", "metadata", "android", locale)
         write(os.path.join(fastlane, "title.txt"), "Read Files Tech\n")
         write(os.path.join(fastlane, "short_description.txt"), "A short description.\n")
@@ -505,6 +505,24 @@ def store_file_missing():
     return "fastlane/title.txt MISSING"
 
 
+def store_locale_missing():
+    """French ships, its store listing is gone."""
+    shutil.rmtree(path("fastlane", "metadata", "android", "fr-FR"))
+    return "has no store listing for fr"
+
+
+def store_locale_of_an_unshipped_language():
+    """A store listing kept for a language the app does not ship."""
+    shutil.copytree(path("fastlane", "metadata", "android", "de-DE"), path("fastlane", "metadata", "android", "pt-BR"))
+    return "pt-BR/ is the store listing of a language the app does not ship"
+
+
+def changelog_in_one_locale_only():
+    """The next version's changelog written in English only."""
+    write(path("fastlane", "metadata", "android", "en-US", "changelogs", "30010.txt"), "Fixes.\n")
+    return "fastlane/changelogs/30010.txt missing: another locale has it"
+
+
 def doubled_carriage_return():
     data = open(res("values-de", "strings.xml"), encoding="utf-8").read().encode("utf-8")
     write_bytes(res("values-de", "strings.xml"), data.replace(b"\n", b"\r\r\n"))
@@ -565,6 +583,9 @@ CASES = [
     ("store listing: too long (characters)", store_listing_too_long),
     ("store listing: a changelog over 500 characters", changelog_too_long),
     ("store listing: a file MISSING", store_file_missing),
+    ("store listing: a shipped language without its locale", store_locale_missing),
+    ("store listing: a locale of a language not shipped", store_locale_of_an_unshipped_language),
+    ("store listing: a changelog in one locale only", changelog_in_one_locale_only),
     ("line endings: one carriage return too many", doubled_carriage_return),
     ("line endings: two conventions in one file", mixed_line_endings),
 ]

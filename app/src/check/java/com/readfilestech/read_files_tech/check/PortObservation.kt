@@ -103,14 +103,17 @@ class PortObservation(private val dirs: CheckDirs, private val deps: PortCheckEn
         )
     }
 
-    private fun extractions(): List<Map<String, Any?>> = LegacyExtractions(dirs.flutterDocs, dirs.extractions).find().map { folder ->
-        linkedMapOf(
-            "dir" to folder.dir.name,
-            "archiveName" to folder.archiveName,
-            "files" to folder.files,
-            "bytes" to folder.bytes,
-            "content" to Digests.tree(folder.dir),
-        )
+    private fun extractions(): List<Map<String, Any?>> {
+        val legacy = LegacyExtractions(dirs.flutterDocs, extractionsRoot = { dirs.extractions })
+        return legacy.find().map { folder ->
+            linkedMapOf(
+                "dir" to folder.dir.name,
+                "archiveName" to folder.archiveName,
+                "files" to folder.files,
+                "bytes" to folder.bytes,
+                "content" to Digests.tree(folder.dir),
+            )
+        }
     }
 
     private companion object {

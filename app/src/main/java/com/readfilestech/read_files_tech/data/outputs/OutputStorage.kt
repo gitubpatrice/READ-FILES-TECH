@@ -75,7 +75,10 @@ class OutputStorage(
     val privateBase: File get() = File(appPrivate, folder)
 
     /** Every folder outputs may be in, in the order they are tried: the base, then the two fallbacks. */
-    fun bases(): List<File> = listOfNotNull(basePath(), appExternal()?.let { File(it, folder) }, privateBase)
+    fun bases(): List<File> = sharedBases + privateBase
+
+    /** [bases] on shared storage only: what the explorer and the other apps can reach. */
+    private val sharedBases: List<File> get() = listOfNotNull(basePath(), appExternal()?.let { File(it, folder) })
 
     /**
      * A new, empty file reserved for an output — created EXCLUSIVELY, so two tools never share one and
@@ -107,11 +110,13 @@ class OutputStorage(
      * [reserveAt] — the vault's backup: a lock during its export must leave nothing in `Files Tech/`
      * (2.15.3, `exportToBackup`).
      *
+     * @param sharedOnly the private fallback left out: where the old extractions go out of `app_flutter/`
+     *   (docs D-022) — moved into another private folder, they would stay out of reach.
      * @throws NoOutputLocationException no folder could take it.
      */
-    fun folderFor(category: OutputCategory): File {
+    fun folderFor(category: OutputCategory, sharedOnly: Boolean = false): File {
         var failure: IOException? = null
-        for (base in bases()) {
+        for (base in if (sharedOnly) sharedBases else bases()) {
             val dir = File(base, category.folderName)
             try {
                 Files.createDirectories(dir.toPath())
@@ -160,7 +165,7 @@ class OutputStorage(
     fun reserveFolder(category: OutputCategory, suggestedName: String): File {
         val name = "${sanitize(suggestedName)}_${clock().format(STAMP)}"
         var failure: IOException? = null
-        for (base in listOfNotNull(basePath(), appExternal()?.let { File(it, folder) })) {
+        for (base in sharedBases) {
             val dir = File(base, category.folderName)
             try {
                 Files.createDirectories(dir.toPath())

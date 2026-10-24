@@ -1,0 +1,31 @@
+Read Files Tech è un coltellino svizzero per i file del Suo telefono Android: un file manager, un visualizzatore universale, editor, uno scanner di documenti, l'OCR, una cassaforte cifrata e una serie di strumenti per i file. Tutto avviene sul telefono: l'app non ha il permesso Internet.
+
+<b>Funzioni</b>
+
+<ul>
+<li>File manager — sfogliare, cercare, ordinare, selezionare più file, rinominare, copiare, spostare, un cestino con annullamento e l'installazione degli APK affidata al programma di installazione di Android</li>
+<li>Visualizzatore — testo e codice, Markdown, JSON, HTML, CSV, fogli di calcolo (XLSX, XLS, ODS), documenti (DOCX, ODT, ODP), EPUB, PDF, ZIP, immagini</li>
+<li>Editor — codice e testo con una cronologia automatica delle versioni, CSV come tabella modificabile</li>
+<li>Scanner di documenti — bordi trovati, prospettiva raddrizzata, salvato in PDF</li>
+<li>OCR sul telefono (Tesseract), in italiano, inglese, francese, tedesco e spagnolo</li>
+<li>Cassaforte cifrata — AES-256-GCM, una chiave derivata dalla Sua password con Argon2id, blocco automatico e una cancellazione di emergenza</li>
+<li>Conversione — immagini in PDF, CSV in XLSX, testo in PDF, PDF e DOCX in testo, immagini in JPG o PNG</li>
+<li>Foto — immagini più leggere, e posizione, data e modello della fotocamera rimossi prima di condividere</li>
+<li>Ricerca globale per nome e per contenuto, duplicati trovati con SHA-256, rinomina in blocco con espressioni regolari</li>
+<li>Strumenti — selettore di colore, confronto di due file, impronta, codifiche, formattazione, creazione di ZIP, strumenti per testo e CSV</li>
+<li>Riquadri delle impostazioni rapide per scanner, OCR e cassaforte</li>
+<li>In italiano, inglese, francese, tedesco e spagnolo</li>
+</ul>
+
+<b>Riservatezza</b>
+
+<ul>
+<li>Nessun permesso Internet: l'app non può collegarsi a nulla, e la sua compilazione lo verifica. Nessun account, nessuna statistica, nessuna pubblicità, nessun tracciamento</li>
+<li>Nessun servizio Google: OCR e scanner sono software libero che funziona nell'app</li>
+<li>L'accesso a tutti i file è richiesto perché un file manager ne ha bisogno; niente viene letto o scritto in background</li>
+<li>Inviare un file a un'app cloud è sempre un Suo gesto, tramite il menu di condivisione di Android</li>
+<li>Aggiornamenti: Informazioni apre la pagina delle versioni nel Suo browser</li>
+<li>Software libero con licenza Apache 2.0 — https://github.com/gitubpatrice/READ-FILES-TECH</li>
+</ul>
+
+Sito del progetto: https://files-tech.com/read-files-tech.php

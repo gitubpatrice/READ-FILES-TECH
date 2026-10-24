@@ -62,10 +62,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.images.ImageToolRules
+import com.readfilestech.read_files_tech.data.scanner.PageSource
 import com.readfilestech.read_files_tech.data.scanner.ScanPage
 import com.readfilestech.read_files_tech.data.scanner.ScanSession
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -89,6 +91,8 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
     val scope = rememberCoroutineScope()
     val title = stringResource(R.string.feature_scanner)
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
+    // The page to delete, until confirmed: its photo, taken here, could not be brought back.
+    var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(picked.files) {
         picked.files?.takeIf { it.isNotEmpty() }?.let {
             picked.consume()
@@ -191,9 +195,25 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
                 }
             }
             itemsIndexed(state.pages, key = { _, page -> page.id }) { index, page ->
-                PageCard(index, page, state.pages.size, busy, viewModel)
+                PageCard(index, page, state.pages.size, busy, viewModel, onDelete = { deleting = page.id })
             }
         }
+    }
+    val doomed = state.pages.indexOfFirst { it.id == deleting }
+    if (doomed >= 0 && !busy) {
+        val page = state.pages[doomed]
+        ConfirmDangerDialog(
+            title = stringResource(R.string.scanner_delete_page_title, doomed + 1),
+            message = stringResource(
+                if (page.source is PageSource.Owned) R.string.scanner_delete_page_owned else R.string.scanner_delete_page_external,
+            ),
+            confirmLabel = stringResource(R.string.action_delete),
+            onConfirm = {
+                deleting = null
+                viewModel.delete(page)
+            },
+            onDismiss = { deleting = null },
+        )
     }
     if (confirmLeave) {
         AlertDialog(
@@ -217,7 +237,7 @@ private fun Result(path: String, onNavigate: (String) -> Unit) {
 }
 
 @Composable
-private fun PageCard(index: Int, page: ScanPage, count: Int, busy: Boolean, viewModel: ScannerViewModel) {
+private fun PageCard(index: Int, page: ScanPage, count: Int, busy: Boolean, viewModel: ScannerViewModel, onDelete: () -> Unit) {
     val thumbnail by produceState<ImageBitmap?>(null, page.id, page.revision) {
         value = viewModel.thumbnail(page, THUMBNAIL_SIDE)
     }
@@ -245,7 +265,7 @@ private fun PageCard(index: Int, page: ScanPage, count: Int, busy: Boolean, view
                 IconButton(onClick = { viewModel.move(index, index + 1) }, enabled = index < count - 1 && !busy) {
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.scanner_move_later))
                 }
-                IconButton(onClick = { viewModel.delete(page) }, enabled = !busy) {
+                IconButton(onClick = onDelete, enabled = !busy) {
                     Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.scanner_delete_page, number))
                 }
             }

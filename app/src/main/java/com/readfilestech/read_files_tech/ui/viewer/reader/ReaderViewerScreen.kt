@@ -200,7 +200,7 @@ private fun ChapterBar(selected: Int, count: Int, title: String, onShow: (Int) -
 private fun ChapterList(document: ReaderDocument, selected: Int, onChoose: (Int) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
         title = { Text(stringResource(R.string.reader_chapters)) },
         text = {
             LazyColumn(state = rememberLazyListState(initialFirstVisibleItemIndex = selected)) {

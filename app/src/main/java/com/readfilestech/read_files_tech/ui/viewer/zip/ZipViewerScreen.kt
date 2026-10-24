@@ -236,7 +236,7 @@ private fun ProgressDialog(running: Extraction.Running, onCancel: () -> Unit) {
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.action_stop)) } },
     )
 }
 

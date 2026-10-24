@@ -12,6 +12,7 @@
     <string name="action_allow">Permitir</string>
     <string name="action_back">Atrás</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="action_close">Cerrar</string>
     <string name="action_create">Crear</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_delete_forever">Eliminar definitivamente</string>
@@ -406,6 +407,49 @@
     <string name="legal_license">Licencia de Read Files Tech</string>
     <string name="legal_license_summary">Licencia Apache 2.0 — el código fuente se publica en GitHub</string>
     <string name="settings_security">Seguridad</string>
+    <string name="legacy_section">Versión anterior (antes de la 3.0)</string>
+    <string name="legacy_extractions_title">Extracciones antiguas</string>
+    <plurals name="legacy_extractions_summary">
+        <item quantity="one">%1$d archivo, %2$s, en una carpeta que solo esta app puede abrir</item>
+        <item quantity="many">%1$d de archivos, %2$s, en una carpeta que solo esta app puede abrir</item>
+        <item quantity="other">%1$d archivos, %2$s, en una carpeta que solo esta app puede abrir</item>
+    </plurals>
+    <plurals name="legacy_extractions_body">
+        <item quantity="one">Con “Extraer todo”, la versión anterior puso %1$d archivo (%2$s) en una carpeta privada de la app: ni su explorador ni las demás apps pueden abrirla.\n\nMovido a la carpeta de abajo, se podrá abrir, también desde cualquier app con acceso al almacenamiento.</item>
+        <item quantity="many">Con “Extraer todo”, la versión anterior puso %1$d de archivos (%2$s) en una carpeta privada de la app: ni su explorador ni las demás apps pueden abrirla.\n\nMovidos a la carpeta de abajo, se podrán abrir, también desde cualquier app con acceso al almacenamiento.</item>
+        <item quantity="other">Con “Extraer todo”, la versión anterior puso %1$d archivos (%2$s) en una carpeta privada de la app: ni su explorador ni las demás apps pueden abrirla.\n\nMovidos a la carpeta de abajo, se podrán abrir, también desde cualquier app con acceso al almacenamiento.</item>
+    </plurals>
+    <string name="legacy_later_note">Las encontrará en los ajustes.</string>
+    <string name="legacy_move">Mover</string>
+    <string name="legacy_working">Espere…</string>
+    <string name="legacy_extractions_delete_title">¿Eliminar las extracciones antiguas?</string>
+    <plurals name="legacy_extractions_delete_body">
+        <item quantity="one">%1$d archivo (%2$s) se eliminará definitivamente: nada pasa por la papelera. El archivo comprimido del que procede no se toca.</item>
+        <item quantity="many">%1$d de archivos (%2$s) se eliminarán definitivamente: nada pasa por la papelera. Los archivos comprimidos de los que proceden no se tocan.</item>
+        <item quantity="other">%1$d archivos (%2$s) se eliminarán definitivamente: nada pasa por la papelera. Los archivos comprimidos de los que proceden no se tocan.</item>
+    </plurals>
+    <string name="legacy_extractions_move_stopped">Traslado detenido: %1$s. Movidos: %2$d. Aún en la carpeta privada: %3$d.</string>
+    <plurals name="legacy_extractions_moved">
+        <item quantity="one">%1$d archivo movido a %2$s</item>
+        <item quantity="many">%1$d de archivos movidos a %2$s</item>
+        <item quantity="other">%1$d archivos movidos a %2$s</item>
+    </plurals>
+    <string name="legacy_extractions_deleted">Extracciones antiguas eliminadas</string>
+    <string name="legacy_extractions_delete_failed">Algunas extracciones antiguas no se pudieron eliminar</string>
+    <string name="legacy_history_title">Eliminar el historial antiguo</string>
+    <plurals name="legacy_history_summary">
+        <item quantity="one">%1$d copia, %2$s, guardada por el editor de la versión anterior antes de guardar</item>
+        <item quantity="many">%1$d de copias, %2$s, guardadas por el editor de la versión anterior antes de guardar</item>
+        <item quantity="other">%1$d copias, %2$s, guardadas por el editor de la versión anterior antes de guardar</item>
+    </plurals>
+    <string name="legacy_history_delete_title">¿Eliminar el historial antiguo?</string>
+    <plurals name="legacy_history_delete_body">
+        <item quantity="one">%1$d copia (%2$s) de la versión anterior se eliminará definitivamente. El historial desde la 3.0 se conserva.</item>
+        <item quantity="many">%1$d de copias (%2$s) de la versión anterior se eliminarán definitivamente. El historial desde la 3.0 se conserva.</item>
+        <item quantity="other">%1$d copias (%2$s) de la versión anterior se eliminarán definitivamente. El historial desde la 3.0 se conserva.</item>
+    </plurals>
+    <string name="legacy_history_deleted">Historial antiguo eliminado</string>
+    <string name="legacy_history_delete_failed">No se pudo eliminar del todo el historial antiguo</string>
     <string name="panic_title">Modo pánico — borrarlo todo</string>
     <string name="panic_summary">La caja fuerte, los ajustes, los archivos temporales, el historial y la papelera, de una vez</string>
     <string name="panic_confirm_title">Modo pánico</string>
@@ -491,7 +535,6 @@
     <!-- The CSV editor -->
     <string name="csv_editor_choose">Elegir un CSV para editar</string>
     <string name="csv_editor_intro">Cambie celdas, añada o elimine filas y columnas. Al guardar solo se reescribe lo que ha cambiado: el resto del archivo queda como estaba.</string>
-    <string name="csv_editor_saved">Guardado</string>
     <string name="csv_editor_cut_kept">Lo que no se muestra se guarda tal como estaba.</string>
     <string name="csv_editor_read_only_nul">Este archivo contiene bytes NUL: no es un texto de un byte por carácter (UTF-16 sin marca de orden de bytes, o ni siquiera un texto). Se muestra, no se edita.</string>
     <string name="csv_editor_read_only_dos">Este archivo parece escrito en una página de códigos de MS-DOS o de Mac, no en Windows-1252: lo que escribiera se leería mal en él. Se muestra, no se edita.</string>
@@ -524,9 +567,11 @@
     <string name="csv_editor_insert_column">Insertar una columna después</string>
     <string name="csv_editor_delete_row">Eliminar esta fila</string>
     <string name="csv_editor_delete_column">Eliminar esta columna</string>
+    <string name="csv_editor_delete_row_title">¿Eliminar la fila %1$d?</string>
+    <string name="csv_editor_delete_column_title">¿Eliminar la columna %1$d?</string>
+    <string name="csv_editor_delete_body">Sus celdas salen de la tabla. No se escribe nada en el archivo antes de guardar: si sale sin guardar, queda como está.</string>
     <string name="csv_editor_history_empty">Todavía no hay ninguna versión anterior de este archivo. Cada guardado conserva la versión que reemplaza: las %1$d últimas, para archivos de hasta %2$d MB.</string>
     <string name="csv_editor_history_hint">Restaurar carga la versión en el editor: sus cambios sin guardar pasan primero al historial, y el archivo solo se escribe cuando usted guarda.</string>
-    <string name="csv_editor_restored">Versión anterior cargada: guarde para conservarla.</string>
     <string name="csv_editor_unsaved_too_large">sus cambios sin guardar superan los %1$d MB, demasiado para conservarlos en el historial — guárdelos primero</string>
     <string name="csv_editor_over_cap">Este archivo supera los %1$d MB: su versión actual no se puede conservar en el historial. ¿Guardar de todos modos?</string>
 
@@ -668,7 +713,7 @@
     <string name="editor_history_hint">Toque una versión para ver su principio. Restaurarla la carga en el editor: su texto pasa primero al historial, y el archivo solo se escribe cuando usted guarda.</string>
     <string name="editor_legacy_title">Historial antiguo (antes de la 3.0)</string>
     <string name="editor_legacy_warning">Guardado por la versión anterior de la app solo bajo el nombre de este archivo: una copia puede proceder de otro archivo con el mismo nombre.</string>
-    <string name="editor_restored">Versión cargada — guarde para conservarla</string>
+    <string name="editor_restored">Versión anterior cargada: guarde para conservarla.</string>
     <string name="editor_restore_failed">No restaurada: %1$s</string>
     <string name="editor_version_not_text">esta versión no es un texto que el editor abra</string>
 
@@ -711,7 +756,7 @@
         <item quantity="other">…y %1$d más</item>
     </plurals>
     <string name="zip_stop_total">Se han alcanzado los %1$s que puede escribir una extracción: las entradas siguientes no se extraen.</string>
-    <string name="zip_stop_cancelled">Cancelada: los archivos escritos se conservan; el que estaba en curso se elimina.</string>
+    <string name="zip_stop_cancelled">Detenida: los archivos escritos se conservan; el que estaba en curso se elimina.</string>
     <string name="zip_stop_failed">Escritura detenida: %1$s</string>
     <string name="zip_no_location">Ninguna carpeta del almacenamiento ha podido recibir la extracción.</string>
     <plurals name="zip_extract_left">
@@ -734,6 +779,9 @@
     <string name="scanner_move_earlier">Mover antes</string>
     <string name="scanner_move_later">Mover después</string>
     <string name="scanner_delete_page">Eliminar la página %1$d</string>
+    <string name="scanner_delete_page_title">¿Eliminar la página %1$d?</string>
+    <string name="scanner_delete_page_owned">Su foto, tomada aquí, se elimina definitivamente.</string>
+    <string name="scanner_delete_page_external">Sale del escaneo. La imagen de la que procede se queda donde está en el teléfono.</string>
     <string name="scanner_adjust_title">Ajustar la página</string>
     <string name="scanner_keep_page">Conservar esta página</string>
     <string name="scanner_detect_again">Detectar de nuevo</string>
