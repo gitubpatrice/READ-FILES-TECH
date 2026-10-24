@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.scanner.PageFilter
 import com.readfilestech.read_files_tech.data.scanner.Point
+import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -99,6 +100,9 @@ fun PageEditor(editor: PageEditorState, busy: Boolean, actions: PageEditorAction
                 },
             )
         },
+        // The scanner's own screen is not composed under this one: a page that could not be made, the page
+        // limit reached, are said here, where the user is.
+        snackbarHost = { AppSnackbarHost() },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(horizontal = 12.dp)) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {

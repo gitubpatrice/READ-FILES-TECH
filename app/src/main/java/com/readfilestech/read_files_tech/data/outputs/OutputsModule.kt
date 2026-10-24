@@ -24,4 +24,9 @@ object OutputsModule {
         appPrivate = context.getDir("flutter", Context.MODE_PRIVATE),
         folder = SharedStorageNames().filesTechDir,
     )
+
+    @Provides
+    @Singleton
+    fun outputSettings(prefs: FlutterPreferences, outputs: OutputStorage, volumes: StorageVolumes) =
+        OutputSettings(prefs, outputs) { volumes.list().map { it.dir } }
 }

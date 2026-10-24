@@ -25,6 +25,9 @@ import javax.inject.Singleton
  * the port's first start nothing in that folder is the port's. The flag is set only when the folder was
  * listed AND found empty: a listing that fails is not an empty cache, and the next start tries again.
  *
+ * At every start too, the time of the last update check of the 2.15.2 (`update_last_check_ms_*`), read by nothing
+ * since the 2.15.3: the app checks nothing online (docs D-014), and a key nothing reads is no data to keep.
+ *
  * At EVERY start, as the 2.15.x did, and whatever happened above: the decrypted copies
  * (VaultService.purgeDecrypted) and the staging folders of an interrupted restore
  * (VaultBackups.discardLeftovers); and the entries of archives shared by the port (ZipShares), which
@@ -63,6 +66,7 @@ class StartupCleanup @Inject constructor(
         done = true
         val failed = mutableListOf<Exception>()
         step(failed) { if (prefs.boolean(FLUTTER_CACHE_PURGED).valueOrNull() != true) purgeFlutterCache() }
+        step(failed) { if (prefs.contains(UPDATE_LAST_CHECK)) prefs.commit { remove(UPDATE_LAST_CHECK) } }
         step(failed) { runBlocking { vault.purgeDecrypted() } }
         step(failed) { runBlocking { backups.discardLeftovers() } }
         step(failed) { ZipShares.under(dirs.cache).purge() }
@@ -113,5 +117,8 @@ class StartupCleanup @Inject constructor(
     companion object {
         /** The port's own key, in the one preferences file (docs D-018); a panic erases it, which is harmless. */
         const val FLUTTER_CACHE_PURGED = "port_flutter_cache_purged_v1"
+
+        /** The 2.15.2's last update check (files_tech_core's UpdateService, `update_last_check_ms_<repository>`). */
+        const val UPDATE_LAST_CHECK = "update_last_check_ms_read-files-tech"
     }
 }

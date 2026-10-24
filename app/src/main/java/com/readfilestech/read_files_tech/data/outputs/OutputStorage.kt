@@ -13,12 +13,21 @@ import java.nio.file.Files
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/** The subfolders of the output folder, named on disk as the 2.15.x names them (`OutputCategory`). */
-enum class OutputCategory(val folderName: String) {
+/**
+ * The subfolders of the output folder, named on disk as the 2.15.x names them (`OutputCategory`).
+ *
+ * @param written whether a tool of this app still writes there.
+ */
+enum class OutputCategory(val folderName: String, val written: Boolean = true) {
     SCANS("Scans"),
     CONVERSIONS("Conversions"),
     COMPRESSIONS("Compressions"),
-    SIGNATURES("Signatures"),
+
+    /**
+     * The PDFs the 2.15.x signed. Signing moved to PDF Tech (docs D-004): nothing is written there any more,
+     * the folder is neither created nor shown in the settings — only read, so the picker still finds them.
+     */
+    SIGNATURES("Signatures", written = false),
     NO_EXIF("Sans-EXIF"),
     OCR("OCR"),
     VAULT_BACKUPS("Sauvegardes coffre"),
@@ -54,14 +63,19 @@ class OutputStorage(
     private val clock: () -> LocalDateTime = LocalDateTime::now,
 ) {
     /** The configured base (`output_base_path`, verbatim, as the 2.15.x reads it), or `<primary>/<folder>`. */
-    fun basePath(): File =
-        (prefs.string(KEY_BASE_PATH) as? PrefRead.Present)?.value?.takeIf(String::isNotEmpty)?.let(::File) ?: File(primary(), folder)
+    fun basePath(): File = (prefs.string(KEY_BASE_PATH) as? PrefRead.Present)?.value?.takeIf(String::isNotEmpty)?.let(::File) ?: defaultBase
 
     /** "Share automatically after creation" (`output_auto_share`), off by default. */
     fun autoShare(): Boolean = (prefs.boolean(KEY_AUTO_SHARE) as? PrefRead.Present)?.value ?: false
 
+    /** The base when none is configured: `<primary>/<folder>`. */
+    val defaultBase: File get() = File(primary(), folder)
+
+    /** The last fallback, in the app's private storage: no other app, nor the explorer, can reach what lands there. */
+    val privateBase: File get() = File(appPrivate, folder)
+
     /** Every folder outputs may be in, in the order they are tried: the base, then the two fallbacks. */
-    fun bases(): List<File> = listOfNotNull(basePath(), appExternal()?.let { File(it, folder) }, File(appPrivate, folder))
+    fun bases(): List<File> = listOfNotNull(basePath(), appExternal()?.let { File(it, folder) }, privateBase)
 
     /**
      * A new, empty file reserved for an output — created EXCLUSIVELY, so two tools never share one and
@@ -102,7 +116,7 @@ class OutputStorage(
             try {
                 Files.createDirectories(dir.toPath())
                 // There but refusing writes: the next base, as reserve() falls through on its own.
-                if (Files.isWritable(dir.toPath())) return dir
+                if (canWriteIn(dir)) return dir
                 failure = IOException("not writable: ${category.folderName}")
             } catch (e: IOException) {
                 failure = e
@@ -178,6 +192,21 @@ class OutputStorage(
         const val KEY_AUTO_SHARE = "output_auto_share"
 
         private const val MAX_CANDIDATES = 1_000
+        private const val PROBE_PREFIX = ".rft-probe-"
+
+        /**
+         * Whether a file can be created in [dir], by creating one and deleting it. Asking is not enough: on
+         * Android 11+ without all-files access, the shared storage answers yes to `access(W_OK)` on a folder the
+         * app made, then refuses a file of any type but media in it — seen on the emulator (API 34): the settings
+         * showed `Files Tech` as taking the outputs, and the vault's backup would have failed there instead of
+         * going to the fallback.
+         */
+        fun canWriteIn(dir: File): Boolean = try {
+            Files.deleteIfExists(Files.createTempFile(dir.toPath(), PROBE_PREFIX, null))
+            true
+        } catch (expected: IOException) {
+            false
+        }
         private const val MAX_NAME_CHARS = 60
         private val STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
 

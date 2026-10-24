@@ -100,7 +100,10 @@ DE_OK = """<?xml version="1.0" encoding="utf-8"?>
 </resources>
 """
 
-GRADLE = """val shippedLanguages: List<String> = listOf("en") + file("src/main/res").listFiles().orEmpty()
+# A glob holding `/**` in a string first, and a KDoc after the derivation: a check that took the glob for a
+# comment's start would cut the derivation out with them (2026-10-24). A URL's `//` is text too.
+GRADLE = """val excluded = listOf("com/tom_roush/fontbox/resources/cmap/**", "https://example.org/x")
+val shippedLanguages: List<String> = listOf("en") + file("src/main/res").listFiles().orEmpty()
     .filter { File(it, "strings.xml").isFile }
     .mapNotNull { Regex("values-((?!car$)[a-z]{2,3})").matchEntire(it.name)?.groupValues?.get(1) }
     .sorted()
@@ -110,6 +113,8 @@ android {
         generateLocaleConfig = true
     }
 }
+/** A task's documentation, after the derivation. */
+abstract class Copied : DefaultTask()
 """
 
 RESOURCES_PROPERTIES = "unqualifiedResLocale=en\n"
@@ -191,6 +196,10 @@ def build():
     de(DE_OK)
     for lang in ("fr", "it", "es"):
         write(res("values-" + lang, "strings.xml"), language_file(FR_OK, lang))
+    # The legal texts About shows, English and each language.
+    for folder in ("raw", "raw-de", "raw-fr", "raw-it", "raw-es"):
+        for name in ("privacy.md", "terms.md"):
+            write(res(folder, name), "# text\n")
     # The documents the links point at.
     write(path("PRIVACY.md"), "policy\n")
     write(path("PRIVACY.fr.md"), "politique\n")
@@ -395,6 +404,17 @@ def exemption_for_a_language_not_shipped():
     return "SAME_AS_ENGLISH names a language that has no values-pt"
 
 
+def legal_text_missing():
+    """German readers would get the English policy, without a word."""
+    os.remove(res("raw-de", "privacy.md"))
+    return "raw-de/privacy.md missing"
+
+
+def legal_texts_of_an_unshipped_language():
+    write(res("raw-ja", "terms.md"), "# text\n")
+    return "raw-ja/ holds files for a language the app does not ship"
+
+
 def derivation_gone():
     write(path("app", "build.gradle.kts"), GRADLE.replace(
         'file("src/main/res").listFiles().orEmpty()', 'emptyList<File>()'))
@@ -528,6 +548,8 @@ CASES = [
     ("copy: an English plural left as it is", english_plural_left_untranslated),
     ("copy: an exemption outlived its English", exemption_outlived_its_english),
     ("copy: an exemption for a language not shipped", exemption_for_a_language_not_shipped),
+    ("legal text: one language without its policy", legal_text_missing),
+    ("legal text: a language the app does not ship", legal_texts_of_an_unshipped_language),
     ("derivation: localeFilters no longer from the folders", derivation_gone),
     ("derivation: a literal list beside it", a_second_list),
     ("derivation: left in a comment, a list doing the work", derivation_left_in_a_comment),

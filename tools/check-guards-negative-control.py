@@ -138,6 +138,12 @@ QUERIES = (
     '    </queries>\n'
 )
 
+METRICS_OPT_OUT = '        <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />\n'
+EMOJI_INITIALIZER = '<meta-data android:name="androidx.emoji2.text.EmojiCompatInitializer" android:value="androidx.startup" />'
+EMOJI_FONT_QUERY = '        <intent><action android:name="androidx.content.action.LOAD_EMOJI_FONT" /></intent>\n'
+# The opt-out as the merged manifest writes it (one attribute a line) and as apkanalyzer prints the APK's.
+METRICS_OPT_OUT_RX = r'<meta-data\s+android:name="android\.webkit\.WebView\.MetricsOptOut"[^>]*/>'
+
 SHAPE_OK = (
     '<?xml version="1.0" encoding="utf-8"?>\n'
     '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
@@ -150,6 +156,7 @@ SHAPE_OK = (
     '        android:usesCleartextTraffic="false"\n'
     '        android:localeConfig="@xml/_generated_res_locale_config"\n'
     '        android:requestLegacyExternalStorage="true">\n'
+    f'{METRICS_OPT_OUT}'
     f'        <activity android:name="{MAIN_ACTIVITY}" android:exported="true" android:taskAffinity="">\n'
     '            <intent-filter><action android:name="android.intent.action.MAIN" /></intent-filter>\n'
     '        </activity>\n'
@@ -516,6 +523,19 @@ def shape_cases(work: str) -> list[tuple]:
              SHAPE_OK.replace(ISOLATED, FLUTTER), 0, "OK: backup off", ["--replace"]),
         case("file missing", None, 1, "merged manifest not found"),
         case("malformed XML", SHAPE_OK.replace("</manifest>", ""), 1, "merged manifest unreadable"),
+        case("the WebView's metrics not opted out", SHAPE_OK.replace(METRICS_OPT_OUT, ""),
+             1, "meta-data android.webkit.WebView.MetricsOptOut is None"),
+        case("the WebView's metrics opt-out set to false",
+             SHAPE_OK.replace(METRICS_OPT_OUT, METRICS_OPT_OUT.replace('"true"', '"false"')),
+             1, "MetricsOptOut is 'false'"),
+        case("EmojiCompat's initializer back under androidx.startup",
+             SHAPE_OK.replace('<provider android:name="androidx.startup.InitializationProvider" android:exported="false" />',
+                              '<provider android:name="androidx.startup.InitializationProvider" android:exported="false">'
+                              + EMOJI_INITIALIZER + '</provider>'),
+             1, "meta-data androidx.emoji2.text.EmojiCompatInitializer in the manifest"),
+        case("an intent queried (every emoji-font provider made visible)",
+             SHAPE_OK.replace("    </queries>", EMOJI_FONT_QUERY + "    </queries>"),
+             1, "<queries> declares an <intent>"),
     ]
 
 
@@ -663,6 +683,12 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
         (f"REAL {kind} + ML Kit's init provider", SHAPE_CHECK, shape,
          lambda: manifest_case(work, mutated(real, real.replace("</application>", MLKIT_INIT_PROVIDER + "    </application>", 1))),
          1, "Google component in the manifest: <provider> com.google.mlkit."),
+        (f"REAL {kind} without the WebView's metrics opt-out", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, re.sub(METRICS_OPT_OUT_RX, "", real, count=1))),
+         1, "MetricsOptOut is None"),
+        (f"REAL {kind} + EmojiCompat's initializer", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", EMOJI_INITIALIZER + "</application>", 1))),
+         1, "meta-data androidx.emoji2.text.EmojiCompatInitializer in the manifest"),
         (f"REAL {kind} + Play services' version", SHAPE_CHECK, shape,
          lambda: manifest_case(work, mutated(real, real.replace("</application>", PLAY_SERVICES_VERSION + "    </application>", 1))),
          1, "Google component in the manifest: <meta-data> com.google.android.gms.version"),

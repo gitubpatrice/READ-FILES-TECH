@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.ui
 
 import androidx.compose.runtime.Composable
+import com.readfilestech.read_files_tech.ui.about.AboutScreen
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.settings.SettingsScreen
 import com.readfilestech.read_files_tech.ui.tools.color.ColorPickerScreen
@@ -23,8 +24,7 @@ import com.readfilestech.read_files_tech.ui.tools.texttools.TxtToolsScreen
 import com.readfilestech.read_files_tech.ui.vault.VaultScreen
 
 /**
- * The screen of each [Feature] — a tool of the home's grid, a quick-settings tile, a menu entry. A tool
- * of phase 5 adds its branch here when it is ported; the others say "not available yet".
+ * The screen of each [Feature] — a tool of the home's grid, a quick-settings tile, a menu entry.
  *
  * @param picked what the picker handed back, for a tool that asked for files or a folder
  * @param onNavigate to another destination (the picker, a viewer, the explorer)
@@ -50,8 +50,9 @@ fun FeatureHost(feature: Feature?, picked: PickedResults, onNavigate: (String) -
         Feature.TXT_TOOLS -> TxtToolsScreen(picked, onNavigate, onBack)
         Feature.CSV_TOOLS -> CsvToolsScreen(picked, onNavigate, onBack)
         Feature.VAULT -> VaultScreen(picked, onNavigate, onBack)
-        Feature.SETTINGS -> SettingsScreen(onBack)
-        // A feature whose screen comes with a later phase, or a route naming none (an old one restored).
-        else -> PendingScreen(feature, onBack)
+        Feature.SETTINGS -> SettingsScreen(picked, onNavigate, onBack)
+        Feature.ABOUT -> AboutScreen(onNavigate, onBack)
+        // A route naming no feature of this build (an old one restored).
+        null -> MissingScreen(onBack)
     }
 }

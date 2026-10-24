@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.ui.navigation
 
 import androidx.annotation.StringRes
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.ui.about.LegalDocument
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 
@@ -33,6 +34,13 @@ object Routes {
     const val PICKER = "picker?$ARG_PICK={$ARG_PICK}&$ARG_EXTENSIONS={$ARG_EXTENSIONS}&$ARG_TITLE={$ARG_TITLE}"
     const val TRASH = "trash"
     const val SEARCH = "search"
+
+    const val ARG_DOCUMENT = "document"
+
+    /** A legal text of About ([LegalDocument]): the privacy policy, the terms, the notices, the licence. */
+    const val LEGAL = "legal/{$ARG_DOCUMENT}"
+
+    fun legal(document: LegalDocument): String = "legal/${document.name}"
 
     /** Installing the APK at [ARG_PATH]: a dialog over the screen that asked. */
     const val INSTALL = "install?$ARG_PATH={$ARG_PATH}"
@@ -129,8 +137,8 @@ object Routes {
 }
 
 /**
- * The destinations whose screens come with a later phase: the three quick-settings tiles, the tools of
- * the home's grid, its settings and about (phase 8).
+ * The destinations of the home's grid, of its menu and of the three quick-settings tiles: the tools, the
+ * vault, the settings and About.
  */
 enum class Feature(@param:StringRes val title: Int) {
     SCANNER(R.string.feature_scanner),

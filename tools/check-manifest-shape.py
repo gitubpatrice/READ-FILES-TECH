@@ -30,6 +30,10 @@ What is checked
    (`com.google.android.datatransport`) or Firebase (`com.google.firebase`). ML Kit, the OCR's engine until
    phase 5, brought all four — its init provider, Firebase's component discovery, the transport's
    schedulers. tools/check-release-classpath.py refuses their artefacts before the manifest is merged.
+6. The two other ways to Google that no permission shows (docs D-037): the WebView's metrics opted out
+   (`android.webkit.WebView.MetricsOptOut` = true), and androidx.startup's EmojiCompatInitializer removed
+   — it fetches the emoji font from a downloadable-fonts provider, Google Play services' on most phones.
+   And `<queries>` names packages only: an `<intent>` there would let the app list every app that answers it.
 
 Usage
 -----
@@ -82,6 +86,15 @@ FILE_PROVIDER_ATTRIBUTES = {"exported": "false", "grantUriPermissions": "true"}
 # Another package here is an app the port can enumerate, which the privacy text must then say.
 QUERIED_PACKAGES = {"com.pdftech.pdf_tech", "com.infomaniak.drive", "me.proton.android.drive", "com.google.android.apps.docs"}
 NEVER_TRUE = ("debuggable",)
+
+# Meta-data `<application>` must carry, and their value (docs D-037). The HTML viewer's WebView is the system's,
+# whose maker — Google on most phones — collects its usage metrics when the user shares diagnostics.
+REQUIRED_APPLICATION_META_DATA = {"android.webkit.WebView.MetricsOptOut": "true"}
+
+# Meta-data no element may carry (docs D-037): EmojiCompat's initializer, removed from androidx.startup's
+# provider. At start it asks a downloadable-fonts provider for the emoji font — Google Play services' on most
+# phones, by IPC, Android 10 and older seeing it without any <queries>. Without it the platform draws the emoji.
+FORBIDDEN_META_DATA = {"androidx.emoji2.text.EmojiCompatInitializer"}
 
 # Attributes a given component must carry, as in the 2.15.x manifest.
 REQUIRED_COMPONENT_ATTRIBUTES = {
@@ -215,6 +228,14 @@ def main(argv: list[str]) -> int:
             if value != expected:
                 problems.append(f"{name}: android:{attribute} is {value!r}, expected {expected!r}.")
 
+    meta = {e.get(A + "name"): e.get(A + "value") for e in application.findall("meta-data")}
+    for name, expected in REQUIRED_APPLICATION_META_DATA.items():
+        if meta.get(name) != expected:
+            problems.append(f"<application> meta-data {name} is {meta.get(name)!r}, expected {expected!r}.")
+    for element in root.iter("meta-data"):
+        if element.get(A + "name") in FORBIDDEN_META_DATA:
+            problems.append(f"meta-data {element.get(A + 'name')} in the manifest: its initializer runs at start.")
+
     problems += file_provider_problems(application, expected_package)
     for tag in COMPONENT_TAGS + ("meta-data",):
         for element in application.iter(tag):
@@ -224,6 +245,10 @@ def main(argv: list[str]) -> int:
     queried = {p.get(A + "name") for q in root.iter("queries") for p in q.iter("package")}
     if queried != QUERIED_PACKAGES:
         problems.append(f"<queries> packages are {sorted(queried)}, expected {sorted(QUERIED_PACKAGES)}.")
+    for q in root.iter("queries"):
+        for child in q:
+            if child.tag != "package":
+                problems.append(f"<queries> declares an <{child.tag}>: every app that answers it becomes visible to this one.")
 
     found = exported_components(application)
     print(f"Manifest: {manifest_path}")

@@ -1,9 +1,6 @@
 package com.readfilestech.read_files_tech.ui.viewer.html
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
-import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,7 +14,7 @@ import com.readfilestech.read_files_tech.data.viewer.text.TextColor
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
 import com.readfilestech.read_files_tech.ui.common.FileLauncher
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
-import com.readfilestech.read_files_tech.ui.common.LaunchOutcome
+import com.readfilestech.read_files_tech.ui.common.Links
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
@@ -103,16 +100,7 @@ class HtmlViewerViewModel @Inject constructor(
     }
 
     private fun openWeb(from: Context, url: String) {
-        val view = Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE)
-        val outcome = try {
-            from.startActivity(view)
-            LaunchOutcome.STARTED
-        } catch (expected: ActivityNotFoundException) {
-            LaunchOutcome.NO_APP
-        } catch (expected: SecurityException) {
-            LaunchOutcome.FAILED
-        }
-        FileLauncher.messageFor(outcome)?.let(messages::post)
+        FileLauncher.messageFor(Links.open(from, url))?.let(messages::post)
     }
 
     private fun refused() = messages.info(uiText(R.string.html_link_refused))

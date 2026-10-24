@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,20 +36,49 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
+import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.languageSettings
 import com.readfilestech.read_files_tech.ui.common.startFirst
+import com.readfilestech.read_files_tech.ui.explorer.PickMode
+import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
-/** Settings (`SettingsScreen` of the 2.15.3): the app's language (Android 13+), and its security section, the panic. */
+/**
+ * Settings (`SettingsScreen` of the 2.15.3): the app's language (Android 13+), the files the tools create — their
+ * folder, the automatic share — and the security section, the panic.
+ *
+ * @param picked the folder the picker handed back, for the outputs
+ * @param onNavigate to the picker, or to the explorer on the outputs' folder
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    picked: PickedResults,
+    onNavigate: (String) -> Unit,
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+    outputs: OutputSettingsViewModel = hiltViewModel(),
+) {
     val confirmPanic by viewModel.confirmPanic.collectAsStateWithLifecycle()
     val erasing by viewModel.erasing.collectAsStateWithLifecycle()
+    val outputFolder by outputs.state.collectAsStateWithLifecycle()
+    LaunchedEffect(picked.folder) {
+        picked.folder?.let {
+            picked.consume()
+            outputs.choose(it)
+        }
+    }
+    // Storage access granted in Android's settings, a card put in: what takes the outputs is read again.
+    LifecycleResumeEffect(Unit) {
+        outputs.refresh()
+        onPauseOrDispose { }
+    }
+    val chooseTitle = stringResource(R.string.settings_output_choose)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -78,6 +108,12 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                     onClick = { startFirst(context, languageSettings(context)) },
                 )
             }
+            OutputSettingsSection(
+                outputs,
+                outputFolder,
+                onChoose = { onNavigate(Routes.picker(PickMode.FOLDER, title = chooseTitle)) },
+                onOpen = { onNavigate(Routes.explorer(it.path)) },
+            )
             SectionTitle(stringResource(R.string.settings_security))
             SettingRow(
                 icon = Icons.Outlined.WarningAmber,
@@ -109,7 +145,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,

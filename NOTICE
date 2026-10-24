@@ -1,6 +1,20 @@
-Read Files Tech — notices of the third-party code it includes, and their licences.
+Read Files Tech
+Copyright 2026 Patrice Haltaya (Files Tech, https://www.files-tech.com)
+
+Read Files Tech is licensed under the Apache License, Version 2.0: see LICENSE.
+
+This file lists the third-party software the app includes — in its APK — with
+the copyright notices and licences that come with it. The app shows this file,
+and the text of the Apache License, under About > Licences.
+
+Part 1  Code and data ported into the app's own source, and the OCR stack.
+Part 2  Libraries under the Apache License 2.0, and the NOTICE files of those
+        that have one.
+Part 3  Libraries and data under other licences, with their texts.
 
 --------------------------------------------------------------------------------
+Part 1 — Code and data ported into the app, and the OCR stack
+
 OSS Document Scanner — document edge detection
 https://github.com/ossappscollective/OSS-DocumentScanner
 
@@ -138,3 +152,834 @@ libpng — PNG Reference Library License version 2:
 
    3. This Copyright notice may not be removed or altered from any
       source or altered source distribution.
+
+--------------------------------------------------------------------------------
+Part 2 — Libraries under the Apache License, Version 2.0
+(text: LICENSE, and https://www.apache.org/licenses/LICENSE-2.0)
+
+  - AndroidX and Jetpack Compose (activity, annotation, collection, core,
+    lifecycle, navigation, savedstate, exifinterface, webkit, emoji2, window,
+    profileinstaller and their dependencies), Material 3 and the Material
+    icons — The Android Open Source Project, Google LLC.
+  - Kotlin standard library — JetBrains s.r.o. and Kotlin Programming Language
+    contributors.
+  - kotlinx.coroutines, kotlinx.serialization — JetBrains s.r.o. and
+    contributors.
+  - Dagger and Hilt — The Dagger Authors.
+  - Guava ListenableFuture (com.google.guava:listenablefuture) — The Guava
+    Authors.
+  - JSR 305 annotations (com.google.code.findbugs:jsr305), JetBrains
+    annotations (org.jetbrains:annotations), JSpecify (org.jspecify:jspecify),
+    javax.inject, Jakarta Dependency Injection (jakarta.inject:jakarta.inject-api,
+    Eclipse Foundation).
+  - SparseBitSet (com.zaxxer:SparseBitSet) — Brett Wooldridge.
+  - Apache POI (org.apache.poi:poi), the reader of .xls spreadsheets, with
+    Apache Commons Codec, Commons Collections, Commons IO, Commons Math and
+    Log4j API — The Apache Software Foundation.
+  - PdfBox-Android (com.tom-roush:pdfbox-android), Tom Roush's port of Apache
+    PDFBox — the reader of PDF text.
+  - Tesseract4Android, Tesseract and the tessdata_fast models: see Part 1.
+
+The NOTICE files of these libraries follow, as they ship them.
+
+--------------------------------------------------------------------------------
+NOTICE of Apache POI:
+
+  Apache POI
+  Copyright 2003-2025 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (https://www.apache.org/).
+
+  This product contains parts that were originally based on software from BEA.
+  Copyright (c) 2000-2003, BEA Systems, <http://www.bea.com/> (dead link),
+  which was acquired by Oracle Corporation in 2008.
+  <http://www.oracle.com/us/corporate/Acquisitions/bea/index.html>
+  <https://en.wikipedia.org/wiki/BEA_Systems>
+  Note: The ASF Secretary has on hand a Software Grant Agreement (SGA) from
+  BEA Systems, Inc. dated 9 Sep 2003 for XMLBeans signed by their EVP/CFO.
+
+  This product contains W3C XML Schema documents. Copyright 2001-2003 (c)
+  World Wide Web Consortium (Massachusetts Institute of Technology, European
+  Research Consortium for Informatics and Mathematics, Keio University)
+
+  This product contains the chunks_parse_cmds.tbl file from the vsdump program.
+  Copyright (C) 2006-2007 Valek Filippov (frob@df.ru)
+
+  This product contains parts of the eID Applet project
+  <http://eid-applet.googlecode.com> and <https://github.com/e-Contract/eid-applet>.
+  Copyright (c) 2009-2018
+  FedICT (federal ICT department of Belgium), e-Contract.be BVBA (https://www.e-contract.be),
+  Bart Hanssens from FedICT
+
+  ExceptionUtils is derived from `scala.util.control.NonFatal` in scala-library
+  which was released under the Apache 2.0 license.
+
+  Copyright (c) 2002-2023 EPFL
+  Copyright (c) 2011-2023 Lightbend, Inc.
+
+  Scala includes software developed at
+  LAMP/EPFL (https://lamp.epfl.ch/) and
+  Lightbend, Inc. (https://www.lightbend.com/).
+
+--------------------------------------------------------------------------------
+NOTICE of Apache Commons Codec:
+
+  Apache Commons Codec
+  Copyright 2002-2025 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (https://www.apache.org/).
+
+--------------------------------------------------------------------------------
+NOTICE of Apache Commons Collections:
+
+  Apache Commons Collections
+  Copyright 2001-2025 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (https://www.apache.org/).
+
+--------------------------------------------------------------------------------
+NOTICE of Apache Commons IO:
+
+  Apache Commons IO
+  Copyright 2002-2025 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (https://www.apache.org/).
+
+--------------------------------------------------------------------------------
+NOTICE of Apache Commons Math:
+
+  Apache Commons Math
+  Copyright 2001-2016 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (http://www.apache.org/).
+
+  This product includes software developed for Orekit by
+  CS Systèmes d'Information (http://www.c-s.fr/)
+  Copyright 2010-2012 CS Systèmes d'Information
+
+--------------------------------------------------------------------------------
+NOTICE of Apache Log4j API:
+
+  Apache Log4j API
+  Copyright 1999-2024 The Apache Software Foundation
+
+
+  This product includes software developed at
+  The Apache Software Foundation (http://www.apache.org/).
+
+--------------------------------------------------------------------------------
+NOTICE of PdfBox-Android (Apache PDFBox):
+
+  Apache PDFBox
+  Copyright 2014 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (http://www.apache.org/).
+
+  Based on source code originally developed in the PDFBox and
+  FontBox projects.
+
+  Copyright (c) 2002-2007, www.pdfbox.org
+
+  Based on source code originally developed in the PaDaF project.
+  Copyright (c) 2010 Atos Worldline SAS
+
+  Includes the Adobe Glyph List
+  Copyright 1997, 1998, 2002, 2007, 2010 Adobe Systems Incorporated.
+
+  Includes the Zapf Dingbats Glyph List
+  Copyright 2002, 2010 Adobe Systems Incorporated.
+
+  Includes the Script Property (Scripts-10.0.0.txt)
+  Copyright 2017 Unicode, Inc.
+
+--------------------------------------------------------------------------------
+NOTICE of Jakarta Dependency Injection:
+
+  # Notices for Eclipse Jakarta Dependency Injection
+
+  This content is produced and maintained by the Eclipse Jakarta Dependency Injection project.
+
+  * Project home: https://projects.eclipse.org/projects/cdi.batch
+
+  ## Trademarks
+
+  Jakarta Dependency Injection is a trademark of the Eclipse Foundation.
+
+  ## Copyright
+
+  All content is the property of the respective authors or their employers. For
+  more information regarding authorship of content, please consult the listed
+  source code repository logs.
+
+  ## Declared Project Licenses
+
+  This program and the accompanying materials are made available under the terms
+  of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  SPDX-License-Identifier: Apache-2.0
+
+  ## Source Code
+
+  The project maintains the following source code repositories:
+
+  https://github.com/eclipse-ee4j/injection-api
+  https://github.com/eclipse-ee4j/injection-spec
+  https://github.com/eclipse-ee4j/injection-tck
+
+  ## Third-party Content
+
+  This project leverages the following third party content.
+
+  None
+
+  ## Cryptography
+
+  None
+
+--------------------------------------------------------------------------------
+Apache POI — the subcomponents its LICENSE lists:
+
+  APACHE POI SUBCOMPONENTS:
+
+  Apache POI includes subcomponents with separate copyright notices and
+  license terms. Your use of these subcomponents is subject to the terms
+  and conditions of the following licenses:
+
+
+  Office Open XML schemas (poi-ooxml-full-*.jar)
+
+      The Office Open XML schema definitions used by Apache POI are
+      a part of the Office Open XML ECMA Specification (ECMA-376, [1]).
+      As defined in section 9.4 of the ECMA bylaws [2], this specification
+      is available to all interested parties without restriction:
+
+          9.4 All documents when approved shall be made available to
+              all interested parties without restriction.
+
+      Furthermore, both Microsoft and Adobe have granted patent licenses
+      to this work [3,4,5].
+
+      [1] https://www.ecma-international.org/publications/standards/Ecma-376.htm
+      [2] https://www.ecma-international.org/memento/Ecmabylaws.htm
+      [3] https://www.microsoft.com/openspecifications/en/us/programs/osp/default.aspx
+      [4] https://www.ecma-international.org/publications/files/ECMA-ST/Ecma%20PATENT/
+          Patent%20statements%20ok/ECMA-376%20Edition%202%20Microsoft%20Patent%20Declaration.pdf
+      [5] https://www.ecma-international.org/publications/files/ECMA-ST/Ecma%20PATENT/
+          Patent%20statements%20ok/ECMA-376%20Adobe%20Patent%20Declaration.pdf
+
+
+  org.apache.poi.util.ReplacingInputStream is based on code from
+  inbot-utils (https://github.com/Inbot/inbot-utils)
+
+      The MIT License (MIT)
+
+      Copyright (c) 2015 Inbot
+
+      Permission is hereby granted, free of charge, to any person obtaining a copy
+      of this software and associated documentation files (the "Software"), to deal
+      in the Software without restriction, including without limitation the rights
+      to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+      copies of the Software, and to permit persons to whom the Software is
+      furnished to do so, subject to the following conditions:
+
+      The above copyright notice and this permission notice shall be included in all
+      copies or substantial portions of the Software.
+
+      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+      SOFTWARE.
+
+  ExceptionUtils is derived from `scala.util.control.NonFatal` in scala-library
+  which was released under the Apache 2.0 license.
+  Copyright (c) 2002-2023 EPFL
+  Copyright (c) 2011-2023 Lightbend, Inc.
+
+  The POI Source Release bundles the Gradle Wrapper. (https://docs.gradle.org/current/userguide/gradle_wrapper.html)
+  This is released under the Apache License, v2.0.
+  Copyright © 2015-2021 the original authors.
+
+  The wrapper.gradle file was developed by the Apache Kafka project and is released under the Apache License, v2.0.
+
+--------------------------------------------------------------------------------
+Apache Commons Math — the derivative works its LICENSE lists:
+
+  APACHE COMMONS MATH DERIVATIVE WORKS:
+
+  The Apache commons-math library includes a number of subcomponents
+  whose implementation is derived from original sources written
+  in C or Fortran.  License terms of the original sources
+  are reproduced below.
+
+  ===============================================================================
+  For the lmder, lmpar and qrsolv Fortran routine from minpack and translated in
+  the LevenbergMarquardtOptimizer class in package
+  org.apache.commons.math3.optimization.general
+  Original source copyright and license statement:
+
+  Minpack Copyright Notice (1999) University of Chicago.  All rights reserved
+
+  Redistribution and use in source and binary forms, with or
+  without modification, are permitted provided that the
+  following conditions are met:
+
+  1. Redistributions of source code must retain the above
+  copyright notice, this list of conditions and the following
+  disclaimer.
+
+  2. Redistributions in binary form must reproduce the above
+  copyright notice, this list of conditions and the following
+  disclaimer in the documentation and/or other materials
+  provided with the distribution.
+
+  3. The end-user documentation included with the
+  redistribution, if any, must include the following
+  acknowledgment:
+
+     "This product includes software developed by the
+     University of Chicago, as Operator of Argonne National
+     Laboratory.
+
+  Alternately, this acknowledgment may appear in the software
+  itself, if and wherever such third-party acknowledgments
+  normally appear.
+
+  4. WARRANTY DISCLAIMER. THE SOFTWARE IS SUPPLIED "AS IS"
+  WITHOUT WARRANTY OF ANY KIND. THE COPYRIGHT HOLDER, THE
+  UNITED STATES, THE UNITED STATES DEPARTMENT OF ENERGY, AND
+  THEIR EMPLOYEES: (1) DISCLAIM ANY WARRANTIES, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO ANY IMPLIED WARRANTIES
+  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE
+  OR NON-INFRINGEMENT, (2) DO NOT ASSUME ANY LEGAL LIABILITY
+  OR RESPONSIBILITY FOR THE ACCURACY, COMPLETENESS, OR
+  USEFULNESS OF THE SOFTWARE, (3) DO NOT REPRESENT THAT USE OF
+  THE SOFTWARE WOULD NOT INFRINGE PRIVATELY OWNED RIGHTS, (4)
+  DO NOT WARRANT THAT THE SOFTWARE WILL FUNCTION
+  UNINTERRUPTED, THAT IT IS ERROR-FREE OR THAT ANY ERRORS WILL
+  BE CORRECTED.
+
+  5. LIMITATION OF LIABILITY. IN NO EVENT WILL THE COPYRIGHT
+  HOLDER, THE UNITED STATES, THE UNITED STATES DEPARTMENT OF
+  ENERGY, OR THEIR EMPLOYEES: BE LIABLE FOR ANY INDIRECT,
+  INCIDENTAL, CONSEQUENTIAL, SPECIAL OR PUNITIVE DAMAGES OF
+  ANY KIND OR NATURE, INCLUDING BUT NOT LIMITED TO LOSS OF
+  PROFITS OR LOSS OF DATA, FOR ANY REASON WHATSOEVER, WHETHER
+  SUCH LIABILITY IS ASSERTED ON THE BASIS OF CONTRACT, TORT
+  (INCLUDING NEGLIGENCE OR STRICT LIABILITY), OR OTHERWISE,
+  EVEN IF ANY OF SAID PARTIES HAS BEEN WARNED OF THE
+  POSSIBILITY OF SUCH LOSS OR DAMAGES.
+  ===============================================================================
+
+  Copyright and license statement for the odex Fortran routine developed by
+  E. Hairer and G. Wanner and translated in GraggBulirschStoerIntegrator class
+  in package org.apache.commons.math3.ode.nonstiff:
+
+
+  Copyright (c) 2004, Ernst Hairer
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
+
+  - Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+
+  - Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ===============================================================================
+
+  Copyright and license statement for the original Mersenne twister C
+  routines translated in MersenneTwister class in package
+  org.apache.commons.math3.random:
+
+     Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
+     All rights reserved.
+
+     Redistribution and use in source and binary forms, with or without
+     modification, are permitted provided that the following conditions
+     are met:
+
+       1. Redistributions of source code must retain the above copyright
+          notice, this list of conditions and the following disclaimer.
+
+       2. Redistributions in binary form must reproduce the above copyright
+          notice, this list of conditions and the following disclaimer in the
+          documentation and/or other materials provided with the distribution.
+
+       3. The names of its contributors may not be used to endorse or promote
+          products derived from this software without specific prior written
+          permission.
+
+     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+     A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+     CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+     PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+     PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+     LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  ===============================================================================
+
+  The initial code for shuffling an array (originally in class
+  "org.apache.commons.math3.random.RandomDataGenerator", now replaced by
+  a method in class "org.apache.commons.math3.util.MathArrays") was
+  inspired from the algorithm description provided in
+  "Algorithms", by Ian Craw and John Pulham (University of Aberdeen 1999).
+  The textbook (containing a proof that the shuffle is uniformly random) is
+  available here:
+    http://citeseerx.ist.psu.edu/viewdoc/download;?doi=10.1.1.173.1898&rep=rep1&type=pdf
+
+  ===============================================================================
+  License statement for the direction numbers in the resource files for Sobol sequences.
+
+  -----------------------------------------------------------------------------
+  Licence pertaining to sobol.cc and the accompanying sets of direction numbers
+
+  -----------------------------------------------------------------------------
+  Copyright (c) 2008, Frances Y. Kuo and Stephen Joe
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+      * Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+
+      * Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+      * Neither the names of the copyright holders nor the names of the
+        University of New South Wales and the University of Waikato
+        and its contributors may be used to endorse or promote products derived
+        from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ===============================================================================
+
+  The initial commit of package "org.apache.commons.math3.ml.neuralnet" is
+  an adapted version of code developed in the context of the Data Processing
+  and Analysis Consortium (DPAC) of the "Gaia" project of the European Space
+  Agency (ESA).
+  ===============================================================================
+
+  The initial commit of the class "org.apache.commons.math3.special.BesselJ" is
+  an adapted version of code translated from the netlib Fortran program, rjbesl
+  http://www.netlib.org/specfun/rjbesl by R.J. Cody at Argonne National
+  Laboratory (USA).  There is no license or copyright statement included with the
+  original Fortran sources.
+  ===============================================================================
+
+
+  The BracketFinder (package org.apache.commons.math3.optimization.univariate)
+  and PowellOptimizer (package org.apache.commons.math3.optimization.general)
+  classes are based on the Python code in module "optimize.py" (version 0.5)
+  developed by Travis E. Oliphant for the SciPy library (http://www.scipy.org/)
+  Copyright © 2003-2009 SciPy Developers.
+
+  SciPy license
+  Copyright © 2001, 2002 Enthought, Inc.
+  All rights reserved.
+
+  Copyright © 2003-2013 SciPy Developers.
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+      * Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+
+      * Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+      * Neither the name of Enthought nor the names of the SciPy Developers may
+        be used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY
+  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY
+  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ===============================================================================
+
+--------------------------------------------------------------------------------
+PdfBox-Android — the external components its LICENSE lists (the Adobe
+glyph lists, font metrics and CMaps among the APK's assets):
+
+  Apache PDFBox includes a number of components with separate copyright notices
+  and license terms. Your use of these components is subject to the terms and
+  conditions of the following licenses.
+
+  Contributions made to the original PDFBox and FontBox projects:
+
+     Copyright (c) 2002-2007, www.pdfbox.org
+     All rights reserved.
+
+     Redistribution and use in source and binary forms, with or without
+     modification, are permitted provided that the following conditions are met:
+
+     1. Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+     2. Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+     3. Neither the name of pdfbox; nor the names of its contributors may be
+        used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+     AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+     IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+     ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+     FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+     DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+     SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+     OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+     SUCH DAMAGE.
+
+  Adobe Font Metrics (AFM) for PDF Core 14 Fonts
+
+     This file and the 14 PostScript(R) AFM files it accompanies may be used,
+     copied, and distributed for any purpose and without charge, with or without
+     modification, provided that all copyright notices are retained; that the
+     AFM files are not distributed without this file; that all modifications
+     to this file or any of the AFM files are prominently noted in the modified
+     file(s); and that this paragraph is not modified. Adobe Systems has no
+     responsibility or obligation to support the use of the AFM files.
+
+  CMaps for PDF Fonts (http://opensource.adobe.com/wiki/display/cmap/Downloads)
+
+     Copyright 1990-2009 Adobe Systems Incorporated.
+     All rights reserved.
+
+     Redistribution and use in source and binary forms, with or without
+     modification, are permitted provided that the following conditions
+     are met:
+
+     Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+
+     Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+     Neither the name of Adobe Systems Incorporated nor the names of its
+     contributors may be used to endorse or promote products derived from this
+     software without specific prior written permission.
+
+     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+     AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+     IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+     ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+     LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+     CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+     SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+     ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+     THE POSSIBILITY OF SUCH DAMAGE.
+
+  PaDaF PDF/A preflight (http://sourceforge.net/projects/padaf)
+
+    Copyright 2010 Atos Worldline SAS
+
+    Licensed by Atos Worldline SAS under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    Atos Worldline SAS licenses this file to You under the Apache License, Version 2.0
+    (the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+--------------------------------------------------------------------------------
+Part 3 — Libraries and data under other licences
+
+--------------------------------------------------------------------------------
+commonmark-java 0.30.0 (org.commonmark:commonmark, with its GFM tables and
+strikethrough extensions) — the Markdown viewer. BSD 2-Clause:
+
+  Copyright (c) 2015, Atlassian Pty Ltd
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  * Redistributions of source code must retain the above copyright notice, this
+    list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+RE2/J 1.8 (com.google.re2j:re2j) — the patterns of the content search and of
+the bulk rename, matched in linear time. BSD 3-Clause:
+
+  This is a work derived from Russ Cox's RE2 in Go, whose license
+  http://golang.org/LICENSE is as follows:
+
+  Copyright (c) 2009 The Go Authors. All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
+
+     * Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+     * Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+
+     * Neither the name of Google Inc. nor the names of its contributors
+       may be used to endorse or promote products derived from this
+       software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+Bouncy Castle 1.86 (org.bouncycastle: bcprov, bcpkix, bcutil) — Argon2id and
+PBKDF2 of the vault, and its AES-GCM on large files. MIT licence:
+
+  MIT License (https://opensource.org/licenses/MIT)
+
+  Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org).
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+  associated documentation files (the "Software"), to deal in the Software without restriction,
+  including without limitation the rights to use, copy, modify, merge, publish, distribute,
+  sub license, and/or sell copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions: The above copyright notice and this
+  permission notice shall be included in all copies or substantial portions of the Software.
+
+  **THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+  OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.**
+
+--------------------------------------------------------------------------------
+Liberation Sans (LiberationSans-Regular.ttf, shipped by PdfBox-Android as
+the font of last resort). SIL Open Font License 1.1:
+
+  Digitized data copyright (c) 2010 Google Corporation
+      with Reserved Font Arimo, Tinos and Cousine.
+  Copyright (c) 2012 Red Hat, Inc.
+      with Reserved Font Name Liberation.
+
+  This Font Software is licensed under the SIL Open Font License,
+  Version 1.1.
+
+  This license is copied below, and is also available with a FAQ at:
+  http://scripts.sil.org/OFL
+
+  SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+
+  PREAMBLE The goals of the Open Font License (OFL) are to stimulate
+  worldwide development of collaborative font projects, to support the font
+  creation efforts of academic and linguistic communities, and to provide
+  a free and open framework in which fonts may be shared and improved in
+  partnership with others.
+
+  The OFL allows the licensed fonts to be used, studied, modified and
+  redistributed freely as long as they are not sold by themselves.
+  The fonts, including any derivative works, can be bundled, embedded,
+  redistributed and/or sold with any software provided that any reserved
+  names are not used by derivative works.  The fonts and derivatives,
+  however, cannot be released under any other type of license.  The
+  requirement for fonts to remain under this license does not apply to
+  any document created using the fonts or their derivatives.
+
+
+
+  DEFINITIONS
+  "Font Software" refers to the set of files released by the Copyright
+  Holder(s) under this license and clearly marked as such.
+  This may include source files, build scripts and documentation.
+
+  "Reserved Font Name" refers to any names specified as such after the
+  copyright statement(s).
+
+  "Original Version" refers to the collection of Font Software components
+  as distributed by the Copyright Holder(s).
+
+  "Modified Version" refers to any derivative made by adding to, deleting,
+  or substituting ? in part or in whole ?
+  any of the components of the Original Version, by changing formats or
+  by porting the Font Software to a new environment.
+
+  "Author" refers to any designer, engineer, programmer, technical writer
+  or other person who contributed to the Font Software.
+
+
+  PERMISSION & CONDITIONS
+
+  Permission is hereby granted, free of charge, to any person obtaining a
+  copy of the Font Software, to use, study, copy, merge, embed, modify,
+  redistribute, and sell modified and unmodified copies of the Font
+  Software, subject to the following conditions:
+
+  1) Neither the Font Software nor any of its individual components,in
+     Original or Modified Versions, may be sold by itself.
+
+  2) Original or Modified Versions of the Font Software may be bundled,
+     redistributed and/or sold with any software, provided that each copy
+     contains the above copyright notice and this license. These can be
+     included either as stand-alone text files, human-readable headers or
+     in the appropriate machine-readable metadata fields within text or
+     binary files as long as those fields can be easily viewed by the user.
+
+  3) No Modified Version of the Font Software may use the Reserved Font
+     Name(s) unless explicit written permission is granted by the
+     corresponding Copyright Holder. This restriction only applies to the
+     primary font name as presented to the users.
+
+  4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+     Software shall not be used to promote, endorse or advertise any
+     Modified Version, except to acknowledge the contribution(s) of the
+     Copyright Holder(s) and the Author(s) or with their explicit written
+     permission.
+
+  5) The Font Software, modified or unmodified, in part or in whole, must
+     be distributed entirely under this license, and must not be distributed
+     under any other license. The requirement for fonts to remain under
+     this license does not apply to any document created using the Font
+     Software.
+
+
+
+  TERMINATION
+  This license becomes null and void if any of the above conditions are not met.
+
+
+
+  DISCLAIMER
+  THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+  OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT.  IN NO EVENT SHALL THE
+  COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+  DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM OTHER
+  DEALINGS IN THE FONT SOFTWARE.
+
+--------------------------------------------------------------------------------
+Unicode Character Database files shipped by PdfBox-Android (Scripts.txt,
+BidiMirroring.txt). Unicode License V3:
+
+  UNICODE LICENSE V3
+
+  COPYRIGHT AND PERMISSION NOTICE
+
+  Copyright © 1991-2026 Unicode, Inc.
+
+  NOTICE TO USER: Carefully read the following legal agreement. BY
+  DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+  SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+  TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+  DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+  Permission is hereby granted, free of charge, to any person obtaining a
+  copy of data files and any associated documentation (the "Data Files") or
+  software and any associated documentation (the "Software") to deal in the
+  Data Files or Software without restriction, including without limitation
+  the rights to use, copy, modify, merge, publish, distribute, and/or sell
+  copies of the Data Files or Software, and to permit persons to whom the
+  Data Files or Software are furnished to do so, provided that either (a)
+  this copyright and permission notice appear with all copies of the Data
+  Files or Software, or (b) this copyright and permission notice appear in
+  associated Documentation.
+
+  THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+  KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+  THIRD PARTY RIGHTS.
+
+  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+  BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+  OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+  ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+  FILES OR SOFTWARE.
+
+  Except as contained in this notice, the name of a copyright holder shall
+  not be used in advertising or otherwise to promote the sale, use or other
+  dealings in these Data Files or Software without prior written
+  authorization of the copyright holder.

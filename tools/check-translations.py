@@ -205,11 +205,41 @@ def tag(directory):
     return directory[len("values-"):]
 
 
+def without_comments(source):
+    """Kotlin source without its comments. A `/*` or a `//` inside a string is text — a packaging glob
+    (`"cmap/**"`), a URL —: a regex blind to strings took that glob for a comment's start, and the KDoc
+    of a task further down for its end, and cut out the derivation between them (2026-10-24)."""
+    out = []
+    i, n = 0, len(source)
+    while i < n:
+        if source.startswith('"""', i):
+            end = source.find('"""', i + 3)
+            end = n if end < 0 else end + 3
+        elif source[i] in "\"'":
+            quote, end = source[i], i + 1
+            while end < n and source[end] not in (quote, "\n"):
+                end += 2 if source[end] == "\\" else 1
+            end += 1
+        elif source.startswith("//", i):
+            line_end = source.find("\n", i)
+            i = n if line_end < 0 else line_end
+            continue
+        elif source.startswith("/*", i):
+            close = source.find("*/", i + 2)
+            i = n if close < 0 else close + 2
+            continue
+        else:
+            end = i + 1
+        out.append(source[i:end])
+        i = end
+    return "".join(out)
+
+
 def check_derivation():
     """5. The one list: the folders, read by app/build.gradle.kts, and the locale config generated."""
     with open(GRADLE, encoding="utf-8") as f:
         # Comments out: a derivation left in a comment while a list does the work must not pass.
-        content = re.sub(r"/\*.*?\*/|//[^\n]*", "", f.read(), flags=re.S)
+        content = without_comments(f.read())
     if not re.search(r'file\("src/main/res"\)\.listFiles\(\)', content) \
             or "localeFilters += shippedLanguages" not in content:
         fail("build.gradle.kts", "localeFilters is no longer derived from the values-XX folders "
@@ -229,6 +259,30 @@ def check_derivation():
     if not re.search(r"^unqualifiedResLocale=en\s*$", properties, re.M):
         fail("resources.properties", "unqualifiedResLocale=en missing from res/resources.properties: "
                                      "AGP cannot write the locale config, and English is the source")
+
+
+# The legal texts About shows (ui/about/LegalScreen.kt), one per language in res/raw-xx/, English in res/raw/.
+LEGAL_TEXTS = ("privacy.md", "terms.md")
+RAW_DIR = re.compile(r"^raw(?:-(.+))?$")
+
+
+def check_legal_texts(shipped):
+    """The privacy policy and the terms in every shipped language. Android falls back to res/raw/ when a
+    language has none: a German reader would get the English policy, the one text owed in their language,
+    without a word (the trap Pass Tech's French fallback set in 2026-09). And none for a language the app
+    does not ship: localeFilters would strip it, the picker would offer it."""
+    found = {}
+    for directory in sorted(os.listdir(RES)):
+        match = RAW_DIR.match(directory)
+        if match:
+            found[match.group(1) or "en"] = set(os.listdir(os.path.join(RES, directory)))
+    for lang in sorted(shipped | {"en"}):
+        folder = "raw" if lang == "en" else "raw-" + lang
+        for name in LEGAL_TEXTS:
+            if name not in found.get(lang, set()):
+                fail(lang, "%s/%s missing: the app would show this language's readers another one" % (folder, name))
+    for lang in sorted(set(found) - shipped - {"en"}):
+        fail(lang, "raw-%s/ holds files for a language the app does not ship (no values-%s/strings.xml)" % (lang, lang))
 
 
 def check_texts_elsewhere():
@@ -494,6 +548,7 @@ def main():
     check_repository_links("values", every_english)
     check_quotes("en", every_english, ref_plurals)
     shipped = {tag(d) for d in directories}
+    check_legal_texts(shipped)
     for lang in sorted(set(SAME_AS_ENGLISH) - shipped):
         fail(lang, "SAME_AS_ENGLISH names a language that has no values-%s/strings.xml" % lang)
     for lang, exempted in sorted(SAME_AS_ENGLISH.items()):

@@ -18,17 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
-import com.readfilestech.read_files_tech.ui.navigation.Feature
 
 /**
- * A destination whose screen comes with a later phase of the port (scanner, OCR, vault, the tools): it
- * says so. Reached from the quick-settings tiles, which must keep working from the first build (docs
- * D-012), and from the home.
+ * A route that names no screen of this build — one the system restored from an older version across an update,
+ * or a feature or viewer since renamed: said, with the way back, rather than a blank screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PendingScreen(feature: Feature?, onBack: () -> Unit) {
-    val title = feature?.title ?: R.string.app_name
+fun MissingScreen(onBack: () -> Unit) {
+    val title = R.string.app_name
     Scaffold(
         topBar = {
             TopAppBar(
@@ -42,8 +40,8 @@ fun PendingScreen(feature: Feature?, onBack: () -> Unit) {
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.pending_title), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.pending_body), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.missing_screen_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.missing_screen_body), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

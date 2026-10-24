@@ -36,6 +36,8 @@ import androidx.navigation.navArgument
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.data.storage.StorageModel
+import com.readfilestech.read_files_tech.ui.about.LegalDocument
+import com.readfilestech.read_files_tech.ui.about.LegalScreen
 import com.readfilestech.read_files_tech.ui.apps.ApkInstallDialog
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.resolve
@@ -202,6 +204,10 @@ private fun Destinations(navController: NavHostController) {
             )
         }
         composable(Routes.TRASH) { entry -> TrashScreen(onBack = { navController.leave(entry) }) }
+        composable(Routes.LEGAL, arguments = listOf(navArgument(Routes.ARG_DOCUMENT) { type = NavType.StringType })) { entry ->
+            val name = entry.arguments?.getString(Routes.ARG_DOCUMENT)
+            LegalScreen(LegalDocument.entries.find { it.name == name }, onBack = { navController.leave(entry) })
+        }
         composable(
             Routes.VAULT_IMPORT,
             arguments = listOf(navArgument(Routes.ARG_PATH) { type = NavType.StringType }),

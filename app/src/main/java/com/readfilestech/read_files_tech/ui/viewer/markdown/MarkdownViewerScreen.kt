@@ -171,8 +171,9 @@ private fun SourceOnly(content: MarkdownContent, rendering: MarkdownRendering, f
     }
 }
 
+/** The rendered [blocks] of a Markdown text, laid out lazily — also the legal texts' layout (LegalScreen). */
 @Composable
-private fun RenderedBlocks(blocks: List<MarkdownBlock>, decode: suspend (MarkdownImage, Int) -> Bitmap?, onLink: (String) -> Unit) {
+internal fun RenderedBlocks(blocks: List<MarkdownBlock>, decode: suspend (MarkdownImage, Int) -> Bitmap?, onLink: (String) -> Unit) {
     // One horizontal scroll per table, shared by its rows: they scroll as one.
     val tableScrolls = remember(blocks) { HashMap<Int, ScrollState>() }
     val quoteColor = MaterialTheme.colorScheme.outlineVariant

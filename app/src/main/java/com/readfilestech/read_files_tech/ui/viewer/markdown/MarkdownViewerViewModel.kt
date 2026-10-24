@@ -1,10 +1,8 @@
 package com.readfilestech.read_files_tech.ui.viewer.markdown
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.util.LruCache
-import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +19,8 @@ import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownImages
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownLinks
 import com.readfilestech.read_files_tech.data.viewer.text.CodeLanguage
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
+import com.readfilestech.read_files_tech.ui.common.LaunchOutcome
+import com.readfilestech.read_files_tech.ui.common.Links
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.viewer.ViewerContent
@@ -97,16 +97,7 @@ class MarkdownViewerViewModel @Inject constructor(
         }
     }
 
-    // TooGenericExceptionCaught: as FileLauncher.start — no app (ActivityNotFoundException), or a
-    // SecurityException from the one that would answer, is no reason to end this app. No suspending call.
-    @Suppress("TooGenericExceptionCaught")
-    private fun start(context: Context, target: String): Boolean = try {
-        // BROWSABLE: only an activity that declares it may be reached from a link, as from a browser.
-        context.startActivity(Intent(Intent.ACTION_VIEW, target.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
-        true
-    } catch (expected: RuntimeException) {
-        false
-    }
+    private fun start(context: Context, target: String): Boolean = Links.open(context, target) == LaunchOutcome.STARTED
 
     private companion object {
         /** The tallest image decoded, in widths: a long screenshot is subsampled more, never held whole. */

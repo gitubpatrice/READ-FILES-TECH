@@ -51,6 +51,21 @@ class StartupCleanupTest {
         assertThat(vault.stored(StartupCleanup.FLUTTER_CACHE_PURGED)).isEqualTo(true)
     }
 
+    /** Nothing reads it since the 2.15.3, which checks nothing online: erased, and nothing else with it. */
+    @Test
+    fun `the 2_15_2's last update check is erased, the other settings kept`() {
+        vault.prefs.commit {
+            // As the 2.15.2 wrote it (tools/phase2/flutter_seed: `update_last_check_ms_` + its repository, lower case).
+            putLong("update_last_check_ms_read-files-tech", 1_791_720_000_000)
+            putString("theme_mode", "dark")
+        }
+
+        cleanup().runOnce()
+
+        assertThat(vault.prefs.contains("update_last_check_ms_read-files-tech")).isFalse()
+        assertThat(vault.prefs.contains("theme_mode")).isTrue()
+    }
+
     @Test
     fun `later starts keep the port's own cache, and still purge the decrypted copies and restore staging`() {
         cleanup().runOnce()

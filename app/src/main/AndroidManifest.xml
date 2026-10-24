@@ -68,6 +68,15 @@
         tools:targetApi="36">
 
         <!--
+            The HTML viewer's WebView is the system's: its maker — Google, on most phones — collects its usage
+            metrics when the user shares diagnostics with them. This app opts out (docs D-037, checked by
+            tools/check-manifest-shape.py).
+        -->
+        <meta-data
+            android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+
+        <!--
             The FULL name com.readfilestech.read_files_tech.MainActivity is the one of the 2.15.x: the
             launcher remembers it, and a renamed class would drop the user's pinned icon (docs D-012).
             Checked by MainActivityNameTest (JVM) and by the instrumented InstalledPackageTest.
@@ -139,6 +148,22 @@
             (docs D-012). NOT exported: an app reads only the one URI an intent granted it, for the time
             of that intent. What may be served is decided by PathGuard first, then by file_paths.xml.
         -->
+        <!--
+            androidx.startup runs, at the app's start, the initializers its libraries declare. EmojiCompat's
+            is removed (docs D-037): it asks a downloadable-fonts provider for the emoji font — Google Play
+            services', on most phones, by IPC; Android 10 and older see that provider without any <queries>.
+            The platform's own emoji are drawn instead. The other initializers (lifecycle, profiles) stay.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+                tools:node="remove" />
+        </provider>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

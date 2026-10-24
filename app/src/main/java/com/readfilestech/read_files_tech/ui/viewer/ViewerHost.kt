@@ -1,7 +1,7 @@
 package com.readfilestech.read_files_tech.ui.viewer
 
 import androidx.compose.runtime.Composable
-import com.readfilestech.read_files_tech.ui.PendingScreen
+import com.readfilestech.read_files_tech.ui.MissingScreen
 import com.readfilestech.read_files_tech.ui.viewer.csv.CsvViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.document.DocumentViewerScreen
 import com.readfilestech.read_files_tech.ui.viewer.html.HtmlViewerScreen
@@ -33,6 +33,6 @@ fun ViewerHost(kind: ViewerKind?, onBack: () -> Unit, onNavigate: (String) -> Un
         ViewerKind.READER -> ReaderViewerScreen(onBack)
         ViewerKind.PDF -> PdfViewerScreen(onBack)
         // A route naming no viewer (an old one restored after an update): said, not a crash.
-        null -> PendingScreen(null, onBack)
+        null -> MissingScreen(onBack)
     }
 }

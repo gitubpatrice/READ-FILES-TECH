@@ -304,8 +304,35 @@ gradle.taskGraph.whenReady {
     }
 }
 
+/**
+ * The notices of the third-party code and the text of the Apache License, which About > Licences shows: the
+ * repository's own NOTICE and LICENSE, copied into the APK's assets at each build — one text, kept in one place.
+ * Leptonica's and the IJG's licences, among others, ask that a binary carry them in its documentation.
+ */
+abstract class LegalAssets : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val texts: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val legal = outputDir.get().asFile.resolve("legal")
+        legal.deleteRecursively()
+        legal.mkdirs()
+        texts.forEach { it.copyTo(legal.resolve(it.name)) }
+    }
+}
+
+val legalAssets = tasks.register<LegalAssets>("legalAssets") {
+    texts.from(rootProject.file("NOTICE"), rootProject.file("LICENSE"))
+}
+
 androidComponents {
     onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(legalAssets, LegalAssets::outputDir)
         variant.outputs.forEach { output ->
             val abi = output.filters
                 .find { it.filterType == FilterConfiguration.FilterType.ABI }
