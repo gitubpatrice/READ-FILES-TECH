@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.files.MediaIndex
 import com.readfilestech.read_files_tech.data.search.FolderWalk
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.common.UiText
@@ -71,6 +72,7 @@ class VaultImportFolderViewModel @Inject constructor(
     private val vault: VaultService,
     private val files: VaultFiles,
     private val messages: UserMessages,
+    private val mediaIndex: MediaIndex,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(FolderImportState(folder = handle.get<String>(Routes.ARG_PATH).orEmpty()))
@@ -156,7 +158,7 @@ class VaultImportFolderViewModel @Inject constructor(
                     error == null -> {
                         tally.done++
                         if (deleteOriginals) {
-                            if (withContext(io) { deleteIfUnchanged(source, read) }) tally.deleted++ else tally.notDeleted++
+                            if (withContext(io) { deleteIfUnchanged(source, read) }) tally.deleted += source.path else tally.notDeleted++
                         }
                     }
                     error is NameTakenException -> tally.kept++
@@ -168,6 +170,8 @@ class VaultImportFolderViewModel @Inject constructor(
                 }
                 mutableState.update { it.copy(progress = (index + 1f) / chosen.size) }
             }
+            // Up to Android 10 the media index kept a deleted original's name, path and size (MediaIndex).
+            withContext(io) { mediaIndex.forget(tally.deleted) }
             report(tally)
             mutableState.update { it.copy(progress = null, done = true) }
         }
@@ -179,7 +183,7 @@ class VaultImportFolderViewModel @Inject constructor(
             kept = tally.kept,
             failed = tally.failed,
             stoppedByLock = false,
-            deleted = tally.deleted,
+            deleted = tally.deleted.size,
             keptLabel = R.plurals.vault_namesakes_kept,
             notDeleted = tally.notDeleted,
         )
@@ -197,7 +201,9 @@ class VaultImportFolderViewModel @Inject constructor(
         var done = 0
         var kept = 0
         var failed = 0
-        var deleted = 0
+
+        /** The originals deleted, by path: the media index is told of them. */
+        val deleted = mutableListOf<String>()
         var notDeleted = 0
         var stoppedByLock = false
     }

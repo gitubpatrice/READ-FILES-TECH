@@ -28,6 +28,9 @@ abstract class VaultModule {
     abstract fun memory(impl: AndroidDeviceMemory): DeviceMemory
 
     @Binds
+    abstract fun wakeAlarm(impl: AndroidWakeAlarm): WakeAlarm
+
+    @Binds
     abstract fun argon2(impl: DeviceArgon2Policy): Argon2Policy
 
     companion object {

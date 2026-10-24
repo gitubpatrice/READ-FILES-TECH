@@ -41,6 +41,9 @@ class VaultImportFolderViewModelTest {
     private val messages = UserMessages()
     private val shown = mutableListOf<UserMessage>()
     private val io = HeldDispatcher(held = false)
+
+    /** What the media index was told is gone. */
+    private val forgotten = mutableListOf<String>()
     private lateinit var listening: Job
 
     @BeforeEach
@@ -62,7 +65,14 @@ class VaultImportFolderViewModelTest {
     }
 
     private fun viewModel() =
-        VaultImportFolderViewModel(SavedStateHandle(mapOf(Routes.ARG_PATH to folder.path)), vault.service, vault.files, messages, io)
+        VaultImportFolderViewModel(
+            SavedStateHandle(mapOf(Routes.ARG_PATH to folder.path)),
+            vault.service,
+            vault.files,
+            messages,
+            { forgotten += it },
+            io,
+        )
 
     private fun original(name: String, text: String = name) = File(folder, name).apply { writeText(text) }
 
@@ -92,6 +102,8 @@ class VaultImportFolderViewModelTest {
         assertThat(folder.list()).isEmpty()
         assertThat(inVault()).containsExactly("a.txt", "a.txt", "b.txt", "b.txt")
         assertThat(viewModel.state.value.done).isTrue()
+        // Measured on the S9 (API 29): without it, the media index kept the deleted photo's name and size.
+        assertThat(forgotten).containsExactly(File(folder, "a.txt").path, File(folder, "b.txt").path)
     }
 
     @Test
@@ -150,6 +162,7 @@ class VaultImportFolderViewModelTest {
 
         assertThat(a.readText()).isEqualTo("as read, then longer")
         assertThat(inVault()).containsExactly("a.txt", "as read")
+        assertThat(forgotten).isEmpty()
         // Written out, not computed by VaultMessages: the part that says it must be there.
         val said = UiText.Joined(
             UiText.Plural(R.plurals.vault_imported, 1),

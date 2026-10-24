@@ -26,9 +26,29 @@ class VaultAutoLockTest {
         override fun elapsedRealtimeMs(): Long = BOOT + scheduler.currentTime + slept
     }
 
+    /** The system's alarm: [at] is when it would wake the phone, [fire] the phone woken. */
+    private class FakeWake : WakeAlarm {
+        var at: Long? = null
+        private var onWake: (() -> Unit)? = null
+
+        override fun set(atElapsedMs: Long, onWake: () -> Unit) {
+            at = atElapsedMs
+            this.onWake = onWake
+        }
+
+        override fun cancel() {
+            at = null
+            onWake = null
+        }
+
+        fun fire() = checkNotNull(onWake) { "no alarm set" }.invoke()
+    }
+
+    private val wake = FakeWake()
+
     private suspend fun TestScope.openVault(): Pair<TestVault, VaultAutoLock> {
         val vault = TestVault(root)
-        val autoLock = VaultAutoLock(vault.service, PhoneClock(testScheduler), backgroundScope)
+        val autoLock = VaultAutoLock(vault.service, PhoneClock(testScheduler), wake, backgroundScope)
         runCurrent()
         check(vault.service.setup(PASSWORD))
         runCurrent()
@@ -70,7 +90,7 @@ class VaultAutoLockTest {
     fun `a phone asleep runs no timer - the return locks the vault before anything shows`() = runTest {
         val clock = PhoneClock(testScheduler)
         val vault = TestVault(root)
-        val autoLock = VaultAutoLock(vault.service, clock, backgroundScope)
+        val autoLock = VaultAutoLock(vault.service, clock, wake, backgroundScope)
         runCurrent()
         check(vault.service.setup(PASSWORD))
         runCurrent()
@@ -79,6 +99,40 @@ class VaultAutoLockTest {
         assertThat(vault.session.unlocked.value).isTrue()
         autoLock.appStarted()
         assertThat(vault.session.unlocked.value).isFalse()
+    }
+
+    /** Security audit of phase 6: asleep, the key and the plaintext copies stayed until the user came back. */
+    @Test
+    fun `asleep, the phone woken at the deadline locks the vault and purges its copies`() = runTest {
+        val clock = PhoneClock(testScheduler)
+        val vault = TestVault(root)
+        val autoLock = VaultAutoLock(vault.service, clock, wake, backgroundScope)
+        runCurrent()
+        check(vault.service.setup(PASSWORD))
+        runCurrent()
+        assertThat(wake.at).isNull() // on screen the phone is awake: no alarm
+        val shared = File(vault.dirs.cache, "vault_shared/1/shared.txt").apply {
+            parentFile.mkdirs()
+            writeText("x")
+        }
+        autoLock.appStopped()
+        assertThat(wake.at).isEqualTo(clock.elapsedRealtimeMs() + AutoLockRules.BACKGROUND_MS)
+
+        clock.slept += AutoLockRules.BACKGROUND_MS // asleep: no virtual time passes, no timer fires
+        wake.fire()
+        runCurrent()
+        assertThat(vault.session.unlocked.value).isFalse()
+        assertThat(shared.exists()).isFalse()
+        assertThat(wake.at).isNull()
+    }
+
+    @Test
+    fun `back before the deadline, the wake-up is cancelled`() = runTest {
+        val (_, autoLock) = openVault()
+        autoLock.appStopped()
+        assertThat(wake.at).isNotNull()
+        autoLock.appStarted()
+        assertThat(wake.at).isNull()
     }
 
     @Test

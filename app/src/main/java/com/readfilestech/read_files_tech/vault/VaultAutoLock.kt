@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,7 +33,9 @@ internal object AutoLockRules {
  *
  * A timer alone would not do: it counts the time the phone is awake, and a phone asleep for an hour came back
  * with its vault still open until the timer caught up. The deadline is checked again the moment the app
- * comes back ([appStarted]) — before the user sees the vault — and the timer only wakes it up meanwhile.
+ * comes back ([appStarted]) — before the user sees the vault. And while the app is away a [WakeAlarm] wakes
+ * the phone at the deadline: asleep, the key and the plaintext copies stayed until the user came back, for
+ * whoever reads the phone without its screen (security audit of phase 6).
  *
  * The 2.15.x also locked when its engine detached; here leaving the vault's screen locks (VaultViewModel),
  * and a process that dies takes the key with it.
@@ -41,6 +44,7 @@ internal object AutoLockRules {
 class VaultAutoLock @Inject constructor(
     private val vault: VaultService,
     private val clock: VaultClock,
+    private val wake: WakeAlarm,
     @param:ApplicationScope private val scope: CoroutineScope,
 ) {
     private val monitor = Any()
@@ -83,15 +87,32 @@ class VaultAutoLock @Inject constructor(
     private fun reschedule() {
         timer?.cancel()
         timer = null
-        if (!vault.unlocked.value) return
-        val wait = AutoLockRules.deadline(lastTouchMs, backgroundSinceMs) - clock.elapsedRealtimeMs()
+        if (!vault.unlocked.value) {
+            wake.cancel()
+            return
+        }
+        val deadline = AutoLockRules.deadline(lastTouchMs, backgroundSinceMs)
         timer = scope.launch {
-            delay(wait.coerceAtLeast(0))
+            delay((deadline - clock.elapsedRealtimeMs()).coerceAtLeast(0))
             synchronized(monitor) { lockIfDue() }
         }
+        // On screen the phone is awake; away, it may sleep before the timer fires.
+        if (backgroundSinceMs != null) wake.set(deadline, ::woken) else wake.cancel()
     }
 
-    private fun lockIfDue() {
-        if (vault.unlocked.value && clock.elapsedRealtimeMs() >= AutoLockRules.deadline(lastTouchMs, backgroundSinceMs)) vault.lock()
+    /**
+     * The phone woken at the deadline: locked, and the plaintext copies purged here and now — the lock's own
+     * purge runs in the background, which the phone may not give the time to before it sleeps again.
+     */
+    private fun woken() {
+        val lockedNow = synchronized(monitor) { lockIfDue() }
+        if (lockedNow) runBlocking { vault.purgeDecrypted() }
+    }
+
+    /** True when it locked the vault now. */
+    private fun lockIfDue(): Boolean {
+        val due = vault.unlocked.value && clock.elapsedRealtimeMs() >= AutoLockRules.deadline(lastTouchMs, backgroundSinceMs)
+        if (due) vault.lock()
+        return due
     }
 }

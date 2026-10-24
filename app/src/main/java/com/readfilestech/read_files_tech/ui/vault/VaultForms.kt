@@ -40,6 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.theme.CautionAmber
@@ -64,6 +66,12 @@ internal fun SetupForm(state: VaultState, onCreate: (String) -> Unit, modifier: 
     var problem by remember { mutableStateOf<Int?>(null) }
     val creating = state.work == VaultWork.Creating
     val confirmFocus = remember { FocusRequester() }
+    // Typed and left (a call, Home): not in the fields for whoever takes the phone.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        password = ""
+        confirmation = ""
+        visible = false
+    }
     val submit = {
         problem = passwordProblem(password, confirmation)
         if (problem == null) onCreate(password)
@@ -119,7 +127,19 @@ internal fun UnlockForm(state: VaultState, onUnlock: (String) -> Unit, onReset: 
     var password by remember { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
     val unlocking = state.work == VaultWork.Unlocking
-    val submit = { if (password.isNotEmpty()) onUnlock(password) }
+    // Tried, it leaves the field: a refused one, the eye touched, showed the password or one a letter away.
+    val submit = {
+        if (password.isNotEmpty()) {
+            onUnlock(password)
+            password = ""
+            visible = false
+        }
+    }
+    // Typed and left (a call, Home): not in the field for whoever takes the phone.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        password = ""
+        visible = false
+    }
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
