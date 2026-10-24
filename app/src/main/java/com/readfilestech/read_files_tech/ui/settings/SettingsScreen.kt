@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.ui.settings
 
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -18,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -26,6 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -33,9 +39,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
+import com.readfilestech.read_files_tech.ui.common.languageSettings
+import com.readfilestech.read_files_tech.ui.common.startFirst
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
-/** Settings (`SettingsScreen` of the 2.15.3): its security section, the panic. */
+/** Settings (`SettingsScreen` of the 2.15.3): the app's language (Android 13+), and its security section, the panic. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
@@ -59,25 +67,26 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                stringResource(R.string.settings_security),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-            )
-            Card(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth().clickable(enabled = !erasing, onClick = viewModel::askPanic).padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = DangerRed)
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.panic_title), style = MaterialTheme.typography.bodyLarge, color = DangerRed)
-                        Text(stringResource(R.string.panic_summary), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+            // Below Android 13 the app follows the phone's language: there is no per-app page to open.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val context = LocalContext.current
+                SectionTitle(stringResource(R.string.settings_general))
+                SettingRow(
+                    icon = Icons.Outlined.Language,
+                    title = stringResource(R.string.settings_language),
+                    summary = stringResource(R.string.settings_language_summary),
+                    onClick = { startFirst(context, languageSettings(context)) },
+                )
             }
+            SectionTitle(stringResource(R.string.settings_security))
+            SettingRow(
+                icon = Icons.Outlined.WarningAmber,
+                title = stringResource(R.string.panic_title),
+                summary = stringResource(R.string.panic_summary),
+                onClick = viewModel::askPanic,
+                enabled = !erasing,
+                tint = DangerRed,
+            )
         }
     }
     if (confirmPanic) {
@@ -96,5 +105,39 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             title = { Text(stringResource(R.string.panic_erasing)) },
             text = { CircularProgressIndicator() },
         )
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun SettingRow(
+    icon: ImageVector,
+    title: String,
+    summary: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    tint: Color = Color.Unspecified,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = if (tint == Color.Unspecified) LocalContentColor.current else tint)
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, color = tint)
+                Text(summary, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }

@@ -7,6 +7,10 @@ import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.viewer.UnreadableFileException
 import java.io.File
 import java.io.RandomAccessFile
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.format.ResolverStyle
 
 /**
  * What the EXIF tool lists of an image before it removes it — `ExifService.inspect` of the 2.15.3: whether it
@@ -24,8 +28,23 @@ data class ImageMetadata(
     /** Nothing the screen lists. The orientation is not listed: the copy is turned upright instead. */
     val isEmpty: Boolean get() = !gps && taken == null && make == null && model == null && software == null
 
+    /** [taken] read as EXIF writes it ("2024:05:01 12:34:56"), for the screen to show in its language; null if it is not. */
+    val takenAt: LocalDateTime?
+        get() = taken?.let {
+            try {
+                LocalDateTime.parse(it.trim(), EXIF_DATE)
+            } catch (expected: DateTimeParseException) {
+                null
+            }
+        }
+
     companion object {
         const val UPRIGHT = 1
+
+        // STRICT: a date that does not exist (30 February, 24:00:00) stays text, never moved to a real one
+        // (SMART would show 29 February). Under STRICT, `yyyy` needs an era: `uuuu`.
+        private val EXIF_DATE: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("uuuu:MM:dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT)
     }
 }
 

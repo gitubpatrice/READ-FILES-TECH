@@ -15,6 +15,7 @@ import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.Duration
+import java.time.LocalDateTime
 
 /**
  * The EXIF reader of Remove EXIF: on files Pillow and System.Drawing wrote (`tools/corpus/`), then on blocks
@@ -35,6 +36,20 @@ class ImageMetadataTest {
         model = "Pillow camera",
         software = "make_image_inputs.py",
     )
+
+    @Test
+    fun `the date taken is read as EXIF writes it, for the screen to show in its language`() {
+        assertThat(everything.takenAt).isEqualTo(LocalDateTime.of(2026, 10, 14, 12, 34, 56))
+        // What is not an EXIF date stays text: the screen shows it as it is.
+        assertThat(ImageMetadata(taken = "2026-10-14").takenAt).isNull()
+        assertThat(ImageMetadata(taken = "    :  :     :  :  ").takenAt).isNull()
+        // A date that does not exist is not moved to one that does.
+        assertThat(ImageMetadata(taken = "2024:02:30 10:00:00").takenAt).isNull()
+        assertThat(ImageMetadata(taken = "2023:02:29 10:00:00").takenAt).isNull()
+        assertThat(ImageMetadata(taken = "2024:05:01 24:00:00").takenAt).isNull()
+        assertThat(ImageMetadata(taken = "2024:02:29 10:00:00").takenAt).isEqualTo(LocalDateTime.of(2024, 2, 29, 10, 0))
+        assertThat(ImageMetadata().takenAt).isNull()
+    }
 
     @Nested
     inner class MadeByOtherSoftware {

@@ -50,6 +50,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.TextFiles
+import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.tools.TextStats
 import com.readfilestech.read_files_tech.data.viewer.sheet.cut
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -208,7 +209,7 @@ private fun Tools(state: TxtToolsState, fields: SearchFields, viewModel: TxtTool
         Spacer(Modifier.size(8.dp))
         Text(stringResource(R.string.txt_replace_all))
     }
-    Text(stringResource(R.string.txt_replace_note), style = MaterialTheme.typography.bodySmall)
+    Text(stringResource(R.string.txt_replace_note, OutputCategory.CONVERSIONS.folderName), style = MaterialTheme.typography.bodySmall)
     Text(stringResource(R.string.txt_export), style = MaterialTheme.typography.titleSmall)
     Button(onClick = viewModel::exportPdf, enabled = idle, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)

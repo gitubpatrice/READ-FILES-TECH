@@ -33,7 +33,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
+import com.readfilestech.read_files_tech.data.files.SharedStorageNames
+import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
+import com.readfilestech.read_files_tech.ui.common.UiText
+import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -110,7 +114,11 @@ internal fun VaultDialogs(dialog: VaultDialog?, viewModel: VaultViewModel) {
         )
         VaultDialog.BackupPassword -> PasswordDialog(
             title = stringResource(R.string.vault_backup),
-            info = stringResource(R.string.vault_backup_password_info),
+            // The folder's name from the code, never from the translation: it is a name on the disk.
+            info = stringResource(
+                R.string.vault_backup_password_info,
+                SharedStorageNames.FLUTTER_FILES_TECH_DIR + "/" + OutputCategory.VAULT_BACKUPS.folderName + "/",
+            ),
             confirm = true,
             submitLabel = stringResource(R.string.vault_backup_go),
             onSubmit = viewModel::backup,
@@ -186,7 +194,7 @@ private fun PasswordDialog(
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
-    var problem by remember { mutableStateOf<Int?>(null) }
+    var problem by remember { mutableStateOf<UiText?>(null) }
     val confirmFocus = remember { FocusRequester() }
     val submit = {
         problem = passwordProblem(password, confirmation.takeIf { confirm })
@@ -209,7 +217,7 @@ private fun PasswordDialog(
                     visible = visible,
                     onToggleVisible = { visible = !visible },
                     modifier = Modifier.fillMaxWidth(),
-                    supportingText = if (confirm) stringResource(R.string.vault_password_min) else null,
+                    supportingText = if (confirm) stringResource(R.string.vault_password_min, PASSWORD_MIN_CHARS) else null,
                     imeAction = if (confirm) ImeAction.Next else ImeAction.Done,
                     onImeAction = { if (confirm) confirmFocus.requestFocus() else submit() },
                     focusFirst = true,
@@ -230,7 +238,7 @@ private fun PasswordDialog(
                     )
                 }
                 problem?.let { refused ->
-                    Text(stringResource(refused), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(refused.resolve(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
@@ -249,7 +257,9 @@ private fun BackupDone(path: String, onDismiss: () -> Unit, launch: VaultLaunchV
         title = { Text(stringResource(R.string.vault_backup_done_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.vault_backup_done_body))
+                // Where it really went, whole: a fallback folder (Android/data/…, the app's own) ends with the
+                // same "Files Tech/Sauvegardes coffre" as the usual one.
+                Text(stringResource(R.string.vault_backup_done_body, File(path).parent.orEmpty()))
                 Text(File(path).name, style = MaterialTheme.typography.bodySmall)
             }
         },

@@ -1,8 +1,5 @@
 package com.readfilestech.read_files_tech.ui
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
@@ -42,6 +39,7 @@ import com.readfilestech.read_files_tech.data.storage.StorageModel
 import com.readfilestech.read_files_tech.ui.apps.ApkInstallDialog
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.resolve
+import com.readfilestech.read_files_tech.ui.common.startFirst
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.ExplorerScreen
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -309,16 +307,6 @@ private fun rememberStorageSettings(access: StorageAccess, messages: UserMessage
                 }
             }
         }
-    }
-}
-
-/** Starts the first intent that has an activity; false when none has. */
-private fun startFirst(context: Context, intents: List<Intent>): Boolean = intents.any { intent ->
-    try {
-        context.startActivity(intent)
-        true
-    } catch (expected: ActivityNotFoundException) {
-        false
     }
 }
 

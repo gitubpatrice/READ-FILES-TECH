@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.ui.picker
 
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.browse.NameOrder
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.data.recents.RecentFiles
@@ -93,9 +94,9 @@ class PickerSources(
     /** The other folders at the top of the primary volume: not hidden, not `Android`, not a shortcut. */
     fun folders(shortcuts: List<PickerShortcut>): List<File> {
         val taken = shortcuts.mapTo(HashSet()) { it.dir.absolutePath }
-        return primary().listFiles().orEmpty()
+        val folders = primary().listFiles().orEmpty()
             .filter { it.isDirectory && !it.name.startsWith('.') && it.name != "Android" && it.absolutePath !in taken }
-            .sortedBy { it.name.lowercase() }
+        return NameOrder().sort(folders, File::getName)
     }
 
     /**

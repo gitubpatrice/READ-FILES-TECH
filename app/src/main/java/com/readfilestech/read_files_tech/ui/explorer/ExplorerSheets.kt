@@ -54,6 +54,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -101,7 +102,9 @@ fun EntryInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
                         )
                     }
                 }
-                details?.children?.let { InfoRow(R.string.info_items, it.toString()) }
+                details?.children?.let {
+                    InfoRow(R.string.info_items, NumberFormat.getIntegerInstance(LocalConfiguration.current.locales[0]).format(it))
+                }
                 InfoRow(R.string.info_modified, dateTime(details?.modifiedMs))
                 InfoRow(R.string.info_accessed, dateTime(details?.accessedMs))
                 if (entry.isSymlink) InfoRow(R.string.info_symlink, stringResource(R.string.yes))

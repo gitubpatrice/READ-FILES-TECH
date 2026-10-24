@@ -42,6 +42,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.formatBytes
@@ -97,7 +98,7 @@ fun ZipCreatorScreen(
             ToolIntro(
                 Icons.Outlined.FolderZip,
                 title,
-                stringResource(R.string.zip_intro),
+                stringResource(R.string.zip_intro, OutputCategory.CONVERSIONS.folderName),
                 add,
                 Modifier.padding(padding),
                 chooseLabel = stringResource(R.string.pick_files_title),

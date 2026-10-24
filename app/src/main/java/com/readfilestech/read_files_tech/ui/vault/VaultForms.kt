@@ -43,7 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.resolve
+import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.theme.CautionAmber
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
@@ -51,9 +53,9 @@ import com.readfilestech.read_files_tech.ui.theme.DangerRed
 internal const val PASSWORD_MIN_CHARS = 8
 
 /** Why [password] (and its [confirmation], when asked) is refused before anything is derived, or null. */
-internal fun passwordProblem(password: String, confirmation: String?): Int? = when {
-    password.length < PASSWORD_MIN_CHARS -> R.string.vault_password_too_short
-    confirmation != null && confirmation != password -> R.string.vault_password_mismatch
+internal fun passwordProblem(password: String, confirmation: String?): UiText? = when {
+    password.length < PASSWORD_MIN_CHARS -> uiText(R.string.vault_password_too_short, PASSWORD_MIN_CHARS)
+    confirmation != null && confirmation != password -> uiText(R.string.vault_password_mismatch)
     else -> null
 }
 
@@ -63,7 +65,7 @@ internal fun SetupForm(state: VaultState, onCreate: (String) -> Unit, modifier: 
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
-    var problem by remember { mutableStateOf<Int?>(null) }
+    var problem by remember { mutableStateOf<UiText?>(null) }
     val creating = state.work == VaultWork.Creating
     val confirmFocus = remember { FocusRequester() }
     // Typed and left (a call, Home): not in the fields for whoever takes the phone.
@@ -93,7 +95,7 @@ internal fun SetupForm(state: VaultState, onCreate: (String) -> Unit, modifier: 
             visible = visible,
             onToggleVisible = { visible = !visible },
             modifier = Modifier.fillMaxWidth(),
-            supportingText = stringResource(R.string.vault_password_min),
+            supportingText = stringResource(R.string.vault_password_min, PASSWORD_MIN_CHARS),
             imeAction = ImeAction.Next,
             onImeAction = { confirmFocus.requestFocus() },
             enabled = !creating,
@@ -112,7 +114,7 @@ internal fun SetupForm(state: VaultState, onCreate: (String) -> Unit, modifier: 
             enabled = !creating,
             focus = confirmFocus,
         )
-        FormError(problem?.let { stringResource(it) } ?: state.error?.resolve())
+        FormError((problem ?: state.error)?.resolve())
         Button(onClick = submit, enabled = !creating, modifier = Modifier.fillMaxWidth()) {
             ButtonIcon(creating) { Icon(Icons.Outlined.Check, contentDescription = null) }
             Text(stringResource(R.string.vault_create))

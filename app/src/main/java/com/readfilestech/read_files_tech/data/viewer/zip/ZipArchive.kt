@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.viewer.zip
 
+import com.readfilestech.read_files_tech.data.browse.NameOrder
 import com.readfilestech.read_files_tech.data.files.BoundedInputStream
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.FileTooLargeException
@@ -37,8 +38,11 @@ class ZipArchive private constructor(
     /** Every entry, in the order of the central directory. */
     val entries: List<ZipItem> get() = directory.entries
 
-    /** The same, by name, as the 2.15.3 listed them: a folder's entries together. Sorted once, as it opens. */
-    val byName: List<ZipItem> = directory.entries.sortedBy(ZipItem::name)
+    /**
+     * The same, by name, as the 2.15.3 listed them: a folder's entries together, here in the order of the app's
+     * language (NameOrder). Sorted once, as it opens.
+     */
+    val byName: List<ZipItem> = NameOrder().sortPaths(directory.entries, ZipItem::name)
 
     /**
      * The content of [item], checked as it is read: never more than its declared size, which is at most

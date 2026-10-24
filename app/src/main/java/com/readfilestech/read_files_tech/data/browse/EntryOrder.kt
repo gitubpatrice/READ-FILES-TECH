@@ -5,14 +5,13 @@ enum class SortMode { NAME, DATE, SIZE }
 
 /** Sorting and filtering a listing — pure, so the screen recomputes them on its own data only. */
 object EntryOrder {
-    /** Name: case-insensitive, A to Z. Date and size: the most recent, the largest first. */
-    fun sort(entries: List<FileEntry>, mode: SortMode): List<FileEntry> {
+    /**
+     * Name: A to Z by the rules of the app's language ([NameOrder]: "École" before "Zèbre", which the 2.15.x's
+     * lower-cased code points put after it). Date and size: the most recent, the largest first.
+     */
+    fun sort(entries: List<FileEntry>, mode: SortMode, names: NameOrder = NameOrder()): List<FileEntry> {
         val byKey: Comparator<FileEntry> = when (mode) {
-            // Lower-cased once per entry, not once per comparison (the 2.15.x's "Schwartzian transform").
-            SortMode.NAME -> {
-                val keys = entries.associateWith { it.name.lowercase() }
-                compareBy { keys.getValue(it) }
-            }
+            SortMode.NAME -> names.comparing(entries, FileEntry::name)
             SortMode.DATE -> compareByDescending { it.modifiedMs }
             SortMode.SIZE -> compareByDescending { it.size }
         }

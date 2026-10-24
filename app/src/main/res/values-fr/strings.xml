@@ -13,7 +13,7 @@
     <string name="action_more">Plus d\'options</string>
     <string name="action_ok">OK</string>
     <string name="action_open">Ouvrir</string>
-    <string name="action_open_settings">Ouvrir les Réglages</string>
+    <string name="action_open_settings">Ouvrir les paramètres</string>
     <string name="action_refresh">Actualiser</string>
     <string name="action_settings">Réglages</string>
     <string name="action_undo">Annuler</string>
@@ -28,9 +28,9 @@
 
     <!-- Premier lancement et accès au stockage -->
     <string name="welcome_title">Bienvenue dans Read Files Tech</string>
-    <string name="welcome_body_all_files">Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) partout sur votre téléphone, l\'app a besoin de l\'accès « Tous les fichiers ».\n\n➜ Vous serez redirigé(e) vers les Réglages.\n➜ Activez « Autoriser l\'accès à tous les fichiers ».\n➜ Revenez à l\'app.\n\nAucun fichier n\'est transmis ailleurs.</string>
+    <string name="welcome_body_all_files">Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) partout sur votre téléphone, l\'app a besoin de l\'autorisation « Accès à tous les fichiers ».\n\n➜ Vous serez redirigé(e) vers les paramètres d\'Android.\n➜ Activez « Autoriser l\'accès pour gérer tous les fichiers ».\n➜ Revenez à l\'app.\n\nAucun fichier n\'est transmis ailleurs.</string>
     <string name="welcome_body_storage">Pour explorer et lire vos fichiers (PDF, DOCX, images, ZIP, etc.) partout sur votre téléphone, l\'app a besoin d\'accéder au stockage : Android va vous le demander.\n\nAucun fichier n\'est transmis ailleurs.</string>
-    <string name="all_files_instructions">Activez « Autoriser l\'accès à tous les fichiers » puis revenez à l\'app.</string>
+    <string name="all_files_instructions">Activez « Autoriser l\'accès pour gérer tous les fichiers » puis revenez à l\'app.</string>
     <string name="access_banner_all_files">Accès aux fichiers limité — autorisez tous les fichiers.</string>
     <string name="access_banner_storage">Accès aux fichiers limité — autorisez le stockage.</string>
     <string name="access_denied_title">Accès aux fichiers refusé</string>
@@ -151,9 +151,9 @@
     <string name="info_type_folder">Dossier</string>
     <string name="info_extension">Extension</string>
     <plurals name="bytes_count">
-        <item quantity="one">%d octet</item>
-        <item quantity="many">%d octets</item>
-        <item quantity="other">%d octets</item>
+        <item quantity="one">%,d octet</item>
+        <item quantity="many">%,d octets</item>
+        <item quantity="other">%,d octets</item>
     </plurals>
     <string name="info_mime">Type MIME</string>
     <string name="info_size">Taille</string>
@@ -280,7 +280,7 @@
     <string name="action_install">Installer</string>
     <string name="install_version">Version %1$s · %2$s</string>
     <string name="install_not_apk">Android ne peut pas lire ce fichier comme une application à installer.</string>
-    <string name="install_permission">Pour installer une APK depuis Read Files Tech, activez d\'abord « Autoriser depuis cette source » dans les réglages Android, puis revenez ici.</string>
+    <string name="install_permission">Pour installer une APK depuis Read Files Tech, activez d\'abord « Autoriser depuis cette source » dans les paramètres d\'Android, puis revenez ici.</string>
     <string name="error_no_settings">Ce réglage ne peut pas être ouvert sur ce téléphone.</string>
     <string name="install_changed">Le fichier a changé depuis son affichage : vérifiez-le à nouveau.</string>
     <string name="feature_color_picker">Sélecteur de couleur</string>
@@ -297,14 +297,17 @@
     <string name="feature_convert">Convertir</string>
     <string name="feature_compress">Compresser</string>
     <string name="feature_exif">Effacer EXIF</string>
-    <string name="feature_duplicates">Doublons &amp; gros</string>
+    <string name="feature_duplicates">Doublons &amp; gros fichiers</string>
     <string name="feature_settings">Réglages</string>
     <string name="feature_about">À propos</string>
+    <string name="settings_general">Général</string>
+    <string name="settings_language">Langue de l\'application</string>
+    <string name="settings_language_summary">Ouvre les paramètres d\'Android, où vous pouvez choisir la langue de cette application. Read Files Tech suit la langue de votre téléphone, sauf si vous en choisissez une autre.</string>
     <string name="settings_security">Sécurité</string>
     <string name="panic_title">Mode panique — tout effacer</string>
     <string name="panic_summary">Le coffre, les réglages, les fichiers temporaires, l\'historique et la corbeille, immédiatement</string>
     <string name="panic_confirm_title">Mode panique</string>
-    <string name="panic_confirm_body">Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n• le coffre entier, tous les fichiers chiffrés et leurs clés\n• tous les réglages, dont la liste des fichiers récents\n• les fichiers temporaires : copies déchiffrées, PDF déverrouillés, pages scannées\n• l\'historique de l\'éditeur de code\n• les dossiers de « Tout extraire » gardés par les versions précédentes\n• la corbeille\n\nVos fichiers et ce que les outils ont enregistré dans Files Tech ne sont pas touchés. Aucune récupération possible sans sauvegarde .rftvault.\n\nContinuer ?</string>
+    <string name="panic_confirm_body">Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n• le coffre entier, tous les fichiers chiffrés et leurs clés\n• tous les réglages, dont la liste des fichiers récents\n• les fichiers temporaires : copies déchiffrées, PDF déverrouillés, pages scannées\n• l\'historique de l\'éditeur de code\n• les dossiers de « Tout extraire » gardés par les versions précédentes\n• la corbeille\n\nVos fichiers et ce que les outils ont enregistré dans le dossier Files Tech ne sont pas touchés. Aucune récupération possible sans sauvegarde .rftvault.\n\nContinuer ?</string>
     <string name="panic_confirm">Tout effacer</string>
     <string name="panic_erasing">Effacement…</string>
     <string name="panic_done">Tout a été effacé.</string>
@@ -315,13 +318,9 @@
     <string name="panic_part_history">l\'historique de l\'éditeur</string>
     <string name="panic_part_extractions">les anciennes extractions</string>
     <string name="panic_part_trash">la corbeille</string>
-    <string name="tool_hint_color_picker">HEX, RGB, HSL</string>
     <string name="tool_hint_txt_tools">Mots, recherche, PDF</string>
     <string name="tool_hint_csv_tools">Stats, PDF, fusion</string>
     <string name="tool_hint_diff">Diff de deux fichiers</string>
-    <string name="tool_hint_hash">MD5, SHA-1, SHA-256…</string>
-    <string name="tool_hint_encode">Base64, URL, HTML</string>
-    <string name="tool_hint_format">JSON, CSS, JS</string>
     <string name="tool_hint_editor">Modifier et enregistrer</string>
     <string name="tool_hint_content_search">Dans le contenu des fichiers</string>
     <string name="tool_hint_csv_editor">Modifier cellules, lignes, colonnes</string>
@@ -655,9 +654,7 @@
     <string name="convert_docx_to_text">DOCX → Texte</string>
     <string name="convert_docx_to_text_hint">Le texte d\'un document Word dans un fichier .txt</string>
     <string name="convert_image_to_jpg">Image → JPG</string>
-    <string name="convert_image_to_jpg_hint">PNG, WebP, GIF, BMP… → JPG</string>
     <string name="convert_image_to_png">Image → PNG</string>
-    <string name="convert_image_to_png_hint">JPG, WebP, GIF, BMP… → PNG</string>
     <string name="convert_working">Conversion…</string>
     <string name="convert_working_percent">Conversion… %1$d %%</string>
     <string name="convert_saved_title">Enregistré sur votre téléphone</string>
@@ -741,7 +738,7 @@
     </plurals>
 
     <!-- Créer un ZIP, Doublons, Recherche dans les fichiers, Renommage en masse (phase 5) -->
-    <string name="zip_intro">Réunit les fichiers choisis dans une archive ZIP, enregistrée dans Conversions</string>
+    <string name="zip_intro">Réunit les fichiers choisis dans une archive ZIP, enregistrée dans %1$s</string>
     <string name="zip_pick_title">Fichiers à compresser</string>
     <string name="zip_add_files">Ajouter des fichiers</string>
     <plurals name="zip_files_count">
@@ -803,7 +800,7 @@
         <item quantity="other">Seuls les %1$,d premiers fichiers ont été comparés.</item>
     </plurals>
     <string name="duplicates_none">Aucun doublon trouvé</string>
-    <string name="duplicates_no_files">Aucun fichier de 4 Ko ou plus dans ce dossier</string>
+    <string name="duplicates_no_files">Aucun fichier de %1$s ou plus dans ce dossier</string>
     <plurals name="duplicates_group">
         <item quantity="one">%1$d copie · %2$s chacune · %3$s gaspillés</item>
         <item quantity="many">%1$d copies · %2$s chacune · %3$s gaspillés</item>
@@ -868,9 +865,9 @@
     </plurals>
     <string name="pattern_invalid">Ce motif n\'est pas valide (les assertions avant/arrière et les références arrière ne sont pas prises en charge).</string>
     <plurals name="pattern_too_many_repeats">
-        <item quantity="one">Ce motif répète trop : ses compteurs {n} font plus de %1$,d copie ensemble.</item>
-        <item quantity="many">Ce motif répète trop : ses compteurs {n} font plus de %1$,d copies ensemble.</item>
-        <item quantity="other">Ce motif répète trop : ses compteurs {n} font plus de %1$,d copies ensemble.</item>
+        <item quantity="one">Ce motif se répète trop : ensemble, ses répétitions {n} feraient plus de %1$,d copie.</item>
+        <item quantity="many">Ce motif se répète trop : ensemble, ses répétitions {n} feraient plus de %1$,d copies.</item>
+        <item quantity="other">Ce motif se répète trop : ensemble, ses répétitions {n} feraient plus de %1$,d copies.</item>
     </plurals>
     <string name="pattern_bad_replacement">Le remplacement nomme un groupe que le motif n\'a pas.</string>
     <string name="pattern_too_slow">Ce motif prend trop de temps sur ces noms.</string>
@@ -986,7 +983,7 @@
         <item quantity="other">%1$,d résultats</item>
     </plurals>
     <string name="txt_replace_all">Tout remplacer dans une copie</string>
-    <string name="txt_replace_note">Le fichier lui-même reste tel quel : une copie avec les remplacements est enregistrée dans Conversions.</string>
+    <string name="txt_replace_note">Le fichier lui-même reste tel quel : une copie avec les remplacements est enregistrée dans %1$s.</string>
     <string name="txt_replacing">Remplacement… %1$d %%</string>
     <string name="txt_export">Export</string>
     <string name="txt_to_pdf">Convertir en PDF</string>
@@ -1054,10 +1051,10 @@
     <string name="vault_setup_body">Le coffre chiffre vos fichiers avec AES-256-GCM. Sa clé est dérivée de votre mot de passe sur ce téléphone (Argon2id, réglé pour cet appareil : quelques secondes), et le mot de passe n\'est jamais enregistré.</string>
     <string name="vault_password">Mot de passe</string>
     <string name="vault_password_confirm">Confirmer</string>
-    <string name="vault_password_min">8 caractères minimum</string>
+    <string name="vault_password_min">%1$d caractères minimum</string>
     <string name="vault_password_show">Afficher le mot de passe</string>
     <string name="vault_password_hide">Masquer le mot de passe</string>
-    <string name="vault_password_too_short">Le mot de passe doit faire au moins 8 caractères.</string>
+    <string name="vault_password_too_short">Le mot de passe doit faire au moins %1$d caractères.</string>
     <string name="vault_password_mismatch">Les mots de passe ne correspondent pas.</string>
     <string name="vault_create">Créer le coffre</string>
     <string name="vault_creating">Création du coffre…</string>
@@ -1101,7 +1098,7 @@
     <string name="vault_replace">Écraser</string>
     <string name="vault_export_pick_title">Exporter vers un dossier</string>
     <string name="vault_exported">Exporté : %1$s</string>
-    <string name="vault_export_cancelled">Export annulé : fichier conservé.</string>
+    <string name="vault_export_cancelled">Export annulé : le fichier déjà présent dans ce dossier est conservé.</string>
     <string name="vault_export_failed">Impossible d\'exporter le fichier : %1$s</string>
     <string name="vault_share_failed">Impossible de déchiffrer le fichier à partager : %1$s</string>
     <string name="vault_delete_title">Supprimer du coffre</string>
@@ -1109,11 +1106,11 @@
     <string name="vault_delete_failed">Impossible de supprimer le fichier : %1$s</string>
     <string name="vault_list_failed">Impossible de lister les fichiers du coffre : %1$s</string>
     <string name="vault_backup_empty">Coffre vide : rien à sauvegarder.</string>
-    <string name="vault_backup_password_info">Choisissez un mot de passe pour la sauvegarde : il sera nécessaire pour la restaurer.\n\nCe n\'est pas le mot de passe du coffre. Choisissez-le bien : sans lui, la sauvegarde est irrécupérable.\n\nLe fichier sera écrit dans Files Tech/Sauvegardes coffre/.</string>
+    <string name="vault_backup_password_info">Choisissez un mot de passe pour la sauvegarde : il sera nécessaire pour la restaurer.\n\nCe n\'est pas le mot de passe du coffre. Choisissez-le bien : sans lui, la sauvegarde est irrécupérable.\n\nLe fichier sera écrit dans %1$s.</string>
     <string name="vault_backup_go">Sauvegarder</string>
     <string name="vault_backing_up">Sauvegarde du coffre…</string>
     <string name="vault_backup_done_title">Coffre sauvegardé</string>
-    <string name="vault_backup_done_body">Sa sauvegarde est dans Files Tech/Sauvegardes coffre.</string>
+    <string name="vault_backup_done_body">Sa sauvegarde est dans %1$s.</string>
     <string name="vault_backup_failed">Impossible de sauvegarder le coffre : %1$s</string>
     <string name="vault_restore_pick_title">Choisir une sauvegarde .rftvault</string>
     <string name="vault_restore_extension_title">Extension inattendue</string>
@@ -1128,7 +1125,6 @@
         <item quantity="many">%d fichiers de la sauvegarde sont déjà dans le coffre. Les remplacer par ceux de la sauvegarde ?</item>
         <item quantity="other">%d fichiers de la sauvegarde sont déjà dans le coffre. Les remplacer par ceux de la sauvegarde ?</item>
     </plurals>
-    <string name="vault_restore_replace_title">Remplacer les fichiers ?</string>
     <string name="vault_restore_replace_message">Les fichiers du coffre portant le même nom seront écrasés par ceux de la sauvegarde. Cette action est irréversible.</string>
     <string name="vault_restore_check_space">%1$s : vérifiez l\'espace disque disponible.</string>
     <plurals name="vault_imported">
@@ -1152,15 +1148,15 @@
         <item quantity="other">%d déjà présents</item>
     </plurals>
     <plurals name="vault_left_out">
-        <item quantity="one">%d ignoré : aucun nom de fichier ne peut le porter</item>
-        <item quantity="many">%d ignorés : aucun nom de fichier ne peut les porter</item>
-        <item quantity="other">%d ignorés : aucun nom de fichier ne peut les porter</item>
+        <item quantity="one">%d ignoré : son nom n\'est pas utilisable dans le coffre</item>
+        <item quantity="many">%d ignorés : leurs noms ne sont pas utilisables dans le coffre</item>
+        <item quantity="other">%d ignorés : leurs noms ne sont pas utilisables dans le coffre</item>
     </plurals>
     <string name="vault_reason_locked">le coffre s\'est verrouillé entre-temps</string>
     <string name="vault_reason_corrupted">les données du coffre sont endommagées</string>
     <string name="vault_reason_storage">le téléphone a refusé l\'écriture</string>
     <string name="vault_reason_too_large">au-delà de la limite de %1$d %2$s</string>
-    <string name="vault_reason_name">aucun nom de fichier ne peut le porter</string>
+    <string name="vault_reason_name">ce nom n\'est pas utilisable dans le coffre</string>
     <string name="vault_reason_backup_name">une restauration refuserait le nom de « %1$s » : exportez-le, puis importez-le à nouveau sous un autre nom</string>
     <string name="vault_reason_auth">mot de passe incorrect, ou sauvegarde altérée</string>
     <string name="vault_reason_format">ce n\'est pas une sauvegarde .rftvault lisible</string>
@@ -1209,9 +1205,9 @@
         <item quantity="other">%d originaux supprimés</item>
     </plurals>
     <plurals name="vault_originals_not_deleted">
-        <item quantity="one">%d original laissé en place (modifié entre-temps, ou refusé)</item>
-        <item quantity="many">%d originaux laissés en place (modifiés entre-temps, ou refusés)</item>
-        <item quantity="other">%d originaux laissés en place (modifiés entre-temps, ou refusés)</item>
+        <item quantity="one">%d original laissé en place (modifié entre-temps, ou suppression refusée)</item>
+        <item quantity="many">%d originaux laissés en place (modifiés entre-temps, ou suppression refusée)</item>
+        <item quantity="other">%d originaux laissés en place (modifiés entre-temps, ou suppression refusée)</item>
     </plurals>
     <plurals name="vault_namesakes_kept">
         <item quantity="one">%d ignoré (déjà dans le coffre)</item>
@@ -1220,5 +1216,5 @@
     </plurals>
     <string name="vault_continue">Continuer</string>
     <string name="vault_folder_unreadable">Ce dossier ne peut pas être lu.</string>
-    <string name="vault_folder_locked">Le coffre s\'est verrouillé : le chiffrement s\'est arrêté, et les originaux non encore chiffrés sont intacts.</string>
+    <string name="vault_folder_locked">Le coffre s\'est verrouillé : le chiffrement s\'est arrêté, et les originaux non encore chiffrés sont intacts. Importez à nouveau le dossier pour continuer : les fichiers déjà dans le coffre sont ignorés.</string>
 </resources>

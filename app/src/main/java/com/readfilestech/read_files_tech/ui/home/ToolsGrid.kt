@@ -91,10 +91,11 @@ fun ToolsGrid(onNavigate: (String) -> Unit) {
                 Column(Modifier.fillMaxWidth().padding(12.dp)) {
                     Icon(tool.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(8.dp))
+                    // Two lines: on a 360 dp phone, "Duplikate & große Dateien" lost its last word on one.
                     Text(
                         stringResource(tool.label),
                         style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(

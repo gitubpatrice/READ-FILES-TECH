@@ -4,6 +4,9 @@ import com.readfilestech.read_files_tech.data.files.FileCaps
 import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.util.LocaleUtil
 import java.text.SimpleDateFormat
+import java.time.chrono.IsoChronology
+import java.time.format.DateTimeFormatterBuilder
+import java.time.format.FormatStyle
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.pow
@@ -20,7 +23,8 @@ import kotlin.math.pow
  * here: [formatSections] picks its section as Excel does and hands `DataFormatter` that section alone.
  *
  * The differences measured between POI and Excel, corrected: the built-in formats 14 and 22 (the system's
- * short date for Excel, the American "m/d/yy" for POI); booleans (VRAI/FAUX in French); a percentage scaled
+ * short date for Excel, the American "m/d/yy" for POI); booleans (VRAI/FAUX in French, WAHR/FALSCH in
+ * German…, English for POI); a percentage scaled
  * by thousands ("0.00,%", shown raw by POI); the time zone — POI goes through `java.util.Date` in the
  * device's zone, so an hour that does not exist there (the one skipped in spring) moved: every call runs
  * in UTC. And a format longer than Excel allows is shown as "General", never parsed.
@@ -29,14 +33,12 @@ import kotlin.math.pow
  */
 internal class CellText(locale: Locale) {
     private val formatter = DataFormatter(locale).apply { setUseCachedValuesForFormulaCells(true) }
-    private val french = locale.language == FRENCH
-    private val trueText = if (french) "VRAI" else "TRUE"
-    private val falseText = if (french) "FAUX" else "FALSE"
+    private val booleans = EXCEL_BOOLEANS[locale.language] ?: ENGLISH_BOOLEANS
 
     init {
         // Built-in formats 14 and 22: Excel shows the system's short date, POI names them "m/d/yy" and
         // "m/d/yy h:mm" and formats them the American way (10/9/26). addFormat replaces them by name.
-        val shortDate = if (french) "dd/MM/yyyy" else "M/d/yyyy"
+        val shortDate = shortDate(locale)
         formatter.addFormat("m/d/yy", SimpleDateFormat(shortDate, locale).apply { timeZone = UTC })
         formatter.addFormat("m/d/yy h:mm", SimpleDateFormat("$shortDate HH:mm", locale).apply { timeZone = UTC })
     }
@@ -46,8 +48,8 @@ internal class CellText(locale: Locale) {
         number(value, formatIndex, format, date1904) ?: formatter.formatRawCellContents(value, formatIndex, format, date1904)
     }
 
-    /** A boolean as Excel shows it: VRAI/FAUX in French. */
-    fun booleanText(value: Boolean): String = if (value) trueText else falseText
+    /** A boolean as Excel shows it in the app's language: VRAI/FAUX in French, WAHR/FALSCH in German. */
+    fun booleanText(value: Boolean): String = if (value) booleans.first else booleans.second
 
     /** A number whose format `DataFormatter` must not see whole; null when it may. */
     private fun number(value: Double, formatIndex: Int, format: String?, date1904: Boolean): String? = when {
@@ -93,7 +95,32 @@ internal class CellText(locale: Locale) {
     }
 
     companion object {
-        private const val FRENCH = "fr"
+        /** The words of Excel in each language of the app (docs D-033); English, TRUE/FALSE, for any other. */
+        private val EXCEL_BOOLEANS = mapOf(
+            "fr" to ("VRAI" to "FAUX"),
+            "de" to ("WAHR" to "FALSCH"),
+            "it" to ("VERO" to "FALSO"),
+            "es" to ("VERDADERO" to "FALSO"),
+        )
+        private val ENGLISH_BOOLEANS = "TRUE" to "FALSE"
+
+        /**
+         * Windows' short date for Spanish, which Excel shows (05/03/2026), where CLDR writes "d/M/yy". The other
+         * languages of the app are CLDR's, the year widened.
+         */
+        private val SHORT_DATES = mapOf("es" to "dd/MM/yyyy")
+        private val YEAR = Regex("y+")
+
+        /**
+         * The short date of [locale] as Excel shows it for formats 14 and 22: the system's short date with a
+         * four-digit year — 10/24/2026 in the United States, 24/10/2026 in France and Italy, 24.10.2026 in
+         * Germany, 24/10/2026 in the United Kingdom.
+         */
+        internal fun shortDate(locale: Locale): String = SHORT_DATES[locale.language] ?: YEAR.replace(
+            DateTimeFormatterBuilder.getLocalizedDateTimePattern(FormatStyle.SHORT, null, IsoChronology.INSTANCE, locale),
+            "yyyy",
+        )
+
         private const val GENERAL = "General"
         private const val GENERAL_INDEX = 0
         private const val THOUSAND = 1000.0

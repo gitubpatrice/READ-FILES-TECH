@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileNames
+import com.readfilestech.read_files_tech.data.browse.NameOrder
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
@@ -208,7 +209,10 @@ class VaultViewModel @Inject constructor(
         if (mutableState.value.phase != VaultPhase.OPEN) return
         viewModelScope.launch {
             val listed = loadOrFailure {
-                withContext(io) { files.list().map { VaultItem(it.name, displayName(it.name), cipher.plainLength(it)) } }
+                withContext(io) {
+                    val items = files.list().map { VaultItem(it.name, displayName(it.name), cipher.plainLength(it)) }
+                    NameOrder().sort(items, VaultItem::name)
+                }
             }
             // Locked while it listed: the names stay off the screen.
             if (!vault.unlocked.value) return@launch

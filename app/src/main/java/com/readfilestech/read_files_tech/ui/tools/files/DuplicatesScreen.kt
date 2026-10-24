@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.tools.DuplicateFile
 import com.readfilestech.read_files_tech.data.tools.DuplicateGroup
 import com.readfilestech.read_files_tech.data.tools.DuplicateProgress
@@ -137,7 +138,8 @@ fun DuplicatesScreen(
             val can = { file: DuplicateFile -> !state.trashing && state.selection.canToggle(file.path, state.ticked) }
             when {
                 tab == 0 && report.groups.isEmpty() -> Centered(stringResource(R.string.duplicates_none))
-                tab == 1 && report.largest.isEmpty() -> Centered(stringResource(R.string.duplicates_no_files))
+                tab == 1 && report.largest.isEmpty() ->
+                    Centered(stringResource(R.string.duplicates_no_files, formatBytes(FileCaps.DUPLICATE_MIN_BYTES)))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (tab == 0) groups(report.groups, state.ticked, can, tick) else largest(report.largest, state.ticked, can, tick)
                 }

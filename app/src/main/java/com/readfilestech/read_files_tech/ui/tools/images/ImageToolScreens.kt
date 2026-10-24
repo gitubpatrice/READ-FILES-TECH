@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,6 +60,8 @@ import com.readfilestech.read_files_tech.ui.outputs.AutoShare
 import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import com.readfilestech.read_files_tech.ui.tools.ChosenFileRow
 import com.readfilestech.read_files_tech.ui.tools.ToolIntro
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 
 /**
@@ -234,9 +237,11 @@ private fun MetadataList(metadata: ImageMetadata, size: ImageSize?) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    // The date in the language of the screen; an EXIF date that is not one is shown as it is.
+    val takenFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(LocalConfiguration.current.locales[0])
     val rows = buildList {
         if (metadata.gps) add(Triple(R.string.exif_gps, null, true))
-        metadata.taken?.let { add(Triple(R.string.exif_taken, it, true)) }
+        metadata.taken?.let { add(Triple(R.string.exif_taken, metadata.takenAt?.format(takenFormat) ?: it, true)) }
         metadata.make?.let { add(Triple(R.string.exif_make, it, false)) }
         metadata.model?.let { add(Triple(R.string.exif_model, it, false)) }
         metadata.software?.let { add(Triple(R.string.exif_software, it, false)) }

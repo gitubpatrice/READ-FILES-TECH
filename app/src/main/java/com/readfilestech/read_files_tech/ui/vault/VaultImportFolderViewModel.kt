@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.browse.NameOrder
 import com.readfilestech.read_files_tech.data.files.MediaIndex
 import com.readfilestech.read_files_tech.data.search.FolderWalk
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
@@ -256,7 +257,7 @@ internal object FolderScan {
             if (!capReached) found += FolderEntry(path.toString(), root.relativize(path).toString(), attributes.size())
             !capReached
         }
-        return Listing(found.sortedBy(FolderEntry::path), capReached)
+        return Listing(NameOrder().sortPaths(found, FolderEntry::relative), capReached)
     }
 
     /**
