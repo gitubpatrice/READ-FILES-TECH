@@ -253,7 +253,7 @@ private fun RecentsTab(
                                 viewModel.launching.share(context, listOf(entry))
                             })
                         }
-                        DropdownMenuItem(text = { Text(stringResource(R.string.picker_remove)) }, onClick = {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.recent_remove)) }, onClick = {
                             dismiss()
                             viewModel.remove(entry)
                         })

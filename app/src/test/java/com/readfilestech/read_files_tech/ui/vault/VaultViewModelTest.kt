@@ -194,7 +194,8 @@ class VaultViewModelTest {
         val a = source("a.txt", "one")
         import(a)
         askBackup()
-        assertThat(state.value.dialog).isEqualTo(VaultDialog.BackupPassword)
+        // The folder it will go to, said before the password: here the base, the fallbacks being absent.
+        assertThat(state.value.dialog).isEqualTo(VaultDialog.BackupPassword(File(dir, "storage/Files Tech/Sauvegardes coffre").path))
         backup(BACKUP_PASSWORD)
         val backup = (state.value.dialog as VaultDialog.BackupDone).path
         dismiss()

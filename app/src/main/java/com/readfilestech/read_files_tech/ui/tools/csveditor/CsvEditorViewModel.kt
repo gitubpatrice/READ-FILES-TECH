@@ -43,6 +43,8 @@ import javax.inject.Inject
  * @param left saved from the leave dialog: the screen goes.
  * @param askOverCap a save waiting for the user's answer: the file is over the history's cap — this many MB
  *   ([FileCaps.EDITOR_HISTORY_COPY]) —, and the version it replaces cannot be kept.
+ * @param changedOnDisk a save found the file changed by another app: overwrite it? asked, nothing written yet —
+ *   the 2.15.3 said "not saved" and left the edits stuck; [changedKept], its version on disk fits the history.
  */
 data class CsvEditorState(
     val name: String = "",
@@ -56,6 +58,8 @@ data class CsvEditorState(
     val left: Boolean = false,
     val versions: List<HistoryCopy>? = null,
     val askOverCap: Int? = null,
+    val changedOnDisk: Boolean = false,
+    val changedKept: Boolean = true,
 )
 
 /**
@@ -66,6 +70,8 @@ data class CsvEditorState(
  * The 2.15.3's "Save" of the leave dialog left the screen whatever the save gave (D3,
  * `csv_editor_screen.dart:214-218`): here the screen goes only once the file is written.
  */
+// One function per action of the editor's bar and dialogs: the screen's surface, not a class doing too much.
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class CsvEditorViewModel @Inject constructor(
     private val handle: SavedStateHandle,
@@ -147,14 +153,39 @@ class CsvEditorViewModel @Inject constructor(
             mutableState.value = current.copy(askOverCap = (FileCaps.EDITOR_HISTORY_COPY / MIB).toInt())
             return
         }
+        write(thenLeave, overwrite = false)
+    }
+
+    /** "Overwrite" of [CsvEditorState.changedOnDisk]: the edits over the file as it is now, its version kept first when it fits. */
+    fun overwrite() {
+        if (!mutableState.value.changedOnDisk) return
+        mutableState.update { it.copy(changedOnDisk = false) }
+        write(askedThenLeave, overwrite = true)
+    }
+
+    /** "Cancel" of [CsvEditorState.changedOnDisk]: nothing written, the edits kept on screen. */
+    fun keepOnDisk() = mutableState.update { it.copy(changedOnDisk = false, saveFailure = null) }
+
+    private fun write(thenLeave: Boolean, overwrite: Boolean) {
+        val current = mutableState.value
+        val edits = current.edits?.takeUnless { current.saving }
+        val target = file
+        val opened = stamp
+        if (edits == null || target == null || opened == null) return
         // A restore still being read lands no more: the save writes what is shown (Claude review R21).
         ++loads
         mutableState.value = current.copy(saving = true, saveFailure = null)
         viewModelScope.launch {
             val error = loadOrFailure {
-                withContext(io) { CsvSaving.save(target, opened, history, edits::writeTo) }
+                withContext(io) {
+                    if (overwrite) {
+                        CsvSaving.overwrite(target, history, edits::writeTo)
+                    } else {
+                        CsvSaving.save(target, opened, history, edits::writeTo)
+                    }
+                }
             }.exceptionOrNull()
-            if (error == null) saved(target, thenLeave, edits) else failed(error, thenLeave)
+            if (error == null) saved(target, thenLeave, edits) else failed(target, error, thenLeave)
         }
     }
 
@@ -194,9 +225,18 @@ class CsvEditorViewModel @Inject constructor(
         }
     }
 
-    /** Nothing was written: said in the leave dialog when it asked, which stays (D3); otherwise below. */
-    private fun failed(error: Throwable, thenLeave: Boolean) {
-        val why = if (error is FileChangedException) uiText(R.string.csv_editor_changed) else IoErrors.reasonOf(error)
+    /**
+     * Nothing was written: said in the leave dialog when it asked, which stays (D3); otherwise below. A file another
+     * app changed is asked about instead ([CsvEditorState.changedOnDisk]), over the leave dialog when it asked.
+     */
+    private suspend fun failed(target: File, error: Throwable, thenLeave: Boolean) {
+        if (error is FileChangedException) {
+            askedThenLeave = thenLeave
+            val kept = withContext(io) { CsvSaving.keepsCurrent(target) }
+            mutableState.update { it.copy(saving = false, changedOnDisk = true, changedKept = kept) }
+            return
+        }
+        val why = IoErrors.reasonOf(error)
         val reason = uiText(R.string.editor_save_failed, why)
         mutableState.update { it.copy(saving = false, saveFailure = reason) }
         if (!thenLeave) messages.error(reason)

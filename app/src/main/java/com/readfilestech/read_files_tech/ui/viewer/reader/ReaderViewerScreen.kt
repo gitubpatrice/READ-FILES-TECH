@@ -39,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,7 @@ import com.readfilestech.read_files_tech.data.viewer.reader.ReaderBlocks
 import com.readfilestech.read_files_tech.data.viewer.reader.ReaderChapter
 import com.readfilestech.read_files_tech.data.viewer.reader.ReaderDocument
 import com.readfilestech.read_files_tech.ui.viewer.ViewerFailureMessage
+import com.readfilestech.read_files_tech.ui.viewer.ViewerMessage
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import com.readfilestech.read_files_tech.ui.viewer.ViewerState
 import com.readfilestech.read_files_tech.ui.viewer.text.FontSizeMenu
@@ -99,7 +99,11 @@ fun ReaderViewerScreen(onBack: () -> Unit, viewModel: ReaderViewerViewModel = hi
     ) { document, padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                if (document.chapterCount == 0) Message(stringResource(R.string.reader_no_chapter)) else Shown(chapter, selected, fontSize)
+                if (document.chapterCount == 0) {
+                    ViewerMessage(stringResource(R.string.reader_no_chapter))
+                } else {
+                    Shown(chapter, selected, fontSize)
+                }
             }
             if (document.chapterCount > 1) {
                 val title = (chapter as? ViewerState.Ready)?.content?.title ?: document.title(selected)
@@ -121,18 +125,11 @@ private fun Shown(chapter: ViewerState<ReaderChapter>, selected: Int, fontSize: 
         ViewerState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         is ViewerState.Failed -> ViewerFailureMessage(chapter.failure, PaddingValues())
         is ViewerState.Ready -> if (chapter.content.blocks.size == 0) {
-            Message(stringResource(R.string.reader_empty))
+            ViewerMessage(stringResource(R.string.reader_empty))
         } else {
             // A chapter chosen starts at its top: one scroll position per chapter.
             key(selected) { Blocks(chapter.content.blocks, fontSize) }
         }
-    }
-}
-
-@Composable
-private fun Message(text: String) {
-    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(text, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

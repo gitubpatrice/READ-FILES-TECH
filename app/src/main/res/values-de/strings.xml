@@ -60,8 +60,8 @@
     <string name="picker_filter">Aktiver Filter: %1$s</string>
     <string name="picker_empty_title">Keine zuletzt verwendete Datei</string>
     <string name="picker_empty_body">Geöffnete Dateien und die von den Werkzeugen erstellten (Konvertierungen, Scanner, OCR…) erscheinen hier von selbst.</string>
-    <string name="picker_remove">Aus „Zuletzt verwendet“ entfernen</string>
-    <string name="picker_removed">Aus „Zuletzt verwendet“ entfernt</string>
+    <string name="recent_remove">Aus „Zuletzt verwendet“ entfernen</string>
+    <string name="recent_removed">Aus „Zuletzt verwendet“ entfernt</string>
     <string name="picker_downloads">Downloads</string>
     <string name="picker_documents">Dokumente</string>
     <string name="picker_camera">Fotos</string>
@@ -91,7 +91,6 @@
     <string name="quick_camera">Kamera</string>
     <string name="favorite_add">Zu Favoriten hinzufügen</string>
     <string name="favorite_remove">Aus Favoriten entfernen</string>
-    <string name="recent_remove">Entfernen</string>
     <string name="date_today">Heute</string>
     <string name="date_yesterday">Gestern</string>
     <plurals name="date_days_ago">
@@ -249,7 +248,12 @@
         <item quantity="other">%d gefunden</item>
     </plurals>
     <string name="search_running">Suche läuft…</string>
-    <string name="search_nothing">Kein Ergebnis – geben Sie ein, wonach gesucht werden soll</string>
+    <string name="search_enter">Geben Sie einen Teil eines Namens oder eines Inhalts ein und starten Sie dann die Suche.</string>
+    <string name="search_no_result">Keine Datei gefunden.</string>
+    <plurals name="search_name_only">
+        <item quantity="one">%1$d Textdatei über %2$d MB wurde nur nach ihrem Namen durchsucht</item>
+        <item quantity="other">%1$d Textdateien über %2$d MB wurden nur nach ihrem Namen durchsucht</item>
+    </plurals>
     <plurals name="search_results">
         <item quantity="one">%d Ergebnis</item>
         <item quantity="other">%d Ergebnisse</item>
@@ -464,7 +468,6 @@
     <string name="csv_editor_choose">CSV zum Bearbeiten wählen</string>
     <string name="csv_editor_intro">Ändern Sie Zellen, fügen Sie Zeilen und Spalten hinzu oder löschen Sie sie. Beim Speichern wird nur das zurückgeschrieben, was Sie geändert haben: Der Rest der Datei bleibt, wie er war.</string>
     <string name="csv_editor_saved">Gespeichert</string>
-    <string name="csv_editor_changed">die Datei wurde seit dem Öffnen von einer anderen App geändert</string>
     <string name="csv_editor_cut_kept">Was nicht angezeigt wird, wird unverändert gespeichert.</string>
     <string name="csv_editor_read_only_nul">Diese Datei enthält NUL-Bytes: Der Inhalt ist kein Text mit einem Byte pro Zeichen (UTF-16 ohne Byte-Order-Mark oder gar kein Text). Die Datei wird angezeigt, nicht bearbeitet.</string>
     <string name="csv_editor_read_only_dos">Diese Datei scheint in einer MS-DOS- oder Mac-Codepage geschrieben zu sein, nicht in Windows-1252: Was Sie eingeben, würde darin falsch gelesen. Die Datei wird angezeigt, nicht bearbeitet.</string>
@@ -621,6 +624,7 @@
     <string name="editor_text_too_large">der Text ist größer als %1$d MB, das Maximum, das der Editor öffnet: Kürzen Sie ihn und speichern Sie dann</string>
     <string name="editor_changed_title">„%1$s“ wurde geändert</string>
     <string name="editor_changed_message">Eine andere App hat diese Datei geändert, verschoben oder gelöscht, seit sie hier geöffnet wurde. Mit Ihrem Text überschreiben? Die Version auf dem Datenträger kommt zuerst in den Verlauf.</string>
+    <string name="editor_changed_message_lost">Eine andere App hat diese Datei geändert, verschoben oder gelöscht, seit sie hier geöffnet wurde. Mit Ihrem Text überschreiben? Ihre Fassung auf dem Speicher ist größer als %1$d MB, zu groß für den Verlauf: Sie geht verloren.</string>
     <string name="editor_overwrite">Überschreiben</string>
     <string name="editor_leave_title">Ungespeicherte Änderungen</string>
     <string name="editor_leave_message">Vor dem Verlassen speichern?</string>

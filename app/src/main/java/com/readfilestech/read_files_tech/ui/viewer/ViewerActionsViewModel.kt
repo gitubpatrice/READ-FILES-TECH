@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.sharing.KnownApps
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.vault.VaultSession
@@ -42,6 +43,15 @@ class ViewerActionsViewModel @Inject constructor(
     val leavable: StateFlow<FileEntry?> = leaving.asStateFlow()
 
     private var loading: Job? = null
+
+    private val pdfTech = MutableStateFlow(false)
+
+    /** Whether PDF Tech is installed: "Edit in PDF Tech" is offered only then, as the cloud apps are. */
+    val pdfTechInstalled: StateFlow<Boolean> = pdfTech.asStateFlow()
+
+    init {
+        viewModelScope.launch { pdfTech.value = withContext(io) { launching.isInstalled(KnownApps.PDF_TECH) } }
+    }
 
     /** The last file asked wins: a gallery asks at each page, and an earlier answer must not land after it. */
     fun load(file: File?) {

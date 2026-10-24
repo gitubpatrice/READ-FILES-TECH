@@ -17,13 +17,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Shield
@@ -255,7 +255,8 @@ private fun RecentMenu(
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.recent_remove)) },
-                leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                // Not a bin: the file stays where it is, only the list forgets it.
+                leadingIcon = { Icon(Icons.Outlined.RemoveCircleOutline, contentDescription = null) },
                 onClick = {
                     open = false
                     onRemove(file)

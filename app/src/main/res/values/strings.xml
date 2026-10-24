@@ -61,8 +61,8 @@
     <string name="picker_filter">Active filter: %1$s</string>
     <string name="picker_empty_title">No recent file</string>
     <string name="picker_empty_body">Files you open, and those the tools make (conversions, scanner, OCR…), show up here by themselves.</string>
-    <string name="picker_remove">Remove from recents</string>
-    <string name="picker_removed">Removed from recents</string>
+    <string name="recent_remove">Remove from recents</string>
+    <string name="recent_removed">Removed from recents</string>
     <string name="picker_downloads">Downloads</string>
     <string name="picker_documents">Documents</string>
     <string name="picker_camera">Photos</string>
@@ -92,7 +92,6 @@
     <string name="quick_camera">Camera</string>
     <string name="favorite_add">Add to favorites</string>
     <string name="favorite_remove">Remove from favorites</string>
-    <string name="recent_remove">Remove</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
     <plurals name="date_days_ago">
@@ -256,7 +255,12 @@
         <item quantity="other">%d found</item>
     </plurals>
     <string name="search_running">Searching…</string>
-    <string name="search_nothing">No result — enter what to look for</string>
+    <string name="search_enter">Enter part of a name, or of a content, then search.</string>
+    <string name="search_no_result">No file found.</string>
+    <plurals name="search_name_only">
+        <item quantity="one">%1$d text file over %2$d MB was searched by its name only</item>
+        <item quantity="other">%1$d text files over %2$d MB were searched by their name only</item>
+    </plurals>
     <plurals name="search_results">
         <item quantity="one">%d result</item>
         <item quantity="other">%d results</item>
@@ -475,7 +479,6 @@
     <string name="csv_editor_choose">Choose a CSV to edit</string>
     <string name="csv_editor_intro">Change cells, add or delete rows and columns. Saving writes back only what you changed: the rest of the file stays as it was.</string>
     <string name="csv_editor_saved">Saved</string>
-    <string name="csv_editor_changed">the file was changed by another app since it was opened</string>
     <string name="csv_editor_cut_kept">What is not shown is saved as it was.</string>
     <string name="csv_editor_read_only_nul">This file holds NUL bytes: it is not a text of one byte per character (UTF-16 without a byte order mark, or not a text at all). It is shown, not edited.</string>
     <string name="csv_editor_read_only_dos">This file seems written in an MS-DOS or Mac code page, not in Windows-1252: what you typed would read wrong in it. It is shown, not edited.</string>
@@ -644,6 +647,7 @@
     <string name="editor_text_too_large">the text is over %1$d MB, the most the editor opens: shorten it, then save</string>
     <string name="editor_changed_title">“%1$s” changed</string>
     <string name="editor_changed_message">Another app changed, moved or deleted this file since it was opened here. Overwrite it with your text? Its version on disk goes to the history first.</string>
+    <string name="editor_changed_message_lost">Another app changed, moved or deleted this file since it was opened here. Overwrite it with your text? Its version on disk is over %1$d MB, too large for the history: it will be lost.</string>
     <string name="editor_overwrite">Overwrite</string>
     <string name="editor_leave_title">Unsaved changes</string>
     <string name="editor_leave_message">Save before leaving?</string>

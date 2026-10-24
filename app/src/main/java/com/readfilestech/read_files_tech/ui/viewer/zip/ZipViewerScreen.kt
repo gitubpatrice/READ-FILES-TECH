@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -55,6 +54,7 @@ import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.FileTypeIcon
 import com.readfilestech.read_files_tech.ui.explorer.FolderSearchField
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.viewer.ViewerMessage
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 
 /** The refused entries a result names one by one; the others are counted. */
@@ -130,7 +130,7 @@ private fun Listing(
 ) {
     Column(Modifier.padding(padding).fillMaxSize()) {
         if (archive.entries.isEmpty()) {
-            CenteredText(stringResource(R.string.zip_empty))
+            ViewerMessage(stringResource(R.string.zip_empty))
             return@Column
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -143,7 +143,7 @@ private fun Listing(
             )
         }
         if (shown.isEmpty()) {
-            CenteredText(stringResource(R.string.folder_no_match, search))
+            ViewerMessage(stringResource(R.string.folder_no_match, search))
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(shown, key = ZipItem::index) { item ->
@@ -216,13 +216,6 @@ private fun reasonText(reason: NotExtracted): String = when (reason) {
     NotExtracted.UnsafeName -> stringResource(R.string.zip_unsafe_name)
     NotExtracted.NameTaken -> stringResource(R.string.zip_name_taken)
     NotExtracted.OverTotal -> stringResource(R.string.zip_over_total, formatBytes(FileCaps.ZIP_EXTRACT_TOTAL))
-}
-
-@Composable
-private fun CenteredText(text: String) {
-    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(text, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
-    }
 }
 
 /** While it runs: how far, and "Cancel" — the back key cancels too; a tap beside does nothing. */

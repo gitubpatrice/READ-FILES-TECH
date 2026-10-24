@@ -117,7 +117,7 @@ fun ImageViewerScreen(onBack: () -> Unit, viewModel: ImageViewerViewModel = hilt
             viewModel = viewModel,
         )
     }
-    info?.let { EntryInfoDialog(it) { info = null } }
+    info?.let { EntryInfoDialog(it, onCopied = viewModel::copied) { info = null } }
 }
 
 @Composable

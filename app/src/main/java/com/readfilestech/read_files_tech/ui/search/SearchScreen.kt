@@ -51,16 +51,20 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.search.SearchHit
+import com.readfilestech.read_files_tech.data.storage.StorageModel
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
+import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.common.formatBytes
+import com.readfilestech.read_files_tech.ui.explorer.AccessBanner
 import java.io.File
 
 /**
  * @param pickedRoot the folder the chooser handed back, until [onPickedRootUsed].
- * @param onChooseRoot opens the explorer in folder-choosing mode, starting at the given folder.
+ * @param onChooseRoot opens the app's folder picker, as the content search and the duplicates do.
  * @param onOpenFolder shows a result's folder in the explorer — more useful than opening the file (2.15.x).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +73,7 @@ fun SearchScreen(
     pickedRoot: String?,
     onPickedRootUsed: () -> Unit,
     onBack: () -> Unit,
-    onChooseRoot: (String) -> Unit,
+    onChooseRoot: () -> Unit,
     onOpenFolder: (String) -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
@@ -80,6 +84,12 @@ fun SearchScreen(
             onPickedRootUsed()
         }
     }
+    // Access granted in Android's settings meanwhile: the banner goes.
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshAccess()
+        onPauseOrDispose { }
+    }
+    val storage = LocalStorageSettings.current
     var name by rememberSaveable { mutableStateOf("") }
     var content by rememberSaveable { mutableStateOf("") }
     val start = { viewModel.start(name, content) }
@@ -115,7 +125,7 @@ fun SearchScreen(
                     content = it
                 }, R.string.search_content_label, R.string.search_content_hint, Icons.Outlined.FindInPage, start)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { onChooseRoot(state.root.path) }, enabled = !state.searching) {
+                    IconButton(onClick = onChooseRoot, enabled = !state.searching) {
                         Icon(Icons.Outlined.FolderOpen, contentDescription = stringResource(R.string.search_choose_root))
                     }
                     Text(
@@ -142,6 +152,13 @@ fun SearchScreen(
                     }
                 }
             }
+            // Without all-files access a search finds part of the files only: said, with the way to allow it.
+            if (state.accessMissing) AccessBanner(storage.model == StorageModel.ALL_FILES, storage.request)
+            state.finished?.let {
+                Column(Modifier.padding(horizontal = 12.dp)) {
+                    SearchNotes(it.full, it.nameOnly, R.plurals.search_name_only, it.unreadable, it.unreadableFolders)
+                }
+            }
             if (state.searching) {
                 Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 2.dp)
@@ -160,7 +177,13 @@ fun SearchScreen(
             if (state.results.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        stringResource(if (state.searching) R.string.search_running else R.string.search_nothing),
+                        stringResource(
+                            when {
+                                state.searching -> R.string.search_running
+                                state.finished != null -> R.string.search_no_result
+                                else -> R.string.search_enter
+                            },
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

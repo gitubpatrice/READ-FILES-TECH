@@ -30,6 +30,15 @@ sealed interface SearchEvent {
     data class Found(val hits: List<SearchHit>) : SearchEvent
 
     data class Scanned(val files: Int) : SearchEvent
+
+    /**
+     * The last event, as the content search's: what was not searched, said rather than read as "not there" —
+     * [nameOnly] text files over [SearchQuery.maxContentBytes] matched on their name alone, [unreadable] files
+     * whose content could not be read, [unreadableFolders]; [full], the search stopped at [SearchQuery.maxResults].
+     * The 2.15.x stopped at its cap without a word (inventory F14).
+     */
+    data class Finished(val scanned: Int, val nameOnly: Int, val unreadable: Int, val unreadableFolders: Int, val full: Boolean) :
+        SearchEvent
 }
 
 /**
@@ -45,12 +54,14 @@ object FileSearch {
     fun run(query: SearchQuery): Flow<SearchEvent> = flow {
         val matcher = Matcher(query)
         val batches = SearchBatches<SearchHit>({ emit(SearchEvent.Found(it)) }, { emit(SearchEvent.Scanned(it)) })
-        FolderWalk(query.root, skipHidden = true).forEachFile { path, attributes ->
+        val walk = FolderWalk(query.root, skipHidden = true)
+        walk.forEachFile { path, attributes ->
             matcher.match(path, attributes)?.let(batches::add)
             batches.report(matcher.scanned)
             !matcher.full
         }
         batches.finish(matcher.scanned)
+        emit(SearchEvent.Finished(matcher.scanned, matcher.nameOnly, matcher.unreadable, walk.unreadableFolders, matcher.full))
     }
 
     private class Matcher(private val query: SearchQuery) {
@@ -61,6 +72,10 @@ object FileSearch {
         private val noCriteria = name == null && content == null
         var scanned = 0
             private set
+        var nameOnly = 0
+            private set
+        var unreadable = 0
+            private set
         private var hits = 0
 
         val full: Boolean get() = hits >= query.maxResults
@@ -70,20 +85,29 @@ object FileSearch {
             scanned++
             val fileName = path.fileName?.toString().orEmpty()
             val nameMatches = name != null && name in fileName.lowercase()
-            val snippet = if (content != null && contentReadable(fileName, attributes)) snippetOf(path, content) else null
+            val snippet = if (content != null && isText(fileName)) contentOf(path, attributes, content) else null
             if (!nameMatches && snippet == null && !noCriteria) return null
             hits++
             return SearchHit(path.toString(), attributes.size(), attributes.lastModifiedTime().toMillis(), snippet)
         }
 
-        private fun contentReadable(fileName: String, attributes: BasicFileAttributes): Boolean =
-            FileNames.extension(fileName) in TextFiles.EXTENSIONS && attributes.size() <= query.maxContentBytes
+        private fun isText(fileName: String): Boolean = FileNames.extension(fileName) in TextFiles.EXTENSIONS
+
+        /** The snippet of a text file's content holding [pattern] — none, counted, when the file is too large for it. */
+        private fun contentOf(path: Path, attributes: BasicFileAttributes, pattern: String): String? {
+            if (attributes.size() > query.maxContentBytes) {
+                nameOnly++
+                return null
+            }
+            return snippetOf(path, pattern)
+        }
 
         /** The first line holding [pattern], cut at 200 characters. */
         private fun snippetOf(path: Path, pattern: String): String? = try {
             TextContent.read(path, query.maxContentBytes).lineSequence().firstOrNull { pattern in it.lowercase() }
                 ?.let { if (it.length > SNIPPET_CHARS) it.take(SNIPPET_CHARS) + "…" else it }
         } catch (expected: IOException) {
+            unreadable++
             null
         }
     }

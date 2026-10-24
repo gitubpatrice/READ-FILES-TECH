@@ -53,7 +53,7 @@ import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
-import com.readfilestech.read_files_tech.ui.outputs.OutputActionsRow
+import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import com.readfilestech.read_files_tech.ui.tools.ToolResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -125,10 +125,9 @@ fun FormatScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: ()
                     }
                 }
             }
+            // The card every other tool shows its output in: its folder to open as well (the 2.15.3 showed the path only).
             state.saved?.let { path ->
-                Text(stringResource(R.string.format_saved_body), style = MaterialTheme.typography.bodySmall)
-                Text(path, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                OutputActionsRow(path, onNavigate)
+                OutputSavedCard(stringResource(R.string.convert_saved_title), stringResource(R.string.format_saved_body), path, onNavigate)
             }
         }
     }

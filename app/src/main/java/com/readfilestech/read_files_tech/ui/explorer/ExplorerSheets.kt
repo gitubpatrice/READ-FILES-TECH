@@ -65,7 +65,7 @@ private data class EntryDetails(val size: Long, val modifiedMs: Long?, val acces
 
 /** `showFileInfoDialog` of the 2.15.x: type, extension, MIME, size, dates, link, path — and "copy the path". */
 @Composable
-fun EntryInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
+fun EntryInfoDialog(entry: FileEntry, onCopied: (String) -> Unit, onDismiss: () -> Unit) {
     val details by produceState<EntryDetails?>(null, entry.path) {
         value = withContext(Dispatchers.IO) { readDetails(entry) }
     }
@@ -116,6 +116,7 @@ fun EntryInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
         dismissButton = {
             TextButton(onClick = {
                 scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(entry.name, entry.path))) }
+                onCopied(entry.path)
                 onDismiss()
             }) { Text(stringResource(R.string.action_copy_path)) }
         },

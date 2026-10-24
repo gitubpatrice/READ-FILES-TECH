@@ -86,6 +86,7 @@ import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownStyle
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownTableRow
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownText
 import com.readfilestech.read_files_tech.ui.common.formatBytes
+import com.readfilestech.read_files_tech.ui.viewer.ViewerMessage
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import com.readfilestech.read_files_tech.ui.viewer.text.FontSizeMenu
 import com.readfilestech.read_files_tech.ui.viewer.text.RowColours
@@ -139,13 +140,12 @@ fun MarkdownViewerScreen(onBack: () -> Unit, viewModel: MarkdownViewerViewModel 
         },
     ) { content, padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            when (val rendering = content.rendering) {
-                is MarkdownRendering.Rendered -> if (showSource) {
-                    TextRows(content.source, fontSize, code = true, sourceColours)
-                } else {
-                    RenderedBlocks(rendering.blocks, viewModel::image) { viewModel.open(context, it) }
-                }
-                else -> SourceOnly(content, rendering, fontSize, sourceColours)
+            val rendering = content.rendering
+            when {
+                content.source.isEmpty -> ViewerMessage(stringResource(R.string.preview_empty))
+                rendering !is MarkdownRendering.Rendered -> SourceOnly(content, rendering, fontSize, sourceColours)
+                showSource -> TextRows(content.source, fontSize, code = true, sourceColours)
+                else -> RenderedBlocks(rendering.blocks, viewModel::image) { viewModel.open(context, it) }
             }
         }
     }

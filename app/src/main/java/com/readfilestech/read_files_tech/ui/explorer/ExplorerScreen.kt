@@ -267,7 +267,7 @@ fun ExplorerScreen(
                                         if (entry.isDirectory) {
                                             FolderMenu(entry, onAction, dismiss)
                                         } else {
-                                            FileMenu(entry, state.kDriveInstalled, state.protonInstalled, onAction, dismiss)
+                                            FileMenu(entry, state.installed, onAction, dismiss)
                                         }
                                     }
                                 },
@@ -313,7 +313,7 @@ fun ExplorerScreen(
             },
             onDismiss = { dialog = null },
         )
-        is ExplorerDialog.Info -> EntryInfoDialog(shown.entry) { dialog = null }
+        is ExplorerDialog.Info -> EntryInfoDialog(shown.entry, onCopied = viewModel::copied) { dialog = null }
         is ExplorerDialog.Preview -> PreviewSheet(shown.entry, onOpen = {
             dialog = null
             open(shown.entry)

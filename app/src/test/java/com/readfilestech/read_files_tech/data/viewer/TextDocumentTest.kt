@@ -32,6 +32,17 @@ class TextDocumentTest {
         assertThat(rows(document("no break".toByteArray()))).containsExactly("no break")
     }
 
+    /** The viewer says "Empty file" for these, where it showed a blank page; a line break is a line, shown. */
+    @Test
+    fun `a file without a character is empty, a byte order mark alone too, a lone line break not`() {
+        assertThat(document(ByteArray(0)).isEmpty).isTrue()
+        assertThat(document(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())).isEmpty).isTrue()
+        assertThat(document(byteArrayOf(0xFF.toByte(), 0xFE.toByte())).isEmpty).isTrue()
+        assertThat(document("\n".toByteArray()).isEmpty).isFalse()
+        assertThat(document(" ".toByteArray()).isEmpty).isFalse()
+        assertThat(document("x".repeat(TextDocument.ROW_BYTES * 2).toByteArray()).isEmpty).isFalse()
+    }
+
     /** The 2.15.3 read with a strict UTF-8 decoder: these three ended in "Erreur de lecture" (F37). */
     @Test
     fun `UTF-8 with or without a BOM, UTF-16 with a BOM, and Windows-1252 when it is not UTF-8`() {

@@ -93,7 +93,7 @@ class PickerViewModel @Inject constructor(
     fun remove(entry: FileEntry) {
         viewModelScope.launch {
             withContext(io) { sources.remove(entry.path) }
-            messages.info(uiText(R.string.picker_removed))
+            messages.info(uiText(R.string.recent_removed))
             reload()
         }
     }

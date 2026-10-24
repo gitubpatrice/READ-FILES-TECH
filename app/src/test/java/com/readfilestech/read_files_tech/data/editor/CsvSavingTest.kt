@@ -50,6 +50,25 @@ class CsvSavingTest {
         assertThat(file.exists()).isFalse()
     }
 
+    /** The user told it changed chose to overwrite: the edits go over it, its version on disk kept first. */
+    @Test
+    fun `an overwrite writes over the file as it is now, its version on disk kept in the history`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, _) = open(file)
+        edits.set(1, 0, "9")
+        file.writeText("a,b\n1,2\n3,4\n")
+        assertThat(CsvSaving.keepsCurrent(file)).isTrue()
+        CsvSaving.overwrite(file, history, edits::writeTo)
+        assertThat(file.readText()).isEqualTo("a,b\n9,2\n")
+        assertThat(history.versions(file.absolutePath).single().file.readText()).isEqualTo("a,b\n1,2\n3,4\n")
+
+        // Deleted meanwhile: written again, nothing to keep.
+        file.delete()
+        CsvSaving.overwrite(file, history, edits::writeTo)
+        assertThat(file.readText()).isEqualTo("a,b\n9,2\n")
+        assertThat(history.versions(file.absolutePath)).hasSize(1)
+    }
+
     /** Claude review R20: the stamp was read before the copy and the writing only, seconds before the rename. */
     @Test
     fun `a file written by another app during the save is not replaced`() {

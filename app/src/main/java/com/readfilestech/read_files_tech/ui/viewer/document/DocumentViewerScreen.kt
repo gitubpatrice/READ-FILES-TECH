@@ -3,21 +3,17 @@ package com.readfilestech.read_files_tech.ui.viewer.document
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.ui.viewer.ViewerMessage
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import com.readfilestech.read_files_tech.ui.viewer.text.FontSizeMenu
 import com.readfilestech.read_files_tech.ui.viewer.text.TextRows
@@ -49,12 +45,7 @@ fun DocumentViewerScreen(onBack: () -> Unit, viewModel: DocumentViewerViewModel 
             if (document.hasText) {
                 TextRows(document.document, fontSize, code = false)
             } else {
-                Text(
-                    stringResource(R.string.document_no_text),
-                    Modifier.align(Alignment.Center).padding(24.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                )
+                ViewerMessage(stringResource(R.string.document_no_text))
             }
         }
     }

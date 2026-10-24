@@ -141,3 +141,16 @@ internal fun ViewerFailureMessage(failure: ViewerFailure, padding: PaddingValues
         Text(text, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
     }
 }
+
+/** A note in place of a viewer's content — an empty file, a chapter without text — centred, where the content would be. */
+@Composable
+internal fun ViewerMessage(text: String) {
+    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}

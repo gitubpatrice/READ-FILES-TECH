@@ -33,8 +33,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
-import com.readfilestech.read_files_tech.data.files.SharedStorageNames
-import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.resolve
@@ -89,12 +87,13 @@ internal fun VaultDialogs(dialog: VaultDialog?, viewModel: VaultViewModel) {
             onConfirm = viewModel::reset,
             onDismiss = viewModel::dismiss,
         )
+        // Replacing loses the file the vault holds, as on export: shown as the danger it is (the 2.15.3 did not).
         is VaultDialog.Namesake -> Question(
             title = stringResource(R.string.vault_namesake_title),
             message = stringResource(R.string.vault_namesake_message, dialog.name),
             yes = stringResource(R.string.vault_replace),
             no = stringResource(R.string.vault_keep),
-            danger = false,
+            danger = true,
             onAnswer = viewModel::answer,
         )
         is VaultDialog.ExportNamesake -> Question(
@@ -112,13 +111,10 @@ internal fun VaultDialogs(dialog: VaultDialog?, viewModel: VaultViewModel) {
             onConfirm = { viewModel.delete(dialog.item) },
             onDismiss = viewModel::dismiss,
         )
-        VaultDialog.BackupPassword -> PasswordDialog(
+        is VaultDialog.BackupPassword -> PasswordDialog(
             title = stringResource(R.string.vault_backup),
-            // The folder's name from the code, never from the translation: it is a name on the disk.
-            info = stringResource(
-                R.string.vault_backup_password_info,
-                SharedStorageNames.FLUTTER_FILES_TECH_DIR + "/" + OutputCategory.VAULT_BACKUPS.folderName + "/",
-            ),
+            // The folder it really goes to, a name on the disk: never from the translation.
+            info = stringResource(R.string.vault_backup_password_info, dialog.folder),
             confirm = true,
             submitLabel = stringResource(R.string.vault_backup_go),
             onSubmit = viewModel::backup,

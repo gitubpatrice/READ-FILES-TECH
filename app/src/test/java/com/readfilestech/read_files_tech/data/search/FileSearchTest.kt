@@ -111,6 +111,26 @@ class FileSearchTest {
         assertThat(hits(SearchQuery(root, name = "f", maxResults = 7))).hasSize(7)
     }
 
+    /** The 2.15.x stopped at its cap and kept quiet (F14): the screen now says why the list ends, and what was not read. */
+    @Test
+    fun `how the search ended is said - stopped at its cap, text files too large to read searched by name`() = runBlocking {
+        (1..9).forEach { file("f$it.txt") }
+        val full = FileSearch.run(SearchQuery(root, name = "f", maxResults = 3)).toList().last() as SearchEvent.Finished
+        assertThat(full.full).isTrue()
+
+        file("big-invoice.txt", "VAT " + "x".repeat(64))
+        file("small.txt", "VAT here")
+        val query = SearchQuery(root, name = "invoice", content = "vat", maxContentBytes = 32)
+        val finished = FileSearch.run(query).toList().last() as SearchEvent.Finished
+        assertThat(finished.nameOnly).isEqualTo(1)
+        assertThat(finished.full).isFalse()
+        // Matched by its name all the same; the small one by its content.
+        assertThat(names(query)).containsExactly("big-invoice.txt", "small.txt")
+
+        // Without a content to look for, no file is "searched by name only".
+        assertThat((FileSearch.run(SearchQuery(root, name = "big")).toList().last() as SearchEvent.Finished).nameOnly).isEqualTo(0)
+    }
+
     @Test
     fun `a long matching line is cut at 200 characters`() {
         file("long.txt", "key " + "y".repeat(400))
@@ -120,10 +140,11 @@ class FileSearchTest {
     }
 
     @Test
-    fun `the last event says how many files were scanned, and a collector can stop early`() = runBlocking {
+    fun `the last events say how many files were scanned, and a collector can stop early`() = runBlocking {
         (1..5).forEach { file("f$it.txt") }
-        val last = FileSearch.run(SearchQuery(root, name = "f")).toList().last()
-        assertThat(last).isEqualTo(SearchEvent.Scanned(5))
+        val events = FileSearch.run(SearchQuery(root, name = "f")).toList()
+        assertThat(events.dropLast(1).last()).isEqualTo(SearchEvent.Scanned(5))
+        assertThat(events.last()).isEqualTo(SearchEvent.Finished(5, nameOnly = 0, unreadable = 0, unreadableFolders = 0, full = false))
         // Taking one event cancels the walk: no exception, no further work.
         assertThat(FileSearch.run(SearchQuery(root, name = "f")).take(1).toList()).hasSize(1)
     }

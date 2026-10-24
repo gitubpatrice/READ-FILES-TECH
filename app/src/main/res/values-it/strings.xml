@@ -62,8 +62,8 @@
     <string name="picker_filter">Filtro attivo: %1$s</string>
     <string name="picker_empty_title">Nessun file recente</string>
     <string name="picker_empty_body">I file che apre, e quelli creati dagli strumenti (conversioni, scanner, OCR…), compaiono qui da soli.</string>
-    <string name="picker_remove">Rimuovi dai recenti</string>
-    <string name="picker_removed">Rimosso dai recenti</string>
+    <string name="recent_remove">Rimuovi dai recenti</string>
+    <string name="recent_removed">Rimosso dai recenti</string>
     <string name="picker_downloads">Download</string>
     <string name="picker_documents">Documenti</string>
     <string name="picker_camera">Foto</string>
@@ -93,7 +93,6 @@
     <string name="quick_camera">Fotocamera</string>
     <string name="favorite_add">Aggiungi ai preferiti</string>
     <string name="favorite_remove">Rimuovi dai preferiti</string>
-    <string name="recent_remove">Rimuovi</string>
     <string name="date_today">Oggi</string>
     <string name="date_yesterday">Ieri</string>
     <plurals name="date_days_ago">
@@ -267,7 +266,13 @@
         <item quantity="other">%d trovati</item>
     </plurals>
     <string name="search_running">Ricerca…</string>
-    <string name="search_nothing">Nessun risultato — inserisca cosa cercare</string>
+    <string name="search_enter">Inserisca parte di un nome o di un contenuto, poi avvii la ricerca.</string>
+    <string name="search_no_result">Nessun file trovato.</string>
+    <plurals name="search_name_only">
+        <item quantity="one">%1$d file di testo oltre %2$d MB è stato cercato solo per nome</item>
+        <item quantity="many">%1$d file di testo oltre %2$d MB sono stati cercati solo per nome</item>
+        <item quantity="other">%1$d file di testo oltre %2$d MB sono stati cercati solo per nome</item>
+    </plurals>
     <plurals name="search_results">
         <item quantity="one">%d risultato</item>
         <item quantity="many">%d di risultati</item>
@@ -488,7 +493,6 @@
     <string name="csv_editor_choose">Scegli un CSV da modificare</string>
     <string name="csv_editor_intro">Modifichi le celle, aggiunga o elimini righe e colonne. Il salvataggio riscrive solo ciò che ha cambiato: il resto del file resta com\'era.</string>
     <string name="csv_editor_saved">Salvato</string>
-    <string name="csv_editor_changed">il file è stato modificato da un\'altra app dopo la sua apertura</string>
     <string name="csv_editor_cut_kept">Ciò che non viene mostrato viene salvato così com\'era.</string>
     <string name="csv_editor_read_only_nul">Questo file contiene byte NUL: non è un testo di un byte per carattere (UTF-16 senza indicatore dell\'ordine dei byte, o non è affatto un testo). Viene mostrato, non modificato.</string>
     <string name="csv_editor_read_only_dos">Questo file sembra scritto in una tabella codici MS-DOS o Mac, non in Windows-1252: ciò che scrive verrebbe letto in modo errato. Viene mostrato, non modificato.</string>
@@ -655,6 +659,7 @@
     <string name="editor_text_too_large">il testo supera %1$d MB, il massimo che l\'editor apre: lo accorci, poi salvi</string>
     <string name="editor_changed_title">«%1$s» è cambiato</string>
     <string name="editor_changed_message">Un\'altra app ha modificato, spostato o eliminato questo file da quando è stato aperto qui. Sovrascriverlo con il Suo testo? La versione presente sul disco va prima nella cronologia.</string>
+    <string name="editor_changed_message_lost">Un\'altra app ha modificato, spostato o eliminato questo file da quando è stato aperto qui. Sovrascriverlo con il Suo testo? La sua versione sul disco supera %1$d MB, troppo per la cronologia: andrà persa.</string>
     <string name="editor_overwrite">Sovrascrivi</string>
     <string name="editor_leave_title">Modifiche non salvate</string>
     <string name="editor_leave_message">Salvare prima di uscire?</string>

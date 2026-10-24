@@ -152,7 +152,14 @@ fun CodeEditorScreen(
 private fun Dialogs(state: CodeEditorState, viewModel: CodeEditorViewModel) {
     when {
         // Over the leave dialog when its Save found the file changed: Cancel brings it back.
-        state.changedOnDisk -> ChangedDialog(state, onOverwrite = viewModel::overwrite, onCancel = viewModel::keepOnDisk)
+        state.changedOnDisk -> ChangedOnDiskDialog(
+            state.name,
+            state.saving,
+            state.saveFailure,
+            keptInHistory = true,
+            onOverwrite = viewModel::overwrite,
+            onCancel = viewModel::keepOnDisk,
+        )
         state.leaving -> LeaveDialog(
             state,
             onSave = { viewModel.leave(LeaveChoice.SAVE) },
@@ -335,25 +342,6 @@ private fun LeaveDialog(state: CodeEditorState, onSave: () -> Unit, onDiscard: (
     )
 }
 
-/** The file changed since it was read: asked before it is overwritten — its version on disk kept first. */
-@Composable
-private fun ChangedDialog(state: CodeEditorState, onOverwrite: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = { if (!state.saving) onCancel() },
-        title = { Text(stringResource(R.string.editor_changed_title, state.name)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.editor_changed_message))
-                state.saveFailure?.let { Text(it.resolve(), color = MaterialTheme.colorScheme.error) }
-            }
-        },
-        confirmButton = { SaveButton(state.saving, R.string.editor_overwrite, onOverwrite) },
-        dismissButton = {
-            TextButton(onClick = onCancel, enabled = !state.saving) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
-}
-
 @Composable
 private fun SaveButton(saving: Boolean, label: Int, onClick: () -> Unit) {
     Button(onClick = onClick, enabled = !saving) {
@@ -369,7 +357,9 @@ private fun rememberDateFormatter(): DateTimeFormatter {
     }
 }
 
-private fun DateTimeFormatter.date(copy: HistoryCopy): String = format(Instant.ofEpochMilli(copy.savedAtMs).atZone(ZoneId.systemDefault()))
+// When the copy was WRITTEN, as the CSV editor shows it: its name orders the copies, and runs ahead after a clock change (R21).
+private fun DateTimeFormatter.date(copy: HistoryCopy): String =
+    format(Instant.ofEpochMilli(copy.writtenAtMs).atZone(ZoneId.systemDefault()))
 
 /**
  * The versions the saves replaced (docs D-021), newest first, and apart those the 2.15.x kept under the

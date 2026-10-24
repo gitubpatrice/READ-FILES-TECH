@@ -7,6 +7,9 @@ import com.readfilestech.read_files_tech.data.browse.SortMode
 import com.readfilestech.read_files_tech.data.storage.VolumeRoot
 import java.io.File
 
+/** The apps a file's menu sends to by name, offered only when installed: an entry that always failed is not one. */
+data class InstalledApps(val kDrive: Boolean = false, val proton: Boolean = false, val pdfTech: Boolean = false)
+
 /** What the explorer chooses for another screen (`pickMode` of the 2.15.x, which knew one file only). */
 enum class PickMode {
     FOLDER,
@@ -55,8 +58,7 @@ data class ExplorerUiState(
     /** The caller's name for this place ("Videos"), shown instead of the explorer's. */
     val title: String? = null,
     val volumes: List<VolumeRoot> = emptyList(),
-    val kDriveInstalled: Boolean = false,
-    val protonInstalled: Boolean = false,
+    val installed: InstalledApps = InstalledApps(),
 ) {
     val selecting: Boolean get() = selection.isNotEmpty()
 

@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.files.StorageVisibility
 import com.readfilestech.read_files_tech.data.search.FileSearch
 import com.readfilestech.read_files_tech.data.search.SearchEvent
 import com.readfilestech.read_files_tech.data.search.SearchHit
@@ -29,12 +30,17 @@ data class SearchUiState(
     val searching: Boolean = false,
     val scanned: Int = 0,
     val results: List<SearchHit> = emptyList(),
+    /** How the last search ended; null before one, and while one runs. */
+    val finished: SearchEvent.Finished? = null,
+    /** Without access to all files, a search finds only part of them: the screen says so, with the way to allow it. */
+    val accessMissing: Boolean = false,
 )
 
 /** The global search (`global_search_screen.dart`): runs off the main thread, stops when asked or when the screen goes. */
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     volumes: StorageVolumes,
+    private val visibility: StorageVisibility,
     private val messages: UserMessages,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
@@ -42,7 +48,10 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = state.asStateFlow()
     private var running: Job? = null
 
-    /** The folder chosen in the explorer; the screen hands it over from the navigation entry. */
+    /** Read again at each return to the screen: access may have been granted in Android's settings meanwhile. */
+    fun refreshAccess() = state.update { it.copy(accessMissing = !visibility.seesEverything()) }
+
+    /** The folder chosen in the picker; the screen hands it over from the navigation entry. */
     fun setRoot(folder: String) = state.update { it.copy(root = File(folder)) }
 
     /** Needs a name or a content (2.15.x); a search already running is stopped first. */
@@ -54,13 +63,14 @@ class SearchViewModel @Inject constructor(
             return
         }
         running?.cancel()
-        state.update { it.copy(searching = true, scanned = 0, results = emptyList()) }
+        state.update { it.copy(searching = true, scanned = 0, results = emptyList(), finished = null) }
         running = viewModelScope.launch {
             try {
                 FileSearch.run(SearchQuery(state.value.root, namePattern, contentPattern)).flowOn(io).collect { event ->
                     when (event) {
                         is SearchEvent.Found -> state.update { it.copy(results = it.results + event.hits) }
                         is SearchEvent.Scanned -> state.update { it.copy(scanned = event.files) }
+                        is SearchEvent.Finished -> state.update { it.copy(finished = event) }
                     }
                 }
             } finally {

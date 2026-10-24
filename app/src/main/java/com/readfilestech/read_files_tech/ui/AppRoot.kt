@@ -216,11 +216,12 @@ private fun Destinations(navController: NavHostController) {
         }
         composable(Routes.SEARCH) { entry ->
             val picked = entry.picked<String>(Routes.RESULT_PICKED_FOLDER)
+            val chooseRoot = stringResource(R.string.search_choose_root)
             SearchScreen(
                 pickedRoot = picked.value,
                 onPickedRootUsed = picked.consume,
                 onBack = { navController.leave(entry) },
-                onChooseRoot = { navController.navigate(Routes.explorer(it, pick = PickMode.FOLDER)) },
+                onChooseRoot = { navController.navigate(Routes.picker(PickMode.FOLDER, title = chooseRoot)) },
                 onOpenFolder = { navController.navigate(Routes.explorer(it)) },
             )
         }

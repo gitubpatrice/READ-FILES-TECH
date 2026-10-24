@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.ui.explorer
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.RenameProposal
 import com.readfilestech.read_files_tech.data.sharing.KnownApps
@@ -10,6 +11,8 @@ import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.data.storage.StorageVolumes
 import com.readfilestech.read_files_tech.ui.common.FileOperations
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
+import com.readfilestech.read_files_tech.ui.common.UserMessages
+import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -37,6 +40,7 @@ class ExplorerViewModel @Inject constructor(
     private val operations: FileOperations,
     val launching: EntryLaunching,
     val thumbnails: Thumbnails,
+    private val messages: UserMessages,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
     private val state = MutableStateFlow(
@@ -58,10 +62,15 @@ class ExplorerViewModel @Inject constructor(
         viewModelScope.launch { operations.changes.collect { browser.refresh() } }
         viewModelScope.launch {
             // Once per screen: an entry that always failed ("send to kDrive" without kDrive) is not offered.
-            val (kDrive, proton) = withContext(io) {
-                launching.isInstalled(KnownApps.KDRIVE) to launching.isInstalled(KnownApps.PROTON_DRIVE)
+            val installed = withContext(io) {
+                listOf(KnownApps.KDRIVE, KnownApps.PROTON_DRIVE, KnownApps.PDF_TECH).associateWith(launching::isInstalled)
             }
-            state.update { it.copy(kDriveInstalled = kDrive, protonInstalled = proton) }
+            val apps = InstalledApps(
+                kDrive = installed.getValue(KnownApps.KDRIVE),
+                proton = installed.getValue(KnownApps.PROTON_DRIVE),
+                pdfTech = installed.getValue(KnownApps.PDF_TECH),
+            )
+            state.update { it.copy(installed = apps) }
         }
     }
 
@@ -70,6 +79,9 @@ class ExplorerViewModel @Inject constructor(
     fun selectAll() = state.update { it.allSelected() }
 
     fun clearSelection() = state.update { it.copy(selection = emptySet()) }
+
+    /** "Copy the path" of the info dialog, said as every other copy is: below Android 13 nothing else says it. */
+    fun copied(path: String) = messages.info(uiText(R.string.value_copied, path))
 
     fun createFolder(name: String) {
         state.value.dir?.let { operations.createFolder(it, name.trim()) }

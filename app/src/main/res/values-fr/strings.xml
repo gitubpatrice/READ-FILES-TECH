@@ -55,8 +55,8 @@
     <string name="picker_filter">Filtre actif : %1$s</string>
     <string name="picker_empty_title">Aucun fichier récent</string>
     <string name="picker_empty_body">Les fichiers ouverts ou produits par les outils (conversions, scanner, OCR…) apparaîtront ici automatiquement.</string>
-    <string name="picker_remove">Retirer des récents</string>
-    <string name="picker_removed">Retiré des récents</string>
+    <string name="recent_remove">Retirer des récents</string>
+    <string name="recent_removed">Retiré des récents</string>
     <string name="picker_downloads">Téléchargements</string>
     <string name="picker_documents">Documents</string>
     <string name="picker_camera">Photos</string>
@@ -86,7 +86,6 @@
     <string name="quick_camera">Caméra</string>
     <string name="favorite_add">Ajouter aux favoris</string>
     <string name="favorite_remove">Retirer des favoris</string>
-    <string name="recent_remove">Retirer</string>
     <string name="date_today">Aujourd\'hui</string>
     <string name="date_yesterday">Hier</string>
     <plurals name="date_days_ago">
@@ -260,7 +259,13 @@
         <item quantity="many">%d trouvés</item>
         <item quantity="other">%d trouvés</item>
     </plurals>
-    <string name="search_nothing">Aucun résultat — saisissez vos critères</string>
+    <string name="search_enter">Saisissez une partie d\'un nom ou d\'un contenu, puis lancez la recherche.</string>
+    <string name="search_no_result">Aucun fichier trouvé.</string>
+    <plurals name="search_name_only">
+        <item quantity="one">%1$d fichier texte de plus de %2$d Mo n\'a été cherché que par son nom</item>
+        <item quantity="many">%1$d fichiers texte de plus de %2$d Mo n\'ont été cherchés que par leur nom</item>
+        <item quantity="other">%1$d fichiers texte de plus de %2$d Mo n\'ont été cherchés que par leur nom</item>
+    </plurals>
     <plurals name="search_results">
         <item quantity="one">%d résultat</item>
         <item quantity="many">%d résultats</item>
@@ -477,7 +482,6 @@
     <string name="csv_editor_choose">Choisir un CSV à éditer</string>
     <string name="csv_editor_intro">Modifiez des cellules, ajoutez ou supprimez des lignes et des colonnes. L\'enregistrement ne réécrit que ce que vous avez changé : le reste du fichier reste tel qu\'il était.</string>
     <string name="csv_editor_saved">Enregistré</string>
-    <string name="csv_editor_changed">le fichier a été modifié par une autre application depuis son ouverture</string>
     <string name="csv_editor_cut_kept">Ce qui n\'est pas affiché est enregistré tel quel.</string>
     <string name="csv_editor_read_only_nul">Ce fichier contient des octets NUL : ce n\'est pas un texte d\'un octet par caractère (de l\'UTF-16 sans marque d\'ordre des octets, ou pas un texte). Il est affiché, pas modifié.</string>
     <string name="csv_editor_read_only_dos">Ce fichier semble écrit dans une page de code MS-DOS ou Mac, pas en Windows-1252 : ce que vous saisiriez s\'y lirait mal. Il est affiché, pas modifié.</string>
@@ -641,6 +645,7 @@
     <string name="editor_text_too_large">le texte dépasse %1$d Mo, le maximum que l\'éditeur ouvre : raccourcissez-le, puis enregistrez</string>
     <string name="editor_changed_title">« %1$s » a changé</string>
     <string name="editor_changed_message">Une autre application a modifié, déplacé ou supprimé ce fichier depuis son ouverture ici. L\'écraser avec votre texte ? Sa version sur le disque va d\'abord dans l\'historique.</string>
+    <string name="editor_changed_message_lost">Une autre application a modifié, déplacé ou supprimé ce fichier depuis son ouverture ici. L\'écraser avec votre texte ? Sa version sur le disque dépasse %1$d Mo, trop pour l\'historique : elle sera perdue.</string>
     <string name="editor_overwrite">Écraser</string>
     <string name="editor_leave_title">Modifications non enregistrées</string>
     <string name="editor_leave_message">Enregistrer avant de quitter ?</string>

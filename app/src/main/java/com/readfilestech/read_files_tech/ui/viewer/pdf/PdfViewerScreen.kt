@@ -122,8 +122,9 @@ private fun RowScope.PdfActions(viewer: PdfViewer, path: String?, onContents: ()
     // The frame's own check (ViewerScaffold): the entry of the file shown, which PathGuard lets out — never the vault's.
     val actions: ViewerActionsViewModel = hiltViewModel()
     val leavable by actions.leavable.collectAsStateWithLifecycle()
+    val pdfTech by actions.pdfTechInstalled.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    leavable?.takeIf { it.path == path }?.let { entry ->
+    leavable?.takeIf { it.path == path && pdfTech }?.let { entry ->
         IconButton(onClick = { actions.launching.editInPdfTech(context, entry) }) {
             Icon(
                 Icons.Outlined.PictureAsPdf,

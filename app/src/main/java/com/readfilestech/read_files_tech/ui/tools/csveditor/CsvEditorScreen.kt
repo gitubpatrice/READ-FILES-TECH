@@ -74,6 +74,7 @@ import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.tools.ToolIntro
+import com.readfilestech.read_files_tech.ui.tools.editor.ChangedOnDiskDialog
 import com.readfilestech.read_files_tech.ui.viewer.table.TableCellText
 import com.readfilestech.read_files_tech.ui.viewer.table.TableCells
 import com.readfilestech.read_files_tech.ui.viewer.table.TableGrid
@@ -149,6 +150,16 @@ fun CsvEditorScreen(
     state.versions?.let { HistoryDialog(it, onRestore = viewModel::restore, onDismiss = viewModel::hideHistory) }
     // After the leave dialog: over it, when its "Save" asked.
     state.askOverCap?.let { OverCapDialog(it, onAnswer = viewModel::answerOverCap) }
+    if (state.changedOnDisk) {
+        ChangedOnDiskDialog(
+            state.name,
+            state.saving,
+            state.saveFailure,
+            keptInHistory = state.changedKept,
+            onOverwrite = viewModel::overwrite,
+            onCancel = viewModel::keepOnDisk,
+        )
+    }
 }
 
 /** The first save of a file over the history's cap: the version it replaces cannot be kept — said, and asked, once. */

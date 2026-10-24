@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,9 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.PictureAsPdf
@@ -28,7 +25,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,7 +47,7 @@ import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
-import com.readfilestech.read_files_tech.ui.outputs.OutputActionsRow
+import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.pdf.PasswordDialog
 import kotlinx.coroutines.Dispatchers
@@ -175,7 +170,12 @@ fun ConvertScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             if (working != null) {
                 Working(working, state.progress, viewModel::stop)
             } else if (result != null) {
-                Result(result, onNavigate)
+                OutputSavedCard(
+                    stringResource(R.string.convert_saved_title),
+                    stringResource(R.string.convert_saved_body),
+                    result,
+                    onNavigate,
+                )
             }
             Conversion.entries.forEach { conversion ->
                 val look = lookOf(conversion)
@@ -217,29 +217,6 @@ private fun Working(conversion: Conversion, progress: Float?, onStop: () -> Unit
                 )
             }
             TextButton(onClick = onStop, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.action_cancel)) }
-        }
-    }
-}
-
-@Composable
-private fun Result(path: String, onNavigate: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(
-                    stringResource(R.string.convert_saved_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-            Text(stringResource(R.string.convert_saved_body), style = MaterialTheme.typography.bodySmall)
-            Text(path, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = { File(path).parent?.let { onNavigate(Routes.explorer(path = it)) } }) {
-                Icon(Icons.Outlined.FolderOpen, contentDescription = null)
-                Text(stringResource(R.string.action_open_folder), Modifier.padding(start = 6.dp))
-            }
-            OutputActionsRow(path, onNavigate)
         }
     }
 }

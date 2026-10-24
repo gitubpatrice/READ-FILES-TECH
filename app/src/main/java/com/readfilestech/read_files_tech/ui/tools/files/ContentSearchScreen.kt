@@ -63,9 +63,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
-import com.readfilestech.read_files_tech.data.files.FileCaps
-import com.readfilestech.read_files_tech.data.files.MIB
-import com.readfilestech.read_files_tech.data.search.ContentEvent
 import com.readfilestech.read_files_tech.data.search.ContentHit
 import com.readfilestech.read_files_tech.data.search.LineMatch
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -74,6 +71,7 @@ import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.search.SearchNotes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -229,42 +227,9 @@ private fun Status(state: ContentSearchState) {
                 color = color,
             )
         }
-        state.finished?.let { Notes(it) }
-    }
-}
-
-@Composable
-private fun Notes(finished: ContentEvent.Finished) {
-    val style = MaterialTheme.typography.labelSmall
-    val color = MaterialTheme.colorScheme.error
-    if (finished.full) {
-        Text(
-            pluralStringResource(R.plurals.content_search_full, FileCaps.SEARCH_RESULTS, FileCaps.SEARCH_RESULTS),
-            style = style,
-            color = color
-        )
-    }
-    if (finished.tooLarge > 0) {
-        val megabytes = (FileCaps.SEARCH_CONTENT / MIB).toInt()
-        Text(
-            pluralStringResource(R.plurals.content_search_too_large, finished.tooLarge, finished.tooLarge, megabytes),
-            style = style,
-            color = color
-        )
-    }
-    if (finished.unreadable > 0) {
-        Text(
-            pluralStringResource(R.plurals.content_search_unreadable, finished.unreadable, finished.unreadable),
-            style = style,
-            color = color
-        )
-    }
-    if (finished.unreadableFolders > 0) {
-        Text(
-            pluralStringResource(R.plurals.walk_unreadable_folders, finished.unreadableFolders, finished.unreadableFolders),
-            style = style,
-            color = color,
-        )
+        state.finished?.let {
+            SearchNotes(it.full, it.tooLarge, R.plurals.content_search_too_large, it.unreadable, it.unreadableFolders)
+        }
     }
 }
 

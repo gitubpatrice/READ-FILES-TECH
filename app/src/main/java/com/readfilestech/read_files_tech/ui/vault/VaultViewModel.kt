@@ -63,7 +63,9 @@ sealed interface VaultDialog {
     data class Namesake(val name: String) : VaultDialog
     data class ExportNamesake(val name: String) : VaultDialog
     data class ConfirmDelete(val item: VaultItem) : VaultDialog
-    data object BackupPassword : VaultDialog
+
+    /** The backup's password, [folder] being where it will be written — the one the settings chose, or a fallback. */
+    data class BackupPassword(val folder: String) : VaultDialog
     data class UnexpectedExtension(val path: String) : VaultDialog
     data class RestorePassword(val path: String) : VaultDialog
     data class RestoreAllThere(val count: Int) : VaultDialog
@@ -335,10 +337,16 @@ class VaultViewModel @Inject constructor(
             messages.info(uiText(R.string.vault_backup_empty))
             return
         }
-        show(VaultDialog.BackupPassword)
+        viewModelScope.launch {
+            // Where it goes, said before the password is typed: the output folder is a setting, and a fallback
+            // takes the backup when that folder cannot (the 2.15.3 named `Files Tech/` whatever the setting).
+            loadOrFailure { withContext(io) { outputs.folderFor(OutputCategory.VAULT_BACKUPS) } }
+                .onSuccess { show(VaultDialog.BackupPassword(it.path)) }
+                .onFailure { messages.error(uiText(R.string.vault_backup_failed, backupReason(it))) }
+        }
     }
 
-    /** The whole vault to `Files Tech/Sauvegardes coffre/coffre_<stamp>.rftvault`, reserved only once written. */
+    /** The whole vault to `<outputs>/Sauvegardes coffre/coffre_<stamp>.rftvault`, reserved only once written. */
     fun backup(password: String) {
         dismiss()
         if (busy) return

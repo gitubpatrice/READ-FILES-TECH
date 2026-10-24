@@ -37,7 +37,12 @@ import com.readfilestech.read_files_tech.ui.theme.DangerRed
  * 2.15.x also on GIF and BMP).
  */
 @Composable
-fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (EntryAction, FileEntry) -> Unit, dismiss: () -> Unit) {
+fun FileMenu(
+    entry: FileEntry,
+    installed: InstalledApps,
+    onAction: (EntryAction, FileEntry) -> Unit,
+    dismiss: () -> Unit,
+) {
     DropdownMenu(expanded = true, onDismissRequest = dismiss) {
         val item = MenuItems(entry, onAction, dismiss)
         item(EntryAction.OPEN, R.string.action_open, Icons.AutoMirrored.Outlined.OpenInNew)
@@ -45,15 +50,19 @@ fun FileMenu(entry: FileEntry, kDrive: Boolean, proton: Boolean, onAction: (Entr
         if (entry.extension in TextFiles.EXTENSIONS) item(EntryAction.PREVIEW, R.string.action_preview, Icons.Outlined.Visibility)
         // `canEdit` of the 2.15.3 (`file_row.dart:108, 296`): the code editor, for a text file.
         if (entry.extension in TextFiles.EXTENSIONS) item(EntryAction.EDIT, R.string.action_edit, Icons.Outlined.Edit)
-        if (entry.extension == "pdf") {
+        if (entry.extension == "pdf" && installed.pdfTech) {
             item(EntryAction.EDIT_IN_PDF_TECH, R.string.action_edit_in_pdf_tech, Icons.Outlined.PictureAsPdf, BrandColors.PdfTech)
         }
         if (entry.extension in ImageToolRules.METADATA_EXTENSIONS) {
             item(EntryAction.STRIP_METADATA, R.string.action_strip_metadata, Icons.Outlined.CleaningServices)
         }
         item(EntryAction.SHARE, R.string.action_share, Icons.Filled.Share)
-        if (kDrive) item(EntryAction.SEND_TO_KDRIVE, R.string.action_send_to_kdrive, Icons.Outlined.CloudUpload, BrandColors.KDrive)
-        if (proton) item(EntryAction.SEND_TO_PROTON, R.string.action_send_to_proton, Icons.Outlined.CloudUpload, BrandColors.ProtonDrive)
+        if (installed.kDrive) {
+            item(EntryAction.SEND_TO_KDRIVE, R.string.action_send_to_kdrive, Icons.Outlined.CloudUpload, BrandColors.KDrive)
+        }
+        if (installed.proton) {
+            item(EntryAction.SEND_TO_PROTON, R.string.action_send_to_proton, Icons.Outlined.CloudUpload, BrandColors.ProtonDrive)
+        }
         HorizontalDivider()
         item(EntryAction.RENAME, R.string.action_rename, Icons.Outlined.DriveFileRenameOutline)
         item(EntryAction.COPY_TO, R.string.action_copy_to, Icons.Outlined.ContentCopy)

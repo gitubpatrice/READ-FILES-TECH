@@ -176,6 +176,53 @@ class CsvEditorViewModelTest {
         change { it.set(1, 0, cell) }
     }
 
+    /**
+     * Another app changed the file: the 2.15.3 said "not saved" and offered nothing, the edits stuck. Now it asks:
+     * Cancel writes nothing and keeps the edits, Overwrite writes them, the version on disk in the history first.
+     */
+    @Test
+    fun `a file changed by another app is asked about - cancelled, then overwritten`() {
+        val csv = file("data.csv", "a\n1\n")
+        val viewModel = viewModel()
+        viewModel.openAndChange(csv, "mine")
+        csv.writeText("a\ntheirs\n")
+        viewModel.save()
+        io.runAll()
+        assertThat(viewModel.state.value.changedOnDisk).isTrue()
+        assertThat(viewModel.state.value.changedKept).isTrue()
+        assertThat(firstRow(csv)).isEqualTo("theirs")
+
+        viewModel.keepOnDisk()
+        io.runAll()
+        assertThat(viewModel.state.value.changedOnDisk).isFalse()
+        assertThat(viewModel.state.value.modified).isTrue()
+        assertThat(firstRow(csv)).isEqualTo("theirs")
+
+        viewModel.save()
+        io.runAll()
+        viewModel.overwrite()
+        io.runAll()
+        assertThat(firstRow(csv)).isEqualTo("mine")
+        assertThat(viewModel.state.value.changedOnDisk).isFalse()
+        assertThat(viewModel.state.value.modified).isFalse()
+        viewModel.showHistory()
+        io.runAll()
+        assertThat(viewModel.state.value.versions!!.first().file.readText()).isEqualTo("a\ntheirs\n")
+    }
+
+    /** Too large for the history: the dialog says the version on disk will be lost, rather than promise it is kept. */
+    @Test
+    fun `an overwrite says when the version on disk is too large to be kept`() {
+        val csv = file("data.csv", "a\n1\n")
+        val viewModel = viewModel()
+        viewModel.openAndChange(csv, "mine")
+        overCap("data.csv")
+        viewModel.save()
+        io.runAll()
+        assertThat(viewModel.state.value.changedOnDisk).isTrue()
+        assertThat(viewModel.state.value.changedKept).isFalse()
+    }
+
     /** It saved without keeping the version it replaced, without a word. */
     @Test
     fun `the first save of a file over the history's cap asks, and only the first`() {

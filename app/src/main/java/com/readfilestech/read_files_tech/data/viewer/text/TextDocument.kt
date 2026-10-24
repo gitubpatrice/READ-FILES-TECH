@@ -83,6 +83,9 @@ internal class TextRows(
     val count: Int,
     val encoding: TextEncoding,
 ) {
+    /** No character at all, a byte order mark aside: an empty file, where a lone line break is one empty line. */
+    val isEmpty: Boolean get() = count == 1 && start(0) >= size
+
     /** Row [index], without its line break. */
     fun row(index: Int): String {
         require(index in 0 until count) { "row $index of $count" }
@@ -165,6 +168,9 @@ internal class TextRows(
  */
 class TextDocument private constructor(private val rows: TextRows) {
     val rowCount: Int get() = rows.count
+
+    /** The file holds no character: its viewer says so rather than show a blank page. */
+    val isEmpty: Boolean get() = rows.isEmpty
 
     val encoding: TextEncoding get() = rows.encoding
 

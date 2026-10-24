@@ -68,12 +68,32 @@ object CsvSaving {
      */
     fun save(file: File, opened: FileStamp, history: EditorHistory?, write: (OutputStream) -> Unit) {
         checkUnchanged(file, opened)
-        if (history != null && keepsCopy(opened)) {
-            val current = StorageFileSource(file).open(FileCaps.EDITOR_HISTORY_COPY).use { it.readBytes() }
-            history.saveBefore(file.absolutePath, current)
-        }
+        if (history != null && keepsCopy(opened)) keepCurrent(file, history)
+        writeOver(file, { checkUnchanged(it, opened) }, write)
+    }
+
+    /**
+     * Writes over [file] whatever it holds now: the user was told another app changed it (the code editor's
+     * "Overwrite"). Its version on disk goes to the history first when it is within the history's cap
+     * ([keepsCurrent]) — the screen says, before, when it is not.
+     */
+    fun overwrite(file: File, history: EditorHistory?, write: (OutputStream) -> Unit) {
+        if (history != null && keepsCurrent(file)) keepCurrent(file, history)
+        writeOver(file, {}, write)
+    }
+
+    /** Whether [file]'s version on disk fits the history ([FileCaps.EDITOR_HISTORY_COPY]); one already gone has none to keep. */
+    fun keepsCurrent(file: File): Boolean = !file.isFile || file.length() <= FileCaps.EDITOR_HISTORY_COPY
+
+    private fun keepCurrent(file: File, history: EditorHistory) {
+        if (!file.isFile) return
+        val current = StorageFileSource(file).open(FileCaps.EDITOR_HISTORY_COPY).use { it.readBytes() }
+        history.saveBefore(file.absolutePath, current)
+    }
+
+    private fun writeOver(file: File, check: (File) -> Unit, write: (OutputStream) -> Unit) {
         val publish = { from: File, to: File ->
-            checkUnchanged(to, opened)
+            check(to)
             AtomicFiles.publish(from, to)
         }
         AtomicFiles.write(file, publish) { out ->

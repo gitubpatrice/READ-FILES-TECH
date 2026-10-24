@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.viewer.text.TextColor
 import com.readfilestech.read_files_tech.data.viewer.text.TextDocument
+import com.readfilestech.read_files_tech.ui.viewer.ViewerMessage
 import com.readfilestech.read_files_tech.ui.viewer.ViewerScaffold
 import kotlinx.coroutines.launch
 
@@ -106,7 +107,11 @@ fun TextViewerScreen(onBack: () -> Unit, viewModel: TextViewerViewModel = hiltVi
     ) { document, padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (!colorsHidden && colors.isNotEmpty()) ColorBar(colors, viewModel::copied)
-            TextRows(document, fontSize, code, codeColours.takeUnless { syntaxHidden })
+            if (document.isEmpty) {
+                ViewerMessage(stringResource(R.string.preview_empty))
+            } else {
+                TextRows(document, fontSize, code, codeColours.takeUnless { syntaxHidden })
+            }
         }
     }
 }

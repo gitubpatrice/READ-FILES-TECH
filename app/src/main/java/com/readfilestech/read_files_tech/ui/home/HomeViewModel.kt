@@ -77,7 +77,11 @@ class HomeViewModel @Inject constructor(
      * Removed from the home AND from the picker's list of outputs, until opened again: the 2.15.x's home
      * removal let an output come back through the picker (inventory F27).
      */
-    fun remove(file: RecentFile) = change { recents.dismiss(file.path) }
+    fun remove(file: RecentFile) {
+        // Said as the picker says it: the same action, one label and one message in both places.
+        change { recents.dismiss(file.path) }
+        messages.info(uiText(R.string.recent_removed))
+    }
 
     /**
      * Opens [path] if it is still there — the 2.15.x pushed a viewer onto a missing file (F26) — through
