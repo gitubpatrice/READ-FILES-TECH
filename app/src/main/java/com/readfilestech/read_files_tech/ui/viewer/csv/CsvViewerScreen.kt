@@ -80,7 +80,9 @@ fun CsvViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel:
         },
     ) { table, padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            val current = shown
+            // Only rows found in THIS table: read again after an "Edit", it showed for a frame with the rows of the
+            // table before, past the end of one that lost rows (Claude review, phase 8).
+            val current = shown?.takeIf { it.first === table }?.second
             when {
                 table.isEmpty -> TableMessage(stringResource(R.string.preview_empty))
                 current != null -> {

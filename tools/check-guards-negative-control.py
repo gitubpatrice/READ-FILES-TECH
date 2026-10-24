@@ -245,10 +245,15 @@ def locale_config(offered: list[str] | None = None) -> str:
     return ("N: android=http://schemas.android.com/apk/res/android (line=1)\n  E: locale-config (line=1)\n" + entries) * 2
 
 
+# The paths of an APK that matter to the check: About's legal texts, among the others.
+LEGAL_ENTRIES = "AndroidManifest.xml\nclasses.dex\nassets/legal/NOTICE\nassets/legal/LICENSE\n"
+
+
 def badgings(package: str = ISOLATED, codes: dict[str, int] | None = None) -> dict[str, str]:
     base = version_base()
     codes = {abi: base * 10 + rank for abi, rank in RANKS.items()} | (codes or {})
     files = {f"app-{abi}-release.apk.badging.txt": badging(package, code) for abi, code in codes.items()}
+    files |= {f"app-{abi}-release.apk.entries.txt": LEGAL_ENTRIES for abi in codes}
     return files | {f"app-{abi}-release.apk.localeconfig.txt": locale_config() for abi in codes}
 
 
@@ -583,6 +588,9 @@ def apk_cases(work: str) -> list[tuple]:
              1, f"the language picker does not offer {translated_languages()[0]}"),
         case("no generated locale config", without(badgings(), universal_config),
              1, "no generated locale config"),
+        case("the licences left out of one APK (legalAssets not wired)",
+             badgings() | {"app-universal-release.apk.entries.txt": LEGAL_ENTRIES.replace("assets/legal/NOTICE\n", "")},
+             1, "assets/legal/NOTICE missing"),
         case("directory missing", None, 1, "directory not found"),
     ]
 

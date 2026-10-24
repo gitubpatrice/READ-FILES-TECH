@@ -2,6 +2,8 @@ package com.readfilestech.read_files_tech.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -9,8 +11,8 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,30 +25,30 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.legacy.LegacyData
+import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 
 /**
- * The notice of the 2.x's extractions, at launch, once in the app's life (docs D-022), and how a move or a
- * deletion is going, whichever screen started it — the app's root shows it above every screen.
+ * The notice of the 2.x's extractions, at launch, once in the app's life (docs D-022). A move it starts holds no
+ * screen: a dialog over every screen hid the panic for as long as it ran (Claude review, phase 8) — said when it
+ * starts and when it ends, its progress in the settings' section.
  */
 @Composable
 fun LegacyDataNotice(viewModel: LegacyDataViewModel = hiltViewModel()) {
-    val working by viewModel.working.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.offerOnce() }
-    LegacyDialogs(viewModel)
-    if (working) {
-        AlertDialog(
-            onDismissRequest = {},
-            confirmButton = {},
-            title = { Text(stringResource(R.string.legacy_working)) },
-            text = { CircularProgressIndicator() },
-        )
+    // Back from Android's settings, where "Allow" led: the access read again, the notice still open.
+    LifecycleResumeEffect(state.dialog != null) {
+        if (state.dialog != null) viewModel.refresh()
+        onPauseOrDispose { }
     }
+    LegacyDialogs(viewModel)
 }
 
 /** The settings' section of the 2.x's data (docs D-021, D-022): there only while something is left. */
@@ -57,6 +59,12 @@ internal fun LegacyDataSection(viewModel: LegacyDataViewModel) {
     val summary = state.summary
     if (summary != null && !summary.isEmpty) {
         SectionTitle(stringResource(R.string.legacy_section))
+        if (working) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.legacy_working), style = MaterialTheme.typography.bodySmall)
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+        }
         if (summary.extractions.isNotEmpty()) {
             SettingRow(
                 icon = Icons.Outlined.Unarchive,
@@ -86,7 +94,7 @@ private fun LegacyDialogs(viewModel: LegacyDataViewModel) {
     when (val dialog = state.dialog) {
         is LegacyDialog.Extractions -> ExtractionsDialog(
             summary,
-            state.destination,
+            state,
             first = dialog.first,
             onMove = viewModel::move,
             onDelete = viewModel::askDeleteExtractions,
@@ -112,17 +120,19 @@ private fun LegacyDialogs(viewModel: LegacyDataViewModel) {
 
 /**
  * Move (what "Extract all" was for), delete — asked again, for good —, or later: nothing is moved in silence,
- * out of the private folder the files become readable by any app with storage access.
+ * out of the private folder the files become readable by any app with storage access. Without the access to
+ * write there, "Allow" leads to it first: the app's own folders, where Android would let it write, go with it.
  */
 @Composable
 private fun ExtractionsDialog(
     summary: LegacyData.Summary,
-    destination: String,
+    state: LegacyDataState,
     first: Boolean,
     onMove: () -> Unit,
     onDelete: () -> Unit,
     onLater: () -> Unit,
 ) {
+    val access = LocalStorageSettings.current
     AlertDialog(
         onDismissRequest = onLater,
         icon = { Icon(Icons.Outlined.Unarchive, contentDescription = null) },
@@ -130,11 +140,24 @@ private fun ExtractionsDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(filesAndSize(R.plurals.legacy_extractions_body, summary.extractionFiles, summary.extractionBytes))
-                Text(destination, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                Text(state.destination, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                if (!state.accessGranted) {
+                    Text(
+                        stringResource(R.string.legacy_extractions_access),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 if (first) Text(stringResource(R.string.legacy_later_note), style = MaterialTheme.typography.bodySmall)
             }
         },
-        confirmButton = { Button(onClick = onMove) { Text(stringResource(R.string.legacy_move)) } },
+        confirmButton = {
+            if (state.accessGranted) {
+                Button(onClick = onMove) { Text(stringResource(R.string.legacy_move)) }
+            } else {
+                Button(onClick = access.request) { Text(stringResource(R.string.action_allow)) }
+            }
+        },
         dismissButton = {
             TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete), color = DangerRed) }
             TextButton(onClick = onLater) { Text(stringResource(R.string.action_later)) }

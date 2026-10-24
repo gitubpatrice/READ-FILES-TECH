@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -94,8 +95,9 @@ internal fun OutputSettingsSection(
     }
     Card(Modifier.fillMaxWidth()) {
         Row(
+            // toggleable, not clickable: TalkBack reads "on" or "off" (Claude review, phase 8).
             Modifier.fillMaxWidth()
-                .clickable(role = Role.Switch) { viewModel.setAutoShare(!state.autoShare) }
+                .toggleable(value = state.autoShare, role = Role.Switch, onValueChange = viewModel::setAutoShare)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,

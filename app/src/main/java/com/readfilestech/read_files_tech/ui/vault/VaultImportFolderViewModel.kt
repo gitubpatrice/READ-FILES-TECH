@@ -120,7 +120,6 @@ class VaultImportFolderViewModel @Inject constructor(
         mutableState.update { state -> state.copy(entries = state.entries.map { it.copy(selected = selected) }) }
     }
 
-    /** "Encrypt": at once, or after the confirmation that the originals will be deleted. */
     /**
      * Stops the encryption after the file under way, which is never left half-written: the originals not yet
      * encrypted stay as they are, and importing the folder again goes on, the files already in the vault skipped.
@@ -132,6 +131,7 @@ class VaultImportFolderViewModel @Inject constructor(
         mutableState.update { it.copy(stopping = true) }
     }
 
+    /** "Encrypt": at once, or after the confirmation that the originals will be deleted. */
     fun encrypt() {
         val current = mutableState.value
         if (running?.isActive == true || current.scanning || current.selected.isEmpty()) return
@@ -179,7 +179,7 @@ class VaultImportFolderViewModel @Inject constructor(
             // Up to Android 10 the media index kept a deleted original's name, path and size (MediaIndex).
             withContext(io) { mediaIndex.forget(tally.deleted) }
             report(tally)
-            mutableState.update { it.copy(progress = null, done = true) }
+            mutableState.update { it.copy(progress = null, stopping = false, done = true) }
         }
     }
 

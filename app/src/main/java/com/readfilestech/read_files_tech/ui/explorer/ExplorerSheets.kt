@@ -115,9 +115,12 @@ fun EntryInfoDialog(entry: FileEntry, onCopied: (String) -> Unit, onDismiss: () 
         },
         dismissButton = {
             TextButton(onClick = {
-                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(entry.name, entry.path))) }
-                onCopied(entry.path)
-                onDismiss()
+                // Said and closed once copied: the dialog's scope ends with it (GPT review, phase 8).
+                scope.launch {
+                    clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(entry.name, entry.path)))
+                    onCopied(entry.path)
+                    onDismiss()
+                }
             }) { Text(stringResource(R.string.action_copy_path)) }
         },
         confirmButton = { Button(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },

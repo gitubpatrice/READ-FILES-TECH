@@ -159,6 +159,14 @@ fun SearchScreen(
                     SearchNotes(it.full, it.nameOnly, R.plurals.search_name_only, it.unreadable, it.unreadableFolders)
                 }
             }
+            if (state.stopped && state.results.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.search_stopped),
+                    Modifier.padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (state.searching) {
                 Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 2.dp)
@@ -180,6 +188,7 @@ fun SearchScreen(
                         stringResource(
                             when {
                                 state.searching -> R.string.search_running
+                                state.stopped -> R.string.search_stopped
                                 state.finished != null -> R.string.search_no_result
                                 else -> R.string.search_enter
                             },

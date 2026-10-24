@@ -8,9 +8,12 @@ import com.readfilestech.read_files_tech.data.files.MIB
 import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.testing.HeldDispatcher
+import com.readfilestech.read_files_tech.ui.common.UserMessage
 import com.readfilestech.read_files_tech.ui.common.UserMessages
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -39,8 +42,16 @@ class CsvEditorViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val messages = UserMessages()
+
     private fun viewModel() =
-        CsvEditorViewModel(SavedStateHandle(), EditorHistory(File(dir, "legacy"), File(dir, "history")), UserMessages(), io)
+        CsvEditorViewModel(SavedStateHandle(), EditorHistory(File(dir, "legacy"), File(dir, "history")), messages, io)
+
+    private fun shown(): List<UserMessage> {
+        val shown = mutableListOf<UserMessage>()
+        CoroutineScope(Dispatchers.Unconfined).launch { messages.showEach { shown += it } }.cancel()
+        return shown
+    }
 
     private fun file(name: String, text: String) = File(dir, name).apply { writeText(text) }
 
@@ -208,6 +219,32 @@ class CsvEditorViewModelTest {
         viewModel.showHistory()
         io.runAll()
         assertThat(viewModel.state.value.versions!!.first().file.readText()).isEqualTo("a\ntheirs\n")
+    }
+
+    /**
+     * The dialog stays while it writes and says there why it failed, as the code editor's (GPT review, phase 8):
+     * closed first, its "saving" never showed and the failure went below the screen.
+     */
+    @Test
+    fun `an overwrite keeps its dialog while it writes, and says there why it failed`() {
+        val csv = file("data.csv", "a\n1\n")
+        val viewModel = viewModel()
+        viewModel.openAndChange(csv, "mine")
+        csv.writeText("a\ntheirs\n")
+        viewModel.save()
+        io.runAll()
+        shown()
+        viewModel.overwrite()
+        assertThat(viewModel.state.value.changedOnDisk).isTrue()
+        assertThat(viewModel.state.value.saving).isTrue()
+        // The file became a folder meanwhile: nothing can be written over it.
+        assertThat(csv.delete() && csv.mkdir()).isTrue()
+        io.runAll()
+        val state = viewModel.state.value
+        assertThat(state.changedOnDisk).isTrue()
+        assertThat(state.saving).isFalse()
+        assertThat(state.saveFailure).isNotNull()
+        assertThat(shown()).isEmpty()
     }
 
     /** Too large for the history: the dialog says the version on disk will be lost, rather than promise it is kept. */

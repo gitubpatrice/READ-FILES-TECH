@@ -38,10 +38,12 @@ class LegacyDataViewModelTest {
     private lateinit var appFlutter: File
     private lateinit var legacy: LegacyData
     private lateinit var outputs: OutputStorage
+    private var granted = true
 
     private fun viewModel() = LegacyDataViewModel(
         legacy,
         outputs,
+        { granted },
         messages,
         CoroutineScope(Dispatchers.Unconfined),
         Dispatchers.Unconfined,
@@ -64,7 +66,7 @@ class LegacyDataViewModelTest {
         primary = File(tmp, "emulated0").apply { mkdirs() }
         appFlutter = File(tmp, "app_flutter").apply { mkdirs() }
         outputs = OutputStorage(prefs, { primary }, { null }, appFlutter)
-        val extractions = LegacyExtractions(appFlutter, { outputs.folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true) })
+        val extractions = LegacyExtractions(appFlutter, { outputs.folderFor(OutputCategory.EXTRACTIONS, noFallback = true) })
         val history = EditorHistory(File(appFlutter, "history"), File(tmp, "files/editor_history"))
         legacy = LegacyData(extractions, history, prefs)
     }
@@ -97,24 +99,40 @@ class LegacyDataViewModelTest {
         assertThat(vm.state.value.dialog).isNull()
         val root = File(primary, "Files Tech/Extractions")
         assertThat(shown()).containsExactly(
+            UserMessage(uiText(R.string.legacy_moving)),
             UserMessage(UiText.Plural(R.plurals.legacy_extractions_moved, 2, listOf(2, root.path))),
-        )
+        ).inOrder()
         assertThat(File(root, "photos/b.jpg").readText()).isEqualTo("b.jpg")
         assertThat(vm.state.value.summary?.isEmpty).isTrue()
     }
 
+    /**
+     * The outputs' folder refusing them, nothing is moved — not even into the app's own folders, which go with it
+     * (reviews, phase 8) — and the message says where it could not write and what to do.
+     */
     @Test
-    fun `a move that cannot start says why, and that every file is still in the private folder`() {
+    fun `a move with no folder to take them moves nothing, and says where and what to do`() {
         extraction("photos", "a.jpg", "b.jpg")
         primary = File(tmp, "not a folder").apply { writeText("x") }
         val vm = viewModel()
+        vm.refresh()
         vm.move()
-        val message = shown().single()
-        assertThat(message.isError).isTrue()
-        val text = message.text as UiText.Res
-        assertThat(text.id).isEqualTo(R.string.legacy_extractions_move_stopped)
-        assertThat(text.args.drop(1)).containsExactly(0, 2).inOrder()
+        val destination = File(primary, "Files Tech/Extractions").path
+        assertThat(shown().last()).isEqualTo(UserMessage(uiText(R.string.legacy_extractions_no_folder, destination), isError = true))
         assertThat(legacy.summary().extractionFiles).isEqualTo(2)
+    }
+
+    /** Without the access, the notice asks for it instead of moving: Android would let the app write only in its own folders. */
+    @Test
+    fun `the access to all files is read with what is left, again at each refresh`() {
+        extraction("photos", "a.jpg")
+        granted = false
+        val vm = viewModel()
+        vm.refresh()
+        assertThat(vm.state.value.accessGranted).isFalse()
+        granted = true
+        vm.refresh()
+        assertThat(vm.state.value.accessGranted).isTrue()
     }
 
     @Test

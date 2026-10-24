@@ -21,15 +21,19 @@ What is checked, on each of the four APKs (`aapt2 dump badging`)
   derives localeFilters from). One missing was stripped from the APK, its users read English; one
   extra is a library's translation that localeFilters no longer filters (docs D-033);
 - the languages Android 13's picker offers (the locale config AGP generated, `aapt2 dump xmltree`):
-  the same ones — AGP takes them from every resource folder, not from the strings.xml alone.
+  the same ones — AGP takes them from every resource folder, not from the strings.xml alone;
+- the legal texts About opens from the assets, NOTICE and LICENSE, copied by the `legalAssets` task of
+  app/build.gradle.kts: missing, the screen would end the app (docs D-038). The privacy policy and the
+  terms are resources: R8 may rename their paths, `check-translations.py` checks them in the sources.
 
 Usage
 -----
     python3 tools/check-release-apks.py [--replace] [apk-directory]
     python3 tools/check-release-apks.py [--replace] --from-badging DIR   (negative control only)
 
-`--from-badging` reads `<apk-name>.badging.txt` (and `<apk-name>.localeconfig.txt`) files instead of
-running aapt2, so the negative control can feed it broken outputs without building broken APKs.
+`--from-badging` reads `<apk-name>.badging.txt` (and `<apk-name>.localeconfig.txt`, `<apk-name>.entries.txt`)
+files instead of running aapt2 and reading the APK, so the negative control can feed it broken outputs without
+building broken APKs.
 """
 
 from __future__ import annotations
@@ -39,6 +43,7 @@ import os
 import re
 import subprocess
 import sys
+import zipfile
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -177,6 +182,21 @@ def badging_of(apk: str) -> str:
     return result.stdout
 
 
+LEGAL_ASSETS = ("assets/legal/NOTICE", "assets/legal/LICENSE")
+ENTRIES_SUFFIX = ".entries.txt"
+
+
+def entries_of(apk: str) -> set[str]:
+    """The paths the APK holds."""
+    with zipfile.ZipFile(apk) as archive:
+        return set(archive.namelist())
+
+
+def legal_problems(name: str, entries: set[str]) -> list[str]:
+    return [f"{name}: {asset} missing — About's licences would not open (the legalAssets task, app/build.gradle.kts)."
+            for asset in LEGAL_ASSETS if asset not in entries]
+
+
 def main(argv: list[str]) -> int:
     args = argv[1:]
     replace = "--replace" in args
@@ -217,10 +237,13 @@ def main(argv: list[str]) -> int:
                     text = f.read()
                 config_path = os.path.join(source, name + LOCALE_CONFIG_SUFFIX)
                 config = open(config_path, encoding="utf-8").read() if os.path.isfile(config_path) else ""
+                entries_path = os.path.join(source, name + ENTRIES_SUFFIX)
+                entries = set(open(entries_path, encoding="utf-8").read().split()) if os.path.isfile(entries_path) else set()
             else:
                 text = badging_of(path)
                 config = locale_config_of(path)
-        except (OSError, RuntimeError, FileNotFoundError) as error:
+                entries = entries_of(path)
+        except (OSError, RuntimeError, FileNotFoundError, zipfile.BadZipFile) as error:
             problems.append(str(error))
             continue
         match = re.search(r"package: name='([^']+)' versionCode='(\d+)'", text)
@@ -236,6 +259,7 @@ def main(argv: list[str]) -> int:
             problems.append(f"{name}: versionCode {code}, expected {expected_code} (base {base} * 10 + {RANKS[name]}).")
         problems += language_problems(name, text, languages)
         problems += locale_config_problems(name, config, languages)
+        problems += legal_problems(name, entries)
         if code <= HIGHEST_FLUTTER_CODE_PUBLISHED:
             problems.append(
                 f"{name}: versionCode {code} is not above {HIGHEST_FLUTTER_CODE_PUBLISHED} (Flutter 2.15.3): "
@@ -248,7 +272,7 @@ def main(argv: list[str]) -> int:
         return 1
     print()
     print(f"OK: four release APKs, package {expected_package}, codes {base * 10}..{base * 10 + 3}, all above "
-          f"{HIGHEST_FLUTTER_CODE_PUBLISHED}, languages en + {', '.join(sorted(languages))}.")
+          f"{HIGHEST_FLUTTER_CODE_PUBLISHED}, languages en + {', '.join(sorted(languages))}, legal texts in.")
     return 0
 
 

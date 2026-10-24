@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
+import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 
@@ -29,8 +30,8 @@ class LegacyExtractions(
      */
     private val extractionsRoot: () -> File,
     /**
-     * The copy of one file INTO its reservation (truncated, never unlinked first); a test passes one that
-     * fails, as a full disk would.
+     * The copy of one file into the hidden part file beside its reservation (truncated, never unlinked first); a
+     * test passes one that fails, as a full disk would.
      */
     private val copy: (from: Path, to: Path) -> Unit = { from, to ->
         Files.newOutputStream(to, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING).use { Files.copy(from, it) }
@@ -89,6 +90,10 @@ class LegacyExtractions(
      * case-insensitive volume (FUSE casefold, sdcardfs, exFAT) `notes.txt` lands on the `Notes.txt` just
      * moved, and deleting a target after a failed copy would delete THAT file, whose source is already
      * gone (Claude review R3). A target that cannot be reserved stops the move with nothing deleted.
+     *
+     * The copy goes into a hidden part file beside it, and takes the reserved name only once verified: the app
+     * killed half-way through a large file left it cut short under its real name, nothing to tell it from the
+     * others (Claude review, phase 8). Now the name stays an empty file, the part hidden, the source in place.
      */
     private fun moveOne(source: File, target: File): IOException? {
         try {
@@ -97,11 +102,16 @@ class LegacyExtractions(
         } catch (e: IOException) {
             return e
         }
+        var part: Path? = null
         return try {
-            copyVerified(source, target)
+            part = Files.createTempFile(target.toPath().parent, ".${target.name}.", PART)
+            copyVerified(source, part.toFile())
+            // Over the reservation, ours and empty: it was created exclusively, no other case of the name exists.
+            Files.move(part, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
             source.delete()
             null
         } catch (e: IOException) {
+            part?.let { runCatching { Files.deleteIfExists(it) } }
             target.delete() // ours: reserved above
             e
         }
@@ -128,6 +138,9 @@ class LegacyExtractions(
         const val SUFFIX = "_extracted"
         const val EXTRACTIONS_DIR = "Extractions"
         private const val MAX_CANDIDATES = 1_000
+
+        /** The hidden part file a copy is written into before it takes its name. */
+        private const val PART = ".rft-part"
 
         /**
          * `<archive>_extracted`, a folder itself (not a link to one), with an archive name before the suffix —

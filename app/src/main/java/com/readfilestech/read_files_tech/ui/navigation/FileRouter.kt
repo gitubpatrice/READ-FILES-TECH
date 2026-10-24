@@ -53,11 +53,6 @@ object FileRouter {
     }
 
     /**
-     * "Open with…": another app, chosen by the user — even when a viewer of the app could open it —
-     * except an APK, which the system's installer would cancel in silence without the app's permission
-     * (Claude review R5).
-     */
-    /**
      * The editor of a file the user asks to edit, wherever from — the explorer, the picker, a viewer: the CSV
      * editor for a CSV, as the CSV viewer always opened it; the code editor for any other text file
      * ([TextFiles.EXTENSIONS]); null for a file neither edits. The explorer and the picker sent a CSV to the code
@@ -69,5 +64,10 @@ object FileRouter {
         else -> null
     }
 
+    /**
+     * "Open with…": another app, chosen by the user — even when a viewer of the app could open it —
+     * except an APK, which the system's installer would cancel in silence without the app's permission
+     * (Claude review R5).
+     */
     fun chooserTargetFor(entry: FileEntry): FileTarget = if (entry.extension == APK) targetFor(entry) else FileTarget.External
 }

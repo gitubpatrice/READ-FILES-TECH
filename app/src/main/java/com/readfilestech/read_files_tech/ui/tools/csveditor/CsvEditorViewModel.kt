@@ -158,9 +158,9 @@ class CsvEditorViewModel @Inject constructor(
 
     /** "Overwrite" of [CsvEditorState.changedOnDisk]: the edits over the file as it is now, its version kept first when it fits. */
     fun overwrite() {
-        if (!mutableState.value.changedOnDisk) return
-        mutableState.update { it.copy(changedOnDisk = false) }
-        write(askedThenLeave, overwrite = true)
+        // The dialog stays while it writes, and says it if that fails — as the code editor's (GPT review, phase 8):
+        // closed first, its "saving" never showed and a failure went below the screen.
+        if (mutableState.value.changedOnDisk) write(askedThenLeave, overwrite = true)
     }
 
     /** "Cancel" of [CsvEditorState.changedOnDisk]: nothing written, the edits kept on screen. */
@@ -214,9 +214,9 @@ class CsvEditorViewModel @Inject constructor(
         if (landed) stamp = reread.getOrNull()?.second
         reread.getOrNull()?.first?.let { keepChoice(written, it) }
         mutableState.update { state ->
-            val done = state.copy(saving = false, modified = false, left = thenLeave)
+            val done = state.copy(saving = false, modified = false, changedOnDisk = false, left = thenLeave)
             when {
-                !landed -> state.copy(saving = false)
+                !landed -> state.copy(saving = false, changedOnDisk = false)
                 else -> reread.fold(
                     { done.copy(edits = it.first, version = state.version + 1) },
                     { done.copy(edits = null, failure = readFailure(target.name, it)) },
@@ -238,8 +238,10 @@ class CsvEditorViewModel @Inject constructor(
         }
         val why = IoErrors.reasonOf(error)
         val reason = uiText(R.string.editor_save_failed, why)
+        val asked = mutableState.value.changedOnDisk
         mutableState.update { it.copy(saving = false, saveFailure = reason) }
-        if (!thenLeave) messages.error(reason)
+        // Said in the dialog that asked — leave or overwrite —, which stays; below the screen otherwise.
+        if (!thenLeave && !asked) messages.error(reason)
     }
 
     /** The saved versions of the file, newest first, for the history dialog. */

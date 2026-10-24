@@ -269,6 +269,7 @@
     <string name="search_running">Ricerca…</string>
     <string name="search_enter">Inserisca parte di un nome o di un contenuto, poi avvii la ricerca.</string>
     <string name="search_no_result">Nessun file trovato.</string>
+    <string name="search_stopped">Ricerca interrotta prima della fine.</string>
     <plurals name="search_name_only">
         <item quantity="one">%1$d file di testo oltre %2$d MB è stato cercato solo per nome</item>
         <item quantity="many">%1$d file di testo oltre %2$d MB sono stati cercati solo per nome</item>
@@ -422,7 +423,10 @@
     </plurals>
     <string name="legacy_later_note">Li ritroverà nelle impostazioni.</string>
     <string name="legacy_move">Sposta</string>
-    <string name="legacy_working">Attendere…</string>
+    <string name="legacy_extractions_access">Consenta prima l\'«Accesso a tutti i file»: senza, Android lascia scrivere l\'app solo nelle sue cartelle, eliminate con essa.</string>
+    <string name="legacy_moving">Spostamento delle vecchie estrazioni…</string>
+    <string name="legacy_extractions_no_folder">Nulla è stato spostato: impossibile scrivere in %1$s. Consenta l\'«Accesso a tutti i file» o scelga un\'altra cartella di destinazione nelle impostazioni.</string>
+    <string name="legacy_working">In corso…</string>
     <string name="legacy_extractions_delete_title">Eliminare le vecchie estrazioni?</string>
     <plurals name="legacy_extractions_delete_body">
         <item quantity="one">%1$d file (%2$s) sarà eliminato definitivamente: niente passa dal cestino. L\'archivio da cui proviene non viene toccato.</item>

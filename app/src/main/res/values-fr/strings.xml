@@ -262,6 +262,7 @@
     </plurals>
     <string name="search_enter">Saisissez une partie d\'un nom ou d\'un contenu, puis lancez la recherche.</string>
     <string name="search_no_result">Aucun fichier trouvé.</string>
+    <string name="search_stopped">Recherche arrêtée avant la fin.</string>
     <plurals name="search_name_only">
         <item quantity="one">%1$d fichier texte de plus de %2$d Mo n\'a été cherché que par son nom</item>
         <item quantity="many">%1$d fichiers texte de plus de %2$d Mo n\'ont été cherchés que par leur nom</item>
@@ -415,7 +416,10 @@
     </plurals>
     <string name="legacy_later_note">Vous les retrouverez dans les réglages.</string>
     <string name="legacy_move">Déplacer</string>
-    <string name="legacy_working">Patientez…</string>
+    <string name="legacy_extractions_access">Autorisez d\'abord « Accès à tous les fichiers » : sans lui, Android ne laisse l\'application écrire que dans ses propres dossiers, effacés avec elle.</string>
+    <string name="legacy_moving">Déplacement des anciennes extractions…</string>
+    <string name="legacy_extractions_no_folder">Rien n\'a été déplacé : impossible d\'écrire dans %1$s. Autorisez « Accès à tous les fichiers », ou choisissez un autre dossier de sortie dans les réglages.</string>
+    <string name="legacy_working">En cours…</string>
     <string name="legacy_extractions_delete_title">Supprimer les anciennes extractions ?</string>
     <plurals name="legacy_extractions_delete_body">
         <item quantity="one">%1$d fichier (%2$s) sera supprimé définitivement : rien ne passe par la corbeille. L\'archive dont il vient n\'est pas touchée.</item>

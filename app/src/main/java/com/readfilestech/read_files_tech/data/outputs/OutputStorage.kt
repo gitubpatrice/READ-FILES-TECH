@@ -110,13 +110,14 @@ class OutputStorage(
      * [reserveAt] — the vault's backup: a lock during its export must leave nothing in `Files Tech/`
      * (2.15.3, `exportToBackup`).
      *
-     * @param sharedOnly the private fallback left out: where the old extractions go out of `app_flutter/`
-     *   (docs D-022) — moved into another private folder, they would stay out of reach.
+     * @param noFallback the outputs' folder only: where the old extractions go out of `app_flutter/` (docs
+     *   D-022). Neither fallback would get them out — the app's folder on shared storage (`Android/data`) is closed
+     *   to the other apps since Android 11, and goes with the app as `app_flutter/` does (reviews, phase 8).
      * @throws NoOutputLocationException no folder could take it.
      */
-    fun folderFor(category: OutputCategory, sharedOnly: Boolean = false): File {
+    fun folderFor(category: OutputCategory, noFallback: Boolean = false): File {
         var failure: IOException? = null
-        for (base in if (sharedOnly) sharedBases else bases()) {
+        for (base in if (noFallback) listOf(basePath()) else bases()) {
             val dir = File(base, category.folderName)
             try {
                 Files.createDirectories(dir.toPath())

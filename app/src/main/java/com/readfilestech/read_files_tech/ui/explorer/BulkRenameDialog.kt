@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -204,9 +205,10 @@ fun BulkRenameDialog(entries: List<FileEntry>, onRename: (List<RenameProposal>) 
                         )
                     }
                 }
-                // The label ticks too: the box alone was the target.
+                // The label ticks too, the box alone was the target; 48 dp high, as the box was (Claude review, phase 8).
                 Row(
-                    Modifier.toggleable(value = keepExtension, role = Role.Checkbox, onValueChange = { keepExtension = it }),
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .toggleable(value = keepExtension, role = Role.Checkbox, onValueChange = { keepExtension = it }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(checked = keepExtension, onCheckedChange = null)

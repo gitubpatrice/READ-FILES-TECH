@@ -160,7 +160,8 @@ class DuplicatesViewModel @Inject constructor(
         val report = scanned ?: return
         val gone = mutableState.value.gone.takeIf { it.isNotEmpty() } ?: return
         val back = withContext(io) { DuplicateLists.returned(report, gone) }
-        if (back.isNotEmpty()) mutableState.update { shown(it.copy(gone = it.gone - back)) }
+        // A new scan meanwhile has its own lists: what came back to the old one is not taken out of them (GPT review).
+        if (back.isNotEmpty() && scanned === report) mutableState.update { shown(it.copy(gone = it.gone - back)) }
     }
 
     /**

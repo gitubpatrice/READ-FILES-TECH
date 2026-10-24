@@ -36,6 +36,8 @@ data class ContentSearchState(
     val hits: List<ContentHit> = emptyList(),
     /** The last search's end, with what it could not read; null before one ended. */
     val finished: ContentEvent.Finished? = null,
+    /** Stopped by the user before its end: what is listed is partial. No end came — "enter a word" was shown. */
+    val stopped: Boolean = false,
 )
 
 /**
@@ -64,7 +66,7 @@ class ContentSearchViewModel @Inject constructor(
         val root = mutableState.value.root ?: return
         val pattern = patternOf(text, matchCase, regex) ?: return
         running?.cancel()
-        mutableState.update { it.copy(searching = true, scanned = 0, hits = emptyList(), finished = null) }
+        mutableState.update { it.copy(searching = true, scanned = 0, hits = emptyList(), finished = null, stopped = false) }
         running = viewModelScope.launch {
             try {
                 ContentSearch.run(File(root), pattern).flowOn(io).collect { event ->
@@ -93,7 +95,9 @@ class ContentSearchViewModel @Inject constructor(
 
     /** Stops the search; what was found stays. */
     fun stop() {
+        if (running?.isActive != true) return
         running?.cancel()
+        mutableState.update { it.copy(stopped = true) }
     }
 
     private companion object {

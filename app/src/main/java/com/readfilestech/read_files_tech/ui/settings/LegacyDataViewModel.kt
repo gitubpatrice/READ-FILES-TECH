@@ -3,7 +3,9 @@ package com.readfilestech.read_files_tech.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.files.StorageVisibility
 import com.readfilestech.read_files_tech.data.legacy.LegacyData
+import com.readfilestech.read_files_tech.data.outputs.NoOutputLocationException
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.data.outputs.OutputStorage
 import com.readfilestech.read_files_tech.ui.common.ApplicationScope
@@ -21,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -36,12 +40,14 @@ sealed interface LegacyDialog {
 }
 
 /**
- * What the 2.x left ([summary], null until read), where a move puts the extractions first ([destination]: the
- * outputs' folder, its `Extractions` — the explorer's fallback is said when it ends), and the question on screen.
+ * What the 2.x left ([summary], null until read), where a move puts the extractions ([destination]: the outputs'
+ * folder, its `Extractions`, no fallback), whether the app may write there ([accessGranted]: when not, the
+ * dialog asks for the access instead of moving), and the question on screen.
  */
 data class LegacyDataState(
     val summary: LegacyData.Summary? = null,
     val destination: String = "",
+    val accessGranted: Boolean = true,
     val dialog: LegacyDialog? = null,
 )
 
@@ -55,6 +61,7 @@ data class LegacyDataState(
 class LegacyDataViewModel @Inject constructor(
     private val legacy: LegacyData,
     private val outputs: OutputStorage,
+    private val visibility: StorageVisibility,
     private val messages: UserMessages,
     @param:ApplicationScope private val scope: CoroutineScope,
     @param:IoDispatcher private val io: CoroutineDispatcher,
@@ -64,6 +71,12 @@ class LegacyDataViewModel @Inject constructor(
 
     /** A move or a deletion under way, whichever screen started it. */
     val working: StateFlow<Boolean> = legacy.working
+
+    /**
+     * One reading at a time, in the order asked: one started during a move, ending after the one its end asked
+     * for, put back the files moved since (Claude review, phase 8).
+     */
+    private val reading = Mutex()
 
     init {
         // What is left once an operation ends, whichever screen started it.
@@ -95,11 +108,16 @@ class LegacyDataViewModel @Inject constructor(
 
     fun move() {
         dismiss()
+        // Said at once: no dialog holds the screen while it runs, the panic included (Claude review, phase 8).
+        messages.info(uiText(R.string.legacy_moving))
         scope.launch {
             val outcome = withContext(io) { legacy.moveExtractions() }
             val stoppedBy = outcome.stoppedBy
             val destination = outcome.destination
             when {
+                stoppedBy is NoOutputLocationException -> messages.error(
+                    uiText(R.string.legacy_extractions_no_folder, mutableState.value.destination),
+                )
                 stoppedBy != null -> messages.error(
                     uiText(R.string.legacy_extractions_move_stopped, IoErrors.reasonOf(stoppedBy), outcome.moved, outcome.left),
                 )
@@ -131,10 +149,14 @@ class LegacyDataViewModel @Inject constructor(
         }
     }
 
-    private suspend fun read() {
-        val (summary, destination) = withContext(io) {
-            legacy.summary() to File(outputs.basePath(), OutputCategory.EXTRACTIONS.folderName).path
+    private suspend fun read() = reading.withLock {
+        val read = withContext(io) {
+            Triple(
+                legacy.summary(),
+                File(outputs.basePath(), OutputCategory.EXTRACTIONS.folderName).path,
+                visibility.seesEverything(),
+            )
         }
-        mutableState.update { it.copy(summary = summary, destination = destination) }
+        mutableState.update { it.copy(summary = read.first, destination = read.second, accessGranted = read.third) }
     }
 }

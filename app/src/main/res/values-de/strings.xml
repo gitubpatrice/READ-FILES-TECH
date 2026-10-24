@@ -251,6 +251,7 @@
     <string name="search_running">Suche läuft…</string>
     <string name="search_enter">Geben Sie einen Teil eines Namens oder eines Inhalts ein und starten Sie dann die Suche.</string>
     <string name="search_no_result">Keine Datei gefunden.</string>
+    <string name="search_stopped">Suche vor dem Ende angehalten.</string>
     <plurals name="search_name_only">
         <item quantity="one">%1$d Textdatei über %2$d MB wurde nur nach ihrem Namen durchsucht</item>
         <item quantity="other">%1$d Textdateien über %2$d MB wurden nur nach ihrem Namen durchsucht</item>
@@ -400,7 +401,10 @@
     </plurals>
     <string name="legacy_later_note">Sie finden sie später in den Einstellungen.</string>
     <string name="legacy_move">Verschieben</string>
-    <string name="legacy_working">Bitte warten…</string>
+    <string name="legacy_extractions_access">Erlauben Sie zuerst den „Zugriff auf alle Dateien“: Ohne ihn lässt Android die App nur in ihre eigenen Ordner schreiben, die mit ihr gelöscht werden.</string>
+    <string name="legacy_moving">Alte Extraktionen werden verschoben…</string>
+    <string name="legacy_extractions_no_folder">Nichts verschoben: In %1$s kann nicht geschrieben werden. Erlauben Sie den „Zugriff auf alle Dateien“ oder wählen Sie in den Einstellungen einen anderen Ausgabeordner.</string>
+    <string name="legacy_working">Läuft…</string>
     <string name="legacy_extractions_delete_title">Alte Extraktionen löschen?</string>
     <plurals name="legacy_extractions_delete_body">
         <item quantity="one">%1$d Datei (%2$s) wird endgültig gelöscht: Nichts landet im Papierkorb. Das Archiv, aus dem sie stammt, bleibt unberührt.</item>

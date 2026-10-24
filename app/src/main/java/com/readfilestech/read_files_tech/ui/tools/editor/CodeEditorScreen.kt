@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -75,6 +74,8 @@ import com.readfilestech.read_files_tech.data.history.EditorHistory
 import com.readfilestech.read_files_tech.data.history.HistoryCopy
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BusyButton
+import com.readfilestech.read_files_tech.ui.common.BusyIconButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -215,13 +216,7 @@ private fun BarActions(state: CodeEditorState, viewModel: CodeEditorViewModel, t
         Icon(Icons.AutoMirrored.Outlined.Redo, contentDescription = stringResource(R.string.editor_redo))
     }
     if (state.modified) {
-        IconButton(onClick = viewModel::save, enabled = editable) {
-            if (state.saving) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(Icons.Outlined.Save, contentDescription = stringResource(R.string.action_save))
-            }
-        }
+        BusyIconButton(Icons.Outlined.Save, stringResource(R.string.action_save), state.saving, viewModel::save, enabled = editable)
     }
     val context = LocalContext.current
     val shareable by viewModel.shareable.collectAsStateWithLifecycle()
@@ -332,7 +327,7 @@ private fun LeaveDialog(state: CodeEditorState, onSave: () -> Unit, onDiscard: (
                 state.saveFailure?.let { Text(it.resolve(), color = MaterialTheme.colorScheme.error) }
             }
         },
-        confirmButton = { SaveButton(state.saving, R.string.action_save, onSave) },
+        confirmButton = { BusyButton(stringResource(R.string.action_save), state.saving, onSave) },
         dismissButton = {
             Row {
                 TextButton(onClick = onDiscard, enabled = !state.saving) { Text(stringResource(R.string.editor_discard)) }
@@ -340,13 +335,6 @@ private fun LeaveDialog(state: CodeEditorState, onSave: () -> Unit, onDiscard: (
             }
         },
     )
-}
-
-@Composable
-private fun SaveButton(saving: Boolean, label: Int, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = !saving) {
-        if (saving) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(label))
-    }
 }
 
 @Composable

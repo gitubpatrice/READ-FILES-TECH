@@ -37,10 +37,10 @@ class CsvViewerViewModel @Inject constructor(
     private val query = handle.getStateFlow(KEY_QUERY, "")
     private val sort = handle.getStateFlow(KEY_SORT, CsvSortChoice.NONE)
 
-    private val mutableShown = MutableStateFlow<CsvShown?>(null)
+    private val mutableShown = MutableStateFlow<Pair<CsvTable, CsvShown>?>(null)
 
-    /** The rows shown, once the table is open. */
-    val shown: StateFlow<CsvShown?> = mutableShown.asStateFlow()
+    /** The rows shown, once the table is open, with the table they were found in: shown on that one only. */
+    val shown: StateFlow<Pair<CsvTable, CsvShown>?> = mutableShown.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -48,7 +48,7 @@ class CsvViewerViewModel @Inject constructor(
             content.state.filterIsInstance<ViewerState.Ready<CsvTable>>().collectLatest { ready ->
                 val table = ready.content
                 val sorts = sort.map { saved -> CsvSortChoice.fromSaved(saved)?.takeIf { it.column < table.columns } }
-                CsvBrowser(table, io).run(query, sorts) { mutableShown.value = it }
+                CsvBrowser(table, io).run(query, sorts) { mutableShown.value = table to it }
             }
         }
     }

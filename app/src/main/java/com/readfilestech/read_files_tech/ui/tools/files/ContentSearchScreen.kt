@@ -230,6 +230,7 @@ private fun Status(state: ContentSearchState) {
         state.finished?.let {
             SearchNotes(it.full, it.tooLarge, R.plurals.content_search_too_large, it.unreadable, it.unreadableFolders)
         }
+        if (state.stopped && state.hits.isNotEmpty()) Text(stringResource(R.string.search_stopped), style = style, color = color)
     }
 }
 
@@ -239,6 +240,7 @@ private fun Results(state: ContentSearchState, onOpen: (String) -> Unit, modifie
         val text = when {
             state.root == null -> R.string.content_search_choose_first
             state.searching -> R.string.search_running
+            state.stopped -> R.string.search_stopped
             state.finished != null -> R.string.content_search_nothing
             else -> R.string.content_search_enter
         }

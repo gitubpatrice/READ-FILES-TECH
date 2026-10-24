@@ -69,6 +69,8 @@ import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BusyButton
+import com.readfilestech.read_files_tech.ui.common.BusyIconButton
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
@@ -192,13 +194,7 @@ private fun Title(state: CsvEditorState) {
 @Composable
 private fun BarActions(state: CsvEditorState, edits: CsvEdits, viewModel: CsvEditorViewModel) {
     if (state.modified) {
-        IconButton(onClick = { viewModel.save() }, enabled = !state.saving) {
-            if (state.saving) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(Icons.Outlined.Save, contentDescription = stringResource(R.string.action_save))
-            }
-        }
+        BusyIconButton(Icons.Outlined.Save, stringResource(R.string.action_save), state.saving, { viewModel.save() })
     }
     var menu by remember { mutableStateOf(false) }
     Box {
@@ -249,9 +245,12 @@ private class EditorCells(private val edits: CsvEdits) : TableCells {
 private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel) {
     var editRow by rememberSaveable { mutableIntStateOf(NONE) }
     var editColumn by rememberSaveable { mutableIntStateOf(NONE) }
-    // A row or a column to delete, until confirmed: here, not in its cell, which scrolling may take away.
+    // A row or a column to delete, until confirmed: here, not in its cell, which scrolling may take away. Asked of
+    // one version of the table: another one landing meanwhile — a restore read — moves what the number names, and
+    // the question goes (Claude review, phase 8).
     var deleteRow by rememberSaveable { mutableIntStateOf(NONE) }
     var deleteColumn by rememberSaveable { mutableIntStateOf(NONE) }
+    var askedOf by rememberSaveable { mutableIntStateOf(NONE) }
     // Read from the edits, changed in place: composed again at each change, never skipped.
     key(version) { Summary(edits) }
     val cells = remember(edits, version) { EditorCells(edits) }
@@ -261,8 +260,14 @@ private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel)
             editRow = position
             editColumn = column
         },
-        deleteRow = { deleteRow = it },
-        deleteColumn = { deleteColumn = it },
+        deleteRow = {
+            deleteRow = it
+            askedOf = version
+        },
+        deleteColumn = {
+            deleteColumn = it
+            askedOf = version
+        },
     )
     TableGrid(
         cells,
@@ -285,7 +290,7 @@ private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel)
             onDismiss = close,
         )
     }
-    if (deleteRow != NONE) {
+    if (deleteRow != NONE && askedOf == version) {
         val row = deleteRow
         ConfirmDangerDialog(
             title = stringResource(R.string.csv_editor_delete_row_title, row),
@@ -298,7 +303,7 @@ private fun Editor(edits: CsvEdits, version: Int, viewModel: CsvEditorViewModel)
             onDismiss = { deleteRow = NONE },
         )
     }
-    if (deleteColumn != NONE) {
+    if (deleteColumn != NONE && askedOf == version) {
         val column = deleteColumn
         ConfirmDangerDialog(
             title = stringResource(R.string.csv_editor_delete_column_title, column + 1),
@@ -545,13 +550,7 @@ private fun LeaveDialog(state: CsvEditorState, onSave: () -> Unit, onDiscard: ()
             }
         },
         confirmButton = {
-            Button(onClick = onSave, enabled = !state.saving) {
-                if (state.saving) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(stringResource(R.string.action_save))
-                }
-            }
+            BusyButton(stringResource(R.string.action_save), state.saving, onSave)
         },
         dismissButton = {
             Row {

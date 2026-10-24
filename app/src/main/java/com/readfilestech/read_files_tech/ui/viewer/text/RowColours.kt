@@ -24,8 +24,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * The syntax colours of a text's rows ([CodeColouring]), a row's computed on [dispatcher] when it shows. The
- * scan of the file starts with the first row asked for, in [scope] — the ViewModel's: it goes on while rows
- * scroll by, and ends with the viewer. The text and the Markdown viewers'.
+ * scan of the file starts with the first row asked for, in [scope] — the one of this text in the viewer, which a
+ * lazy child keeps alive until the scan ends: it goes on while rows scroll by, and ends with the viewer or when
+ * the text is read again. The text and the Markdown viewers'.
  */
 class RowColours(
     document: TextDocument,

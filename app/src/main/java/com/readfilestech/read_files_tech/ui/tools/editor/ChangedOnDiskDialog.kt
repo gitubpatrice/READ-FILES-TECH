@@ -2,20 +2,17 @@ package com.readfilestech.read_files_tech.ui.tools.editor
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.MIB
+import com.readfilestech.read_files_tech.ui.common.BusyButton
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.resolve
 
@@ -48,15 +45,7 @@ internal fun ChangedOnDiskDialog(
                 failure?.let { Text(it.resolve(), color = MaterialTheme.colorScheme.error) }
             }
         },
-        confirmButton = {
-            Button(onClick = onOverwrite, enabled = !saving) {
-                if (saving) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(stringResource(R.string.editor_overwrite))
-                }
-            }
-        },
+        confirmButton = { BusyButton(stringResource(R.string.editor_overwrite), saving, onOverwrite) },
         dismissButton = { TextButton(onClick = onCancel, enabled = !saving) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

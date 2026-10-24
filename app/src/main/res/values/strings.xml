@@ -258,6 +258,7 @@
     <string name="search_running">Searching…</string>
     <string name="search_enter">Enter part of a name, or of a content, then search.</string>
     <string name="search_no_result">No file found.</string>
+    <string name="search_stopped">Search stopped before its end.</string>
     <plurals name="search_name_only">
         <item quantity="one">%1$d text file over %2$d MB was searched by its name only</item>
         <item quantity="other">%1$d text files over %2$d MB were searched by their name only</item>
@@ -407,7 +408,10 @@
     </plurals>
     <string name="legacy_later_note">You will find them again in the settings.</string>
     <string name="legacy_move">Move</string>
-    <string name="legacy_working">Please wait…</string>
+    <string name="legacy_extractions_access">Allow “All files access” first: without it, Android lets the app write only into its own folders, deleted with it.</string>
+    <string name="legacy_moving">Moving the old extractions…</string>
+    <string name="legacy_extractions_no_folder">Nothing moved: %1$s cannot be written. Allow “All files access”, or choose another output folder in the settings.</string>
+    <string name="legacy_working">In progress…</string>
     <string name="legacy_extractions_delete_title">Delete the old extractions?</string>
     <plurals name="legacy_extractions_delete_body">
         <item quantity="one">%1$d file (%2$s) will be deleted for good: nothing goes to the trash. The archive it came from is not touched.</item>

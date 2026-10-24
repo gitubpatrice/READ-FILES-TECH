@@ -34,6 +34,8 @@ data class SearchUiState(
     val finished: SearchEvent.Finished? = null,
     /** Without access to all files, a search finds only part of them: the screen says so, with the way to allow it. */
     val accessMissing: Boolean = false,
+    /** Stopped by the user before its end: what is listed is partial. No end came — "enter a name" was shown. */
+    val stopped: Boolean = false,
 )
 
 /** The global search (`global_search_screen.dart`): runs off the main thread, stops when asked or when the screen goes. */
@@ -63,7 +65,7 @@ class SearchViewModel @Inject constructor(
             return
         }
         running?.cancel()
-        state.update { it.copy(searching = true, scanned = 0, results = emptyList(), finished = null) }
+        state.update { it.copy(searching = true, scanned = 0, results = emptyList(), finished = null, stopped = false) }
         running = viewModelScope.launch {
             try {
                 FileSearch.run(SearchQuery(state.value.root, namePattern, contentPattern)).flowOn(io).collect { event ->
@@ -83,6 +85,8 @@ class SearchViewModel @Inject constructor(
 
     /** Stops the search; what was found stays. */
     fun stop() {
+        if (running?.isActive != true) return
         running?.cancel()
+        state.update { it.copy(stopped = true) }
     }
 }

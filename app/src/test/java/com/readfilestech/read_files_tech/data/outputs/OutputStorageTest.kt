@@ -103,15 +103,17 @@ class OutputStorageTest {
         assertThrows<NoOutputLocationException> { storage().folderFor(OutputCategory.VAULT_BACKUPS) }
     }
 
-    /** The old extractions leave `app_flutter/` for shared storage (docs D-022): never for another private folder. */
+    /**
+     * The old extractions leave `app_flutter/` for the outputs' folder only (docs D-022): `Android/data` is closed to
+     * the other apps and goes with the app, as `app_flutter/` does — neither fallback gets them out.
+     */
     @Test
-    fun `a folder of shared storage only is the base's, then the app's own, never the private fallback`() {
-        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true)).isEqualTo(File(primary, "Files Tech/Extractions"))
+    fun `a folder without fallback is the base's or none - never the app's own folders`() {
+        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS, noFallback = true)).isEqualTo(File(primary, "Files Tech/Extractions"))
         prefs.commit { putString(OutputStorage.KEY_BASE_PATH, File(tmp, "blocked").apply { writeText("x") }.path) }
-        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true)).isEqualTo(File(external, "Files Tech/Extractions"))
-        externalMounted = false
-        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS)).isEqualTo(File(private, "Files Tech/Extractions"))
-        assertThrows<NoOutputLocationException> { storage().folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true) }
+        assertThat(storage().folderFor(OutputCategory.EXTRACTIONS)).isEqualTo(File(external, "Files Tech/Extractions"))
+        assertThrows<NoOutputLocationException> { storage().folderFor(OutputCategory.EXTRACTIONS, noFallback = true) }
+        assertThat(File(external, "Files Tech/Extractions").list()).isEmpty()
     }
 
     @Test

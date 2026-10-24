@@ -21,6 +21,6 @@ object ExtractionsModule {
     @Singleton
     fun legacyExtractions(@ApplicationContext context: Context, outputs: OutputStorage) = LegacyExtractions(
         appFlutter = context.getDir("flutter", Context.MODE_PRIVATE),
-        extractionsRoot = { outputs.folderFor(OutputCategory.EXTRACTIONS, sharedOnly = true) },
+        extractionsRoot = { outputs.folderFor(OutputCategory.EXTRACTIONS, noFallback = true) },
     )
 }

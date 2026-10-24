@@ -81,6 +81,28 @@ class LegacyExtractionsTest {
         assertThat(File(dir, "2.txt").readText()).isEqualTo("two") // still there, original intact
         assertThat(File(dir, "3.txt").readText()).isEqualTo("three")
         assertThat(File(moved.destination, "2.txt").exists()).isFalse() // its partial copy removed
+        assertThat(moved.destination.list()!!.toList()).containsExactly("1.txt") // and its part file
+    }
+
+    /**
+     * Killed half-way through a large file, the app left it cut short under its real name, nothing to tell it from
+     * the others (Claude review, phase 8): the copy goes into a hidden part file, the name stays empty until then.
+     */
+    @Test
+    fun `a file takes its name only once copied and verified - the copy goes into a hidden part file`() {
+        extraction("docs", "1.txt" to "one")
+        val seen = mutableListOf<Pair<String, Long>>()
+        val watching = LegacyExtractions(appFlutter, { extractions }) { from, to ->
+            Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING)
+            seen += to.fileName.toString() to Files.size(to.resolveSibling(from.fileName))
+        }
+        val moved = watching.move(watching.find().single())
+        val (part, reservedSize) = seen.single()
+        assertThat(part).startsWith(".1.txt.")
+        assertThat(part).endsWith(".rft-part")
+        assertThat(reservedSize).isEqualTo(0) // the real name, still empty while the copy is written
+        assertThat(File(moved.destination, "1.txt").readText()).isEqualTo("one")
+        assertThat(moved.destination.list()!!.toList()).containsExactly("1.txt") // no part left behind
     }
 
     @Test
