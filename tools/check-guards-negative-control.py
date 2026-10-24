@@ -148,6 +148,7 @@ SHAPE_OK = (
     '        android:fullBackupContent="false"\n'
     '        android:dataExtractionRules="@xml/data_extraction_rules"\n'
     '        android:usesCleartextTraffic="false"\n'
+    '        android:localeConfig="@xml/_generated_res_locale_config"\n'
     '        android:requestLegacyExternalStorage="true">\n'
     f'        <activity android:name="{MAIN_ACTIVITY}" android:exported="true" android:taskAffinity="">\n'
     '            <intent-filter><action android:name="android.intent.action.MAIN" /></intent-filter>\n'
@@ -211,14 +212,37 @@ def version_base() -> int:
     raise ValueError(f"no versionCode in {VERSION_PROPERTIES}")
 
 
-def badging(package: str, code: int) -> str:
-    return f"package: name='{package}' versionCode='{code}' versionName='3.0.0' platformBuildVersionName='16'\n"
+def translated_languages() -> list[str]:
+    """The languages besides English, by the rule of app/build.gradle.kts: what a healthy APK carries."""
+    res = os.path.join(os.path.dirname(HERE), "app", "src", "main", "res")
+    return sorted(
+        d[len("values-"):] for d in os.listdir(res)
+        if re.fullmatch(r"values-(?!car$)[a-z]{2,3}", d) and os.path.isfile(os.path.join(res, d, "strings.xml"))
+    )
+
+
+def badging(package: str, code: int, locales: list[str] | None = None) -> str:
+    shipped = translated_languages() if locales is None else locales
+    return (f"package: name='{package}' versionCode='{code}' versionName='3.0.0' platformBuildVersionName='16'\n"
+            "locales: '--_--' " + " ".join(f"'{lang}'" for lang in shipped) + "\n")
+
+
+def locale_config(offered: list[str] | None = None) -> str:
+    """`aapt2 dump xmltree` of the generated locale config, both variants (default and v35), as AGP writes it."""
+    names = ["en"] + translated_languages() if offered is None else offered
+    entries = "".join(
+        f"      E: locale (line={i + 2})\n"
+        f'        A: http://schemas.android.com/apk/res/android:name(0x01010003)="{lang}" (Raw: "{lang}")\n'
+        for i, lang in enumerate(names)
+    )
+    return ("N: android=http://schemas.android.com/apk/res/android (line=1)\n  E: locale-config (line=1)\n" + entries) * 2
 
 
 def badgings(package: str = ISOLATED, codes: dict[str, int] | None = None) -> dict[str, str]:
     base = version_base()
     codes = {abi: base * 10 + rank for abi, rank in RANKS.items()} | (codes or {})
-    return {f"app-{abi}-release.apk.badging.txt": badging(package, code) for abi, code in codes.items()}
+    files = {f"app-{abi}-release.apk.badging.txt": badging(package, code) for abi, code in codes.items()}
+    return files | {f"app-{abi}-release.apk.localeconfig.txt": locale_config() for abi in codes}
 
 
 # --- Test report fixtures ------------------------------------------------------------------------
@@ -299,6 +323,14 @@ def run(script: str, target: str, extra: list[str]) -> tuple[int, str]:
         capture_output=True, text=True, encoding="utf-8", errors="replace", env=GUARD_ENV,
     )
     return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+def mutated(real: str, content: str) -> str:
+    """A REAL manifest changed by a case. Unchanged — an attribute only another manifest carries, a text that
+    moved — the case would measure the healthy manifest, and its "detected" would prove nothing."""
+    if content == real:
+        raise SystemExit("NEGATIVE CONTROL BROKEN: a mutation of the real manifest changed nothing.")
+    return content
 
 
 def manifest_case(work: str, content: str | None) -> str:
@@ -448,6 +480,9 @@ def shape_cases(work: str) -> list[tuple]:
              1, "ProfileInstallReceiver is guarded by None"),
         case("MainActivity renamed", SHAPE_OK.replace(MAIN_ACTIVITY, "com.readfilestech.rft.MainActivity"),
              1, "reviewed exported component absent: " + MAIN_ACTIVITY),
+        case("localeConfig absent (no per-app language picker)",
+             SHAPE_OK.replace('        android:localeConfig="@xml/_generated_res_locale_config"\n', ""),
+             1, "android:localeConfig> is None"),
         case("requestLegacyExternalStorage absent (Android 10 lists nothing)",
              SHAPE_OK.replace('\n        android:requestLegacyExternalStorage="true"', ""),
              1, "android:requestLegacyExternalStorage> is None"),
@@ -487,6 +522,7 @@ def shape_cases(work: str) -> list[tuple]:
 def apk_cases(work: str) -> list[tuple]:
     base = version_base()
     universal = "app-universal-release.apk.badging.txt"
+    universal_config = "app-universal-release.apk.localeconfig.txt"
 
     def case(label: str, files: dict[str, str] | None, code: int, text: str, extra: list[str] | None = None) -> tuple:
         return (f"apks: {label}", APKS_CHECK, (extra or []) + ["--from-badging"],
@@ -508,6 +544,25 @@ def apk_cases(work: str) -> list[tuple]:
         case("an unexpected APK", badgings() | {"app-riscv64-release.apk.badging.txt": badging(ISOLATED, base * 10 + 4)},
              1, "unexpected release APK: app-riscv64-release.apk"),
         case("unreadable badging", badgings() | {universal: "ERROR: not an APK\n"}, 1, "no package line"),
+        case("a translated language stripped from one APK",
+             badgings() | {universal: badging(ISOLATED, base * 10, translated_languages()[1:])},
+             1, f"translated but not in the APK: {translated_languages()[0]}"),
+        case("the libraries' languages left in (localeFilters gone)",
+             badgings() | {universal: badging(ISOLATED, base * 10, translated_languages() + ["ar", "ja"])},
+             1, "languages no translation of this app ships: ar, ja"),
+        case("no locales line", badgings() | {universal: badging(ISOLATED, base * 10).split("locales:")[0]},
+             1, "no locales line"),
+        case("no unqualified resources (English gone)",
+             badgings() | {universal: badging(ISOLATED, base * 10).replace("'--_--' ", "")},
+             1, "English, the source, is missing"),
+        case("the picker offers a language no translation ships (a module's values-ja)",
+             badgings() | {universal_config: locale_config(["en", "ja"] + translated_languages())},
+             1, "the language picker offers ja"),
+        case("the picker does not offer a translated language",
+             badgings() | {universal_config: locale_config(["en"] + translated_languages()[1:])},
+             1, f"the language picker does not offer {translated_languages()[0]}"),
+        case("no generated locale config", without(badgings(), universal_config),
+             1, "no generated locale config"),
         case("directory missing", None, 1, "directory not found"),
     ]
 
@@ -580,7 +635,7 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
         ("REAL manifest: permissions POSITIVE WITNESS", MANIFEST_CHECK, [],
          lambda: manifest_case(work, real), 0, "OK: no network permission"),
         ("REAL manifest + INTERNET", MANIFEST_CHECK, [],
-         lambda: manifest_case(work, real.replace("<application", internet + "\n    <application", 1)),
+         lambda: manifest_case(work, mutated(real, real.replace("<application", internet + "\n    <application", 1))),
          1, "NETWORK permission in the release manifest"),
     ]
     # The shape guard reads both: the merged manifest as it is, the APK's with --apk (S8), where a
@@ -591,22 +646,25 @@ def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
         (f"REAL {kind}: shape POSITIVE WITNESS", SHAPE_CHECK, shape,
          lambda: manifest_case(work, real), 0, "OK: backup off"),
         (f"REAL {kind} + an exported activity", SHAPE_CHECK, shape,
-         lambda: manifest_case(work, real.replace("</application>", EXTRA_EXPORTED_ACTIVITY + "    </application>", 1)),
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", EXTRA_EXPORTED_ACTIVITY + "    </application>", 1))),
          1, "outside the reviewed list: com.example.TestActivity"),
         (f"REAL {kind} with allowBackup=\"true\"", SHAPE_CHECK, shape,
-         lambda: manifest_case(work, real.replace('android:allowBackup="false"', 'android:allowBackup="true"', 1)),
+         lambda: manifest_case(work, mutated(real, real.replace('android:allowBackup="false"', 'android:allowBackup="true"', 1))),
          1, "android:allowBackup> is 'true'"),
         (f"REAL {kind} without its data extraction rules", SHAPE_CHECK, shape,
-         lambda: manifest_case(work, re.sub(r'\s*android:dataExtractionRules="[^"]*"', "", real, count=1)),
+         lambda: manifest_case(work, mutated(real, re.sub(r'\s*android:dataExtractionRules="[^"]*"', "", real, count=1))),
          1, "android:dataExtractionRules> is None"),
+        (f"REAL {kind} without its per-app language list", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, re.sub(r'\s*android:localeConfig="[^"]*"', "", real, count=1))),
+         1, "android:localeConfig> is None"),
         (f"REAL {kind} + the telemetry transport's scheduler", SHAPE_CHECK, shape,
-         lambda: manifest_case(work, real.replace("</application>", TELEMETRY_SERVICE + "    </application>", 1)),
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", TELEMETRY_SERVICE + "    </application>", 1))),
          1, "Google component in the manifest: <service> com.google.android.datatransport."),
         (f"REAL {kind} + ML Kit's init provider", SHAPE_CHECK, shape,
-         lambda: manifest_case(work, real.replace("</application>", MLKIT_INIT_PROVIDER + "    </application>", 1)),
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", MLKIT_INIT_PROVIDER + "    </application>", 1))),
          1, "Google component in the manifest: <provider> com.google.mlkit."),
         (f"REAL {kind} + Play services' version", SHAPE_CHECK, shape,
-         lambda: manifest_case(work, real.replace("</application>", PLAY_SERVICES_VERSION + "    </application>", 1)),
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", PLAY_SERVICES_VERSION + "    </application>", 1))),
          1, "Google component in the manifest: <meta-data> com.google.android.gms.version"),
     ]
     return cases

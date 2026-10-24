@@ -77,6 +77,23 @@ if (keystoreFile.exists()) {
 }
 val hasReleaseKey = keystoreFile.exists()
 
+// -------------------------------------------------------------------------------------------------
+// Languages — the translated folders ARE the list (docs D-033: "possible to add one later")
+//
+// English is the source, in values/; every values-XX/ that carries a strings.xml is a shipped language.
+// Both gestures that ship a language read this one list, so a new folder cannot be forgotten in either:
+// `localeFilters` (a language missing there is STRIPPED from the APK without an error, with the
+// AndroidX translations of the 80 others), and the per-app language picker of Android 13+, whose
+// locales_config AGP writes from the same resources (`generateLocaleConfig`, res/resources.properties
+// naming the source). tools/check-translations.py checks the translations themselves, and
+// tools/check-release-apks.py the languages the APK ends up with.
+// -------------------------------------------------------------------------------------------------
+val shippedLanguages: List<String> = listOf("en") + file("src/main/res").listFiles().orEmpty()
+    .filter { File(it, "strings.xml").isFile }
+    // `car` is the car UI mode, three letters as a language would be.
+    .mapNotNull { Regex("values-((?!car$)[a-z]{2,3})").matchEntire(it.name)?.groupValues?.get(1) }
+    .sorted()
+
 android {
     // AGP slips an ENCRYPTED list of our dependencies into the APK signing block, for the Play
     // console. Read Files Tech is not on Play: an unreadable blob has no place in a binary whose
@@ -221,6 +238,8 @@ android {
             "EUC-*", "GB-*", "GBK-*", "GBK2K-*", "GBKp-*", "GBpc-*", "HKscs-*", "KSC-*", "KSCms-*", "KSCpc-*",
             "Uni*", "H", "V",
         ).map { "<file>$it" }
+        localeFilters += shippedLanguages
+        generateLocaleConfig = true
     }
 
     testOptions {

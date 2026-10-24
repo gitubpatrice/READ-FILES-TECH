@@ -68,6 +68,9 @@ REQUIRED_APPLICATION_ATTRIBUTES = {
     "usesCleartextTraffic": "false",
     # Without it the explorer lists nothing on Android 10 (scoped storage): the S9 dead end of 2026-08-09.
     "requestLegacyExternalStorage": "true",
+    # The per-app language picker of Android 13+, which AGP writes from the translated folders
+    # (generateLocaleConfig, docs D-033). Without it the app follows the phone's language only.
+    "localeConfig": "@xml/_generated_res_locale_config",
 }
 
 # The FileProvider of the 2.15.x, same authority (docs D-012): never exported, per-URI grants only.
