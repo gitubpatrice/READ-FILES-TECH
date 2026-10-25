@@ -1,60 +1,31 @@
-# fastlane/metadata — notes de tenue
+# fastlane/metadata — how this folder is kept
 
-Ce dossier suit la convention *Fastlane Supply* : un fichier de changelog par
-`versionCode`, dans `metadata/android/<locale>/changelogs/<versionCode>.txt`.
+The store listing of Read Files Tech, in the *Fastlane Supply* layout: per locale, `title.txt`,
+`short_description.txt`, `full_description.txt`, and one changelog per version in
+`changelogs/<versionCode>.txt`. One locale per language the app ships (`en-US`, `fr-FR`, `de-DE`,
+`it-IT`, `es-ES`).
 
-## Ce qu'il faut savoir avant d'y toucher
+## Why it exists while F-Droid is not a goal
 
-**Un changelog préparé n'est pas une version publiée.** Un fichier
-`<versionCode>.txt` peut exister avant que le tag correspondant ne soit posé —
-c'est même le but, cf. la section suivante. Si le numéro de version change avant
-le tag, **renommer les deux fichiers**, pas seulement l'un des deux.
+Read Files Tech is distributed through GitHub Releases. These files are still the source of each
+release's notes, they make the changelog get written **before** the tag rather than after, and they
+keep the app in line with the rest of the Files Tech apps.
 
-État au 2026-09-20 : `pubspec.yaml` est à `2.15.1+21501`, et les changelogs
-21500 et 21501 correspondent tous deux à des versions **publiées**. Le prochain
-tag demandera donc un `21502.txt` (ou le versionCode retenu) dans les deux
-langues, à écrire avant de taguer.
+## Rules, checked by `tools/check-translations.py`
 
-**Cap de 500 caractères.** C'est la limite de F-Droid, et elle porte sur les
-caractères, pas les octets — un « é » compte pour un. Comptes mesurés le
-2026-09-20 : `fr-FR/21500` = 449, `en-US/21500` = 430, `fr-FR/21501` = 315,
-`en-US/21501` = 274. Le plus serré est donc à 51 caractères de la limite.
+- **Caps in characters, not bytes** — title 50, short description 80, full description 4000,
+  changelog 500: the limits of fdroidserver, which cuts a longer text without a warning. An "é" counts
+  as one. Do not measure with `wc -m` under Git Bash: with `LANG` unset it counts bytes.
+- **Every shipped language has its locale**, and no locale is kept for a language the app does not ship.
+- **Every changelog exists in every locale.** A changelog in one language only is a defect, not a
+  translation pending.
 
-⚠️ **`wc -m` ne compte PAS les caractères sur ce poste** — c'est ce que cette
-page recommandait, et c'est très probablement d'où venait son « 498 » erroné.
-Mesuré le 2026-09-20 sous Git Bash : `wc -m` et `wc -c` rendent tous deux **462**
-pour `fr-FR/21500.txt`, dont le contenu fait **449** caractères. MSYS ne décode
-pas l'UTF-8 tant que `LANG` est vide (`LC_CTYPE=C.UTF-8` seul n'y suffit pas), si
-bien que `wc -m` retombe sur un comptage d'octets et sur-évalue de tous les
-accents. Sur `short_description.txt`, il affiche **80** pour un fichier de 77 —
-soit exactement la limite, ce qui ferait croire à une marge nulle.
+## Which versionCode names the changelog
 
-Commande qui fait foi, et qui retire le retour à la ligne final (il ne compte
-pas pour le store) :
+`version.properties` holds a BASE; each APK gets `base × 10 + ABI rank` (universal 0, armeabi-v7a 1,
+arm64-v8a 2, x86_64 3 — docs D-011). The changelog is named after the **universal** APK's code,
+`base × 10`: base 3000 writes `30000.txt`. A changelog prepared is not a version published: if the
+version changes before the tag, rename the file in every locale.
 
-```sh
-python -c "import io,sys
-for f in sys.argv[1:]:
-    print(len(io.open(f, encoding='utf-8').read().rstrip('\n')), f)" \
-  fastlane/metadata/android/*/changelogs/*.txt \
-  fastlane/metadata/android/*/short_description.txt
-```
-
-Ne pas recopier les chiffres ci-dessus de mémoire : ils se périment à chaque
-retouche. C'est exactement ce qui est arrivé à cette page, qui annonçait encore
-498 caractères et un `pubspec.yaml` en 2.14.0 six versions plus tard.
-
-**Parité FR ↔ EN obligatoire.** Un changelog présent d'un seul côté est un
-défaut, pas une traduction en attente.
-
-## Pourquoi ce dossier existe alors que F-Droid n'est pas un objectif
-
-F-Droid n'est pas visé à ce jour — la distribution se fait par GitHub Releases,
-et deux obstacles resteraient à lever de toute façon (les composants Syncfusion
-sont propriétaires, ML Kit et les services Play ne sont pas libres ; cf.
-`THIRD_PARTY_NOTICES.md`).
-
-Ces fichiers servent malgré tout : ils sont la source des notes de la release
-GitHub, ils imposent d'écrire le changelog **avant** de taguer plutôt qu'après,
-et ils alignent Read Files Tech sur le reste du portefeuille Files Tech. Le jour
-où F-Droid redevient un objectif, l'historique des changelogs existe déjà.
+Before the 3.0 (the Flutter app), the changelogs were named after the Flutter version code (`21503.txt`
+for 2.15.3); they stay in the history of the `main` branch.

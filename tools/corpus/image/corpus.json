@@ -1,0 +1,12 @@
+[
+ {"file": "system-drawing.png", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Windows PowerShell 5.1, System.Drawing (GDI+) Bitmap.Save as PNG, 640 x 480 RGBA (make_real.ps1)"},
+ {"file": "system-drawing.jpg", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Windows PowerShell 5.1, System.Drawing (GDI+) JPEG encoder, quality 85, 640 x 480 (make_real.ps1)"},
+ {"file": "system-drawing.bmp", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Windows PowerShell 5.1, System.Drawing (GDI+) Bitmap.Save as BMP, 320 x 240, 32 bits, bottom-up (make_real.ps1)"},
+ {"file": "system-drawing.gif", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Windows PowerShell 5.1, System.Drawing (GDI+) GIF encoder, one frame, 640 x 480 (make_real.ps1)"},
+ {"file": "system-drawing-exif-orientation-6.jpg", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Windows PowerShell 5.1, System.Drawing: a 480 x 640 picture turned a quarter left, stored 640 x 480 with EXIF Orientation 6 (PropertyItem 0x0112). Upright on screen: 'TOP' and the arrow at the top (make_real.ps1)"},
+ {"file": "wpf-animated.gif", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Windows PowerShell 5.1, WPF GifBitmapEncoder, 8 frames of 120 x 80 (no loop extension, no frame delay: WPF writes none) (make_real.ps1)"},
+ {"file": "edge-canvas.webp", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Microsoft Edge headless, canvas.toDataURL('image/webp', 0.8), 480 x 320, VP8X (edge-webp.html)"},
+ {"file": "pillow-animated.webp", "viewer": "IMAGE", "expect": "ok", "maxMillis": 3000, "made_by": "Pillow 12.3.0 (libwebp's WebPAnimEncoder), 8 frames of 120 x 80, 120 ms, looping: no Windows tool writes an animated WebP (pillow_animated_webp.py)"},
+ {"file": "pillow-giant-animated.gif", "viewer": "IMAGE", "expect": "ok", "maxMillis": 5000, "made_by": "Pillow 12.3.0, 3 frames of 8 000 x 8 000 (the pixel cap), a moving square: over FileCaps.ANIMATION_PIXELS, its first frame shows, subsampled (pillow_giant_animated.py)"},
+ {"file": "pillow-giant-animated.webp", "viewer": "IMAGE", "expect": "ok", "maxMillis": 5000, "made_by": "Pillow 12.3.0 (libwebp's WebPAnimEncoder, lossless), 3 frames of 8 000 x 8 000, a moving square: over FileCaps.ANIMATION_PIXELS, its first frame shows, subsampled (pillow_giant_animated.py)"}
+]

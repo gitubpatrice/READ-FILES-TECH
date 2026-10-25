@@ -1,0 +1,5 @@
+[
+ {"file": "python-calendar-1252.html", "viewer": "HTML", "expect": "ok", "maxMillis": 2000, "made_by": "CPython 3.14.6, python -m calendar -t html -e windows-1252 2026: an XML declaration before an XHTML DOCTYPE with quoted PUBLIC and SYSTEM identifiers, <meta http-equiv> charset=windows-1252, a calendar.css next to it (gen_html.py writes one)"},
+ {"file": "python-calendar-utf8.html", "viewer": "HTML", "expect": "ok", "maxMillis": 2000, "made_by": "CPython 3.14.6, python -m calendar -t html -e utf-8 -c \"calendrier été.css\" 2026: a style sheet whose name has a space and an accent (gen_html.py writes it)"},
+ {"file": "python-pydoc-utf8.html", "viewer": "HTML", "expect": "ok", "maxMillis": 2000, "made_by": "CPython 3.14.6, python -m pydoc -w of a module with French docstrings: <meta charset=utf-8>, a file: link to the module's path on the machine that wrote it"}
+]

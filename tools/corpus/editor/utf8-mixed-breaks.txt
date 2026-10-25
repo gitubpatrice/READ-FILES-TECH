@@ -1,0 +1,3 @@
+LF line
+CRLF line
+CR linelast LF

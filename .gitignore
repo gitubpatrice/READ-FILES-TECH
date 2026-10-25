@@ -1,45 +1,60 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# === Signing keys and their passwords — NEVER committed (docs D-010) ===
+# The release key of Read Files Tech lives OUTSIDE this repository. The Flutter clone keeps it under
+# android/, ignored only by android/.gitignore: a merge that removes android/ removes that file too,
+# and the key becomes committable there. This root file ignores every form of it from the first
+# commit, whatever directory it lands in.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.p8
+*.der
+key.properties
+keystore.properties
+# Their copies: a backup of the key is the key (security review of the skeleton, 2026-10-10, G1).
+*.jks.*
+*.keystore.*
+key.properties.*
+keystore.properties.*
+*.properties.bak
+.env
+.env.*
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
+# === Android local config ===
+local.properties
+
+# === Gradle ===
+.gradle/
+build/
+**/build/
+
+# === Kotlin 2.x compiler session and error files ===
+.kotlin/
+
+# === IDE ===
 .idea/
+*.iml
+.project
+.classpath
+.settings/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# === Android Studio / native ===
+captures/
+.cxx/
+*.ap_
+*.dex
+*.class
+obj/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Symbolication related
-app.*.symbols
+# Local Claude Code agent worktrees (nested git checkouts), never part of the repository
+/.claude/worktrees/
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Python bytecode of the tools (tools/corpus imports its generators)
+__pycache__/

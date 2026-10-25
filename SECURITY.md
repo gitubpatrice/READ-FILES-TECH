@@ -1,52 +1,39 @@
 # Security policy — Read Files Tech
 
-🇫🇷 Version française, avec l'historique détaillé des durcissements :
-[SECURITY.fr.md](./SECURITY.fr.md)
+🇫🇷 Version française : [SECURITY.fr.md](./SECURITY.fr.md)
 
 ## Supported versions
 
-Only the latest version published on GitHub Releases is actively maintained from
-a security standpoint.
+Only the latest version published on GitHub Releases is maintained from a security standpoint.
 
-| Version  | Supported |
-| -------- | --------- |
-| 2.15.x   | ✅        |
-| < 2.15.0 | ❌        |
+| Version | Supported |
+| ------- | --------- |
+| 3.0.x   | ✅ |
+| < 3.0   | ❌ — 3.0 installs over 2.x and keeps its data |
 
 ## Reporting a vulnerability
 
-If you find a security vulnerability in Read Files Tech, **please do not open a
-public GitHub issue**. Instead:
+Please **do not open a public GitHub issue**. Two channels, either one:
 
-📧 **Email contact@files-tech.com**
+- **GitHub private reporting**: the repository's *Security* tab, then *Report a vulnerability*
+  (https://github.com/gitubpatrice/READ-FILES-TECH/security/advisories/new) — seen by the maintainer only;
+- 📧 **email**: **contact@files-tech.com**, subject `[SECURITY] Read Files Tech — <short description>`.
 
-Subject line: `[SECURITY] Read Files Tech — <short description>`.
+Please include a description, the steps to reproduce it, its impact, the affected version (shown in the app
+under About), and a suggested fix if you have one.
 
-Please include:
+- Acknowledgement: within 7 days.
+- Initial assessment: within 30 days.
+- Fix: a critical issue gets a patch within 30 days; a major one, the next minor version; a minor one goes to
+  the backlog.
 
-- A clear description of the vulnerability
-- Steps to reproduce it
-- The potential impact
-- The affected version (shown on the app's "About" screen)
-- A suggested fix, if you have one
-
-## Response times
-
-- Acknowledgement: within 7 days
-- Initial assessment: within 30 days
-- Fix: depending on severity — critical means a patch within 30 days, major means
-  the next minor version, minor goes to the backlog
-
-## Responsible disclosure
-
-Please do not disclose the vulnerability publicly until a fix has shipped and
-users have had a reasonable window to update — typically 30 days after the fix
-is published.
+Please do not disclose the vulnerability publicly until a fix has shipped and users have had a reasonable
+window to update — typically 30 days after the fix is published.
 
 ## Verifying an APK
 
-Every GitHub release carries **four** signed assets: three ABI splits and one
-universal APK, with their SHA-256 digests in the release body.
+Every release carries **four** signed APKs — three ABI splits and one universal APK — with their SHA-256
+digests in the release notes:
 
 ```
 read-files-tech-arm64-v8a-<version>.apk
@@ -55,117 +42,58 @@ read-files-tech-x86_64-<version>.apk
 read-files-tech-universel-<version>.apk
 ```
 
-Check the file you downloaded against the digest published for it:
+Check the file you downloaded against the digest published for it; if it does not match, do not install it:
 
 ```bash
-sha256sum read-files-tech-arm64-v8a-2.15.3.apk
+sha256sum read-files-tech-arm64-v8a-3.0.0.apk
 ```
 
-The value must match exactly. If it does not, do not install the APK.
-
-You can also check that the signing certificate has not changed, which is what
-actually ties a download to this project:
+Then check the signing certificate, which is what ties a download to this project — whatever its file name:
 
 ```bash
-apksigner verify --print-certs read-files-tech-arm64-v8a-2.15.3.apk
+apksigner verify --print-certs read-files-tech-arm64-v8a-3.0.0.apk
 ```
 
-The certificate SHA-256 has been stable across versions, so a build that presents
-a different one did not come from here — regardless of what its file name says.
-
-> Note: releases up to and including v2.15.1 used the earlier asset naming,
-> `read_files_tech-v<version>-<abi>.apk`. The names above apply from v2.15.2 on.
+Its SHA-256 has not changed since the 2.x versions: an APK that presents another one did not come from here.
 
 ## Scope
 
-In scope:
+In scope: privilege escalation or permission bypass; path traversal, zip-slip, injection through the WebView;
+reading or writing outside what the user chose; data of the vault readable without its password; a component
+another app can call; an exploitable crash (persistent denial of service); leaking user data off the phone.
 
-- Privilege escalation, permission bypass
-- Path traversal, zip-slip, injection through the WebView or a MethodChannel
-- Exploitable crash (persistent denial of service)
-- Arbitrary read or write outside the app sandbox
-- Leakage of user data
+Out of scope: UX bugs with no security impact; vulnerabilities in third-party dependencies already reported
+upstream; attacks that need a rooted or already compromised phone; physical attacks on an unlocked phone.
 
-Out of scope:
+## How 3.0 protects what it holds
 
-- UX bugs with no security impact
-- Vulnerabilities in third-party dependencies already reported upstream
-- Attacks that require a rooted or already compromised device
-- Physical attacks on an unlocked device
+- **No network.** No `INTERNET` or `ACCESS_NETWORK_STATE` permission (`tools:node="remove"`). The CI reads the
+  merged release manifest and the release APK, and fails on any permission outside a reviewed list.
+- **Nothing of Google's services.** No ML Kit, Play services, Firebase or telemetry transport: refused by the
+  CI in the release classpath and in the manifest. The system WebView is opted out of its metrics, and
+  EmojiCompat's start-up initializer, which would ask a downloadable-fonts provider for its font, is removed.
+- **What other apps can reach.** The launcher activity (empty task affinity, extras dropped but a whitelisted
+  shortcut) and the three Quick Settings tiles (system only); nothing else is exported, which the CI checks
+  exactly. The FileProvider is not exported: every file is checked by a path guard, then served for that intent
+  only, read-only — write access goes only to PDF Tech, after its signing certificate is checked.
+- **The vault.** AES-256-GCM, the file name bound as associated data; key derived by Argon2id, calibrated on the
+  phone; brute-force lockout on two clocks, so neither a reboot nor setting the clock back frees it; auto-lock
+  in the background, when idle and while the phone sleeps (an alarm); each operation works on its own copy of
+  the key and stops if the vault was locked meanwhile; screens protected from capture; decrypted copies purged
+  at the lock and at every start. The one-time repair of the files 2.15.2 encrypted under a zeroed key is
+  carried over.
+- **Hostile files.** The HTML viewer loads no network resource and runs no JavaScript (WebViewAssetLoader,
+  `blockNetworkLoads`, a restrictive CSP); ZIP extraction refuses names leading outside its folder and bounds
+  what is produced, not what is declared; PDFs are parsed in a separate process (`:pdf`) that accepts only the
+  app's own calls; the patterns the user types run on RE2/J, in linear time; every viewer has a size cap.
+- **Backups.** Android backup and device transfer are turned off for the app's data.
 
-## Hardening history
+Known limits, stated in the privacy policy as well: the names and sizes of the vault's files are not encrypted;
+the editors' history keeps plain copies of edited files; the trash and the outputs are on shared storage;
+deleting does not overwrite; panic mode leaves the clipboard and the `Files Tech` folder.
 
-Summarised per version. The full account, with the reasoning behind each fix, is
-in [SECURITY.fr.md](./SECURITY.fr.md).
+## History
 
-- **v2.15.3** (2026-10-10) — Two vault fixes, and no network permission any more.
-  (D1) A vault lock that landed *during* an import or a restore (leaving the vault
-  screen, 30 s in the background, 3 min of inactivity) let the operation finish
-  without any error using a key of 32 zero bytes: the file could not be opened
-  with the real password, could be decrypted by anyone, and a folder import could
-  then delete the original. Each operation now works on its own copy of the key
-  and stops before writing if the vault was locked in the meantime: an
-  interrupted import writes nothing (so a folder import does not delete the
-  original), an interrupted restore stops, and nothing is encrypted under a
-  zeroed key. A write already under way when the lock lands completes, with a
-  valid key, so its file stays readable; a decryption to the cache, which writes
-  plaintext, checks again and erases it. Resetting the vault now locks it before
-  anything else, so an import in flight cannot land in the new vault.
-  (D2) After the phone rebooted, the brute-force lockout (5 failures) could last
-  about as long as the previous uptime — days — correct password included,
-  because the "monotonic" deadline came from the previous boot. A deadline that
-  cannot belong to the current boot is now ignored, for unlocking and for backup
-  restore alike; what is no longer covered is rebooting *and* moving the wall
-  clock forward, at the cost of one reboot per attempt. Both reproduced on
-  2026-10-10 on an emulator with 2.15.2, both covered by tests; no known
-  exploitation. Also: the automatic update check
-  (GitHub Releases API, at launch and from the About screen) is removed — the
-  About screen opens the releases page in the browser — and `INTERNET` and
-  `ACCESS_NETWORK_STATE` are removed from the merged manifest. The CI checks the
-  merged release manifest against a reviewed list of nine permissions, with a
-  negative control.
-  D1 dates back to v2.5.5 (the in-place wipe in `lock()` arrived with the v2
-  format), so it affects v2.5.5 to v2.15.2, and only v2 files.
-  *Files already affected* are repaired at the unlock that follows the update:
-  each vault file that an all-zero key opens is re-encrypted under the right key,
-  checked by a round trip, and replaced atomically if it has not changed since it
-  was read. A sound file is never decrypted by this pass. A file unreadable for
-  another reason is left untouched. A file the pass cannot check (larger than a
-  backup, a read error, or one the app died on) is skipped and, once the pass is
-  over, listed as "not verified": if it does not open, import the original again
-  if it still exists, or run the restore again from the `.rftvault` backup. The
-  names repaired or not verified are shown until the user has seen them. The pass
-  completes once (resumed after an interruption, retried up to three times while
-  files remain unverified) and never runs on a vault created with 2.15.3.
-  Limits: accepting an all-zero-key file widens what the vault accepts, and the
-  "done" marker is an ordinary preference. An actor able to WRITE to the app's
-  private storage (in practice, a rooted phone; Android backup is disabled for
-  this app) could clear it and replay the pass to get a file accepted, including
-  a substitute for an existing one — content injection, not disclosure; the
-  dialog warns not to trust a "repaired" file that opened normally before the
-  update. And repairing does not undo past exposure: the old all-zero-key copy
-  may survive in freed flash blocks or in copies made earlier; treat such content
-  as exposed to anyone who had access to the app's storage.
-- **v2.15.2** (2026-09-20) — Dependency chain unlocked at its source. `share_plus`
-  13, `package_info_plus` 10, `file_picker` 13, Syncfusion 34.2.8, ML Kit 0.17.1.
-  Two version ceilings documented against an AGP 8 packaging defect. PDF signing
-  no longer saves from an already-released document. Verified on the build: zero
-  `datatransport` components, seven `com.google.mlkit` manifest entries.
-- **v2.15.1** (2026-08-11) — Update check: the timeout did not cover reading the
-  response, so a server that answered and then went silent could hang the app.
-  Oversized responses are refused before being loaded into memory; empty
-  redirects are no longer followed.
-- **v2.15.0** (2026-08-09) — Consolidation across the 23 points of the 2026-08-02
-  audit plan. The zip-bomb guard relied on the size *declared in the entry
-  header*, so an 80 KB archive claiming 1 KB and inflating to 80 MB passed it, on
-  all four sites using it, since v2.12.0; decompression now runs through a capped
-  stream. Vault: `reset()` left lockout counters behind, `decryptToTemp` wrote to
-  a shared folder, `exportFile` overwrote silently. HTML viewer: the injected CSP
-  could be bypassed two different ways.
-- **v2.14.0** (2026-07-19) — Trash, and snackbar reliability.
-- **v2.13.2** (2026-05-20) — Expert audit after v2.13.1, three axes in parallel.
-- **v2.13.1** (2026-05-19) — CI hotfix: removed the `splits.abi {}` block.
-- **v2.13.0** (2026-05-13) — Expert audit after v2.12.3: 24 fixes.
-- **v2.12.2** (2026-05-13) — Google Play Protect hotfix.
-- **v2.12.1** (2026-05-12) — Zero-vulnerability audit, G1-G16.
-- **v2.12.0** (2026-05-09) — F1-F19: viewer caps (txt, docx, xlsx, epub).
+The hardening history of the 2.x line, version by version, is kept with its last release:
+[SECURITY.md of v2.15.3](https://github.com/gitubpatrice/READ-FILES-TECH/blob/v2.15.3/SECURITY.md) and its
+[French version](https://github.com/gitubpatrice/READ-FILES-TECH/blob/v2.15.3/SECURITY.fr.md).

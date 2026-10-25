@@ -1,0 +1,31 @@
+Read Files Tech ist ein Schweizer Taschenmesser für die Dateien auf Ihrem Android-Telefon: ein Dateimanager, ein universeller Betrachter, Editoren, ein Dokumentenscanner, OCR, ein verschlüsselter Tresor und eine Reihe von Dateiwerkzeugen. Alles läuft auf dem Telefon: Die App hat keine Internetberechtigung.
+
+<b>Funktionen</b>
+
+<ul>
+<li>Dateimanager – durchsuchen, suchen, sortieren, mehrere auswählen, umbenennen, kopieren, verschieben, ein Papierkorb mit Rückgängig und die Installation von APKs über den Installer von Android</li>
+<li>Betrachter – Text und Code, Markdown, JSON, HTML, CSV, Tabellen (XLSX, XLS, ODS), Dokumente (DOCX, ODT, ODP), EPUB, PDF, ZIP, Bilder</li>
+<li>Editoren – Code und Text mit automatischem Versionsverlauf, CSV als bearbeitbare Tabelle</li>
+<li>Dokumentenscanner – Ränder erkannt, Perspektive begradigt, als PDF gespeichert</li>
+<li>OCR auf dem Telefon (Tesseract), auf Deutsch, Englisch, Französisch, Italienisch und Spanisch</li>
+<li>Verschlüsselter Tresor – AES-256-GCM, ein per Argon2id aus Ihrem Passwort abgeleiteter Schlüssel, automatische Sperre und ein Panikmodus</li>
+<li>Konvertierung – Bilder zu PDF, CSV zu XLSX, Text zu PDF, PDF und DOCX zu Text, Bilder zu JPG oder PNG</li>
+<li>Fotos – kleinere Bilder, und Standort, Datum und Kameramodell vor dem Teilen entfernt</li>
+<li>Globale Suche nach Name und Inhalt, Duplikate per SHA-256 gefunden, Massenumbenennung mit regulären Ausdrücken</li>
+<li>Werkzeuge – Farbwähler, zwei Dateien vergleichen, Prüfsumme, Kodierungen, Formatierung, ZIP erstellen, Text- und CSV-Werkzeuge</li>
+<li>Kacheln der Schnelleinstellungen für Scanner, OCR und Tresor</li>
+<li>Auf Deutsch, Englisch, Französisch, Italienisch und Spanisch</li>
+</ul>
+
+<b>Datenschutz</b>
+
+<ul>
+<li>Keine Internetberechtigung: Die App kann sich mit nichts verbinden, und ihr Build prüft das. Kein Konto, keine Statistiken, keine Werbung, kein Tracking</li>
+<li>Kein Google-Dienst: OCR und Scanner sind freie Software, die in der App läuft</li>
+<li>Der Zugriff auf alle Dateien wird erbeten, weil ein Dateimanager ihn braucht; nichts wird im Hintergrund gelesen oder geschrieben</li>
+<li>Eine Datei an eine Cloud-App zu senden, ist immer Ihre Handlung, über das Teilen-Menü von Android</li>
+<li>Updates: „Über“ öffnet die Seite der Versionen in Ihrem Browser</li>
+<li>Freie Software unter der Apache-Lizenz 2.0 – https://github.com/gitubpatrice/READ-FILES-TECH</li>
+</ul>
+
+Projektseite: https://files-tech.com/read-files-tech.php

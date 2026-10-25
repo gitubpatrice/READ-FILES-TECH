@@ -1,0 +1,25 @@
+<!doctype html>
+<html><body>
+<canvas id="c" width="480" height="320"></canvas>
+<pre id="out"></pre>
+<script>
+const c = document.getElementById('c');
+const g = c.getContext('2d');
+const grad = g.createLinearGradient(0, 0, 0, 320);
+grad.addColorStop(0, '#fffbe0');
+grad.addColorStop(1, '#3cb371');
+g.fillStyle = grad;
+g.fillRect(0, 0, 480, 320);
+g.fillStyle = 'steelblue';
+g.fillRect(0, 0, 480, 54);
+g.fillStyle = 'white';
+g.font = 'bold 36px Arial';
+g.fillText('TOP', 12, 40);
+g.fillStyle = 'orangered';
+g.beginPath();
+g.moveTo(240, 100); g.lineTo(300, 170); g.lineTo(260, 170); g.lineTo(260, 260);
+g.lineTo(220, 260); g.lineTo(220, 170); g.lineTo(180, 170); g.closePath();
+g.fill();
+document.getElementById('out').textContent = c.toDataURL('image/webp', 0.8);
+</script>
+</body></html>

@@ -1,50 +1,61 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""Assert the permissions of the MERGED release manifest against the reviewed allowlist.
+"""Assert the permissions of the MERGED release manifest — or of a release APK — against a reviewed list.
 
 Why this exists
 ---------------
-Since 2.15.3 Read Files Tech holds NO network permission, like Notes Tech, Agenda Tech, App
-Manager Tech and SMS Tech (decision of 2026-10-10). Until 2.15.2 it declared INTERNET for the
-update check; earlier still, before 2.15, the permission was in the APK WITHOUT being in the
-source manifest at all: the manifest merger added it through
-`com.google.android.datatransport:transport-backend-cct`, which Google ML Kit pulls in. The
-source manifest now removes both permissions with `tools:node="remove"`. A promise no build
-checks is an intention: this script makes the build fail when it breaks. Model:
-agenda_tech/tools/check-manifest-permissions.py.
+Read Files Tech promises "no internet permission" since the Flutter 2.15.3 (docs D-014), on
+files-tech.com, in the README and in PRIVACY.md. A promise no build checks is an intention: this
+script turns it into a build constraint. Precedent in the portfolio: Agenda Tech PUBLISHED an APK
+carrying ACCESS_NETWORK_STATE, pulled transitively by androidx.work, unnoticed until a later audit.
 
-Two traps this script exists to avoid
+Two traps this script avoids
+----------------------------
+1. The source manifest is not evidence: libraries add permissions at merge time. Only the merged
+   manifest — or the manifest of the APK itself — decides what the published APK asks for.
+2. `<uses-permission>` can span several lines, a shape the merge produces. This parses the XML.
+
+The list is EXACT, not only a ceiling
 -------------------------------------
-1. **The source manifest is not evidence.** It contains INTERNET *in order to remove it*, and a
-   dependency can add a permission at merge time. Only the merged manifest of the RELEASE variant
-   says what the published APK carries (the debug variant of a Flutter app adds INTERNET on purpose,
-   for the development tools).
-2. **`<uses-permission>` can span several lines.** A line-based grep misses it. This parses the XML.
+A permission outside the list fails (it must be a deliberate, reviewed act). A permission IN the list
+but absent from the manifest fails too: the list, PRIVACY.md and the APK would otherwise describe three
+different apps. Each phase of the port that adds a permission adds it here, in the same commit.
 
 Usage
 -----
-    python3 tools/check-manifest-permissions.py [path-to-merged-manifest]
-    python3 tools/check-manifest-permissions.py --controle-negatif
+    python3 tools/check-manifest-permissions.py [--replace] [manifest]
 
-Exit code 0 when the manifest matches the allowlist exactly, 1 otherwise. The negative control
-writes faulty manifests and requires every one of them to be REJECTED: a check that cannot fail
-protects nothing.
+`manifest` defaults to the merged release manifest of the default build. It may also be the manifest
+of a built APK, as printed by `apkanalyzer manifest print <apk>`.
+`--replace` expects the build that takes the Flutter app's place (`-Prft.replaceFlutter=true`, package
+without `.next`); without it, the default isolated build is expected (docs D-008).
+
+Exit code 0 when the manifest matches the list exactly, 1 otherwise. Prints GitHub Actions
+`::error::` annotations under CI, plain text otherwise.
 """
 
 from __future__ import annotations
 
 import os
 import sys
-import tempfile
 import xml.etree.ElementTree as ET
+
+# The Windows console is cp1252: a non-ASCII character in a message would otherwise crash the
+# script, that is, report a FAILED check when the check succeeded.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 
 DEFAULT_MANIFEST = os.path.join(
-    "build", "app", "intermediates", "merged_manifest", "release",
+    "app", "build", "intermediates", "merged_manifest", "release",
     "processReleaseMainManifest", "AndroidManifest.xml",
 )
 
+FLUTTER_PACKAGE = "com.readfilestech.read_files_tech"
+ISOLATED_PACKAGE = FLUTTER_PACKAGE + ".next"
+
+# Must NEVER reach the APK, whatever the list says: the permissions that open a socket or read the
+# network. Kept apart from the list so the failure message can say WHY. Same set as the Flutter guard.
 FORBIDDEN = {
     "android.permission.INTERNET",
     "android.permission.ACCESS_NETWORK_STATE",
@@ -53,159 +64,142 @@ FORBIDDEN = {
     "android.permission.CHANGE_WIFI_STATE",
 }
 
-# Measured on the 2.15.3 release APK (`aapt2 dump permissions`, 2026-10-10). Each entry is
-# explained in PRIVACY.md / PRIVACY.fr.md. A new one must be a deliberate act: add it here AND
-# there, or remove the dependency that brought it.
-ALLOWED = {
-    "android.permission.READ_EXTERNAL_STORAGE",
-    "android.permission.WRITE_EXTERNAL_STORAGE",
-    "android.permission.MANAGE_EXTERNAL_STORAGE",
-    "android.permission.READ_MEDIA_IMAGES",
-    "android.permission.READ_MEDIA_VIDEO",
-    "android.permission.READ_MEDIA_AUDIO",
-    "android.permission.REQUEST_INSTALL_PACKAGES",
-    "android.permission.CAMERA",
-    "com.readfilestech.read_files_tech.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
-}
+
+def allowed_for(package: str) -> set[str]:
+    """Every permission the reviewed APK carries — no more, no less.
+
+    Phase 1 (skeleton): the one androidx.core generates for its own non-exported receivers (signature
+    level, named after the applicationId). Phase 3 (the explorer): shared storage, as the 2.15.3 — read
+    up to Android 12, write up to Android 10, all-files access from Android 11. Phase 3b: installing an
+    APK the user taps. The 2.15.3 carries nine; READ_MEDIA_* and CAMERA do not come back (docs D-027),
+    INTERNET and ACCESS_NETWORK_STATE never (D-014). Each permission comes with the phase that needs it,
+    documented in PRIVACY.md at the same time.
+    """
+    return {
+        f"{package}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.MANAGE_EXTERNAL_STORAGE",
+        "android.permission.REQUEST_INSTALL_PACKAGES",
+    }
+
 
 IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def fail(lines: list[str]) -> None:
-    prefix = "::error::" if IN_CI else "ERREUR: "
+    prefix = "::error::" if IN_CI else "ERROR: "
     for line in lines:
         print(f"{prefix}{line}")
 
 
-def declared_permissions(manifest_path: str) -> set[str]:
-    """Every `android:name` of a `<uses-permission>` element, parsed as XML rather than grepped."""
+def parse(manifest_path: str) -> tuple[ET.Element, set[str]]:
+    """The manifest root and every permission it requests, parsed as XML rather than grepped."""
     root = ET.parse(manifest_path).getroot()
     names = set()
-    # `uses-permission-sdk-m` is the historical alias of sdk-23: the merger keeps it (aapt2
-    # refuses it, measured on App Manager Tech), so it is read too.
-    for tag in ("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-m"):
-        for element in root.iter(tag):
+    # Every spelling, matched by prefix: `<uses-permission-sdk-23>` grants the same capability on
+    # API 23+, and the platform parser still accepts its pre-release alias `<uses-permission-sdk-m>`
+    # (aapt2 rejects it, the merger keeps it — measured on App Manager Tech, 2026-10-08).
+    for element in root.iter():
+        if element.tag.startswith("uses-permission"):
             name = element.get(f"{{{ANDROID_NS}}}name")
             if name:
                 names.add(name)
-    return names
+    return root, names
 
 
-def check(manifest_path: str, quiet: bool = False) -> int:
+def main(argv: list[str]) -> int:
+    args = argv[1:]
+    replace = "--replace" in args
+    args = [a for a in args if a != "--replace"]
+    if len(args) > 1 or any(a.startswith("--") for a in args):
+        print(__doc__)
+        return 2
+    manifest_path = args[0] if args else DEFAULT_MANIFEST
+    expected_package = FLUTTER_PACKAGE if replace else ISOLATED_PACKAGE
+
     if not os.path.isfile(manifest_path):
         fail([
             f"merged manifest not found: {manifest_path}",
-            "build it first: flutter build apk --release (or --config-only + processReleaseMainManifest)",
+            "run first: ./gradlew :app:processReleaseMainManifest",
         ])
         return 1
+
     try:
-        found = declared_permissions(manifest_path)
+        root, found = parse(manifest_path)
     except ET.ParseError as error:
-        fail([f"unreadable merged manifest ({manifest_path}): {error}"])
+        fail([f"merged manifest unreadable ({manifest_path}): {error}"])
         return 1
+
+    if root.tag != "manifest" or root.find("application") is None:
+        fail([
+            f"{manifest_path} is not an application manifest -",
+            "this is a failure of the check, not an absence of permissions.",
+        ])
+        return 1
+
+    package = root.get("package")
+    if package != expected_package:
+        fail([
+            f"{manifest_path} is not the release manifest of {expected_package} (package={package}) -",
+            "this is a failure of the check, not a verdict on permissions.",
+        ])
+        return 1
+
     if not found:
+        # An empty result is a broken check, never a clean bill of health: androidx.core alone
+        # declares one permission in every build of this app.
         fail([
             f"no permission found in {manifest_path} -",
-            "that is a failure of the check, not an absence of permissions.",
+            "this is a failure of the check, not an absence of permissions.",
         ])
         return 1
 
-    if not quiet:
-        print(f"Permissions in the merged release manifest ({len(found)}):")
-        for name in sorted(found):
-            print(f"  {name}")
+    allowed = allowed_for(package)
+    print(f"Manifest: {manifest_path}")
+    print(f"applicationId: {package}")
+    print(f"Permissions ({len(found)}):")
+    for name in sorted(found):
+        mark = "ok " if name in allowed else "!! "
+        print(f"  {mark}{name}")
 
     problems: list[str] = []
+
     forbidden_present = sorted(found & FORBIDDEN)
     if forbidden_present:
-        problems.append("NETWORK permission in the merged release manifest:")
+        problems.append("NETWORK permission in the release manifest:")
         problems += [f"  {name}" for name in forbidden_present]
         problems.append(
-            "Read Files Tech promises no Internet permission. Either the dependency that pulled it "
-            "goes, or it is removed with tools:node=\"remove\" and the removal is justified.",
+            "Read Files Tech publicly promises \"no internet permission\". Either the dependency that "
+            "pulled it goes, or it is removed with tools:node=\"remove\" and the removal justified.",
         )
-    unexpected = sorted(found - ALLOWED - FORBIDDEN)
+
+    unexpected = sorted(found - allowed - FORBIDDEN)
     if unexpected:
         problems.append("Permission(s) outside the reviewed list:")
         problems += [f"  {name}" for name in unexpected]
         problems.append(
-            "A permission that arrives transitively must be a deliberate act: add it to ALLOWED "
-            "in this script AND to PRIVACY.md / PRIVACY.fr.md, or remove the dependency.",
+            "A permission must be a deliberate act: add it to allowed_for() in this script AND to "
+            "PRIVACY.md / PRIVACY.fr.md, or drop what brought it.",
         )
-    # An error, not a note (unlike Agenda Tech's model): PRIVACY.md states the APK carries
-    # EXACTLY these permissions, and a vanished CAMERA would also break the scanner and OCR.
-    missing = sorted(ALLOWED - found)
+
+    missing = sorted(allowed - found)
     if missing:
-        problems.append("Expected permission(s) absent from the merged manifest:")
+        problems.append("Permission(s) in the reviewed list but absent from the manifest:")
         problems += [f"  {name}" for name in missing]
         problems.append(
-            "If the removal is intended, remove them from ALLOWED and from PRIVACY.md / "
-            "PRIVACY.fr.md, which state the exact list.",
+            "The list, PRIVACY.md and the APK must describe the same app: remove them from "
+            "allowed_for() and from PRIVACY.md if the removal is intended.",
         )
 
     if problems:
-        if not quiet:
-            print()
+        print()
         fail(problems)
         return 1
-    if not quiet:
-        print()
-        print("OK: no network permission, and nothing outside the reviewed list.")
+
+    print()
+    print("OK: no network permission, and exactly the reviewed list.")
     return 0
-
-
-def negative_control() -> int:
-    """Every faulty manifest below must be REJECTED, and the clean one accepted."""
-    head = (
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        f'<manifest xmlns:android="{ANDROID_NS}" package="x">\n'
-    )
-    allowed = "".join(f'  <uses-permission android:name="{p}" />\n' for p in sorted(ALLOWED))
-    cases = {
-        "propre (doit PASSER)": (allowed, 0),
-        "INTERNET": (allowed + '  <uses-permission android:name="android.permission.INTERNET" />\n', 1),
-        "ACCESS_NETWORK_STATE sur plusieurs lignes": (
-            allowed + "  <uses-permission\n      android:name=\n"
-            '        "android.permission.ACCESS_NETWORK_STATE"\n      />\n',
-            1,
-        ),
-        "INTERNET en uses-permission-sdk-23": (
-            allowed + '  <uses-permission-sdk-23 android:name="android.permission.INTERNET" />\n', 1,
-        ),
-        "INTERNET en uses-permission-sdk-m": (
-            allowed + '  <uses-permission-sdk-m android:name="android.permission.INTERNET" />\n', 1,
-        ),
-        "permission hors liste": (
-            allowed + '  <uses-permission android:name="android.permission.READ_CONTACTS" />\n', 1,
-        ),
-        "CAMERA manquante": (
-            allowed.replace('  <uses-permission android:name="android.permission.CAMERA" />\n', ""),
-            1,
-        ),
-        "aucune permission": ("", 1),
-    }
-    bad = 0
-    with tempfile.TemporaryDirectory() as tmp:
-        for label, (body, expected) in cases.items():
-            path = os.path.join(tmp, "AndroidManifest.xml")
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write(head + body + "</manifest>\n")
-            code = check(path, quiet=True)
-            verdict = "ok" if code == expected else "FAUX"
-            if code != expected:
-                bad += 1
-            print(f"  [{verdict}] {label} : code {code}, attendu {expected}")
-    if bad:
-        fail([f"negative control: {bad} case(s) not handled as expected"])
-        return 1
-    print("Negative control OK: every faulty manifest was rejected, the clean one accepted.")
-    return 0
-
-
-def main(argv: list[str]) -> int:
-    if len(argv) > 1 and argv[1] == "--controle-negatif":
-        return negative_control()
-    return check(argv[1] if len(argv) > 1 else DEFAULT_MANIFEST)
 
 
 if __name__ == "__main__":

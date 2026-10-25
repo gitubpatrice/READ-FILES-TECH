@@ -1,0 +1,17 @@
+package com.readfilestech.read_files_tech.data.viewer.zip
+
+import android.content.Context
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object ZipModule {
+    @Provides
+    @Singleton
+    fun shares(@ApplicationContext context: Context): ZipShares = ZipShares.under(context.cacheDir)
+}

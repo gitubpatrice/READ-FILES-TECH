@@ -1,0 +1,409 @@
+package com.readfilestech.read_files_tech.data.files
+
+import java.io.File
+import java.io.IOException
+
+/** A file above the cap of what reads it: the screen says so instead of running out of memory. */
+class FileTooLargeException(val capBytes: Long) : IOException("file larger than $capBytes bytes")
+
+/** Bytes in a mebibyte: the unit the caps are written in, and said in ("50 MB"). */
+internal const val MIB = 1024L * 1024
+
+/** Pixels in a megapixel: the unit [FileCaps.IMAGE_PIXELS] is said in. */
+internal const val MEGA = 1_000_000L
+
+/**
+ * The size caps of the 2.15.3 (`lib/utils/file_caps.dart`), one place for the viewers and tools of
+ * phases 4 and 5 — each reads its cap here, never a number of its own. The vault keeps its own caps
+ * (phase 2: `VaultFiles.IMPORT_MAX_BYTES` is the 2.15.x's `vaultBackup`, which it documented as a
+ * restore cap it never was — inventory S2), the trash its metadata cap (`TrashEntry.META_MAX_BYTES`).
+ */
+object FileCaps {
+    const val TEXT_VIEWER = 50 * MIB
+
+    /**
+     * Bytes of a file the code editor opens: a text field lays its whole text out again at each key typed,
+     * where the text viewer lays out the rows on screen only — a larger file is refused in words, and the
+     * viewer shows it. No 2.15.3 counterpart: it read any file whole into its text field
+     * (`code_editor_screen.dart:74-93`, inventory F34).
+     */
+    const val CODE_EDITOR = 1 * MIB
+    const val DOC_ZIPPED = 50 * MIB
+    const val SPREADSHEET = 50 * MIB
+    const val EPUB_FILE = 100 * MIB
+
+    /** One chapter of a book, once decompressed: a larger one is refused, the others read. The 2.15.3's. */
+    const val EPUB_CHAPTER = 50 * MIB
+
+    /**
+     * One of a book's package parts once decompressed — `container.xml`, its package document (OPF), its
+     * table of contents (EPUB 3 nav or EPUB 2 NCX): a larger package is refused, a larger table of contents
+     * read up to here. Candide's, from Project Gutenberg (corpus), are 8 KB of OPF and 10 KB of NCX for 36
+     * chapters: a book of a thousand times as many stays under it. The 2.15.3 read container and OPF up to
+     * [ZIP_ENTRY_DECOMPRESSED], with regexes.
+     */
+    const val EPUB_PACKAGE = 16 * MIB
+
+    /**
+     * Bytes all of one book's parts may decompress to while it is open — its package, then each chapter the
+     * first time it is read (a chapter is read once, however often the spine names it): past it, a chapter
+     * is refused: ten chapters at [EPUB_CHAPTER], where a long novel's XHTML is a few megabytes. The 2.15.3
+     * had no such bound, and read every chapter at once, a chapter the spine repeated each time it did
+     * (inventory D22).
+     */
+    const val EPUB_DECOMPRESSED = 512 * MIB
+
+    /**
+     * Items a book's package may list in its manifest, and distinct ones in its spine: past it, the book
+     * holds too many items. A book lists a few items per chapter or picture: a comic of 2 000 pages, a page
+     * and a picture each, lists 4 000. No 2.15.3 counterpart: its regexes held every item of the OPF.
+     */
+    const val EPUB_ITEMS = 20_000
+
+    /**
+     * Characters of text the reader keeps of one book or page — the chapters read so far, each block
+     * costing a few more ([com.readfilestech.read_files_tech.data.viewer.reader.BlockReader.BLOCK_CHARGE]):
+     * past it the chapter read least recently is dropped, read again if it comes back; one chapter alone
+     * past it is refused. 16 MB of heap, where a long novel whole is a few million characters. No 2.15.3
+     * counterpart: it kept every chapter's blocks, as objects.
+     */
+    const val READER_TEXT_CHARS = 8 * MIB
+
+    /** One entry of an archive, once decompressed (zip, ods, epub, docx text). */
+    const val ZIP_ENTRY_DECOMPRESSED = 200 * MIB
+    const val CSV_FILE = 50 * MIB
+
+    /**
+     * What the CSV viewer builds from one file, whatever its size: Excel's own limits for a sheet —
+     * rows (the header row included), columns, and characters in a cell — so that every CSV Excel opens
+     * whole opens whole here. The 2.15.3 had none: it laid every cell out at once (a `DataTable`), and a
+     * file of 50 MiB froze it long before its cap. Rows and columns beyond are not shown, and the screen
+     * says so; a longer cell is shown, searched and sorted by its first [CSV_CELL_CHARS] characters.
+     */
+    const val CSV_ROWS = 1_048_576
+    const val CSV_COLUMNS = 16_384
+    const val CSV_CELL_CHARS = 32_767
+
+    /**
+     * Bytes the CSV tools merge in all, their files together: the 2.15.3's three times [CSV_FILE]
+     * (`csv_tools_screen.dart:170-173`, H2 v2.12.1). The files are read one at a time, each within [CSV_FILE].
+     */
+    const val CSV_MERGE_TOTAL = 3 * CSV_FILE
+
+    /**
+     * Pages a CSV table exported to PDF makes: Android's PdfDocument keeps every page drawn in memory until it
+     * writes the file, as for [TEXT_TO_PDF_PAGES] — some 53 000 rows of up to ten columns. Counted before the
+     * first page is drawn. No 2.15.3 counterpart: it added pages for as long as there were rows
+     * (`csv_tools_screen.dart:104-110`).
+     */
+    const val CSV_TO_PDF_PAGES = 1_000
+
+    /**
+     * Rows and columns one sheet of a workbook (.xlsx, .xls, .ods) shows, its first row included: the
+     * 2.15.3's (`xlsx_viewer_screen.dart:36-37`, `ods_service.dart:46, 53`). Past them nothing more is read
+     * of an .xlsx sheet, and the screen says what is not shown — the 2.15.3 cut silently.
+     */
+    const val SHEET_ROWS = 5_000
+    const val SHEET_COLUMNS = 200
+
+    /** Chars kept of one cell's text: the grid shows two lines of a column 120 dp wide. No 2.15.3 counterpart. */
+    const val SHEET_CELL_CHARS = 256
+
+    /**
+     * Chars of text one sheet keeps once read — its cells' texts and its workbook's number formats: past it,
+     * the sheet is refused. 5 000 rows of 200 cells reach it at 32 chars a cell; it is 64 MiB of heap at
+     * most. No 2.15.3 counterpart: it held every sheet of the workbook whole (inventory D21).
+     */
+    const val SHEET_TEXT_CHARS = 32 * MIB
+
+    /** The longest number format, Excel's own limit: a longer one is shown as "General", never parsed. */
+    const val SHEET_FORMAT_CHARS = 255
+    const val IMAGE_FILE = 100 * MIB
+    const val IMAGES_TO_PDF_TOTAL = 200 * MIB
+
+    /**
+     * Bytes of a text file Text → PDF lays out, and pages it makes: Android's PdfDocument keeps every page
+     * drawn in memory until it writes the file, so both bound it — 2 MiB of prose is some 400 pages, and a
+     * text of 2 MiB of empty lines would be 35 000 without the page bound. No 2.15.3 counterpart: it read
+     * any text whole and laid it out at once (`convert_screen.dart:172`, inventory F6).
+     */
+    const val TEXT_TO_PDF = 2 * MIB
+    const val TEXT_TO_PDF_PAGES = 1_000
+
+    /**
+     * Pages PDF → TXT extracts, counted by walking the page tree — never the `/Count` a file declares: one page
+     * declaring 2 147 483 647 made as many empty pages in the output (Claude review R18). The viewer opens
+     * a document of 100 000 pages; about 4 h of extraction at the prototype's 165 ms a page. No 2.15.3
+     * counterpart (it refused a file over 100 MiB, `convert_screen.dart:223`).
+     */
+    const val PDF_TO_TEXT_PAGES = 100_000
+
+    /**
+     * Bytes of scratch files PdfBox may write for one document in the `:pdf` process — decoded streams once
+     * past its memory. Unbounded, the content stream of a 20 MB PDF that inflates to 20 GB filled the phone's
+     * storage during PDF → TXT (Claude review R18). Images → PDF holds up to [IMAGES_TO_PDF_TOTAL] of JPEG
+     * plus pixel streams: 1 GiB leaves room for both. No 2.15.3 counterpart.
+     */
+    const val PDF_SCRATCH = 1024 * MIB
+    const val ZIP_CREATE_TOTAL = 200 * MIB
+
+    /**
+     * Bytes of a text file whose content a search reads — the global search and the content search, both
+     * the 2.15.3's 2 MiB (`global_search_service.dart:24`, `content_search_screen.dart:86`): a larger file is
+     * matched on its name only by the first, skipped and counted by the second.
+     */
+    const val SEARCH_CONTENT = 2 * MIB
+
+    /**
+     * Characters of a pattern the user types — a content search's, a bulk rename's: the 2.15.3's 200
+     * (`content_search_screen.dart:76`, `bulk_rename_screen.dart:73`). There it bounded no time (inventory
+     * F3); here RE2/J does, in a time linear in the text (SearchPattern). The text tools' search and its
+     * replacement too, which the 2.15.3 did not bound (`txt_tools_screen.dart:216-233`): a literal is looked for
+     * at each place of a text of up to [TEXT_VIEWER], and each match may add its replacement to the result.
+     */
+    const val PATTERN_CHARS = 200
+
+    /**
+     * Copies a pattern's counted repetitions make, all multiplied together (`a{10}` makes 10, `(a{10}){10}`
+     * 100): RE2/J expands them when it compiles, and `((a{1000}){1000}){1000}`, 24 characters, would be a
+     * billion instructions. RE2's own bound on one repetition. No 2.15.3 counterpart.
+     */
+    const val PATTERN_REPEATS = 1_000
+
+    /**
+     * Files a search keeps before it stops: the global search's files found (the 2.15.x's `maxResults`,
+     * `global_search_service.dart:25`), the content search's files with their matches (the 2.15.3 kept all).
+     */
+    const val SEARCH_RESULTS = 1_000
+
+    /** Matching lines kept of one file, all counted; the 2.15.3 kept every one, each whole. */
+    const val CONTENT_SEARCH_LINES = 100
+
+    /** Characters kept of a matching line, around its first match: the global search's snippet. */
+    const val CONTENT_SEARCH_LINE_CHARS = 200
+
+    /**
+     * Files the duplicate finder lists, each of [DUPLICATE_MIN_BYTES] at least, before it compares them: past
+     * it, the listing stops, and the screen says the folder was not listed whole. A file costs its path and
+     * two numbers, some 300 bytes: 60 MB here. No 2.15.3 counterpart: it kept every file of the folder
+     * (`duplicate_finder_service.dart:185`).
+     */
+    const val DUPLICATE_FILES = 200_000
+
+    /** Smaller files are not compared: the 2.15.3's `minSize` (`duplicate_finder_service.dart:105`). */
+    const val DUPLICATE_MIN_BYTES = 4096L
+
+    /** The largest files listed beside the duplicates: the 2.15.3's `topN`. */
+    const val DUPLICATE_LARGEST = 50
+    const val ZIP_VIEWER = 500 * MIB
+
+    /**
+     * Entries an archive may list. No 2.15.3 equivalent: archive 4 decoded every entry of a 500 MiB file
+     * in memory. The listing costs about a hundred bytes and its name per entry; 70 000 entries are
+     * listed (corpus), a central directory declaring billions is refused before a record is read.
+     */
+    const val ZIP_VIEWER_ENTRIES = 200_000
+
+    /**
+     * Bytes of central directory read for a listing — its names are what a listing keeps. No 2.15.3
+     * equivalent; 200 000 entries with paths of about a hundred characters fit in it.
+     */
+    const val ZIP_VIEWER_DIRECTORY = 32 * MIB
+
+    /** A page of the HTML viewer, and of its reading mode (the 2.15.3's reading mode read it with no cap: D22). */
+    const val HTML_VIEWER = 20 * MIB
+    const val PDF_SIGNATURE_SOURCE = 100 * MIB
+
+    /**
+     * Bytes of a PDF the viewer opens. No 2.15.3 counterpart: Syncfusion read the whole file into memory
+     * and opened whatever the phone could hold — a scanned book of several hundred MB on a large phone.
+     * Here no page is read whole (PdfRenderer and PdfBox seek in the file, in the `:pdf` process), so the
+     * cap bounds what is COPIED: the vault's private copy (phase 6, D-028) and the decrypted temporary of a
+     * password-protected file. 1 GiB, above any scanned document of real use: a choice for Patrice.
+     */
+    const val PDF_VIEWER = 1024 * MIB
+
+    /**
+     * Entries of a PDF's outline the "Contents" panel lists, in the order of the outline; the rest is not
+     * listed. No 2.15.3 counterpart (Syncfusion's bookmark panel read them all, a cycle included). A
+     * technical manual of 2 000 pages holds a few thousand; each costs its title and two numbers.
+     */
+    const val PDF_OUTLINE_ENTRIES = 5_000
+
+    /** Levels of an outline listed: deeper entries are not. No 2.15.3 counterpart; real outlines nest a few. */
+    const val PDF_OUTLINE_DEPTH = 32
+
+    /** Chars kept of an outline entry's title: the panel shows two lines of it. No 2.15.3 counterpart. */
+    const val PDF_OUTLINE_TITLE_CHARS = 256
+
+    /**
+     * Page-tree nodes read to find the pages the outline leads to, all entries together: past it, the
+     * remaining entries are listed without a page. Twice the kids of a 100 000-page document; a page tree
+     * whose `/Kids` hold millions of references would otherwise be read once per entry. No 2.15.3 counterpart.
+     */
+    const val PDF_OUTLINE_PAGE_LOOKUPS = 200_000
+
+    /** Levels of a page tree climbed from a page to its root; deeper, the entry has no page. No 2.15.3 counterpart. */
+    const val PDF_PAGE_TREE_DEPTH = 64
+
+    /**
+     * Bytes of rendered pages the PDF viewer keeps beside those on screen: about seven A4 pages at a phone's
+     * width, so that scrolling back does not render them again. Past it, the page seen least recently is
+     * recycled. No 2.15.3 counterpart (Syncfusion's own cache).
+     */
+    const val PDF_PAGE_BITMAPS = 48 * MIB
+    const val ZIP_EXTRACT_TOTAL = 1024 * MIB
+
+    /** Pixels of a decoded image, whatever its file size. */
+    const val IMAGE_PIXELS = 64_000_000L
+
+    /**
+     * Pixels of an animated GIF or WebP the image viewer plays. Android decodes an animation's frames at
+     * full size whatever subsampling is asked — on a Galaxy S9 an 8 000 × 8 000 GIF held 256 MB of native
+     * memory at its first frame — and keeps more than one frame while it plays. Larger, its first frame
+     * shows, subsampled as a still image. 4K UHD: the largest a screen recording or a camera makes. No
+     * 2.15.3 counterpart.
+     */
+    const val ANIMATION_PIXELS = 3840L * 2160
+
+    /**
+     * Elements nested in one XML part of a document (docx, odt, odp): deeper, the file is refused. No
+     * 2.15.3 counterpart — its regex scan built no tree. Word's deepest real nesting, a text box in a
+     * table cell, stays under 30; a million nested elements is refused here instead of being held. The
+     * reader's chapters and pages, HTML rather than XML, are not refused: their elements nested deeper are
+     * read as their parent's text, as a browser flattens them.
+     */
+    const val XML_DEPTH = 256
+
+    /**
+     * The longest stretch of an XML part between two tags — one text, or one tag with its attributes —
+     * in chars: the parser holds a stretch whole before handing it over (Android's KXmlParser in a
+     * StringBuilder, about 6 bytes per char at its peak, so 24 MB here). No 2.15.3 counterpart: it decoded
+     * the whole part into one String (200 MiB of XML, up to 400 MB of chars), then copied it once per
+     * `replaceAll` (`text_extraction_service.dart:155-169`).
+     */
+    const val XML_STRETCH_CHARS = 4 * MIB
+
+    /**
+     * Elements in one XML part of a document: past it, the file holds too many items. What a part costs is
+     * its elements, not its bytes: 200 MiB of `<w:p/>` (a 300 KB file, 35 million elements) took 59 s to
+     * refuse on an emulator in a debug build, 10.7 s in the release one; refused here, 7.6 s and 1.3 s. Word's
+     * densest corpus file, a French text whose every accented letter is a run of its own, holds an element
+     * every 37.5 bytes: a real part reaches this bound at 150 MB of XML, three quarters of the part cap.
+     * No 2.15.3 counterpart (its regex built no elements).
+     */
+    const val XML_ELEMENTS = 4_000_000
+
+    /**
+     * Bytes of a Markdown file shown rendered; a longer one opens on its source, laid out lazily as the text
+     * viewer's. No 2.15.3 counterpart: it rendered the whole file in one widget (`md_viewer_screen.dart`,
+     * gpt_markdown), and 50 MiB froze it long before its cap. A README of a large project is under 100 KB;
+     * commonmark-java's worst case measured at 1 MiB on the JVM (a link every 7 bytes, a table row every
+     * 10) held under 60 MB while it parsed, and took under half a second.
+     */
+    const val MARKDOWN_RENDERED = 1 * MIB
+
+    /**
+     * Blocks nested in a Markdown text (quotes, lists), and inline nodes nested in one paragraph (emphasis,
+     * images): deeper markers are shown as text (commonmark-java's maxOpenBlockParsers and maxInlineNesting).
+     * No 2.15.3 counterpart; a real document nests a few levels.
+     */
+    const val MARKDOWN_NESTING = 32
+
+    /**
+     * Cells of a Markdown text's tables, counted before it is parsed: the columns of each delimiter row
+     * times the lines after it until a blank one, an upper bound. Past it, the text opens on its source.
+     * GFM pads every row to the header's columns (commonmark-java's TableBlockParser), so 1 MiB holding a
+     * header of 60 000 columns over 100 000 one-character lines would be six billion cells. A cell costs
+     * about 140 bytes once parsed (measured): 14 MB here. No 2.15.3 counterpart.
+     */
+    const val MARKDOWN_TABLE_CELLS = 100_000
+
+    /**
+     * Brackets (`[`, `![`) open at once in one paragraph, counted before it is parsed: past it, the text opens
+     * on its source. commonmark-java 0.30 takes a time in the square of the images nested in one another —
+     * measured on the JVM, 80 000 of them (480 KB) took 4.2 s, 150 000 took 15.5 s; 1 000 take a millisecond.
+     * A real text opens a few at once. No 2.15.3 counterpart.
+     */
+    const val MARKDOWN_OPEN_BRACKETS = 1_000
+
+    /**
+     * Local images a Markdown text may show: the first ones it names by a path in its own folder are looked
+     * up on the storage when it is rendered, and decoded when they come into view; the others keep their
+     * icon. The 2.15.3 had no bound: `Image.file` for each (`md_viewer_screen.dart:87`).
+     */
+    const val MARKDOWN_IMAGES = 64
+
+    /**
+     * Bytes of decoded images the Markdown viewer keeps: past it, the image shown least recently is
+     * dropped, decoded again if it comes back into view. Each is decoded at the width it is shown at, at
+     * most four widths tall (ImageScale): a phone's screenshot is about 10 MB. No 2.15.3 counterpart.
+     */
+    const val MARKDOWN_IMAGE_BYTES = 32 * MIB
+
+    /**
+     * Values of a JSON file — each scalar, array and object: past it, the file is shown as its text. The
+     * viewer keeps 10 bytes per value beside the file's bytes, and 8 per row of its tree: a file of 50 MiB
+     * holding this many values in one array keeps 87 MB once opened (measured on the JVM; 3.7 million kept
+     * 119 MB). No 2.15.3 counterpart: it decoded the whole file into Dart objects
+     * (`json_viewer_screen.dart:41`), then laid out every child of an opened node at once.
+     */
+    const val JSON_VALUES = 2_000_000
+
+    /**
+     * Arrays and objects nested in a JSON file: deeper, it is shown as its text. The default limit of Jackson
+     * and of Python's json module (its recursion limit); the 2.15.3's recursive decoder had none, and a file
+     * of a million `[` was a stack overflow.
+     */
+    const val JSON_DEPTH = 1_000
+
+    /**
+     * Lines of a file the comparison tool reads, each file within [TEXT_VIEWER]: a file of more is refused.
+     * A line costs 12 bytes beside the file's (its end, its number, its slot among the distinct lines); a
+     * 50 MiB log holds about half a million. No 2.15.3 counterpart: it compared the first [DIFF_ROWS]
+     * lines of each file only (`diff_screen.dart:62-68`).
+     */
+    const val DIFF_LINES = 1_000_000
+
+    /**
+     * Rows of a comparison shown — the 2.15.3's `_maxLines` (`diff_screen.dart:21`), there the lines read:
+     * here the files are compared whole and counted whole, only the rows shown stop at it.
+     */
+    const val DIFF_ROWS = 500
+
+    /**
+     * Bytes of an image's metadata the EXIF tool reads to list it: its EXIF block — 64 KiB at most in a
+     * JPEG, any length a PNG, a WebP or a HEIF announces — or the HEIF `meta` box that says where that
+     * block is. A block announcing more is read up to this: its tags come first, a thumbnail after them. No
+     * 2.15.3 counterpart: `ExifService.inspect` decoded the whole picture to read six tags
+     * (`exif_service.dart:116`).
+     */
+    const val IMAGE_METADATA = 1 * MIB
+
+    /**
+     * Segments, chunks or boxes of an image walked looking for its metadata: past it, the image is taken
+     * to carry none. A JPEG's EXIF is in its first few segments; a PNG may put its `eXIf` after its
+     * `IDAT` chunks, about 13 000 of 8 KiB in a 100 MiB file ([IMAGE_FILE]). No 2.15.3 counterpart.
+     */
+    const val IMAGE_METADATA_CHUNKS = 100_000
+
+    /**
+     * The largest file an editor keeps a copy of, in its history (docs D-021), before it overwrites it:
+     * [EditorHistory][com.readfilestech.read_files_tech.data.history.EditorHistory] keeps ten per file,
+     * and ten copies of a 50 MiB CSV would be half a gigabyte of the phone. No 2.15.3 counterpart: its
+     * code editor copied every save whole, whatever its size (`code_editor_screen.dart:96-150`), and its
+     * CSV editor kept none.
+     */
+    const val EDITOR_HISTORY_COPY = 10 * MIB
+
+    /**
+     * A first refusal, before opening: the size it reports now. It bounds no read — a file that grows,
+     * or a node that reports 0 — so a reader ALSO reads through [CappedInputStream] at the same cap
+     * (Claude review R8).
+     *
+     * @throws FileTooLargeException [file] is larger than [cap].
+     */
+    fun check(file: File, cap: Long) {
+        if (file.length() > cap) throw FileTooLargeException(cap)
+    }
+}

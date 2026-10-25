@@ -1,201 +1,275 @@
 name: Release
 
+# The release of the port, in two steps that never merge into one (plan, phase 9; docs D-040):
+#
+# 1. A push of a `release-check/**` branch builds the four APKs under the real package, signed with the
+#    real key, checks them against this repository AND against the published release, and keeps them as
+#    a workflow artefact. Nothing is published: these are the APKs the switch protocol installs over the
+#    published app (docs/09-PROTOCOLE-BASCULE.md).
+# 2. A push of a `v*` tag on that same commit publishes THOSE bytes: no rebuild, and no key in that job. The
+#    tag is ANNOTATED, its message holding the SHA256SUMS of the artefact the protocol installed, and exactly
+#    one successful release-check run of the commit may exist: `git tag -a v3.0.0 -F <SHA256SUMS + notes>`.
+#
+# Not `workflow_dispatch` for step 1: GitHub dispatches only a workflow whose file is on the default
+# branch, and `main` stays the Flutter app until the merge (docs D-009). Publishing from `release.yml`
+# only, never by hand (memory « Ne jamais publier à la main »).
 on:
   push:
-    tags:
-      - 'v*'
+    branches: ['release-check/**']
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-release:
-    name: Build signed APK + GitHub Release
+  build:
+    name: Build, sign and check the four APKs (nothing published)
+    if: startsWith(github.ref, 'refs/heads/release-check/')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
-      contents: write
-
+      contents: read
+      # To read the CI runs of this commit.
+      actions: read
+    # Every action pinned to a reviewed commit, not to a tag that can move: this job writes the signing key
+    # and runs Gradle with it (GPT 5.6 review, 2026-10-25). ci.yml, which holds no key, follows the major tags.
     steps:
-      - name: Checkout app
-        uses: actions/checkout@v4
-        with:
-          path: read_files_tech
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      # The release is built from a commit the whole CI passed on — gate, instrumented tests, zero network —
+      # not from one whose tests were never run (the Flutter release once could, W-M4).
+      - name: The CI passed on this very commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          green=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push \
+            --status success --json databaseId --jq 'length')
+          if [ "$green" -lt 1 ]; then
+            echo "::error::No green CI run on $GITHUB_SHA: push it to kotlin (or main), wait for the CI, then push release-check again."
+            exit 1
+          fi
+
+      # The release notes are the store changelogs of this versionCode: checked here, not at publication,
+      # where a missing one would leave a pushed tag without its release.
+      - name: The changelogs of this version exist
+        run: |
+          base=$(sed -n 's/^versionCode=\([0-9]*\)$/\1/p' version.properties)
+          for lang in en-US fr-FR; do
+            f="fastlane/metadata/android/$lang/changelogs/$((base * 10)).txt"
+            if [ ! -s "$f" ]; then echo "::error::$f is missing: it is the release notes."; exit 1; fi
+          done
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          # Version FIGEE, et non `channel: stable` — voir le meme bloc dans
-          # `ci.yml`. C'est ici que ca compte le plus : ce workflow construit,
-          # signe et PUBLIE les quatre APK. Avec le canal, l'APK publie sous un
-          # tag donne dependait de la date du build, pas du contenu du tag, et
-          # personne ne pouvait reconstruire ce qui avait ete distribue.
-          #
-          # Doit rester identique a la valeur de `ci.yml` : sinon ce qui est
-          # teste n'est pas ce qui est publie.
-          flutter-version: 3.47.2
-          cache: true
+          # Nothing of a build that holds the signing key is written back to the shared cache.
+          cache-read-only: true
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Decode keystore
+      # keystore.properties at the root (app/build.gradle.kts, docs D-010), the key file outside the
+      # checkout. Both are removed by the next step whatever happens; nothing of them is printed.
+      - name: Write the signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > read_files_tech/android/readfilestech-release.jks
-          ls -la read_files_tech/android/readfilestech-release.jks
-
-      - name: Create key.properties
-        env:
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          cat > read_files_tech/android/key.properties << EOF
-          storePassword=$STORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
-          storeFile=readfilestech-release.jks
-          EOF
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/rft-release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/rft-release.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
 
-      - name: Pub get
-        working-directory: read_files_tech
-        run: flutter pub get
+      # The real package (-Prft.replaceFlutter=true): the build refuses it without keystore.properties.
+      - name: Build the release APKs under the real package
+        run: ./gradlew --no-daemon --no-build-cache :app:assembleRelease -Prft.replaceFlutter=true
 
-      # W-M4 — la release enchainait keystore, build et publication sans
-      # jamais verifier que le code compile proprement ni que les tests
-      # passent. Un tag pose sur un commit casse produisait un APK signe,
-      # publie, et annonce comme une version stable.
-      - name: Analyze
-        working-directory: read_files_tech
-        run: flutter analyze --no-fatal-infos
+      - name: Remove the signing key
+        if: always()
+        run: rm -f keystore.properties "$RUNNER_TEMP/rft-release.jks"
 
-      - name: Test
-        working-directory: read_files_tech
-        run: flutter test
+      # Package, versionCode = base * 10 + ABI rank, languages, legal texts — against this repository.
+      - name: Assert the four APKs against the repository
+        run: python3 tools/check-release-apks.py --replace
 
-      # Le tag est la seule source du numero de version affiche dans la
-      # release ; pubspec.yaml est la seule source de celui qui est compile
-      # dans l'APK. Rien ne garantissait qu'ils concordent : `v2.14.0` pouvait
-      # publier un APK portant 2.13.2.
-      - name: Verifier que le tag correspond a pubspec.yaml
-        working-directory: read_files_tech
-        env:
-          TAG_VERSION: ${{ steps.version.outputs.VERSION }}
+      # The permissions and the shape of the manifest of the APK that ships, under the real package.
+      # apkanalyzer pinned, as in ci.yml (the runner's own printed taskAffinity="" differently).
+      - name: Assert the permissions and the shape of the release APK
         run: |
-          PUBSPEC_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/^version:[[:space:]]*//' | cut -d'+' -f1)
-          echo "tag=$TAG_VERSION pubspec=$PUBSPEC_VERSION"
-          if [ "$TAG_VERSION" != "$PUBSPEC_VERSION" ]; then
-            echo "::error::Le tag v$TAG_VERSION ne correspond pas a pubspec.yaml ($PUBSPEC_VERSION)"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmdline-tools;20.0" > /dev/null
+          tools_dir=$(dirname "$(grep -l '^Pkg.Revision=20.0$' "$ANDROID_HOME"/cmdline-tools/*/source.properties | head -n 1)")
+          "$tools_dir/bin/apkanalyzer" manifest print \
+            app/build/outputs/apk/release/app-universal-release.apk > "$RUNNER_TEMP/apk-manifest.xml"
+          python3 tools/check-manifest-permissions.py --replace "$RUNNER_TEMP/apk-manifest.xml"
+          python3 tools/check-manifest-shape.py --replace --apk "$RUNNER_TEMP/apk-manifest.xml"
+
+      # Against the release users have: its certificate, its highest versionCode, its launcher activity,
+      # tiles and FileProvider, read from its APKs downloaded now. The check's negative control first, on
+      # these very APKs.
+      - name: Assert the four APKs continue the published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download -R "$GITHUB_REPOSITORY" -p '*.apk' -D "$RUNNER_TEMP/published"
+          python3 tools/check-release-continuity.py --negative-control app/build/outputs/apk/release "$RUNNER_TEMP/published"
+          python3 tools/check-release-continuity.py app/build/outputs/apk/release "$RUNNER_TEMP/published"
+
+      - name: SHA-256 of the four APKs
+        working-directory: app/build/outputs/apk/release
+        run: |
+          sha256sum app-*-release.apk | tee SHA256SUMS
+          {
+            echo "### APKs checked, not published — commit \`$GITHUB_SHA\`"
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # What the switch protocol installs, and what a tag on this commit publishes, byte for byte.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-apks
+          path: |
+            app/build/outputs/apk/release/app-*-release.apk
+            app/build/outputs/apk/release/SHA256SUMS
+          retention-days: 30
+          if-no-files-found: error
+
+  publish:
+    name: Publish the APKs checked on this commit
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One publication at a time, whatever the tag: two would each pass the continuity check against the same
+    # latest release (GPT 5.6 review, 2026-10-25).
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The release comes after the merge, never from the work branch alone (plan, phase 9; docs D-009).
+      - name: main holds the tagged commit
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_SHA is not in main: merge kotlin into main first."
             exit 1
           fi
 
-      # W-H1 — `flutter build apk --release` produit un APK UNIVERSEL, que le
-      # corps de la release etiquetait pourtant « APK arm64-v8a ». Les
-      # utilisateurs telechargeaient ~117 Mo en croyant prendre un binaire
-      # d'architecture unique, et build.gradle.kts affirme de son cote que le
-      # split ABI passe par `--split-per-abi`. On produit donc bien les trois
-      # APK, plus l'universel pour qui ne veut pas choisir.
-      # W-H1 — `flutter build apk --release` produit un APK UNIVERSEL, que le
-      # corps de la release etiquetait pourtant « APK arm64-v8a ». Les
-      # utilisateurs telechargeaient ~117 Mo en croyant prendre un binaire
-      # d'architecture unique, et build.gradle.kts affirme de son cote que le
-      # split ABI passe par `--split-per-abi`. On produit donc les trois APK
-      # par ABI, plus l'universel pour qui ne veut pas choisir.
-      #
-      # Chaque lot est copie hors de `build/` immediatement apres SON build :
-      # ne pas dependre du fait que le second build laisse intacts les
-      # artefacts du premier.
-      - name: Build APK release (signed, split par ABI)
-        working-directory: read_files_tech
-        run: flutter build apk --release --split-per-abi
-
-      # Aucune permission réseau depuis la 2.15.3 : contrôlé sur le manifeste fusionné de CETTE
-      # build, celle qui est publiée. Une permission réseau ou hors liste revue arrête la release
-      # avant toute publication.
-      - name: Aucune permission reseau dans l'APK publie
-        working-directory: read_files_tech
+      # ONE candidate, never the newest of several: two release-check runs of one commit are two builds, and
+      # only one was installed by the switch protocol (GPT 5.6 review, 2026-10-25). Delete the others
+      # (`gh run delete <id>`) before tagging.
+      - name: Fetch the APKs checked on this very commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python3 tools/check-manifest-permissions.py --controle-negatif
-          python3 tools/check-manifest-permissions.py
+          runs=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --commit "$GITHUB_SHA" --event push \
+            --status success --json databaseId,headBranch \
+            --jq '.[] | select(.headBranch | startswith("release-check/")) | .databaseId')
+          count=$(printf '%s\n' "$runs" | grep -c . || true)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::$count successful release-check runs on $GITHUB_SHA (${runs//$'\n'/, }): exactly one is published — the one the switch protocol installed."
+            exit 1
+          fi
+          echo "Publishing the APKs of run $runs"
+          echo "CHECKED_RUN=$runs" >> "$GITHUB_ENV"
+          gh run download "$runs" -R "$GITHUB_REPOSITORY" -n release-apks -D checked
+          (cd checked && sha256sum -c SHA256SUMS)
 
-      - name: Recuperer les 3 APK par ABI
+      # The tag says which bytes were tried on the phones: an ANNOTATED tag whose message carries the
+      # SHA256SUMS of the artefact the switch protocol installed. Bytes it does not name are not published.
+      - name: The tag names these very bytes
+        run: |
+          git fetch --quiet --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "::error::$GITHUB_REF_NAME is not an annotated tag: tag with -a, its message holding the SHA256SUMS of the APKs tried."
+            exit 1
+          fi
+          message=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")
+          while read -r sum name; do
+            if ! grep -q "$sum" <<< "$message"; then
+              echo "::error::The tag message does not name $name ($sum): these are not the bytes that were tried."
+              exit 1
+            fi
+          done < checked/SHA256SUMS
+
+      - name: The tag is the version the APKs carry
+        run: |
+          aapt2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)
+          name=$("$aapt2" dump badging checked/app-universal-release.apk | sed -n "s/^package: .* versionName='\([^']*\)'.*/\1/p")
+          if [ "v$name" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME, the APKs carry versionName $name."
+            exit 1
+          fi
+          echo "VERSION=$name" >> "$GITHUB_ENV"
+
+      # Once more, now: a release published since the check would have raised the bar.
+      - name: The APKs still continue the published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/check-release-apks.py --replace checked
+          gh release download -R "$GITHUB_REPOSITORY" -p '*.apk' -D "$RUNNER_TEMP/published"
+          python3 tools/check-release-continuity.py checked "$RUNNER_TEMP/published"
+
+      # Files Tech naming: `<app>-<abi>-<version>.apk`, `<app>-universel-<version>.apk` — the site links to them.
+      - name: Name the assets and write the notes
         run: |
           set -euo pipefail
-          V=${{ steps.version.outputs.VERSION }}
-          OUT=read_files_tech/build/app/outputs/flutter-apk
-          # Convention Files Tech : `<app>-<abi>-<version>.apk` pour les splits,
-          # `<app>-universel-<version>.apk` pour l'universel. Nom en kebab-case,
-          # version en DERNIER, sans prefixe `v`. Identique a PDF Tech et
-          # Notes Tech.
-          for ABI in arm64-v8a armeabi-v7a x86_64; do
-            cp "$OUT/app-$ABI-release.apk" "read-files-tech-$ABI-$V.apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            cp "checked/app-$abi-release.apk" "read-files-tech-$abi-$VERSION.apk"
           done
-
-      - name: Build APK release (signed, universel)
-        working-directory: read_files_tech
-        run: flutter build apk --release
-
-      - name: Recuperer l'APK universel
-        run: |
-          set -euo pipefail
-          V=${{ steps.version.outputs.VERSION }}
-          cp read_files_tech/build/app/outputs/flutter-apk/app-release.apk              "read-files-tech-universel-$V.apk"
-
-      - name: SHA-256 des 4 APK
-        id: sha
-        run: |
-          set -euo pipefail
-          V=${{ steps.version.outputs.VERSION }}
+          cp checked/app-universal-release.apk "read-files-tech-universel-$VERSION.apk"
+          base=$(sed -n 's/^versionCode=\([0-9]*\)$/\1/p' version.properties)
+          notes="$RUNNER_TEMP/notes.md"
           {
-            echo "SHA_TABLE<<SHA_EOF"
-            for VARIANT in arm64-v8a armeabi-v7a x86_64 universel; do
-              F="read-files-tech-$VARIANT-$V.apk"
-              H=$(sha256sum "$F" | awk '{print $1}')
-              echo "- **$VARIANT** : \`$H\`"
+            cat "fastlane/metadata/android/en-US/changelogs/$((base * 10)).txt"
+            echo
+            cat "fastlane/metadata/android/fr-FR/changelogs/$((base * 10)).txt"
+            echo
+            echo "## Which file? · Quel fichier ?"
+            echo
+            echo "\`arm64-v8a\` fits almost every phone since 2017. \`universel\` holds the three architectures: heavier, it works everywhere."
+            echo
+            echo "\`arm64-v8a\` convient à presque tous les téléphones depuis 2017. \`universel\` contient les trois architectures : plus lourd, il fonctionne partout."
+            echo
+            echo "## SHA-256"
+            echo
+            for variant in arm64-v8a armeabi-v7a x86_64 universel; do
+              f="read-files-tech-$variant-$VERSION.apk"
+              echo "- **$variant**: \`$(sha256sum "$f" | cut -d' ' -f1)\`"
             done
-            echo "SHA_EOF"
-          } >> "$GITHUB_OUTPUT"
+            echo
+            echo "\`sha256sum <file>\`"
+            echo
+            echo "---"
+            echo
+            echo "Built and signed by GitHub Actions from commit \`$GITHUB_SHA\` (run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$CHECKED_RUN), checked against the published release, then published as is: no rebuild."
+          } > "$notes"
+          cat "$notes"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
-          body: |
-            ## Quel fichier télécharger ?
-
-            Prenez l'APK correspondant à votre téléphone — `arm64-v8a` couvre
-            la quasi-totalité des appareils depuis 2017. L'APK `universel`
-            contient les trois architectures : plus lourd, mais il fonctionne
-            partout.
-
-            ## Vérification d'intégrité (SHA-256)
-
-            ${{ steps.sha.outputs.SHA_TABLE }}
-
-            Vérifiez avec :
-            ```
-            sha256sum <le fichier téléchargé>
-            ```
-
-            ---
-
-            🤖 Build automatique via GitHub Actions (commit `${{ github.sha }}`)
-          files: |
-            read-files-tech-arm64-v8a-${{ steps.version.outputs.VERSION }}.apk
-            read-files-tech-armeabi-v7a-${{ steps.version.outputs.VERSION }}.apk
-            read-files-tech-x86_64-${{ steps.version.outputs.VERSION }}.apk
-            read-files-tech-universel-${{ steps.version.outputs.VERSION }}.apk
-
-      - name: Cleanup
-        if: always()
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          rm -f read_files_tech/android/readfilestech-release.jks
-          rm -f read_files_tech/android/key.properties
+          gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" \
+            "read-files-tech-arm64-v8a-$VERSION.apk" "read-files-tech-armeabi-v7a-$VERSION.apk" \
+            "read-files-tech-x86_64-$VERSION.apk" "read-files-tech-universel-$VERSION.apk"

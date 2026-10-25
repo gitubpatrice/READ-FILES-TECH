@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The logo as the splash screen draws it: whole, inside its circle (Agenda Tech's and App Manager Tech's rule).
+
+  The splash shows its icon inside a CIRCLE whose diameter is 2/3 of the icon (Android documents 192 dp for a
+  288 dp icon without background; the androidx compat library applies the same rule below Android 12), and clips
+  what lies outside.
+
+  The launcher artwork, @drawable/ic_launcher_foreground, is a square whose corners are already rounded at 17 %
+  of its side (measured on the xxxhdpi PNG: its farthest opaque pixel lies 0.635 of the side from its centre).
+  Inset by 26 % on each side, the square is 48 % of the icon: its farthest point is 0.305 of the icon from the
+  centre, inside the circle's 0.333 — about 8 dp to spare on a 288 dp icon. Agenda Tech needed a separate asset
+  because its artwork was barely rounded; this one is used as it is.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_foreground"
+    android:inset="26%" />

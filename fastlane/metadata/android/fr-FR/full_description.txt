@@ -1,32 +1,31 @@
-Read Files Tech est le couteau suisse des fichiers de votre téléphone Android : explorateur, lecteur universel, scanner de documents, OCR, coffre-fort chiffré, outils de conversion et nettoyeur EXIF. Vos fichiers sont traités sur l'appareil et ne sont jamais envoyés ailleurs.
+Read Files Tech est un couteau suisse pour les fichiers de votre téléphone Android : un explorateur, un lecteur universel, des éditeurs, un scanner de documents, l'OCR, un coffre chiffré et des outils de fichiers. Tout se passe sur le téléphone : l'application n'a pas la permission Internet.
 
-<b>Fonctionnalités</b>
-
-<ul>
-<li>Explorateur de fichiers — navigation, recherche, multi-sélection, copie / déplacement / renommage en masse, et un sélecteur avec filtre intelligent</li>
-<li>Lecteur universel — PDF, CSV, XLSX, DOCX, JSON, MD, TXT, HTML, ZIP, images, EPUB, ainsi que ODT, ODS, JS, CSS, PHP, XML</li>
-<li>Scanner de documents — capture par la caméra avec détection des bords et correction de perspective, exportée en PDF</li>
-<li>OCR latin sur les images, entièrement sur l'appareil</li>
-<li>Coffre-fort chiffré — dérivation de clé Argon2id, AES-256-GCM, données authentifiées liées au nom du fichier, blocage des captures d'écran, limitation anti-force brute et chiffrement d'un dossier entier</li>
-<li>Signature de PDF au doigt</li>
-<li>Conversion — images vers PDF, CSV vers et depuis XLSX, JPG vers et depuis PNG, TXT et MD vers PDF, entre autres</li>
-<li>Nettoyage EXIF — retire les coordonnées GPS, la date et le modèle d'appareil avant de partager une photo</li>
-<li>Recherche globale par nom de fichier et par contenu</li>
-<li>Détecteur de doublons par SHA-256, en trois passes, pour libérer du stockage</li>
-<li>Tuiles de réglages rapides pour le scanner, l'OCR et le coffre-fort</li>
-<li>Installation d'APK depuis la liste des fichiers, confiée à l'installateur du système</li>
-</ul>
-
-<b>Confidentialité, dite franchement</b>
+<b>Fonctions</b>
 
 <ul>
-<li>Vos fichiers ne quittent pas le téléphone. Aucun compte, aucun stockage en ligne, aucune analytics, aucun SDK de pistage</li>
-<li>Aucune permission Internet : l'application ne peut se connecter à rien, et la build le vérifie avant chaque publication. Elle ne cherche plus les mises à jour d'elle-même — l'écran « À propos » ouvre la page des versions dans votre navigateur, qui se connecte à sa place. L'application n'envoie jamais aucun fichier, aucun contenu de document, aucune donnée du coffre</li>
-<li>Google ML Kit, qui fait tourner l'OCR sur l'appareil, embarque son propre transport de télémétrie. Ses trois points d'entrée — le service d'enregistrement du backend, le service de planification et son récepteur de repli par alarme — sont retirés du manifeste final de l'application : sans eux, Android ne peut pas le démarrer, et le code reste dans l'APK sans jamais s'exécuter, incapable d'envoyer quoi que ce soit sans permission réseau. Vérifié sur le manifeste fusionné et sur l'APK construit, pas seulement sur le fichier source</li>
-<li>Le scanner de documents s'exécute dans les services Google Play, avec leurs propres permissions, et n'est pas disponible sans eux. Toutes les autres fonctions le sont</li>
-<li>L'accès à tous les fichiers est demandé parce qu'un explorateur généraliste en a besoin : le Storage Access Framework ne sait ni lister un dossier quelconque ni déplacer des fichiers de l'un à l'autre. Rien n'est lu ni écrit en arrière-plan — vous restez aux commandes de chaque opération</li>
-<li>Le partage vers une application cloud est une action explicite via le sélecteur de partage Android, jamais une synchronisation automatique</li>
-<li>Licence Apache 2.0 — code source sur https://github.com/gitubpatrice/READ-FILES-TECH</li>
+<li>Explorateur — parcourir, rechercher, trier, sélectionner plusieurs fichiers, renommer, copier, déplacer, une corbeille avec annulation, et l'installation d'un APK confiée à l'installeur d'Android</li>
+<li>Lecteur — texte et code, Markdown, JSON, HTML, CSV, tableurs (XLSX, XLS, ODS), documents (DOCX, ODT, ODP), EPUB, PDF, ZIP, images</li>
+<li>Éditeurs — code et texte avec un historique automatique des versions, CSV en tableau modifiable</li>
+<li>Scanner de documents — bords trouvés, perspective redressée, enregistré en PDF</li>
+<li>OCR sur le téléphone (Tesseract), en français, anglais, allemand, italien et espagnol</li>
+<li>Coffre chiffré — AES-256-GCM, une clé dérivée de votre mot de passe par Argon2id, verrouillage automatique, et un effacement de panique</li>
+<li>Conversion — images en PDF, CSV en XLSX, texte en PDF, PDF et DOCX en texte, images en JPG ou PNG</li>
+<li>Photos — images allégées, et la position, la date et le modèle d'appareil retirés avant de partager</li>
+<li>Recherche globale par nom et par contenu, doublons trouvés par SHA-256, renommage en lot avec expressions régulières</li>
+<li>Outils — pipette de couleur, comparaison de deux fichiers, empreinte, encodages, mise en forme, création de ZIP, outils texte et CSV</li>
+<li>Tuiles des réglages rapides pour le scanner, l'OCR et le coffre</li>
+<li>En français, anglais, allemand, italien et espagnol</li>
 </ul>
 
-Site officiel : https://files-tech.com/read-files-tech.php
+<b>Confidentialité</b>
+
+<ul>
+<li>Pas de permission Internet : l'application ne peut se connecter à rien, et sa construction le vérifie. Ni compte, ni statistiques, ni publicité, ni pistage</li>
+<li>Aucun service Google : l'OCR et le scanner sont des logiciels libres qui tournent dans l'application</li>
+<li>L'accès à tous les fichiers est demandé parce qu'un explorateur en a besoin ; rien n'est lu ni écrit en arrière-plan</li>
+<li>Envoyer un fichier vers une application de cloud est toujours votre geste, par la feuille de partage d'Android</li>
+<li>Mises à jour : À propos ouvre la page des versions dans votre navigateur</li>
+<li>Logiciel libre sous licence Apache 2.0 — https://github.com/gitubpatrice/READ-FILES-TECH</li>
+</ul>
+
+Site du projet : https://files-tech.com/read-files-tech.php

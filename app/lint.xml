@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Lint's exceptions, each for one issue in one place, with its reason. Never a whole issue, never a
+    whole folder: what is not named here is still checked.
+-->
+<lint>
+    <!--
+        bcpkix 1.86, there for PdfBox's certificate handler only (docs D-005: without it the handler cannot
+        be built, and a /Adobe.PubSec PDF is no longer refused in words). Lint flags the empty X509TrustManager
+        of its EST client, a class nothing in the app reaches: Read Files Tech has no network permission at
+        all (tools/check-manifest-permissions.py), and R8 removes the class from the release.
+    -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore path="**/bcpkix-jdk18on-*.jar" />
+    </issue>
+</lint>

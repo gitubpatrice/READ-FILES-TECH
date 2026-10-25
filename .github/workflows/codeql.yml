@@ -1,0 +1,58 @@
+name: "CodeQL — Read Files Tech (Kotlin)"
+
+# Unlike the Flutter app (CodeQL does not read Dart: only the android/ shell was covered), the port is
+# analysed whole — the vault crypto included, once it lands.
+on:
+  push:
+    branches: [ "main", "kotlin" ]
+  pull_request:
+    branches: [ "main", "kotlin" ]
+  schedule:
+    # Weekly scan: Monday 02:47 UTC
+    - cron: "47 2 * * 1"
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ "java-kotlin" ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      # The CodeQL tracer must OBSERVE the compiler: a Gradle build-cache hit runs no compiler and the
+      # analysis fails with "could not process any of it" (App Manager Tech). Hence the flags.
+      - name: Build (debug — no signing needed)
+        run: ./gradlew :app:assembleDebug --no-daemon --no-build-cache --rerun-tasks
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
