@@ -25,7 +25,7 @@ androidxExifInterface   = "1.4.2"
 # Phase 4, the HTML viewer: WebViewAssetLoader, so that a page reaches the WebView through the app — its
 # own bytes and its own folder only — never through file:// (inventory D20). No permission in its manifest
 # (read in the AAR); Apache-2.0 (its POM). 1.17.1, published 2026-09-23: the latest stable, as lint wants.
-androidxWebkit          = "1.17.1"
+androidxWebkit          = "1.18.0"
 # The splash screen at launch, as Agenda Tech and App Manager Tech (same version): the logo on white, the
 # platform's SplashScreen from Android 12 and the same look below. No permission and no component in its
 # manifest (read in the AAR); Apache-2.0 (the AAR's own headers).
