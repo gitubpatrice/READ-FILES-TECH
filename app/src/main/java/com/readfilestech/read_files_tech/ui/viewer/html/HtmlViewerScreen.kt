@@ -1,6 +1,9 @@
 package com.readfilestech.read_files_tech.ui.viewer.html
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.util.AndroidRuntimeException
+import android.view.View
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -96,20 +99,25 @@ fun HtmlViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel
     }
 }
 
-/** The page in a WebView that reads only what [assets] serves; a renderer that dies takes the page, not the app. */
+/**
+ * The page in a WebView that reads only what [assets] serves; a renderer that dies takes the page, not the app,
+ * and so does a phone with no WebView to give (none installed, or the provider being updated).
+ */
 @Composable
 private fun PageView(assets: HtmlAssets, onLink: (HtmlLink) -> Unit) {
     var drawing by remember(assets) { mutableStateOf(true) }
     var gone by remember(assets) { mutableStateOf(false) }
+    var noWebView by remember(assets) { mutableStateOf(false) }
     val currentOnLink by rememberUpdatedState(onLink)
-    if (gone) {
-        ViewerFailureMessage(ViewerFailure.Reason(uiText(R.string.html_render_gone)), PaddingValues())
+    if (gone || noWebView) {
+        val reason = if (noWebView) R.string.html_no_webview else R.string.html_render_gone
+        ViewerFailureMessage(ViewerFailure.Reason(uiText(reason)), PaddingValues())
         return
     }
     Box(Modifier.fillMaxSize()) {
         AndroidView(
             factory = { context ->
-                WebView(context).apply {
+                newWebView(context)?.apply {
                     lockDown(settings)
                     webViewClient = PageClient(
                         assets,
@@ -118,13 +126,24 @@ private fun PageView(assets: HtmlAssets, onLink: (HtmlLink) -> Unit) {
                         onGone = { gone = true },
                     )
                     loadUrl(assets.pageUrl)
-                }
+                } ?: View(context).also { noWebView = true }
             },
             modifier = Modifier.fillMaxSize(),
-            onRelease = WebView::destroy,
+            onRelease = { (it as? WebView)?.destroy() },
         )
         if (drawing) CircularProgressIndicator(Modifier.align(Alignment.Center))
     }
+}
+
+/**
+ * A WebView, or null when Android has none to give: the platform then throws an AndroidRuntimeException
+ * (MissingWebViewPackageException — no provider installed, as on some Android 8 images, or one being updated),
+ * which crashed the app the first time an HTML file was opened (API 26 emulator, 2026-10-25).
+ */
+private fun newWebView(context: Context): WebView? = try {
+    WebView(context)
+} catch (_: AndroidRuntimeException) {
+    null
 }
 
 /**

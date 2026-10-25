@@ -566,6 +566,7 @@
     <string name="html_link_refused">Dieser Link kann nicht geöffnet werden.</string>
     <!-- The WebView's renderer stopped on this page: the app goes on. -->
     <string name="html_render_gone">Diese Seite konnte nicht angezeigt werden.</string>
+    <string name="html_no_webview">Die WebView von Android fehlt oder wird gerade aktualisiert: Die Seite kann nicht angezeigt werden. Ihr Quelltext bleibt lesbar.</string>
     <string name="html_reading_mode">Lesemodus (aufgeräumter Text)</string>
 
     <!-- Reader: an EPUB's chapters, and the HTML viewer's reading mode -->
