@@ -1,6 +1,6 @@
 # Informativa sulla privacy — Read Files Tech
 
-_Ultimo aggiornamento: 24 ottobre 2026 (versione 3.0.0)_
+_Ultimo aggiornamento: 25 ottobre 2026 (versione 3.0.0)_
 
 ## In una frase
 
@@ -42,7 +42,7 @@ Se la cartella dei file creati rifiuta la scrittura («Accesso a tutti i file» 
 ## La cassaforte
 
 - Ogni file è cifrato con **AES-256-GCM**, con una chiave derivata dalla Sua password tramite **Argon2id**. Una cassaforte creata con una versione precedente mantiene la derivazione con cui è stata creata (PBKDF2, o un Argon2id più leggero). La password non viene mai salvata.
-- **Non sono cifrati**: il **nome** dei file della cassaforte, la loro **dimensione**, il loro numero e le loro date, né le impostazioni di derivazione della chiave.
+- **Non sono cifrati**: il **nome** dei file della cassaforte, la loro **dimensione**, il loro numero e le loro date, nonché le impostazioni di derivazione della chiave.
 - La cassaforte si blocca 30 secondi dopo che Lei ha lasciato l'app — con il telefono in sospensione profonda, al suo risveglio, e sempre prima che la cassaforte ricompaia —, dopo 3 minuti senza toccare lo schermo, e quando Lei lascia la sua schermata. Dopo 5 password errate, ogni tentativo attende più a lungo, fino a 30 minuti.
 - Le schermate della cassaforte, e i file della cassaforte aperti nell'app, non possono essere catturati e non compaiono nell'anteprima delle app recenti.
 - Un **backup** `.rftvault` è cifrato per intero, nomi compresi, con una password di backup distinta; viene scritto nella cartella dei backup della cassaforte, che la finestra del backup mostra prima: nella memoria condivisa o, se la cartella di destinazione rifiuta la scrittura, in una cartella dell'app, cancellata con essa.
@@ -74,9 +74,9 @@ Il backup di Android — nel cloud o da un telefono all'altro — è disattivato
 
 | Autorizzazione | Perché |
 |---|---|
-| `MANAGE_EXTERNAL_STORAGE` (da Android 11) | L'accesso a tutti i file: l'esploratore |
+| `MANAGE_EXTERNAL_STORAGE` (da Android 11) | L'accesso a tutti i file: Esplora file |
 | `READ_EXTERNAL_STORAGE` (fino ad Android 12), `WRITE_EXTERNAL_STORAGE` (fino ad Android 10) | La stessa cosa sulle versioni precedenti |
-| `REQUEST_INSTALL_PACKAGES` | Affidare un APK toccato nell'esploratore al programma di installazione di Android, che chiede la propria conferma |
+| `REQUEST_INSTALL_PACKAGES` | Affidare un APK toccato in Esplora file al programma di installazione di Android, che chiede la propria conferma |
 | `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | Aggiunta da una libreria di Android, interna all'app |
 
 Né fotocamera, né posizione, né contatti, né microfono, né notifiche, né Internet.

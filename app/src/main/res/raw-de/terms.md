@@ -24,7 +24,7 @@ Die App wird von einer Privatperson **kostenlos**, auf persönlicher und nicht k
 ## Der Tresor und Datenverlust
 
 - **Wer das Passwort des Tresors vergisst, kann seine Dateien nie wieder lesen**: Es wird nie gespeichert, es dient nur der Ableitung des Schlüssels. Es gibt kein Wiederherstellungsverfahren. Dasselbe gilt für das Passwort einer Sicherung `.rftvault`.
-- Der **Panikmodus** löscht den Tresor, die Einstellungen, den Cache, den Verlauf, die alten Extraktionen und den Papierkorb sofort und endgültig: **Eine Wiederherstellung ist nicht möglich**, so ist es gewollt. Sichern Sie den Tresor vorher, wenn Sie ihn zurückholen können möchten.
+- Der **Panikmodus** löscht den Tresor, die Einstellungen, den Cache, den Verlauf, die alten Extraktionen und den Papierkorb sofort und endgültig: **Eine Wiederherstellung ist nicht möglich**, so ist es gewollt. Sichern Sie den Tresor vorher, wenn Sie ihn später zurückholen wollen.
 - Eine in den **Papierkorb** verschobene Datei kann wiederhergestellt werden, solange Sie ihn nicht geleert haben. **Endgültiges Löschen**, das Leeren des Papierkorbs und das Ersetzen einer Datei lassen sich nicht rückgängig machen.
 - **Das Deinstallieren der App löscht den Tresor**, der sich in ihrem privaten Speicher befindet: Sichern Sie ihn vorher, und prüfen Sie, dass die Sicherung nicht in einem Ordner der App liegt, der ebenfalls gelöscht wird (der Dialog der Sicherung weist darauf hin).
 

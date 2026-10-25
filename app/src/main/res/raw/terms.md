@@ -8,7 +8,7 @@ Read Files Tech is a tool to read, edit, convert, search, protect and organize y
 
 ## License
 
-Read Files Tech is free software, published under the **Apache 2.0 license**. You may use, modify and redistribute it under the terms of that license, whose text is in the app (About › Licence of Read Files Tech) and in the source repository (https://github.com/gitubpatrice/READ-FILES-TECH). The third-party components it includes remain under their own licenses; they are listed in the app (About › Third-party licences).
+Read Files Tech is free software, published under the **Apache 2.0 license**. You may use, modify and redistribute it under the terms of that license, whose text is in the app (About › License of Read Files Tech) and in the source repository (https://github.com/gitubpatrice/READ-FILES-TECH). The third-party components it includes remain under their own licenses; they are listed in the app (About › Third-party licenses).
 
 ## Use
 

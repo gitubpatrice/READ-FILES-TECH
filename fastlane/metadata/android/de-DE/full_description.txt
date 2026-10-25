@@ -8,7 +8,7 @@ Read Files Tech ist ein Schweizer Taschenmesser für die Dateien auf Ihrem Andro
 <li>Editoren – Code und Text mit automatischem Versionsverlauf, CSV als bearbeitbare Tabelle</li>
 <li>Dokumentenscanner – Ränder erkannt, Perspektive begradigt, als PDF gespeichert</li>
 <li>OCR auf dem Telefon (Tesseract), auf Deutsch, Englisch, Französisch, Italienisch und Spanisch</li>
-<li>Verschlüsselter Tresor – AES-256-GCM, ein per Argon2id aus Ihrem Passwort abgeleiteter Schlüssel, automatische Sperre und eine Notlöschung</li>
+<li>Verschlüsselter Tresor – AES-256-GCM, ein per Argon2id aus Ihrem Passwort abgeleiteter Schlüssel, automatische Sperre und ein Panikmodus</li>
 <li>Konvertierung – Bilder zu PDF, CSV zu XLSX, Text zu PDF, PDF und DOCX zu Text, Bilder zu JPG oder PNG</li>
 <li>Fotos – kleinere Bilder, und Standort, Datum und Kameramodell vor dem Teilen entfernt</li>
 <li>Globale Suche nach Name und Inhalt, Duplikate per SHA-256 gefunden, Massenumbenennung mit regulären Ausdrücken</li>

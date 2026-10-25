@@ -1,6 +1,6 @@
 # Política de privacidad — Read Files Tech
 
-_Última actualización: 24 de octubre de 2026 (versión 3.0.0)_
+_Última actualización: 25 de octubre de 2026 (versión 3.0.0)_
 
 ## En una frase
 
@@ -42,7 +42,7 @@ Si la carpeta de los archivos creados rechaza la escritura («Acceso a todos los
 ## La caja fuerte
 
 - Cada archivo se cifra con **AES-256-GCM**, con una clave derivada de su contraseña mediante **Argon2id**. Una caja fuerte creada con una versión anterior conserva la derivación con la que se creó (PBKDF2, o un Argon2id más ligero). La contraseña nunca se guarda.
-- **No se cifran**: el **nombre** de los archivos de la caja fuerte, su **tamaño**, su número y sus fechas, ni los ajustes de derivación de la clave.
+- **No se cifran**: el **nombre** de los archivos de la caja fuerte, su **tamaño**, su número y sus fechas, así como los ajustes de derivación de la clave.
 - La caja fuerte se bloquea 30 segundos después de que usted salga de la aplicación — con el teléfono en reposo profundo, al despertar, y siempre antes de que la caja fuerte vuelva a mostrarse —, tras 3 minutos sin tocar la pantalla, y cuando sale de su pantalla. Tras 5 contraseñas incorrectas, cada intento espera más, hasta 30 minutos.
 - Las pantallas de la caja fuerte, y los archivos de la caja fuerte abiertos en la aplicación, no se pueden capturar y no aparecen en la vista previa de las aplicaciones recientes.
 - Una **copia de seguridad** `.rftvault` se cifra entera, nombres incluidos, con una contraseña de copia de seguridad distinta; se escribe en la carpeta de copias de seguridad de la caja fuerte, que el diálogo de la copia muestra antes: en el almacenamiento compartido o, si la carpeta de salida rechaza la escritura, en una carpeta de la aplicación, que se borra con ella.

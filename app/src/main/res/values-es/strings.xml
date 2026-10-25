@@ -315,7 +315,7 @@
     <string name="feature_about">Acerca de</string>
     <string name="settings_appearance">Apariencia</string>
     <string name="settings_theme">Tema</string>
-    <string name="settings_language">Idioma de la aplicación</string>
+    <string name="settings_language">Idioma de la app</string>
     <string name="settings_language_summary">Abre los ajustes de Android, donde puede elegir el idioma de esta app. Read Files Tech sigue el idioma de su teléfono, salvo que elija otro allí.</string>
     <string name="settings_outputs">Archivos que crea</string>
     <string name="settings_output_folder">Carpeta de salida</string>
@@ -323,11 +323,11 @@
     <string name="settings_output_open">Abrir la carpeta en el explorador</string>
     <string name="settings_output_reset">Restaurar la carpeta predeterminada</string>
     <string name="settings_output_fallback">No se puede escribir en esta carpeta: por ahora sus archivos van a %1$s.</string>
-    <string name="settings_output_fallback_private">Ninguna carpeta del almacenamiento del teléfono puede recibir sus archivos: por ahora van al almacenamiento propio de la aplicación, que el explorador no puede abrir.</string>
+    <string name="settings_output_fallback_private">Ninguna carpeta del almacenamiento del teléfono puede recibir sus archivos: por ahora van al almacenamiento propio de la app, que el explorador no puede abrir.</string>
     <string name="settings_output_nowhere">Ninguna carpeta puede recibir sus archivos: las herramientas no pueden guardar lo que crean.</string>
     <string name="settings_output_changed">Sus archivos van ahora a %1$s. Los creados antes se quedan en %2$s.</string>
     <string name="settings_output_not_on_storage">Esta carpeta no está en el almacenamiento del teléfono.</string>
-    <string name="settings_output_app_folder">Android reserva las carpetas Android/data y Android/obb a cada aplicación: elija otra carpeta.</string>
+    <string name="settings_output_app_folder">Android reserva las carpetas Android/data y Android/obb a cada app: elija otra carpeta.</string>
     <string name="settings_output_not_writable">No se puede escribir en esta carpeta: elija otra.</string>
     <string name="settings_not_saved">No se ha podido guardar el ajuste.</string>
     <string name="settings_auto_share">Compartir automáticamente tras crear</string>
@@ -343,7 +343,7 @@
     <string name="output_category_extractions">Archivos comprimidos extraídos por el visor ZIP, una carpeta cada uno</string>
     <string name="about_tagline">Visor, editor y explorador de archivos</string>
     <string name="about_check_updates">Buscar actualizaciones</string>
-    <string name="about_check_updates_note">Abre la página de versiones de GitHub en su navegador — la aplicación nunca se conecta a Internet por sí misma.</string>
+    <string name="about_check_updates_note">Abre la página de versiones de GitHub en su navegador — la app nunca se conecta a Internet por sí misma.</string>
     <string name="about_privacy">Privacidad</string>
     <string name="about_privacy_title">Sus archivos se quedan en su teléfono</string>
     <string name="about_badge_no_ads">Sin publicidad</string>
@@ -371,19 +371,19 @@
     <string name="about_feature_rename_desc">Numeración, prefijo y sufijo, expresiones regulares, sobre una selección</string>
     <string name="about_feature_reader">Modo lectura</string>
     <string name="about_feature_reader_desc">Libros EPUB y páginas HTML sin distracciones, en el tamaño de texto que elija</string>
-    <string name="about_feature_tiles">Iconos de ajustes rápidos</string>
+    <string name="about_feature_tiles">Mosaicos de ajustes rápidos</string>
     <string name="about_feature_tiles_desc">Escáner, OCR y Caja fuerte desde el panel de notificaciones</string>
-    <string name="about_feature_cloud">Enviar a una aplicación en la nube</string>
-    <string name="about_feature_cloud_desc">Cuando usted lo pide, a kDrive, Google Drive o Proton Drive si están instalados — la aplicación no envía nada por sí misma</string>
+    <string name="about_feature_cloud">Enviar a una app en la nube</string>
+    <string name="about_feature_cloud_desc">Cuando usted lo pide, a kDrive, Google Drive o Proton Drive si están instalados — la app no envía nada por sí misma</string>
     <string name="about_feature_search">Búsqueda global</string>
     <string name="about_feature_search_desc">Por nombre y por contenido, en todo el teléfono</string>
     <string name="about_feature_duplicates_desc">Archivos idénticos detectados por su SHA-256, los más grandes listados, para liberar espacio</string>
     <string name="about_permissions">Permisos y para qué</string>
-    <string name="about_perm_all_files">Desde Android 11: el acceso a todos los archivos, que usted concede en los ajustes de Android. Permite al explorador recorrer, abrir y modificar sus archivos, solo cuando usted lo pide: nada se ejecuta en segundo plano.</string>
+    <string name="about_perm_all_files">Desde Android 11: el acceso a todos los archivos, que usted concede en los ajustes de Android. Permite al explorador recorrer, abrir y modificar sus archivos, solo cuando usted lo pide: no se lee nada en segundo plano.</string>
     <string name="about_perm_storage">El mismo acceso en las versiones anteriores (lectura hasta Android 12, escritura hasta Android 10); hasta Android 10, Android se lo pide en su propio diálogo.</string>
-    <string name="about_perm_install">Entrega un APK que usted toca en el explorador al instalador de Android, que pide su propia confirmación. Android también le pide, una vez, que permita a esta aplicación instalar aplicaciones desconocidas.</string>
+    <string name="about_perm_install">Entrega un APK que usted toca en el explorador al instalador de Android, que pide su propia confirmación. Android también le pide, una vez, que permita a esta app instalar apps desconocidas.</string>
     <string name="about_perm_no_internet_name">INTERNET — no solicitado</string>
-    <string name="about_perm_no_internet">La aplicación no tiene ningún permiso de red. Los enlaces de esta página se abren en su navegador, fuera de la aplicación.</string>
+    <string name="about_perm_no_internet">La app no tiene ningún permiso de red. Los enlaces de esta página se abren en su navegador, fuera de la app.</string>
     <string name="about_author">Autor</string>
     <string name="about_author_role">Desarrollador</string>
     <string name="about_settings">Carpeta de salida y compartir automáticamente</string>
@@ -397,7 +397,7 @@
     <string name="about_help_access_1">En el primer inicio, permita el acceso a todos sus archivos</string>
     <string name="about_help_access_2">Si no, toque «Ajustes» en el aviso del explorador: abre la página adecuada de los ajustes de Android</string>
     <string name="about_help_updates">Actualizaciones</string>
-    <string name="about_help_updates_1">La aplicación no se conecta a Internet: nunca busca actualizaciones por sí misma</string>
+    <string name="about_help_updates_1">La app no se conecta a Internet: nunca busca actualizaciones por sí misma</string>
     <string name="about_help_updates_2">Toque «Buscar actualizaciones» arriba: la página de versiones se abre en su navegador</string>
     <string name="about_support">Ayuda y soporte</string>
     <string name="about_contact">Contactar con el soporte</string>
@@ -406,7 +406,7 @@
     <string name="about_report_bug">Informar de un error</string>
     <string name="about_report_bug_summary">Un correo con las versiones de la app y de Android ya indicadas, que usted redacta y envía</string>
     <string name="about_mail_bug_body">Describa el problema:\n\n\n— Versión: %1$s\n— Android: %2$s\n— Teléfono: </string>
-    <string name="about_no_mail_app">Ninguna aplicación de correo: la dirección se ha copiado, %1$s.</string>
+    <string name="about_no_mail_app">Ninguna app de correo: la dirección se ha copiado, %1$s.</string>
     <string name="about_legal">Información legal</string>
     <string name="legal_privacy">Política de privacidad</string>
     <string name="legal_terms">Condiciones de uso</string>
@@ -443,7 +443,7 @@
         <item quantity="many">%1$d de archivos (%2$s) se eliminarán definitivamente: nada pasa por la papelera. Los archivos comprimidos de los que proceden no se tocan.</item>
         <item quantity="other">%1$d archivos (%2$s) se eliminarán definitivamente: nada pasa por la papelera. Los archivos comprimidos de los que proceden no se tocan.</item>
     </plurals>
-    <string name="legacy_extractions_move_stopped">Traslado detenido: %1$s. Movidos: %2$d. Aún en la carpeta privada: %3$d.</string>
+    <string name="legacy_extractions_move_stopped">Movimiento detenido: %1$s. Movidos: %2$d. Aún en la carpeta privada: %3$d.</string>
     <plurals name="legacy_extractions_moved">
         <item quantity="one">%1$d archivo movido a %2$s</item>
         <item quantity="many">%1$d de archivos movidos a %2$s</item>
@@ -466,7 +466,7 @@
     <string name="legacy_history_deleted">Historial antiguo eliminado</string>
     <string name="legacy_history_delete_failed">No se pudo eliminar del todo el historial antiguo</string>
     <string name="panic_title">Modo pánico — borrarlo todo</string>
-    <string name="panic_summary">La caja fuerte, los ajustes, los archivos temporales, el historial y la papelera, de una vez</string>
+    <string name="panic_summary">La caja fuerte, los ajustes, los archivos temporales, el historial, las extracciones antiguas y la papelera, de una vez</string>
     <string name="panic_confirm_title">Modo pánico</string>
     <string name="panic_confirm_body">Esto borra DE INMEDIATO y DEFINITIVAMENTE:\n\n• toda la caja fuerte, cada archivo cifrado y sus claves\n• todos los ajustes, entre ellos la lista de archivos recientes\n• los archivos temporales: copias descifradas, PDF desbloqueados, páginas escaneadas\n• el historial de los editores, de código y CSV\n• las carpetas de «Extraer todo» que guardaron las versiones anteriores\n• la papelera\n\nNo se tocan sus archivos ni lo que las herramientas guardaron en la carpeta Files Tech. Nada se puede recuperar sin una copia de seguridad .rftvault.\n\n¿Continuar?</string>
     <string name="panic_confirm">Borrarlo todo</string>
@@ -718,7 +718,7 @@
     <string name="editor_text_too_large">el texto supera los %1$d MB, lo máximo que abre el editor: acórtelo y luego guarde</string>
     <string name="editor_changed_title">«%1$s» ha cambiado</string>
     <string name="editor_changed_message">Otra app ha modificado, movido o eliminado este archivo desde que se abrió aquí. ¿Sobrescribirlo con su texto? Su versión en el disco pasa primero al historial.</string>
-    <string name="editor_changed_message_lost">Otra aplicación ha modificado, movido o eliminado este archivo desde que se abrió aquí. ¿Sobrescribirlo con su texto? Su versión en el disco supera %1$d MB, demasiado para el historial: se perderá.</string>
+    <string name="editor_changed_message_lost">Otra app ha modificado, movido o eliminado este archivo desde que se abrió aquí. ¿Sobrescribirlo con su texto? Su versión en el disco supera %1$d MB, demasiado para el historial: se perderá.</string>
     <string name="editor_overwrite">Sobrescribir</string>
     <string name="editor_leave_title">Cambios sin guardar</string>
     <string name="editor_leave_message">¿Guardar antes de salir?</string>

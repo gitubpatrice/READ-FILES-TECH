@@ -31,7 +31,7 @@ L'app è messa a disposizione **gratuitamente** da un privato, a titolo personal
 ## File di origine sconosciuta
 
 - Resti prudente con i file ricevuti da fonti sconosciute. Il visualizzatore HTML mostra una pagina senza JavaScript e senza alcuna connessione, ma un file può comunque contenere un testo ingannevole.
-- **Installare un APK** dall'esploratore è una Sua decisione: l'app ne mostra il nome, il pacchetto e la versione, poi lo affida al programma di installazione di Android, che chiede la propria conferma. Read Files Tech non verifica la provenienza di un APK.
+- **Installare un APK** da Esplora file è una Sua decisione: l'app ne mostra il nome, il pacchetto e la versione, poi lo affida al programma di installazione di Android, che chiede la propria conferma. Read Files Tech non verifica la provenienza di un APK.
 
 ## Aggiornamenti
 

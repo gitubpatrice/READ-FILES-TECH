@@ -367,7 +367,7 @@
     <string name="about_feature_search_desc">By name and by content, across the phone</string>
     <string name="about_feature_duplicates_desc">Identical files found by their SHA-256, the largest ones listed, to free up space</string>
     <string name="about_permissions">Permissions and why</string>
-    <string name="about_perm_all_files">Android 11 and later: access to all files, which you grant in Android\'s settings. It lets the explorer browse, open and change your files, only when you ask: nothing runs in the background.</string>
+    <string name="about_perm_all_files">Android 11 and later: access to all files, which you grant in Android\'s settings. It lets the explorer browse, open and change your files, only when you ask: nothing is read in the background.</string>
     <string name="about_perm_storage">The same access on older versions (reading up to Android 12, writing up to Android 10); up to Android 10, Android asks you for it in its own dialog.</string>
     <string name="about_perm_install">Hands an APK you tap in the explorer to Android\'s installer, which asks its own confirmation. Android also asks you, once, to allow this app to install unknown apps.</string>
     <string name="about_perm_no_internet_name">INTERNET — not requested</string>
@@ -398,9 +398,9 @@
     <string name="about_legal">Legal</string>
     <string name="legal_privacy">Privacy policy</string>
     <string name="legal_terms">Terms of use</string>
-    <string name="legal_notices">Third-party licences</string>
+    <string name="legal_notices">Third-party licenses</string>
     <string name="legal_notices_summary">The software Read Files Tech includes, with its copyright notices and licences</string>
-    <string name="legal_license">Licence of Read Files Tech</string>
+    <string name="legal_license">License of Read Files Tech</string>
     <string name="legal_license_summary">Apache License 2.0 — the source code is published on GitHub</string>
     <string name="about_credits">Made with care by %1$s. Free and open-source software — the code is public and auditable.</string>
     <string name="settings_security">Security</string>
@@ -448,7 +448,7 @@
     <string name="legacy_history_deleted">Old history deleted</string>
     <string name="legacy_history_delete_failed">The old history could not be deleted entirely</string>
     <string name="panic_title">Panic mode — erase everything</string>
-    <string name="panic_summary">The vault, the settings, the temporary files, the history and the trash, at once</string>
+    <string name="panic_summary">The vault, the settings, the temporary files, the history, the old extractions and the trash, at once</string>
     <string name="panic_confirm_title">Panic mode</string>
     <string name="panic_confirm_body">This erases AT ONCE and FOR GOOD:\n\n• the whole vault, every encrypted file and its keys\n• every setting, the list of recent files among them\n• the temporary files: decrypted copies, unlocked PDFs, scanned pages\n• the editors\' history, code and CSV\n• the folders of \"Extract all\" kept by the earlier versions\n• the trash\n\nYour files and what the tools saved in the Files Tech folder are not touched. Nothing can be recovered without a .rftvault backup.\n\nContinue?</string>
     <string name="panic_confirm">Erase everything</string>
