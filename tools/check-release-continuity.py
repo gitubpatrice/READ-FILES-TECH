@@ -15,11 +15,13 @@ What is checked, on each new APK
 --------------------------------
 - its package is the published one: an isolated `.next` build would install NEXT TO the app;
 - its versionCode is above the highest of the published APKs;
-- it has one signer, whose certificate is the published APKs' one (SHA-256);
+- its certificate is the published APKs' one, and the only one (SHA-256; a key rotation is refused, not read);
 - the published launcher activity is there, under the same name;
 - every published quick-settings tile is there, same name, same permission;
 - the authority of the published androidx FileProvider is there (docs D-012).
-The published APKs must agree among themselves on package and certificate, or nothing is concluded.
+The published APKs must agree among themselves on all of it, and must yield a launcher activity, a tile and a
+FileProvider: read as nothing — aapt2 printing otherwise one day — they would make every comparison pass
+(GPT 5.6 review, 2026-10-25).
 
 Usage
 -----
@@ -53,7 +55,9 @@ QS_TILE = "android.service.quicksettings.action.QS_TILE"
 FILE_PROVIDER = "androidx.core.content.FileProvider"
 BADGING, MANIFEST, CERTS = ".badging.txt", ".manifest.txt", ".certs.txt"
 DUMPS = (BADGING, MANIFEST, CERTS)
-DIGEST = re.compile(r"(certificate SHA-256 digest: )([0-9a-f]{64})")
+# Every certificate apksigner names — signers, a source stamp, a rotation lineage: one more than the published
+# certificate fails, which is the side to fail on.
+DIGEST = re.compile(r"(certificate SHA-256 digest: )([0-9a-fA-F]{64})")
 
 Dumps = dict[str, str]
 
@@ -159,6 +163,10 @@ class Facts:
     file_providers: set[str]
     certificates: set[str]
 
+    def components(self) -> tuple:
+        """What must not change from one APK of a release to another, nor from a release to the next."""
+        return frozenset(self.launchers), frozenset(self.tiles.items()), frozenset(self.file_providers)
+
 
 def is_tile(service: Element) -> bool:
     return any(
@@ -184,8 +192,28 @@ def facts_of(dumps: Dumps) -> Facts:
         launchers=set(re.findall(r"^launchable-activity: name='([^']+)'", badging, re.M)),
         tiles=tiles,
         file_providers=providers,
-        certificates={m.group(2) for m in DIGEST.finditer(dumps[CERTS])},
+        certificates={m.group(2).lower() for m in DIGEST.finditer(dumps[CERTS])},
     )
+
+
+def reference_problems(reference: dict[str, Facts]) -> list[str]:
+    """What makes the published APKs unusable as a reference: disagreeing, or read as nothing."""
+    packages = {f.package for f in reference.values()}
+    certificates = {c for f in reference.values() for c in f.certificates}
+    shapes = {f.components() for f in reference.values()}
+    if None in packages or len(packages) != 1 or len(certificates) != 1 or len(shapes) != 1 or any(
+            len(f.certificates) != 1 for f in reference.values()):
+        return [
+            f"the published APKs disagree among themselves (packages {sorted(map(str, packages))}, certificates "
+            f"{sorted(certificates)}, {len(shapes)} sets of components): nothing can be concluded against them.",
+        ]
+    first = next(iter(reference.values()))
+    unread = [what for what, found in (("launcher activity", first.launchers), ("quick-settings tile", first.tiles),
+                                       ("FileProvider", first.file_providers)) if not found]
+    if unread:
+        return [f"the published APKs yield no {', no '.join(unread)}: aapt2's output is no longer read as it was, and "
+                "every comparison of those would pass — nothing can be concluded."]
+    return []
 
 
 def problems_between(new: dict[str, Dumps], published: dict[str, Dumps], verbose: bool = True) -> list[str]:
@@ -194,18 +222,12 @@ def problems_between(new: dict[str, Dumps], published: dict[str, Dumps], verbose
     if not published:
         return ["no published APK to compare with: nothing can be concluded."]
     reference = {name: facts_of(dumps) for name, dumps in published.items()}
-    packages = {f.package for f in reference.values()}
-    certificates = {c for f in reference.values() for c in f.certificates}
-    if None in packages or len(packages) != 1 or len(certificates) != 1 or any(len(f.certificates) != 1 for f in reference.values()):
-        return [
-            f"the published APKs disagree among themselves (packages {sorted(map(str, packages))}, certificates "
-            f"{sorted(certificates)}): nothing can be concluded against them.",
-        ]
-    package, certificate = packages.pop(), certificates.pop()
+    unusable = reference_problems(reference)
+    if unusable:
+        return unusable
+    first = next(iter(reference.values()))
+    package, certificate = first.package, next(iter(first.certificates))
     highest_name, highest = max(((n, f.version_code or 0) for n, f in reference.items()), key=lambda item: item[1])
-    launchers = set().union(*(f.launchers for f in reference.values()))
-    tiles = {name: permission for f in reference.values() for name, permission in f.tiles.items()}
-    providers = set().union(*(f.file_providers for f in reference.values()))
 
     problems: list[str] = []
     for name, dumps in sorted(new.items()):
@@ -222,15 +244,15 @@ def problems_between(new: dict[str, Dumps], published: dict[str, Dumps], verbose
         if facts.certificates != {certificate}:
             problems.append(f"{name}: signed by {sorted(facts.certificates) or 'nobody'}, the published app by "
                             f"{certificate} — Android would refuse the update, and uninstalling destroys the vault.")
-        for launcher in sorted(launchers - facts.launchers):
+        for launcher in sorted(first.launchers - facts.launchers):
             problems.append(f"{name}: no launcher activity {launcher} — the icon pinned on the home screen would go.")
-        for tile, permission in sorted(tiles.items()):
+        for tile, permission in sorted(first.tiles.items()):
             if tile not in facts.tiles:
                 problems.append(f"{name}: no quick-settings tile {tile} — the tile placed in the panel would go.")
             elif facts.tiles[tile] != permission:
                 problems.append(f"{name}: the tile {tile} is protected by {facts.tiles[tile]}, the published one by "
                                 f"{permission}.")
-        for authority in sorted(providers - facts.file_providers):
+        for authority in sorted(first.file_providers - facts.file_providers):
             problems.append(f"{name}: no FileProvider {authority}, the authority the published app shares files under "
                             "(docs D-012).")
     return problems
@@ -246,22 +268,26 @@ def raised(published: dict[str, Dumps]) -> dict[str, Dumps]:
     return out
 
 
-def with_defect(apks: dict[str, Dumps], suffix: str, change) -> dict[str, Dumps]:
-    """A copy of `apks` whose FIRST APK has `change` applied to one of its dumps (the others stay valid)."""
-    first = sorted(apks)[0]
+def with_defect(apks: dict[str, Dumps], suffix: str, change, every: bool = False) -> dict[str, Dumps]:
+    """A copy of `apks` whose FIRST APK (or every one) has `change` applied to one of its dumps."""
     out = {name: dict(dumps) for name, dumps in apks.items()}
-    changed = change(out[first][suffix])
-    if changed == out[first][suffix]:
-        raise ValueError(f"a defect changed nothing in {first}{suffix}: its control would prove nothing.")
-    out[first][suffix] = changed
+    for name in sorted(out) if every else sorted(out)[:1]:
+        changed = change(out[name][suffix])
+        if changed == out[name][suffix]:
+            raise ValueError(f"a defect changed nothing in {name}{suffix}: its control would prove nothing.")
+        out[name][suffix] = changed
     return out
 
 
 def defects(new: dict[str, Dumps], published: dict[str, Dumps]) -> list[tuple[str, str, dict, dict]]:
-    """Each defect: its label, what its failure must say, and the new and published sets that carry it."""
+    """Each defect: its label, what its failure must say, and the new and published sets that carry it. Every
+    category is required — the baseline passing proved the reference has a launcher, a tile and a FileProvider."""
     reference = facts_of(next(iter(published.values())))
     other = "0" * 63 + "1" if reference.certificates != {"0" * 63 + "1"} else "f" * 64
     highest = max(facts_of(d).version_code or 0 for d in published.values())
+    launcher = sorted(reference.launchers)[0]
+    tile = sorted(reference.tiles)[0]
+    authority = sorted(reference.file_providers)[0]
     cases = [
         ("an isolated .next build", "install next", with_defect(new, BADGING, lambda t: re.sub(
             r"^(package: name=')([^']+)'", r"\1\2.next'", t, count=1, flags=re.M)), published),
@@ -274,22 +300,23 @@ def defects(new: dict[str, Dumps], published: dict[str, Dumps]) -> list[tuple[st
         ("a second signer", "refuse the update", with_defect(new, CERTS, lambda t: t + (
             f"Signer #2 certificate SHA-256 digest: {other}\n")), published),
         ("an unsigned APK", "nobody", with_defect(new, CERTS, lambda t: DIGEST.sub("", t)), published),
+        ("the launcher activity renamed", "launcher activity", with_defect(new, BADGING, lambda t: t.replace(
+            f"launchable-activity: name='{launcher}'", f"launchable-activity: name='{launcher}Renamed'")), published),
+        ("a tile renamed", "quick-settings tile", with_defect(new, MANIFEST, lambda t: t.replace(
+            f'="{tile}"', f'="{tile}Renamed"')), published),
+        ("a tile left unprotected", "protected by", with_defect(new, MANIFEST, lambda t: t.replace(
+            '="android.permission.BIND_QUICK_SETTINGS_TILE"', '="android.permission.NONE"')), published),
+        ("the FileProvider of a .next build", "FileProvider", with_defect(new, MANIFEST, lambda t: t.replace(
+            f'="{authority}"', f'="{authority.replace(".fileprovider", ".next.fileprovider")}"')), published),
+        # The reference itself: read as nothing, it would let anything pass.
+        ("published tiles no longer read", "yield no", new, with_defect(published, MANIFEST, lambda t: t.replace(
+            QS_TILE, "android.intent.action.UNREAD"), every=True)),
     ]
-    for launcher in sorted(reference.launchers)[:1]:
-        cases.append(("the launcher activity renamed", "launcher activity", with_defect(new, BADGING, lambda t: t.replace(
-            f"launchable-activity: name='{launcher}'", f"launchable-activity: name='{launcher}Renamed'")), published))
-    for tile in sorted(reference.tiles)[:1]:
-        cases.append(("a tile renamed", "quick-settings tile", with_defect(new, MANIFEST, lambda t: t.replace(
-            f'="{tile}"', f'="{tile}Renamed"')), published))
-        cases.append(("a tile left unprotected", "protected by", with_defect(new, MANIFEST, lambda t: t.replace(
-            '="android.permission.BIND_QUICK_SETTINGS_TILE"', '="android.permission.NONE"')), published))
-    for authority in sorted(reference.file_providers)[:1]:
-        cases.append(("the FileProvider of a .next build", "FileProvider", with_defect(new, MANIFEST, lambda t: t.replace(
-            f'="{authority}"', f'="{authority.replace(".fileprovider", ".next.fileprovider")}"')), published))
-    # The published side too: published APKs that disagree conclude nothing.
     if len(published) > 1:
-        cases.append(("published APKs that disagree", "disagree", new, with_defect(published, CERTS, lambda t: DIGEST.sub(
-            rf"\g<1>{other}", t))))
+        cases.append(("published APKs that disagree on the key", "disagree", new, with_defect(
+            published, CERTS, lambda t: DIGEST.sub(rf"\g<1>{other}", t))))
+        cases.append(("published APKs that disagree on a tile", "disagree", new, with_defect(
+            published, MANIFEST, lambda t: t.replace(f'="{tile}"', f'="{tile}Renamed"'))))
     return cases
 
 

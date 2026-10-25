@@ -6,7 +6,9 @@ name: Release
 #    real key, checks them against this repository AND against the published release, and keeps them as
 #    a workflow artefact. Nothing is published: these are the APKs the switch protocol installs over the
 #    published app (docs/09-PROTOCOLE-BASCULE.md).
-# 2. A push of a `v*` tag on that same commit publishes THOSE bytes: no rebuild, and no key in that job.
+# 2. A push of a `v*` tag on that same commit publishes THOSE bytes: no rebuild, and no key in that job. The
+#    tag is ANNOTATED, its message holding the SHA256SUMS of the artefact the protocol installed, and exactly
+#    one successful release-check run of the commit may exist: `git tag -a v3.0.0 -F <SHA256SUMS + notes>`.
 #
 # Not `workflow_dispatch` for step 1: GitHub dispatches only a workflow whose file is on the default
 # branch, and `main` stays the Flutter app until the merge (docs D-009). Publishing from `release.yml`
@@ -33,8 +35,10 @@ jobs:
       contents: read
       # To read the CI runs of this commit.
       actions: read
+    # Every action pinned to a reviewed commit, not to a tag that can move: this job writes the signing key
+    # and runs Gradle with it (GPT 5.6 review, 2026-10-25). ci.yml, which holds no key, follows the major tags.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The release is built from a commit the whole CI passed on — gate, instrumented tests, zero network —
       # not from one whose tests were never run (the Flutter release once could, W-M4).
@@ -59,12 +63,12 @@ jobs:
             if [ ! -s "$f" ]; then echo "::error::$f is missing: it is the release notes."; exit 1; fi
           done
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # Nothing of a build that holds the signing key is written back to the shared cache.
           cache-read-only: true
@@ -133,7 +137,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # What the switch protocol installs, and what a tag on this commit publishes, byte for byte.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-apks
           path: |
@@ -147,11 +151,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # One publication at a time, whatever the tag: two would each pass the continuity check against the same
+    # latest release (GPT 5.6 review, 2026-10-25).
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
     permissions:
       contents: write
       actions: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -164,21 +173,42 @@ jobs:
             exit 1
           fi
 
+      # ONE candidate, never the newest of several: two release-check runs of one commit are two builds, and
+      # only one was installed by the switch protocol (GPT 5.6 review, 2026-10-25). Delete the others
+      # (`gh run delete <id>`) before tagging.
       - name: Fetch the APKs checked on this very commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          run_id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --commit "$GITHUB_SHA" --event push \
+          runs=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --commit "$GITHUB_SHA" --event push \
             --status success --json databaseId,headBranch \
-            --jq '[.[] | select(.headBranch | startswith("release-check/"))][0].databaseId')
-          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
-            echo "::error::No successful release-check run on $GITHUB_SHA: push release-check/<version> on this commit, run the switch protocol on its APKs, then tag."
+            --jq '.[] | select(.headBranch | startswith("release-check/")) | .databaseId')
+          count=$(printf '%s\n' "$runs" | grep -c . || true)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::$count successful release-check runs on $GITHUB_SHA (${runs//$'\n'/, }): exactly one is published — the one the switch protocol installed."
             exit 1
           fi
-          echo "Publishing the APKs of run $run_id"
-          echo "CHECKED_RUN=$run_id" >> "$GITHUB_ENV"
-          gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n release-apks -D checked
+          echo "Publishing the APKs of run $runs"
+          echo "CHECKED_RUN=$runs" >> "$GITHUB_ENV"
+          gh run download "$runs" -R "$GITHUB_REPOSITORY" -n release-apks -D checked
           (cd checked && sha256sum -c SHA256SUMS)
+
+      # The tag says which bytes were tried on the phones: an ANNOTATED tag whose message carries the
+      # SHA256SUMS of the artefact the switch protocol installed. Bytes it does not name are not published.
+      - name: The tag names these very bytes
+        run: |
+          git fetch --quiet --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "::error::$GITHUB_REF_NAME is not an annotated tag: tag with -a, its message holding the SHA256SUMS of the APKs tried."
+            exit 1
+          fi
+          message=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")
+          while read -r sum name; do
+            if ! grep -q "$sum" <<< "$message"; then
+              echo "::error::The tag message does not name $name ($sum): these are not the bytes that were tried."
+              exit 1
+            fi
+          done < checked/SHA256SUMS
 
       - name: The tag is the version the APKs carry
         run: |
