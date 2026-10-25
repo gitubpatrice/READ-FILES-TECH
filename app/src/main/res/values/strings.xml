@@ -399,7 +399,7 @@
     <string name="legal_privacy">Privacy policy</string>
     <string name="legal_terms">Terms of use</string>
     <string name="legal_notices">Third-party licenses</string>
-    <string name="legal_notices_summary">The software Read Files Tech includes, with its copyright notices and licences</string>
+    <string name="legal_notices_summary">The software Read Files Tech includes, with its copyright notices and licenses</string>
     <string name="legal_license">License of Read Files Tech</string>
     <string name="legal_license_summary">Apache License 2.0 — the source code is published on GitHub</string>
     <string name="about_credits">Made with care by %1$s. Free and open-source software — the code is public and auditable.</string>

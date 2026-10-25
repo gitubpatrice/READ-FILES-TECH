@@ -93,7 +93,7 @@ English is the source; French, German, Italian and Spanish are complete. Adding 
 ## Licence
 
 Apache License 2.0 — see [LICENSE](LICENSE). The third-party software the app includes, with its notices and
-licences, is listed in [NOTICE](NOTICE), shown in the app under About › Third-party licences.
+licenses, is listed in [NOTICE](NOTICE), shown in the app under About › Third-party licenses.
 
 Terms of use: [TERMS.md](TERMS.md). Reporting a vulnerability: [SECURITY.md](SECURITY.md).
 

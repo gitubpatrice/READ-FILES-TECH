@@ -49,6 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -262,7 +265,22 @@ private fun Results(state: ContentSearchState, onOpen: (String) -> Unit, modifie
 @Composable
 private fun HitCard(hit: ContentHit, root: String?, expanded: Boolean, onToggle: () -> Unit, onOpen: () -> Unit) {
     Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
-        Row(Modifier.clickable(onClick = onToggle).padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Expand / collapse: TalkBack says which, in Android's own words, where a bare clickable said nothing of the
+        // lines it shows (3-axis audit, phase 9).
+        val folding = Modifier.semantics {
+            if (expanded) {
+                collapse {
+                    onToggle()
+                    true
+                }
+            } else {
+                expand {
+                    onToggle()
+                    true
+                }
+            }
+        }
+        Row(Modifier.clickable(onClick = onToggle).then(folding).padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
                 Text(relative(hit.path, root), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
