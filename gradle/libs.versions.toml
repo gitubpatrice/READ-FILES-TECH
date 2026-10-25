@@ -48,7 +48,7 @@ poi                     = "5.5.1"
 # never to HTML. BSD-2-Clause (its POM and LICENSE.txt), no dependency, maintained (a release every few
 # months). Core, GFM tables and strikethrough: what the 2.15.3's gpt_markdown rendered. Its List.of / Set.of
 # (Java 9) are backported by D8 below API 30. 0.30.0 published 2026-08-06; 0.30.1 is three days old.
-commonmark              = "0.30.0"
+commonmark              = "0.31.0"
 
 # --- Patterns the user types (phase 5: content search, bulk rename): RE2/J matches in a time linear in the
 # text, whatever the pattern. Android's java.util.regex is ICU's backtracking engine: `(a+)+$` on a file name
