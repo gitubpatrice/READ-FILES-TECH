@@ -29,7 +29,6 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +65,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.storage.StorageModel
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.explorer.AccessBanner
 import com.readfilestech.read_files_tech.ui.explorer.EntryRow
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -144,7 +144,7 @@ fun PickerScreen(
         },
         bottomBar = {
             if (mode == PickMode.FILES) {
-                Button(
+                BrandButton(
                     onClick = { onFilesPicked(picked) },
                     enabled = picked.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),

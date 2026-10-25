@@ -61,6 +61,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.FileNames
 import com.readfilestech.read_files_tech.data.recents.RecentFile
 import com.readfilestech.read_files_tech.data.storage.StorageSpace
+import com.readfilestech.read_files_tech.ui.common.SectionTitle
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -91,10 +92,10 @@ fun HomeContent(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
         state.space?.let { space -> item { StorageCard(space) } }
         state.recents.firstOrNull()?.let { last ->
-            item { SectionTitle(stringResource(R.string.home_resume)) }
+            item { SectionTitle(stringResource(R.string.home_resume), TitleMargin) }
             item { ResumeCard(last) { onOpen(last.path) } }
         }
-        item { SectionTitle(stringResource(R.string.home_quick_access)) }
+        item { SectionTitle(stringResource(R.string.home_quick_access), TitleMargin) }
         items(tiles.chunked(QUICK_COLUMNS)) { row ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { tile -> QuickTileCard(tile, Modifier.weight(1f)) }
@@ -103,12 +104,12 @@ fun HomeContent(
             Spacer(Modifier.height(8.dp))
         }
         if (state.favorites.isNotEmpty()) {
-            item { SectionTitle(stringResource(R.string.home_favorites)) }
+            item { SectionTitle(stringResource(R.string.home_favorites), TitleMargin) }
             items(state.favorites, key = { "fav:" + it.path }) { file ->
                 RecentRow(file, onOpen = { onOpen(file.path) }, menu = { RecentMenu(file, onToggleFavorite, onShare, onRemove) })
             }
         }
-        item { SectionTitle(stringResource(R.string.home_recent)) }
+        item { SectionTitle(stringResource(R.string.home_recent), TitleMargin) }
         if (state.recents.isEmpty() && state.loaded) {
             item {
                 Text(
@@ -311,15 +312,8 @@ private fun recentLine(file: RecentFile): String {
     return stringResource(R.string.joined_dot, day, formatBytes(file.sizeBytes))
 }
 
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-    )
-}
+/** A section's title at the list's 16 dp margin: the shared title has 2 of its own. */
+private val TitleMargin = Modifier.padding(horizontal = 14.dp)
 
 @Composable
 private fun quickAccessLabel(kind: QuickAccessKind): String = stringResource(

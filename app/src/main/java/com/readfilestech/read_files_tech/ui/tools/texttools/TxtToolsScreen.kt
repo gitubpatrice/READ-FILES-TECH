@@ -17,7 +17,6 @@ import androidx.compose.material.icons.outlined.FindReplace
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -55,6 +54,7 @@ import com.readfilestech.read_files_tech.data.tools.TextStats
 import com.readfilestech.read_files_tech.data.viewer.sheet.cut
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
@@ -211,7 +211,7 @@ private fun Tools(state: TxtToolsState, fields: SearchFields, viewModel: TxtTool
     }
     Text(stringResource(R.string.txt_replace_note, OutputCategory.CONVERSIONS.folderName), style = MaterialTheme.typography.bodySmall)
     Text(stringResource(R.string.txt_export), style = MaterialTheme.typography.titleSmall)
-    Button(onClick = viewModel::exportPdf, enabled = idle, modifier = Modifier.fillMaxWidth()) {
+    BrandButton(onClick = viewModel::exportPdf, enabled = idle, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
         Spacer(Modifier.size(8.dp))
         Text(stringResource(R.string.txt_to_pdf))

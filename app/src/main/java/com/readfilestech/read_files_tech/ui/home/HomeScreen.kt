@@ -1,25 +1,26 @@
 package com.readfilestech.read_files_tech.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.BrightnessAuto
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DropdownMenu
@@ -45,13 +46,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -65,7 +70,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
-import com.readfilestech.read_files_tech.ui.theme.ThemeMode
+import com.readfilestech.read_files_tech.ui.theme.Damier
 
 /**
  * The home (`HomeScreen` of the 2.15.3): the recent files and what to reach first, the tools, the
@@ -85,7 +90,6 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val theme by viewModel.themes.current.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var tab by rememberSaveable { mutableStateOf(HomeTab.HOME) }
     var query by rememberSaveable { mutableStateOf<String?>(null) }
@@ -142,9 +146,7 @@ fun HomeScreen(
             } else {
                 HomeTopBar(
                     canSearch = tab == HomeTab.HOME && state.recents.isNotEmpty(),
-                    theme = theme,
                     onSearch = { query = "" },
-                    onTheme = viewModel::setTheme,
                     onNavigate = onNavigate,
                 )
             }
@@ -154,7 +156,12 @@ fun HomeScreen(
             if (query == null) {
                 // The content form, not `text =` / `icon =`: that one left the button without a name for
                 // TalkBack (Notes Tech 3.1.0) — seen again here, its text absent from the accessibility tree.
-                ExtendedFloatingActionButton(onClick = { onNavigate(Routes.picker(PickMode.FILE, FileRouter.VIEWABLE, openTitle)) }) {
+                // On the checkerboard's blue, white on it 6.0:1, as Notes Tech's "New note".
+                ExtendedFloatingActionButton(
+                    onClick = { onNavigate(Routes.picker(PickMode.FILE, FileRouter.VIEWABLE, openTitle)) },
+                    containerColor = Damier.Blue,
+                    contentColor = Damier.OnBlue,
+                ) {
                     Icon(Icons.Outlined.FolderOpen, contentDescription = null)
                     Spacer(Modifier.size(12.dp))
                     Text(openTitle)
@@ -199,67 +206,70 @@ private fun HomeNavigationBar(tab: HomeTab, onTab: (HomeTab) -> Unit) {
     }
 }
 
+/**
+ * The home's bar, as the other apps': the checkerboard and the name, the search of the recent files, and ⋮ for the
+ * settings and About. The theme, which the 2.15.x chose from here, is in the settings' "Appearance".
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeTopBar(
-    canSearch: Boolean,
-    theme: ThemeMode,
-    onSearch: () -> Unit,
-    onTheme: (ThemeMode) -> Unit,
-    onNavigate: (String) -> Unit
-) {
+private fun HomeTopBar(canSearch: Boolean, onSearch: () -> Unit, onNavigate: (String) -> Unit) {
     TopAppBar(
-        title = { Text(stringResource(R.string.app_name)) },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // The signature of Files Tech, on the home only (Notes Tech): decorative — the name beside it says
+                // it, and TalkBack would read "Read Files Tech" twice. 22 dp, judged on a device for Notes Tech.
+                Image(
+                    painter = painterResource(R.drawable.logo_damier),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp).clip(RoundedCornerShape(8.dp)),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    stringResource(R.string.app_name),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() },
+                )
+            }
+        },
         actions = {
             if (canSearch) {
                 IconButton(onClick = onSearch) {
                     Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.home_search))
                 }
             }
-            IconButton(onClick = { onNavigate(Routes.feature(Feature.SETTINGS)) }) {
-                Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.feature_settings))
-            }
-            IconButton(onClick = { onNavigate(Routes.feature(Feature.ABOUT)) }) {
-                Icon(Icons.Outlined.Info, contentDescription = stringResource(R.string.feature_about))
-            }
-            ThemeMenu(theme, onTheme)
+            HomeMenu(onNavigate)
         },
     )
 }
 
-/** Light, dark, automatic — the current one marked (the 2.15.x showed it only through the icon). */
+/** ⋮: the settings and About. Named "More options", what it opens — not one of its entries. */
 @Composable
-private fun ThemeMenu(theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
+private fun HomeMenu(onNavigate: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = {
-            open = true
-        }) { Icon(themeIcon(theme), contentDescription = stringResource(R.string.home_theme)) }
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            listOf(
-                ThemeMode.LIGHT to R.string.theme_light,
-                ThemeMode.DARK to R.string.theme_dark,
-                ThemeMode.SYSTEM to R.string.theme_system
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_settings)) },
+                leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                onClick = {
+                    open = false
+                    onNavigate(Routes.feature(Feature.SETTINGS))
+                },
             )
-                .forEach { (mode, label) ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(label)) },
-                        leadingIcon = { Icon(themeIcon(mode), contentDescription = null) },
-                        trailingIcon = { if (mode == theme) Icon(Icons.Filled.Check, contentDescription = null) },
-                        onClick = {
-                            open = false
-                            onTheme(mode)
-                        },
-                    )
-                }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_about)) },
+                leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                onClick = {
+                    open = false
+                    onNavigate(Routes.feature(Feature.ABOUT))
+                },
+            )
         }
     }
-}
-
-private fun themeIcon(mode: ThemeMode): ImageVector = when (mode) {
-    ThemeMode.LIGHT -> Icons.Outlined.LightMode
-    ThemeMode.DARK -> Icons.Outlined.DarkMode
-    ThemeMode.SYSTEM -> Icons.Outlined.BrightnessAuto
 }
 
 /** Searching the recent files by name (`_FileSearchDelegate` of the 2.15.x), favourites included. */

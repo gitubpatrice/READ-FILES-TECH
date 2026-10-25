@@ -86,10 +86,9 @@
     <string name="home_search">Search the recent files</string>
     <string name="home_search_hint">Name of a recent file</string>
     <string name="home_no_result">No result</string>
-    <string name="home_theme">Theme</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="theme_system">Automatic</string>
+    <string name="theme_system">Follow system</string>
     <string name="quick_camera">Camera</string>
     <string name="favorite_add">Add to favorites</string>
     <string name="favorite_remove">Remove from favorites</string>
@@ -301,7 +300,8 @@
     <string name="feature_duplicates">Duplicates &amp; large files</string>
     <string name="feature_settings">Settings</string>
     <string name="feature_about">About</string>
-    <string name="settings_general">General</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
     <string name="settings_language">App language</string>
     <string name="settings_language_summary">Opens Android\'s settings, where you can choose this app\'s language. Read Files Tech follows your phone\'s language unless you choose another one there.</string>
     <string name="settings_outputs">Files you create</string>
@@ -329,7 +329,6 @@
     <string name="output_category_vault_backups">Vault backups (.rftvault)</string>
     <string name="output_category_extractions">Archives extracted by the ZIP viewer, one folder each</string>
     <string name="about_tagline">Reader, editor and explorer of files</string>
-    <string name="about_version">Version %1$s</string>
     <string name="about_check_updates">Check for updates</string>
     <string name="about_check_updates_note">Opens the releases page on GitHub in your browser — the app itself never connects to the Internet.</string>
     <string name="about_privacy">Privacy</string>
@@ -366,6 +365,12 @@
     <string name="about_feature_search">Global search</string>
     <string name="about_feature_search_desc">By name and by content, across the phone</string>
     <string name="about_feature_duplicates_desc">Identical files found by their SHA-256, the largest ones listed, to free up space</string>
+    <string name="about_permissions">Permissions and why</string>
+    <string name="about_perm_all_files">Android 11 and later: access to all files, which you grant in Android\'s settings. It lets the explorer browse, open and change your files, only when you ask: nothing runs in the background.</string>
+    <string name="about_perm_storage">The same access on older versions (reading up to Android 12, writing up to Android 10); up to Android 10, Android asks you for it in its own dialog.</string>
+    <string name="about_perm_install">Hands an APK you tap in the explorer to Android\'s installer, which asks its own confirmation. Android also asks you, once, to allow this app to install unknown apps.</string>
+    <string name="about_perm_no_internet_name">INTERNET — not requested</string>
+    <string name="about_perm_no_internet">The app has no network permission at all. The links on this page open in your browser, outside the app.</string>
     <string name="about_author">Author</string>
     <string name="about_author_role">Developer</string>
     <string name="about_settings">Output folder &amp; automatic share</string>
@@ -384,6 +389,7 @@
     <string name="about_support">Help &amp; support</string>
     <string name="about_contact">Contact support</string>
     <string name="about_website">Official website</string>
+    <string name="about_source">Source code</string>
     <string name="about_report_bug">Report a bug</string>
     <string name="about_report_bug_summary">An e-mail with the app\'s and Android\'s versions filled in, which you write and send yourself</string>
     <string name="about_mail_bug_body">Describe the problem:\n\n\n— Version: %1$s\n— Android: %2$s\n— Phone: </string>
@@ -395,7 +401,10 @@
     <string name="legal_notices_summary">The software Read Files Tech includes, with its copyright notices and licences</string>
     <string name="legal_license">Licence of Read Files Tech</string>
     <string name="legal_license_summary">Apache License 2.0 — the source code is published on GitHub</string>
+    <string name="about_credits">Made with care by %1$s. Free and open-source software — the code is public and auditable.</string>
     <string name="settings_security">Security</string>
+    <string name="settings_about">About Read Files Tech</string>
+    <string name="settings_about_summary">Privacy, features, help and legal information</string>
     <string name="legacy_section">Earlier version (before 3.0)</string>
     <string name="legacy_extractions_title">Old extractions</string>
     <plurals name="legacy_extractions_summary">

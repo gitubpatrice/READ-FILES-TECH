@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -67,6 +66,7 @@ import com.readfilestech.read_files_tech.data.scanner.ScanPage
 import com.readfilestech.read_files_tech.data.scanner.ScanSession
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -185,7 +185,7 @@ fun ScannerScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: (
             }
             if (state.pages.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Button(onClick = viewModel::export, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    BrandButton(onClick = viewModel::export, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
                         Text(
                             pluralStringResource(R.plurals.scanner_make_pdf, state.pages.size, state.pages.size),

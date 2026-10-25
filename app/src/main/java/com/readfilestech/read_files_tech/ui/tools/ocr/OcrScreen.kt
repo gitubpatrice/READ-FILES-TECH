@@ -20,7 +20,6 @@ import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +49,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -173,7 +173,7 @@ private fun Read(state: OcrState, viewModel: OcrViewModel) {
         )
         else -> {
             ToolResult(text, text.length.toLong(), viewModel::copyText, viewModel::copied)
-            Button(onClick = viewModel::save, enabled = !state.saving) {
+            BrandButton(onClick = viewModel::save, enabled = !state.saving) {
                 Icon(Icons.Outlined.Save, contentDescription = null)
                 Text(stringResource(R.string.ocr_save_txt), Modifier.padding(start = 6.dp))
             }

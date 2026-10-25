@@ -24,7 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +66,7 @@ import com.readfilestech.read_files_tech.data.search.ContentHit
 import com.readfilestech.read_files_tech.data.search.LineMatch
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
@@ -190,7 +190,7 @@ private fun SearchButton(searching: Boolean, enabled: Boolean, onStart: () -> Un
             Text(stringResource(R.string.action_stop))
         }
     } else {
-        Button(onClick = onStart, enabled = enabled) { Text(stringResource(R.string.action_search)) }
+        BrandButton(onClick = onStart, enabled = enabled) { Text(stringResource(R.string.action_search)) }
     }
 }
 

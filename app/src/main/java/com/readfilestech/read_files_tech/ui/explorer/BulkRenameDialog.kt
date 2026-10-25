@@ -18,7 +18,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -57,6 +56,7 @@ import com.readfilestech.read_files_tech.data.browse.RenameProposal
 import com.readfilestech.read_files_tech.data.browse.RenameRule
 import com.readfilestech.read_files_tech.data.search.InvalidPatternException
 import com.readfilestech.read_files_tech.data.search.SearchPattern
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.common.uiText
@@ -221,7 +221,7 @@ fun BulkRenameDialog(entries: List<FileEntry>, onRename: (List<RenameProposal>) 
                     Spacer(Modifier.size(8.dp))
                     val ready = (preview as? Preview.Ready)?.proposals
                     val allowed = ready != null && ready.none { it.problem != null } && ready.any(RenameProposal::changes)
-                    Button(onClick = { ready?.let(onRename) }, enabled = allowed) { Text(stringResource(R.string.action_rename)) }
+                    BrandButton(onClick = { ready?.let(onRename) }, enabled = allowed) { Text(stringResource(R.string.action_rename)) }
                 }
             }
         }

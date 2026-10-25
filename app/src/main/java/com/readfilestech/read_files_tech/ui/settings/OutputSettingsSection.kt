@@ -1,6 +1,5 @@
 package com.readfilestech.read_files_tech.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
@@ -25,7 +23,6 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Transform
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,11 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
+import com.readfilestech.read_files_tech.ui.common.SectionCard
+import com.readfilestech.read_files_tech.ui.common.SectionTitle
 import java.io.File
 
 /**
@@ -63,8 +61,8 @@ internal fun OutputSettingsSection(
 ) {
     SectionTitle(stringResource(R.string.settings_outputs))
     if (state == null) return
-    Card(Modifier.fillMaxWidth()) {
-        SettingLine(
+    SectionCard {
+        SettingRow(
             icon = Icons.Outlined.Folder,
             title = stringResource(R.string.settings_output_folder),
             summary = state.configured.path,
@@ -76,7 +74,7 @@ internal fun OutputSettingsSection(
         HorizontalDivider()
         // The fallback the outputs went to, or the folder chosen when none took them: the explorer then says why.
         val shown = if (state.effective == null) state.configured else state.effective.takeIf { state.reachable }
-        SettingLine(
+        SettingRow(
             icon = Icons.Outlined.FolderOpen,
             title = stringResource(R.string.settings_output_open),
             trailing = Icons.AutoMirrored.Filled.ArrowForward,
@@ -84,7 +82,7 @@ internal fun OutputSettingsSection(
             enabled = shown != null,
         )
         HorizontalDivider()
-        SettingLine(
+        SettingRow(
             icon = Icons.Outlined.Restore,
             title = stringResource(R.string.settings_output_reset),
             summary = state.defaultFolder.path,
@@ -92,36 +90,46 @@ internal fun OutputSettingsSection(
             onClick = viewModel::reset,
             enabled = !state.isDefault,
         )
-    }
-    Card(Modifier.fillMaxWidth()) {
-        Row(
-            // toggleable, not clickable: TalkBack reads "on" or "off" (Claude review, phase 8).
-            Modifier.fillMaxWidth()
-                .toggleable(value = state.autoShare, role = Role.Switch, onValueChange = viewModel::setAutoShare)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Outlined.Share, contentDescription = null)
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_auto_share), style = MaterialTheme.typography.bodyLarge)
-                Text(stringResource(R.string.settings_auto_share_summary), style = MaterialTheme.typography.bodySmall)
-            }
-            // The row is the control: the switch only shows it, and TalkBack reads one element.
-            Switch(checked = state.autoShare, onCheckedChange = null)
-        }
+        HorizontalDivider()
+        AutoShareRow(state.autoShare, viewModel::setAutoShare)
     }
     SectionTitle(stringResource(R.string.settings_subfolders))
-    Card(Modifier.fillMaxWidth()) {
-        OutputCategory.entries.filter(OutputCategory::written).forEach { category ->
-            shownAs(category)?.let { (icon, description) ->
-                SettingLine(icon = icon, title = category.folderName, summary = stringResource(description))
-            }
+    SectionCard {
+        val shownCategories = OutputCategory.entries.filter(OutputCategory::written).mapNotNull { category ->
+            shownAs(category)?.let { (icon, description) -> Triple(category, icon, description) }
+        }
+        shownCategories.forEachIndexed { index, (category, icon, description) ->
+            if (index > 0) HorizontalDivider()
+            SettingRow(icon = icon, title = category.folderName, summary = stringResource(description))
         }
     }
-    Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.padding(top = 2.dp))
         Text(stringResource(R.string.settings_outputs_info), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** The automatic share. The row is the switch: toggleable, not clickable — TalkBack reads "on" or "off" (Claude review, phase 8). */
+@Composable
+private fun AutoShareRow(checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Share, contentDescription = null)
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.settings_auto_share), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.settings_auto_share_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // The row is the control: the switch only shows it, and TalkBack reads one element.
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -158,40 +166,6 @@ private fun FallbackBanner(state: OutputFolderState) {
         }
     }
 }
-
-/** A line of a card: [icon], [title], [summary] under it; tappable when [onClick] is given. */
-@Composable
-private fun SettingLine(
-    icon: ImageVector,
-    title: String,
-    summary: String? = null,
-    monospace: Boolean = false,
-    trailing: ImageVector? = null,
-    onClick: (() -> Unit)? = null,
-    enabled: Boolean = true,
-) {
-    val tap = if (onClick == null) Modifier else Modifier.clickable(enabled = enabled, onClick = onClick)
-    val alpha = if (enabled) 1f else DISABLED_ALPHA
-    Row(
-        tap.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
-        Icon(icon, contentDescription = null, tint = color)
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = color)
-            if (summary != null) {
-                val style = MaterialTheme.typography.bodySmall.let { if (monospace) it.copy(fontFamily = FontFamily.Monospace) else it }
-                // A path can be long: it wraps, and can be selected to be copied.
-                SelectionContainer { Text(summary, style = style, color = color) }
-            }
-        }
-        if (trailing != null) Icon(trailing, contentDescription = null, tint = color)
-    }
-}
-
-private const val DISABLED_ALPHA = 0.38f
 
 /** The icon and the description of a category the settings list; null for one no tool writes any more. */
 private fun shownAs(category: OutputCategory): Pair<ImageVector, Int>? = when (category) {

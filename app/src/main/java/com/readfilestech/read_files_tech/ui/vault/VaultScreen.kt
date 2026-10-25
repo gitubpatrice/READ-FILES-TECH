@@ -60,6 +60,7 @@ import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.theme.Damier
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -126,10 +127,15 @@ fun VaultScreen(
         floatingActionButton = {
             // While a work runs, no other one is offered: it would be ignored (one at a time).
             if (open && !busy) {
-                ExtendedFloatingActionButton(onClick = {
-                    viewModel.pickFor(VaultPick.IMPORT)
-                    onNavigate(Routes.picker(PickMode.FILES, title = pickTitles.import))
-                }) {
+                // On the checkerboard's blue, as the home's "Open a file".
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        viewModel.pickFor(VaultPick.IMPORT)
+                        onNavigate(Routes.picker(PickMode.FILES, title = pickTitles.import))
+                    },
+                    containerColor = Damier.Blue,
+                    contentColor = Damier.OnBlue,
+                ) {
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(Modifier.size(12.dp))
                     Text(stringResource(R.string.vault_import))
