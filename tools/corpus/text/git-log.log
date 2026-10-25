@@ -1,0 +1,129 @@
+5e96b4c 2026-10-12 14:06:41 +0200 Patrice Haltaya
+    refactor(home): the recent line reuses joined_dot, the same template
+
+4bac4a6 2026-10-12 13:57:33 +0200 Patrice Haltaya
+    fix(3b): the R8 reviews (Claude xhigh x2, GPT, security deep-dive)
+
+fdbf6ee 2026-10-12 13:39:10 +0200 Patrice Haltaya
+    feat(apps): phase 3b, lot 7 — installing an APK
+
+3a964bc 2026-10-12 13:26:46 +0200 Patrice Haltaya
+    feat(outputs): phase 3b, lot 6 — the row under a tool's result
+
+214b37b 2026-10-12 13:21:36 +0200 Patrice Haltaya
+    feat(home): phase 3b, lot 5 — the home, the start of the app
+
+57571fc 2026-10-12 12:57:29 +0200 Patrice Haltaya
+    feat(picker): phase 3b, lot 4 — the app's own picker
+
+2c7352a 2026-10-12 12:46:55 +0200 Patrice Haltaya
+    feat(outputs): phase 3b, lot 3 — the output folders and the file caps
+
+f97a45f 2026-10-12 12:41:29 +0200 Patrice Haltaya
+    feat(explorer): phase 3b, lots 1-2 — the volumes above the volumes, a parametrised explorer
+
+d8d5a10 2026-10-11 21:26:43 +0200 Patrice Haltaya
+    fix(ui): the R7 review (Claude xhigh) — no message lost between the queue and the screen
+
+6e67d47 2026-10-11 21:17:59 +0200 Patrice Haltaya
+    fix(trash,ui): the R6 review (Claude xhigh) — restores in a work profile, a message cut short
+
+14a190f 2026-10-11 21:05:05 +0200 Patrice Haltaya
+    ci: pin apkanalyzer for the shape guard on the release APK
+
+de91afb 2026-10-11 20:57:39 +0200 Patrice Haltaya
+    fix(files,ui): the R5 review (Claude xhigh) — folder moves across volumes, messages queued
+
+e863fd6 2026-10-11 20:42:14 +0200 Patrice Haltaya
+    ci: the shape guard also reads the release APK itself (S8)
+
+11d6327 2026-10-11 20:39:26 +0200 Patrice Haltaya
+    fix(files): the R4 review — no truncated file under a real name, trash metadata first
+
+71b5d32 2026-10-11 20:16:47 +0200 Patrice Haltaya
+    fix(trash): the trash of an SD card is listed — volumes from StorageManager
+
+15b0e74 2026-10-11 20:08:24 +0200 Patrice Haltaya
+    feat(explorer): phase 3 — the explorer, the trash, global search, tiles
+
+79a45f9 2026-10-11 17:34:15 +0200 Patrice Haltaya
+    fix(trash): the private fallback trash restores where it was
+
+31c8032 2026-10-11 16:42:35 +0200 Patrice Haltaya
+    build: a `check` build under the real package needs a second, explicit flag
+
+87151ba 2026-10-11 16:27:21 +0200 Patrice Haltaya
+    test(phase2): a locked phone and a slow reboot no longer stall the run
+
+a65a32a 2026-10-11 16:19:45 +0200 Patrice Haltaya
+    ci: count the shape guard's errors in its plain format
+
+aa03ac1 2026-10-11 16:18:54 +0200 Patrice Haltaya
+    fix(data): the R3 review — no data lost, nothing written where it must not be
+
+3bcf95f 2026-10-11 15:50:17 +0200 Patrice Haltaya
+    test(phase2): the vault at its caps on real heaps, and real backups on small ones
+
+cde407c 2026-10-11 15:08:05 +0200 Patrice Haltaya
+    test(phase2): the mandatory states — legacy vault, lockouts, reboot, repairs
+
+0afaaa8 2026-10-11 14:41:26 +0200 Patrice Haltaya
+    test(phase2): seed a Flutter 2.15.x, install the port over it, compare
+
+e9c7694 2026-10-11 14:41:26 +0200 Patrice Haltaya
+    feat(startup): empty, once, the cache the Flutter app left
+
+8159a51 2026-10-11 13:50:11 +0200 Patrice Haltaya
+    feat(extractions): the old "Extract all" folders, moved only when asked (D-022)
+
+16ece27 2026-10-11 13:50:11 +0200 Patrice Haltaya
+    feat(history): the editor's old copies shown apart, the new ones per path (D-021)
+
+a63a696 2026-10-11 13:41:59 +0200 Patrice Haltaya
+    feat(recents): the recent files of the Flutter app, in their own key
+
+f2dde66 2026-10-11 13:35:13 +0200 Patrice Haltaya
+    feat(trash): the Flutter app's trash, read and written in place
+
+b2691a6 2026-10-11 13:35:13 +0200 Patrice Haltaya
+    feat(data): dates and JSON written and read the way Dart did
+
+e8a393b 2026-10-11 13:14:38 +0200 Patrice Haltaya
+    fix(vault): findings of the service review (GPT 5.6 Sol and Claude xhigh)
+
+5f0af1e 2026-10-11 13:14:37 +0200 Patrice Haltaya
+    refactor(data): one strict JSON reader for everything the Flutter app stored
+
+b8ab73d 2026-10-11 12:51:53 +0200 Patrice Haltaya
+    feat(vault): the vault service, D1 and D2 of the 2.15.2 not carried over
+
+6fbab2d 2026-10-11 12:51:52 +0200 Patrice Haltaya
+    feat(vault): AES-GCM by size, one block or a stream, and the review fixes
+
+5ba5286 2026-10-11 12:51:52 +0200 Patrice Haltaya
+    fix(prefs): read lists exactly as the Flutter app could, and nothing else
+
+582a15f 2026-10-10 20:57:24 +0200 Patrice Haltaya
+    feat(vault): the 2.15.3 lockout rule, with its eight tests and a ninth
+
+7ca02a0 2026-10-10 20:51:04 +0200 Patrice Haltaya
+    feat(vault): the vault and backup formats of the Flutter app, byte for byte
+
+5d30f61 2026-10-10 20:37:26 +0200 Patrice Haltaya
+    feat(prefs): read and write the Flutter app's preferences in their own format
+
+830db81 2026-10-10 20:12:11 +0200 Patrice Haltaya
+    fix: refuse a replacing AAB too, and read exported/debuggable defensively
+
+e3beb2f 2026-10-10 20:05:12 +0200 Patrice Haltaya
+    fix: follow-ups from the security review of the skeleton and the plan review
+
+7b3759a 2026-10-10 19:56:09 +0200 Patrice Haltaya
+    ci: gate, zero-network, instrumented API 29 and CodeQL for the port
+
+8423ccf 2026-10-10 19:51:02 +0200 Patrice Haltaya
+    build: skeleton of the Kotlin port, on the App Manager Tech chain
+
+039ef39 2026-10-10 19:41:47 +0200 Patrice Haltaya
+    chore: ignore every form of signing key before anything else
+

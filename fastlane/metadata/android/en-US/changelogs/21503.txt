@@ -1,5 +1,0 @@
-Vault: a lock during an import or a restore could encrypt a file with an all-zero key, unreadable with your password but readable by anyone. Fixed, and affected files are repaired at the next unlock.
-
-Vault: after a reboot, the lockout after five wrong passwords could last for days. Fixed.
-
-No internet permission any more: check for updates from About, which opens your browser.

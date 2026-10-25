@@ -1,0 +1,145 @@
+package com.readfilestech.read_files_tech.data.editor
+
+import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.files.FileCaps
+import com.readfilestech.read_files_tech.data.files.FileTooLargeException
+import com.readfilestech.read_files_tech.data.history.EditorHistory
+import com.readfilestech.read_files_tech.data.viewer.StorageFileSource
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
+
+class CsvSavingTest {
+    @TempDir
+    lateinit var dir: File
+
+    private val history by lazy { EditorHistory(File(dir, "legacy"), File(dir, "history")) }
+
+    private fun open(file: File): Pair<CsvEdits, FileStamp> {
+        val stamp = FileStamp.of(file)
+        return runBlocking { CsvEdits.read(StorageFileSource(file)) } to stamp
+    }
+
+    @Test
+    fun `a save writes the change and keeps the version it overwrites`() {
+        val file = File(dir, "data.csv").apply { writeText("a;b\r\n1;2\r\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 1, "3")
+        CsvSaving.save(file, stamp, history, edits::writeTo)
+        assertThat(file.readText()).isEqualTo("a;b\r\n1;3\r\n")
+        val versions = history.versions(file.absolutePath)
+        assertThat(versions).hasSize(1)
+        assertThat(versions.single().file.readText()).isEqualTo("a;b\r\n1;2\r\n")
+        assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+    }
+
+    /** The rows are written back from the bytes read: over a file another app changed, they would undo its change. */
+    @Test
+    fun `a file changed since it was opened is not overwritten`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        file.writeText("a,b\n1,2\n3,4\n")
+        assertThrows<FileChangedException> { CsvSaving.save(file, stamp, history, edits::writeTo) }
+        assertThat(file.readText()).isEqualTo("a,b\n1,2\n3,4\n")
+        assertThat(history.versions(file.absolutePath)).isEmpty()
+        file.delete()
+        assertThrows<FileChangedException> { CsvSaving.save(file, stamp, history, edits::writeTo) }
+        assertThat(file.exists()).isFalse()
+    }
+
+    /** The user told it changed chose to overwrite: the edits go over it, its version on disk kept first. */
+    @Test
+    fun `an overwrite writes over the file as it is now, its version on disk kept in the history`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, _) = open(file)
+        edits.set(1, 0, "9")
+        file.writeText("a,b\n1,2\n3,4\n")
+        assertThat(CsvSaving.keepsCurrent(file)).isTrue()
+        CsvSaving.overwrite(file, history, edits::writeTo)
+        assertThat(file.readText()).isEqualTo("a,b\n9,2\n")
+        assertThat(history.versions(file.absolutePath).single().file.readText()).isEqualTo("a,b\n1,2\n3,4\n")
+
+        // Deleted meanwhile: written again, nothing to keep.
+        file.delete()
+        CsvSaving.overwrite(file, history, edits::writeTo)
+        assertThat(file.readText()).isEqualTo("a,b\n9,2\n")
+        assertThat(history.versions(file.absolutePath)).hasSize(1)
+    }
+
+    /** Claude review R20: the stamp was read before the copy and the writing only, seconds before the rename. */
+    @Test
+    fun `a file written by another app during the save is not replaced`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        assertThrows<FileChangedException> {
+            CsvSaving.save(file, stamp, history) { out ->
+                edits.writeTo(out)
+                file.writeText("a,b\n1,2\nfrom another app\n")
+            }
+        }
+        assertThat(file.readText()).isEqualTo("a,b\n1,2\nfrom another app\n")
+        assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+    }
+
+    /** [file] rewritten as another app that keeps the date would: other bytes, the same size, the same time. */
+    private fun rewriteKeepingSizeAndDate(file: File, text: String) {
+        val time = file.lastModified()
+        val size = file.length()
+        file.writeText(text)
+        file.setLastModified(time)
+        assertThat(file.length()).isEqualTo(size)
+        assertThat(file.lastModified()).isEqualTo(time)
+    }
+
+    /** Size and date said nothing of a file rewritten with the same ones: its content now does. */
+    @Test
+    fun `a file rewritten with the same size and date is not overwritten`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        rewriteKeepingSizeAndDate(file, "a,b\n3,4\n")
+        assertThrows<FileChangedException> { CsvSaving.save(file, stamp, history, edits::writeTo) }
+        assertThat(file.readText()).isEqualTo("a,b\n3,4\n")
+        assertThat(history.versions(file.absolutePath)).isEmpty()
+    }
+
+    /** The same, during the save: the content is read again just before the new file takes its place. */
+    @Test
+    fun `a file rewritten with the same size and date during the save is not replaced`() {
+        val file = File(dir, "data.csv").apply { writeText("a,b\n1,2\n") }
+        val (edits, stamp) = open(file)
+        edits.set(1, 0, "9")
+        assertThrows<FileChangedException> {
+            CsvSaving.save(file, stamp, history) { out ->
+                edits.writeTo(out)
+                rewriteKeepingSizeAndDate(file, "a,b\n5,6\n")
+            }
+        }
+        assertThat(file.readText()).isEqualTo("a,b\n5,6\n")
+        assertThat(dir.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+    }
+
+    /** Cells not saved, kept before a restore: up to the history's cap, and past it nowhere — the restore refused. */
+    @Test
+    fun `cells not saved are kept up to the history's cap`() {
+        val file = File(dir, "data.csv").apply { writeText("a\n") }
+        val cap = FileCaps.EDITOR_HISTORY_COPY.toInt()
+        assertThrows<FileTooLargeException> { CsvSaving.keep(file, history) { it.write(ByteArray(cap + 1)) } }
+        assertThat(history.versions(file.absolutePath)).isEmpty()
+        CsvSaving.keep(file, history) { out ->
+            out.write(ByteArray(cap - 1))
+            out.write(0)
+        }
+        assertThat(history.versions(file.absolutePath).single().size).isEqualTo(cap.toLong())
+        assertThrows<FileTooLargeException> {
+            CsvSaving.keep(file, history) { out ->
+                out.write(ByteArray(cap))
+                out.write(1)
+            }
+        }
+    }
+}

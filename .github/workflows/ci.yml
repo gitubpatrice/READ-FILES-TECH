@@ -1,98 +1,241 @@
 name: CI
 
+# The Kotlin port of Read Files Tech (docs/00-PLAN-PORTAGE.md). Same jobs as App Manager Tech, where
+# each one was measured to catch something the others miss.
+#
+# `kotlin`, `fix/**` and `feat/**` are triggers on purpose: a work branch must not pile up commits with
+# nothing ever running on them (measured on a sibling app: 25 commits, a blocking check failing since
+# the morning, unreported).
 on:
   push:
-    # Les branches de travail etaient invisibles de la CI : une branche
-    # `fix/**` pouvait accumuler des dizaines de commits sans qu'aucun outil
-    # ne tourne. Modele repris d'Agenda Tech, seul depot du portefeuille a
-    # declencher sur les branches de travail.
-    branches: [main, 'fix/**', 'feat/**']
+    branches: [main, kotlin, 'fix/**', 'feat/**']
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push to the same ref cancels the previous run: its result is already stale.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    name: Analyze + Test + Build (debug)
+  gate:
+    name: Gate (build · unit tests · lint · detekt · R8)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 45
     steps:
-      - name: Checkout app
-        uses: actions/checkout@v6
-        with:
-          path: read_files_tech
+      - uses: actions/checkout@v7
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v5
+      # Before any compilation, and in seconds: the two guards below must prove they can go red, and
+      # for the right reason, before their green is believed.
+      - name: Negative control of the CI guards
+        run: python3 tools/check-guards-negative-control.py
+
+      # Translation parity, also before any compilation. A language that loses keys does not become
+      # incomplete in the open, it does so SILENTLY: the screen falls back to English word by word.
+      # The negative control runs first, so the check's green is believed only once it has gone red.
+      - name: Translation parity
+        run: |
+          python3 tools/check-translations-negative-control.py
+          python3 tools/check-translations.py
+
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Version FIGEE, et non `channel: stable`. Avec le canal, chaque sortie
-          # de Flutter changeait en silence ce qui construisait et testait
-          # l'application : rien dans ce depot ne bougeait, et le resultat si.
-          #
-          # Ce n'est pas une precaution theorique, notes_tech s'est fait prendre :
-          # sa v2.0.5 est sortie en 3.47.2 alors que son `pubspec.lock` avait ete
-          # genere en 3.44.9, donc le lock commite ne decrivait pas ce qui etait
-          # livre. Le correctif y est en place depuis ; celui-ci le recopie.
-          #
-          # Consequence directe : reconstruire un tag ancien redonne le meme
-          # binaire. Avec `channel: stable`, ce n'etait vrai que par chance.
-          #
-          # 3.47.2 = la version qui a genere le `pubspec.lock` commite. Les deux
-          # se deplacent ensemble, ici et dans `release.yml`.
-          flutter-version: 3.47.2
-          cache: true
+      - uses: gradle/actions/setup-gradle@v6
 
-      - name: Flutter version
-        run: flutter --version
+      # One command, the same as the local gate, so CI and a developer's machine can never disagree
+      # about what "green" means. detekt is blocking, with no baseline (config/detekt/detekt.yml).
+      - name: Gate
+        run: ./gradlew --no-daemon :app:assembleDebug testDebugUnitTest :app:lintDebug detekt
 
-      - name: Pub get
-        working-directory: read_files_tech
-        run: flutter pub get
+      # A green test task does not prove a test ran: when the JUnit Platform stops discovering the
+      # tests (seen after a JUnit 6 bump on a sibling app), Gradle reports success on an empty run.
+      - name: Unit tests were actually executed
+        run: python3 tools/check-test-results.py
 
-      - name: Analyze
-        working-directory: read_files_tech
-        run: flutter analyze --no-fatal-infos
+      # `isMinifyEnabled` and `isShrinkResources` run in no other job. Without keystore.properties
+      # (absent from the repository, on purpose) the release build falls back to the debug key: what
+      # is checked here is that R8 keeps what the code needs, not the signature.
+      - name: Release build (exercises R8)
+        run: ./gradlew --no-daemon :app:assembleRelease
 
-      # W-M3 / Q-H2 — le « || echo "No tests yet" » rendait cette etape
-      # incapable d'echouer : un test rouge passait la CI au vert. Il datait
-      # d'une epoque sans tests ; il y en a 83 aujourd'hui, dont 25 sur le
-      # coffre.
-      - name: Run tests
-        working-directory: read_files_tech
-        run: flutter test
+      # The build refuses a version base that is too low, but that reads version.properties: this reads
+      # the four APKs it produced (package, and versionCode = base * 10 + ABI rank, above 25503).
+      - name: Assert the package and versionCode of every release APK
+        run: python3 tools/check-release-apks.py
 
-      # No network permission since 2.15.3, like the other Files Tech apps. The check reads the
-      # MERGED manifest of the RELEASE variant: the source manifest removes INTERNET with
-      # tools:node="remove" (Google ML Kit adds it at merge time), and the debug variant of a
-      # Flutter app adds it on purpose for the development tools. Only the manifest merge runs
-      # here, not a full release build. The negative control runs first: a check that cannot
-      # fail protects nothing.
-      - name: Merged release manifest
-        working-directory: read_files_tech
+      # The zero-network job reads the merged manifest, an intermediate: anything wired after it in
+      # the build would escape it. This reads the manifest of the release APK itself, the artefact
+      # that ships, through the same guard and its negative control.
+      # apkanalyzer is pinned: the runner's own (ubuntu-24.04 20261004) printed taskAffinity="" as
+      # "@string/0x20", where 20.0 prints "" (2026-10-11), and the guard compares literals exactly.
+      - name: Assert the permissions and the shape of the release APK
         run: |
-          flutter build apk --config-only
-          cd android && ./gradlew --no-daemon :app:processReleaseMainManifest
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmdline-tools;20.0" > /dev/null
+          tools_dir=$(dirname "$(grep -l '^Pkg.Revision=20.0$' "$ANDROID_HOME"/cmdline-tools/*/source.properties | head -n 1)")
+          echo "apkanalyzer from $tools_dir"
+          "$tools_dir/bin/apkanalyzer" manifest print \
+            app/build/outputs/apk/release/app-universal-release.apk > "$RUNNER_TEMP/apk-manifest.xml"
+          python3 tools/check-guards-negative-control.py --real-manifest "$RUNNER_TEMP/apk-manifest.xml"
+          python3 tools/check-manifest-permissions.py "$RUNNER_TEMP/apk-manifest.xml"
+          # Its SHAPE as well (S8): backup off, nothing debuggable, the exported components, the
+          # FileProvider, <queries> — read from the artefact that ships, references being ids there.
+          python3 tools/check-manifest-shape.py --apk "$RUNNER_TEMP/apk-manifest.xml"
 
-      - name: No network permission (reviewed allowlist)
-        working-directory: read_files_tech
+      # The check release.yml runs against the published release (certificate, versionCode, launcher, tiles,
+      # FileProvider) runs only twice a release: kept honest in between by its negative control on a
+      # published APK itself, downloaded (the smallest of the latest release).
+      - name: Negative control of the release continuity check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python3 tools/check-manifest-permissions.py --controle-negatif
-          python3 tools/check-manifest-permissions.py
+          gh release download -R "$GITHUB_REPOSITORY" -p '*armeabi-v7a*.apk' -D "$RUNNER_TEMP/published"
+          python3 tools/check-release-continuity.py --self-test "$RUNNER_TEMP/published"
 
-      - name: Build APK (debug, unsigned)
-        working-directory: read_files_tech
-        run: flutter build apk --debug
-
-      - name: Upload APK artifact
+      - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: read_files_tech-debug-${{ github.sha }}
-          path: read_files_tech/build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
+          name: gate-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  zero-network:
+    name: Zero-network promise and manifest shape
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Only the manifest merge: it needs neither keystore nor R8, and it is where libraries add their
+      # permissions.
+      - name: Merge the release manifest
+        run: ./gradlew --no-daemon :app:processReleaseMainManifest
+
+      # Against the REAL merged manifest as well as fixtures: both guards must pass on it as built, and
+      # fail once INTERNET, or an exported activity, is injected into a copy of it.
+      - name: Negative control against the merged manifest
+        run: >-
+          python3 tools/check-guards-negative-control.py --real-merged-manifest
+          app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+
+      - name: Assert the permissions of the merged release manifest
+        run: python3 tools/check-manifest-permissions.py
+
+      # What a permission list cannot see: Android backup (default ON), cleartext, debuggable, the task
+      # affinity of the launcher activity, the exact set of exported components, and no component or
+      # meta-data of ML Kit, Play services, Firebase or Google's telemetry (docs D-032).
+      - name: Assert the shape of the merged release manifest
+        run: python3 tools/check-manifest-shape.py
+
+      # What a manifest cannot see either: a library of those groups needs no component to do its work
+      # (ML Kit reported each use through a binding to Play services). Every artefact the release
+      # packages, transitive ones included, as Gradle resolved them; the guard's negative control first,
+      # against this very report.
+      - name: Assert the release classpath holds nothing of ML Kit, Play services or Firebase
+        run: |
+          ./gradlew --no-daemon -q :app:dependencies --configuration releaseRuntimeClasspath > "$RUNNER_TEMP/classpath.txt"
+          python3 tools/check-guards-negative-control.py --real-classpath "$RUNNER_TEMP/classpath.txt"
+          python3 tools/check-release-classpath.py "$RUNNER_TEMP/classpath.txt"
+
+      # The phase 2 check entry point (src/check, debug and `check` builds only) must never reach a
+      # release. Proved on the real artefact: the shape guard, run on the `check` variant's merged
+      # manifest, has to refuse it — and for that provider, not for anything else.
+      - name: The shape guard refuses the check entry point
+        run: |
+          ./gradlew --no-daemon :app:processCheckMainManifest
+          manifest=app/build/intermediates/merged_manifest/check/processCheckMainManifest/AndroidManifest.xml
+          # GITHUB_ACTIONS=false: the plain "ERROR:" lines rather than annotations, counted below.
+          if GITHUB_ACTIONS=false python3 tools/check-manifest-shape.py "$manifest" > "$RUNNER_TEMP/check-shape.txt"; then
+            cat "$RUNNER_TEMP/check-shape.txt"
+            echo "::error::the shape guard accepted the manifest that carries PortCheckProvider"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/check-shape.txt"
+          test "$(grep -c '^ERROR' "$RUNNER_TEMP/check-shape.txt")" = 1
+          grep -q '^ERROR: exported component outside the reviewed list: com.readfilestech.read_files_tech.check.PortCheckProvider' "$RUNNER_TEMP/check-shape.txt"
+
+  instrumented:
+    name: Instrumented tests (API 29)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # KVM has to be enabled explicitly on GitHub-hosted runners for the emulator to boot.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # API 29 matches the physical test device (Galaxy S9), so a green CI run and a green local run
+      # mean the same thing.
+      #
+      # ⚠️ `connectedDebugAndroidTest` is used HERE ONLY, where the emulator is the sole attached
+      # device. Never run it on a developer machine: it targets EVERY connected device and uninstalls
+      # the app at the end. Locally, install both APKs and target one phone by serial:
+      #   adb -s <serial> shell am instrument -w -r \
+      #     com.readfilestech.read_files_tech.next.test/androidx.test.runner.AndroidJUnitRunner
+      # The exclusion below must hide nothing else: exactly one class carries @CapacityTest (security
+      # review of 2026-10-11, S9).
+      - name: Only VaultCapacityTest is left out of this run
+        run: |
+          found="$(grep -rl --include='*.kt' '^@CapacityTest' app/src/androidTest)"
+          echo "$found"
+          test "$found" = "app/src/androidTest/java/com/readfilestech/read_files_tech/vault/VaultCapacityTest.kt"
+
+      - name: Run instrumented tests on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # @CapacityTest (VaultCapacityTest: 700 MB of disk, minutes of crypto) is run by hand on each
+          # device of the plan, not on this emulator.
+          script: >-
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest
+            -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.readfilestech.read_files_tech.vault.CapacityTest
+
+      # This runner reports a test skipped by an `assume` as passed: only the reports' `skipped` count
+      # tells them apart, and an empty run looks green too.
+      - name: Instrumented tests were actually executed
+        run: python3 tools/check-test-results.py app/build/outputs/androidTest-results/connected/debug
+
+      - name: Upload instrumented reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumented-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          retention-days: 14
           if-no-files-found: ignore

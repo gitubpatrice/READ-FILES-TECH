@@ -1,0 +1,9 @@
+[
+ {"file": "excel-csv-1252.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSV, French Windows): code page 1252, ';', decimal comma, CRLF, a quoted cell with a line break and one with \"\", an empty row ';;;;;'"},
+ {"file": "excel-csv-utf8.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSVUTF8, French Windows): UTF-8 with a BOM, ';', the same sheet"},
+ {"file": "excel-empty.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Excel 16 (COM SaveAs xlCSV of an empty sheet): CRLF alone"},
+ {"file": "ps-utf8-comma.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, Export-Csv -NoTypeInformation -Encoding UTF8: BOM, ',', every field quoted, a decimal comma inside quotes, CRLF inside a quoted cell"},
+ {"file": "ps-unicode-culture-type.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, Export-Csv -UseCulture -Encoding Unicode: UTF-16 LE with a BOM, ';', the #TYPE first line of 5.1"},
+ {"file": "ps-default-culture.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, Export-Csv -NoTypeInformation -UseCulture -Encoding Default: code page 1252, ';', every field quoted"},
+ {"file": "ps-new-item-empty.csv", "viewer": "CSV", "expect": "ok", "maxMillis": 2000, "made_by": "Windows PowerShell 5.1, New-Item -ItemType File: 0 bytes"}
+]

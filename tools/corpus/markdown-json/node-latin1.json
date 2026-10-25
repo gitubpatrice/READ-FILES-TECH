@@ -1,0 +1,19 @@
+[
+    {
+        "ville": "Orléans",
+        "temp": 12.5,
+        "tags": [
+            "été",
+            "hiver"
+        ],
+        "actif": true,
+        "rien": null
+    },
+    {
+        "ville": "Zürich",
+        "temp": -3,
+        "tags": [],
+        "actif": false,
+        "rien": null
+    }
+]

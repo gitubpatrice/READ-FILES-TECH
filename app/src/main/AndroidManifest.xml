@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        No network permission (docs D-014, since Flutter 2.15.3). Removed explicitly, in case a library
+        adds one at merge time: the CI reads the MERGED release manifest and the release APK against a
+        reviewed list, with a negative control (tools/check-manifest-permissions.py).
+    -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <!--
+        Shared storage, as the 2.15.3: the app is a general file explorer, which the system's document
+        picker cannot replace (it hands out one file or folder at a time, never a browsable tree).
+        Android 11+: "All files access" (MANAGE_EXTERNAL_STORAGE), asked through the settings page;
+        Android 10 and older: the runtime storage permission, with requestLegacyExternalStorage below
+        for Android 10. Nothing runs in the background. PRIVACY.md describes it.
+        No READ_MEDIA_* and no CAMERA (docs D-027): never asked by the 2.15.x, useless with all-files
+        access, and a declared-but-refused CAMERA breaks the system camera intent.
+    -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!--
+        Installing an APK the user taps, as the 2.15.3: without it the system's installer cancels in
+        silence. Android still asks the user to allow "Install unknown apps" for this app, once.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!--
+        Package visibility (Android 11+): only the apps the explorer hands files to by name — PDF Tech
+        ("Edit in PDF Tech", its certificate checked) and the cloud apps a file is sent to: kDrive and
+        Proton Drive from the explorer, Google Drive too from the row under a tool's result — the 2.15.3's
+        four. Opening with or sharing to any other app goes through the system chooser, which needs no
+        visibility.
+    -->
+    <queries>
+        <package android:name="com.pdftech.pdf_tech" />
+        <package android:name="com.infomaniak.drive" />
+        <package android:name="me.proton.android.drive" />
+        <package android:name="com.google.android.apps.docs" />
+    </queries>
+
+    <!--
+        allowBackup / fullBackupContent / dataExtractionRules: the same as the 2.15.x. The app keeps an
+        encrypted vault and reads every file of the phone: none of its data goes to a cloud backup or a
+        device transfer. SECURITY.md states "Android backup is disabled for this app".
+    -->
+    <application
+        android:name=".RftApplication"
+        android:label="${appLabel}"
+        android:icon="@mipmap/launcher_icon"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false"
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ReadFilesTech"
+        tools:targetApi="36">
+
+        <!--
+            The HTML viewer's WebView is the system's: its maker — Google, on most phones — collects its usage
+            metrics when the user shares diagnostics with them. This app opts out (docs D-037, checked by
+            tools/check-manifest-shape.py).
+        -->
+        <meta-data
+            android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+
+        <!--
+            The FULL name com.readfilestech.read_files_tech.MainActivity is the one of the 2.15.x: the
+            launcher remembers it, and a renamed class would drop the user's pinned icon (docs D-012).
+            Checked by MainActivityNameTest (JVM) and by the instrumented InstalledPackageTest.
+
+            taskAffinity="" as in the 2.15.x: with the default affinity (the package name), another app
+            declaring the same affinity could slip its own activity into this task (task hijacking) —
+            in front of the vault's password screen once it is ported.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            The quick-settings tiles, under their 2.15.x names (docs D-012: the panel remembers a tile by
+            component). Exported for the system only: BIND_QUICK_SETTINGS_TILE is signature|privileged.
+            Their icons are masks (one colour): the 2.15.x used the launcher's PNG, drawn as a blank square.
+        -->
+        <service
+            android:name=".ScannerTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_scanner"
+            android:label="@string/tile_scanner"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".OcrTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_ocr"
+            android:label="@string/tile_ocr"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".VaultTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_vault"
+            android:label="@string/tile_vault"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!--
+            The PDF viewer's reader (docs D-029): PdfRenderer and PdfBox parse a PDF in the `:pdf` process
+            only, which a hostile file may end without ending the app. Bound by the viewer, NOT exported:
+            no other app can reach it, and it checks that its caller is this app's own uid.
+        -->
+        <service
+            android:name=".data.viewer.pdf.PdfService"
+            android:exported="false"
+            android:process=":pdf" />
+
+        <!--
+            The files handed to other apps (open with, share, send). The authority of the 2.15.x, kept
+            (docs D-012). NOT exported: an app reads only the one URI an intent granted it, for the time
+            of that intent. What may be served is decided by PathGuard first, then by file_paths.xml.
+        -->
+        <!--
+            androidx.startup runs, at the app's start, the initializers its libraries declare. EmojiCompat's
+            is removed (docs D-037): it asks a downloadable-fonts provider for the emoji font — Google Play
+            services', on most phones, by IPC; Android 10 and older see that provider without any <queries>.
+            The platform's own emoji are drawn instead. The other initializers (lifecycle, profiles) stay.
+            MissingClass ignored: the provider is androidx.startup's, a RUNTIME dependency of emoji2 and
+            lifecycle that lint does not see on the compile classpath; R8 keeps it in the release APK
+            (seeds.txt, measured 2026-10-24) and this element only merges into the one they declare.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:ignore="MissingClass"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+                tools:node="remove" />
+        </provider>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

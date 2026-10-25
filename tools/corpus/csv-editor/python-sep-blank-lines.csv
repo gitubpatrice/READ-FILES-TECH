@@ -1,0 +1,11 @@
+sep=,
+id,name,note,amount
+1,Zoé,"two
+lines",-5
+2,"Bob, Jr.","say ""hi""",+33612345678
+
+
+3,,=A1 from the file,"0,25"
+4,Ève,,
+,,,
+

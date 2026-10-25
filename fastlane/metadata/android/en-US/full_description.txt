@@ -1,32 +1,31 @@
-Read Files Tech is a Swiss army knife for the files on your Android phone: a file manager, a universal reader, a document scanner, OCR, an encrypted vault, conversion tools and an EXIF stripper. Your files are processed on the device and are never uploaded anywhere.
+Read Files Tech is a Swiss army knife for the files on your Android phone: a file manager, a universal viewer, editors, a document scanner, OCR, an encrypted vault and a set of file tools. Everything runs on the phone: the app has no internet permission.
 
 <b>Features</b>
 
 <ul>
-<li>File manager — browse, search, multi-select, bulk copy / move / rename, and a picker with smart filtering</li>
-<li>Universal reader — PDF, CSV, XLSX, DOCX, JSON, MD, TXT, HTML, ZIP, images, EPUB, and also ODT, ODS, JS, CSS, PHP, XML</li>
-<li>Document scanner — camera capture with edge detection and perspective correction, exported as PDF</li>
-<li>Latin OCR on images, running entirely on the device</li>
-<li>Encrypted vault — Argon2id key derivation, AES-256-GCM, authenticated data bound to the file name, screenshot blocking, brute-force rate limiting, and whole-folder batch encryption</li>
-<li>PDF signing with your finger</li>
-<li>Conversion — images to PDF, CSV to and from XLSX, JPG to and from PNG, TXT and MD to PDF, and more</li>
-<li>EXIF stripping — remove GPS coordinates, dates and device model before sharing a photo</li>
-<li>Global search by file name and by content</li>
-<li>Duplicate finder using SHA-256, in three passes, to reclaim storage</li>
-<li>Quick Settings tiles for the scanner, OCR and the vault</li>
-<li>APK installation from the file list, handed to the system package installer</li>
+<li>File manager — browse, search, sort, select several, rename, copy, move, a trash with undo, and APK installation handed to Android's installer</li>
+<li>Viewer — text and code, Markdown, JSON, HTML, CSV, spreadsheets (XLSX, XLS, ODS), documents (DOCX, ODT, ODP), EPUB, PDF, ZIP, images</li>
+<li>Editors — code and text with an automatic history of versions, CSV as an editable table</li>
+<li>Document scanner — edges found, perspective straightened, saved as a PDF</li>
+<li>OCR on the phone (Tesseract), in English, French, German, Italian and Spanish</li>
+<li>Encrypted vault — AES-256-GCM, a key derived from your password by Argon2id, locked automatically, and a panic erase</li>
+<li>Conversion — images to PDF, CSV to XLSX, text to PDF, PDF and DOCX to text, images to JPG or PNG</li>
+<li>Photos — smaller images, and the location, date and camera model removed before you share one</li>
+<li>Global search by name and by content, duplicates found by SHA-256, bulk rename with regular expressions</li>
+<li>Tools — color picker, compare two files, file hash, encodings, formatting, ZIP creation, text and CSV tools</li>
+<li>Quick settings tiles for the scanner, OCR and the vault</li>
+<li>In English, French, German, Italian and Spanish</li>
 </ul>
 
-<b>Privacy, stated plainly</b>
+<b>Privacy</b>
 
 <ul>
-<li>Your files never leave the phone. No account, no cloud storage, no analytics, no tracking SDK</li>
-<li>No internet permission: the app cannot connect to anything, and the build checks it before every release. It no longer looks for updates on its own — the About screen opens the releases page in your browser, which makes that connection. No file, no document content and no vault data is ever sent by the app</li>
-<li>Google ML Kit, which powers the on-device OCR, ships a telemetry transport of its own. Its three entry points — the backend registration service, the scheduler service and its alarm fallback receiver — are removed from the app's final manifest, so Android cannot start it: the code sits in the APK, inert, and could send nothing without a network permission. Verified on the merged manifest and on the built APK, not only on the source file</li>
-<li>The document scanner runs inside Google Play Services, with their own permissions, and is unavailable without them. Every other feature works without</li>
-<li>All-files access is requested because a general-purpose file manager needs it: the Storage Access Framework cannot list arbitrary folders or move files across them. Nothing is read or written in the background — you stay in control of every operation</li>
-<li>Sharing to a cloud app is an explicit action through Android's share sheet, never an automatic sync</li>
-<li>Apache License 2.0 — source code at https://github.com/gitubpatrice/READ-FILES-TECH</li>
+<li>No internet permission: the app cannot connect to anything, and its build checks it. No account, no analytics, no advertising, no tracking</li>
+<li>No Google service: OCR and the scanner are free software running inside the app</li>
+<li>All-files access is asked because a file manager needs it; nothing is read or written in the background</li>
+<li>Sending a file to a cloud app is always your action, through Android's share sheet</li>
+<li>Updates: About opens the releases page in your browser</li>
+<li>Free software under the Apache License 2.0 — https://github.com/gitubpatrice/READ-FILES-TECH</li>
 </ul>
 
 Project home: https://files-tech.com/read-files-tech.php

@@ -1,0 +1,7 @@
+[
+ {"file": "word-report.docx", "viewer": "DOCUMENT", "expect": "ok", "maxMillis": 2000, "made_by": "Word 16.0 (build 14334, LTSC 2021) through COM, tools/corpus/make_documents.ps1: SaveAs2 wdFormatXMLDocument (16). Heading, accents, tab and manual line break, bullet list, 2x3 table, footnote, picture, text box, header and footer"},
+ {"file": "word-report.odt", "viewer": "DOCUMENT", "expect": "ok", "maxMillis": 2000, "made_by": "the same Word document, SaveAs2 wdFormatOpenDocumentText (23)"},
+ {"file": "word-report.doc", "viewer": "DOCUMENT", "expect": "unsupported", "maxMillis": 2000, "made_by": "the same Word document, SaveAs2 wdFormatDocument97 (0): OLE"},
+ {"file": "word-report-password.docx", "viewer": "DOCUMENT", "expect": "unsupported", "maxMillis": 2000, "made_by": "the same Word document, SaveAs2 wdFormatXMLDocument (16) with the password 'corpus': an OLE file holding the encrypted package"},
+ {"file": "powerpoint-slides.odp", "viewer": "DOCUMENT", "expect": "ok", "maxMillis": 2000, "made_by": "PowerPoint 16.0 (build 14334) through COM, tools/corpus/make_documents.ps1: SaveAs ppSaveAsOpenDocumentPresentation (35). Two slides with accents, a bullet list, speaker notes"}
+]

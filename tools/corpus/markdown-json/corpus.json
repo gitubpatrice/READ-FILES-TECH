@@ -1,0 +1,12 @@
+[
+ {"file": "npm-README.md", "viewer": "MARKDOWN", "expect": "ok", "maxMillis": 2000, "made_by": "the README.md of npm 11, as node for Windows installs it (C:/Program Files/nodejs/node_modules/npm)"},
+ {"file": "semver-README.md", "viewer": "MARKDOWN", "expect": "ok", "maxMillis": 2000, "made_by": "the README.md of node-semver, as npm installs it (lists, code blocks, nested lists)"},
+ {"file": "commonmark-java-README.md", "viewer": "MARKDOWN", "expect": "ok", "maxMillis": 2000, "made_by": "the README.md of commonmark-java, from the GitHub API (gh api repos/commonmark/commonmark-java/readme, raw): badge images in links, fenced code"},
+ {"file": "jackson-core-README.md", "viewer": "MARKDOWN", "expect": "ok", "maxMillis": 2000, "made_by": "the README.md of jackson-core, from the GitHub API (gh api repos/FasterXML/jackson-core/readme, raw): a table of badge images in links"},
+ {"file": "npm-package.json", "viewer": "JSON", "expect": "ok", "maxMillis": 2000, "made_by": "the package.json of npm 11, as node for Windows installs it"},
+ {"file": "github-api-repo.json", "viewer": "JSON", "expect": "ok", "maxMillis": 2000, "made_by": "a GitHub API response: gh api repos/commonmark/commonmark-java"},
+ {"file": "github-api-releases.json", "viewer": "JSON", "expect": "ok", "maxMillis": 2000, "made_by": "a GitHub API response, an array of objects with Markdown in strings: gh api repos/commonmark/commonmark-java/releases?per_page=5"},
+ {"file": "node-utf16le-bom.json", "viewer": "JSON", "expect": "ok", "maxMillis": 2000, "made_by": "node 25, JSON.stringify(objects, null, 4) with CRLF, written UTF-16LE with a BOM: the encoding of Windows PowerShell 5.1's Out-File (PowerShell itself is refused to the agent that made the corpus)"},
+ {"file": "node-latin1.json", "viewer": "JSON", "expect": "ok", "maxMillis": 2000, "made_by": "the same JSON written latin1 by node: Set-Content's ANSI code page for these letters"},
+ {"file": "node-utf8-bom.json", "viewer": "JSON", "expect": "ok", "maxMillis": 2000, "made_by": "the same JSON written UTF-8 with a BOM by node: Set-Content -Encoding UTF8"}
+]

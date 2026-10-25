@@ -1,23 +1,13 @@
-# Fins de ligne des textes juridiques.
-#
-# Ces deux fichiers se vérifient par empreinte, pas à l'œil : LICENSE doit être
-# la licence Apache 2.0 officielle au bit près, et son altération passée n'avait
-# justement été vue que par comparaison de hash.
-#
-# Sans cette règle, `core.autocrlf=true` (la valeur par défaut sous Windows, et
-# celle de ce poste) convertit la copie de travail en CRLF alors que le blob
-# reste en LF. `sha256sum LICENSE` donne alors une empreinte qui ne correspond
-# ni au blob ni au texte officiel, et le contrôle semble échouer sur un fichier
-# pourtant intact — mesuré le 2026-09-20 : disque `3ddf9be5…`, blob `cfc7749b…`,
-# officiel `cfc7749b…`.
-#
-# `eol=lf` force la copie de travail en LF, si bien que les trois empreintes
-# coïncident et que le contrôle peut se faire directement sur le fichier :
-#
-#   sha256sum LICENSE
-#   curl -s https://www.apache.org/licenses/LICENSE-2.0.txt | sha256sum
-#
-# Portée volontairement limitée à ces deux fichiers : un `* text=auto` global
-# renormaliserait tout le dépôt en un seul commit, ce qui n'est pas le sujet.
-LICENSE text eol=lf
-NOTICE  text eol=lf
+# LF in the repository AND in every working copy, whatever core.autocrlf says: a file copied into the
+# APK must be byte-identical whether it was built on Windows or on Linux (lesson of Notes Tech, whose
+# res/raw pages differed by one byte per line depending on the machine).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.webp binary
+*.rftvault binary
+# The OCR's trained data (docs D-032): checked by SHA-256 before use, so never touched by a conversion.
+*.traineddata binary
+# The viewers' corpus: files as REAL software wrote them (CRLF, UTF-16, Windows-1252), byte for byte.
+tools/corpus/*/** binary

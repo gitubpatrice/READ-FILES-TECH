@@ -1,0 +1,6 @@
+Version 3.0, réécrite en Kotlin. Elle s'installe par-dessus la 2.x et garde vos données, coffre compris.
+• Par précaution, sauvegardez d'abord le coffre de la 2.x en .rftvault.
+• Cinq langues : français, anglais, allemand, italien, espagnol.
+• L'OCR et le scanner n'utilisent plus aucun service Google ; l'OCR lit les cinq langues.
+• La signature des PDF passe dans PDF Tech.
+• Ce que la 2.x avait extrait des archives dans un dossier privé peut aller dans Files Tech/Extractions.

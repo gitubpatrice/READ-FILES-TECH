@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What the FileProvider can serve — and only once PathGuard has allowed the file, for the URI an intent
+    grants. Read Files Tech is a file explorer: opening or sharing any of the user's files is its job.
+
+    - external-path ".": the primary shared storage (/storage/emulated/0), as the 2.15.x.
+    - root-path "storage/": the other volumes (/storage/XXXX-XXXX, an SD card, a USB key). The 2.15.x
+      had only the line above, so a file on an SD card could neither be opened in another app nor shared
+      (getUriForFile threw). FileProvider picks the LONGEST matching root, so the primary storage still
+      goes out as "external".
+
+    - cache-path "zip_shared/": ONE private folder, the entries of archives the user shares from the ZIP
+      viewer (ZipShares), each extracted there for that share and purged at every start. Never a vault
+      file's: the viewer offers no share when its file may not leave the app (docs D-028).
+
+    - cache-path "scanner/capture/": the files the system's camera app writes the scanner's and the OCR's
+      photos into (ACTION_IMAGE_CAPTURE, no CAMERA permission, docs D-027; CameraCapture): one empty file
+      per photo asked for, its URI granted to the camera app for that photo only and revoked when it
+      returns; the scanner moves the photo at once into the scan's folder, which nothing serves
+      (ScanFiles), the OCR deletes it once decoded. PathGuard lets nothing of cache/ but
+      zip_shared/ out: no other way out of the app reaches these files.
+
+    - cache-path "vault_shared/": the copies of vault files the user chose to share, decrypted on demand
+      (docs D-034; VaultFiles.copy with Copy.SHARE), each in a folder of its own, purged when the vault locks,
+      at the panic and at every start. PathGuard refuses this folder like the others below: only
+      FileLauncher.shareVaultCopy serves it, for the URI of the share asked for.
+
+    Nothing else private is listed: not files/ (the vault, the history), not the rest of cache/
+    (the vault files decrypted for the app's own viewers, cache/vault_decrypt/).
+-->
+<paths>
+    <external-path
+        name="external"
+        path="." />
+    <root-path
+        name="volumes"
+        path="storage/" />
+    <cache-path
+        name="zip_entries"
+        path="zip_shared/" />
+    <cache-path
+        name="scanner_capture"
+        path="scanner/capture/" />
+    <cache-path
+        name="vault_shared"
+        path="vault_shared/" />
+</paths>

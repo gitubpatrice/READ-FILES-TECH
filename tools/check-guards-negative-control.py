@@ -1,0 +1,789 @@
+#!/usr/bin/env python3
+"""NEGATIVE control of the CI guards — the proof that each can go red, and for the right reason.
+
+Why this exists
+---------------
+A guard that returned 0 whatever happened would be worse than none: it would hand out a false
+guarantee on every run. So every failure each guard claims to catch is REPRODUCED here, in a
+throwaway directory, and two things are verified:
+  - the guard returns 1, not 0;
+  - its output names the RIGHT cause. Failing for another reason is a false green in disguise.
+
+A POSITIVE WITNESS opens each series: a healthy input must return 0. Without it, a guard broken into
+returning 1 on everything would pass the whole series.
+
+Guards covered:
+  - tools/check-manifest-permissions.py  (the "no internet permission" promise)
+  - tools/check-manifest-shape.py        (backup off, nothing debuggable, the exported components)
+  - tools/check-release-apks.py          (package and versionCode of every release APK)
+  - tools/check-test-results.py          (a test run that executed zero tests)
+  - tools/check-release-classpath.py     (nothing of ML Kit, Play services, Firebase, Google's telemetry)
+
+Against REAL artefacts, which proves each guard reads what the build produces, not only a fixture:
+  --real-manifest PATH         the manifest of a release APK (apkanalyzer): the permission guard
+                               passes on it, and fails once INTERNET is injected into a copy; the shape
+                               guard (--apk, where resource references are ids) passes on it, and fails
+                               once an exported activity, allowBackup, a missing rule or a component of
+                               Google's services is injected.
+  --real-merged-manifest PATH  the merged release manifest: the same, the shape guard as it is.
+  --real-classpath PATH        the report of `:app:dependencies --configuration releaseRuntimeClasspath`:
+                               the classpath guard passes on it, and fails once ML Kit, or Play services
+                               deep in the tree, is injected into a copy.
+
+Adapted from App Manager Tech. No dependencies, never touches the repository.
+
+    python3 tools/check-guards-negative-control.py [--real-manifest PATH | --real-merged-manifest PATH | --real-classpath PATH]
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+MANIFEST_CHECK = os.path.join(HERE, "check-manifest-permissions.py")
+SHAPE_CHECK = os.path.join(HERE, "check-manifest-shape.py")
+APKS_CHECK = os.path.join(HERE, "check-release-apks.py")
+TESTS_CHECK = os.path.join(HERE, "check-test-results.py")
+CLASSPATH_CHECK = os.path.join(HERE, "check-release-classpath.py")
+VERSION_PROPERTIES = os.path.join(os.path.dirname(HERE), "version.properties")
+
+# The guards print `::error::` annotations and write the job summary under GitHub Actions. The
+# failures provoked here are EXPECTED: left in that environment, they would paint red annotations on a
+# green run, and the positive witness would write a fake test count into the summary.
+GUARD_ENV = {k: v for k, v in os.environ.items() if k not in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY")}
+
+ISOLATED = "com.readfilestech.read_files_tech.next"
+FLUTTER = "com.readfilestech.read_files_tech"
+MAIN_ACTIVITY = "com.readfilestech.read_files_tech.MainActivity"
+
+# --- Permission fixtures -------------------------------------------------------------------------
+
+
+STORAGE_PERMISSIONS = (
+    '    <uses-permission\n'
+    '        android:name="android.permission.READ_EXTERNAL_STORAGE"\n'
+    '        android:maxSdkVersion="32" />\n'
+    '    <uses-permission\n'
+    '        android:name="android.permission.WRITE_EXTERNAL_STORAGE"\n'
+    '        android:maxSdkVersion="29" />\n'
+    '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n'
+    '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n'
+)
+
+
+def manifest(package: str) -> str:
+    # Permissions written across several lines, the shape the manifest merger produces: the positive
+    # witness proves they are still READ.
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        f'    package="{package}">\n'
+        '    <uses-permission\n'
+        f'        android:name="{package}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />\n'
+        f'{STORAGE_PERMISSIONS}'
+        '    <application android:label="Read Files Tech" />\n'
+        '</manifest>\n'
+    )
+
+
+MANIFEST_OK = manifest(ISOLATED)
+
+
+def permission(name: str) -> str:
+    return f'    <uses-permission android:name="{name}" />\n'
+
+
+INTERNET_MULTI_LINE = (
+    '    <uses-permission\n'
+    '        android:name="android.permission.INTERNET"\n'
+    '        android:maxSdkVersion="99" />\n'
+)
+INTERNET_SDK_23 = '    <uses-permission-sdk-23 android:name="android.permission.INTERNET" />\n'
+INTERNET_SDK_M = '    <uses-permission-sdk-m android:name="android.permission.INTERNET" />\n'
+
+
+def with_before_application(content: str, extra: str) -> str:
+    return content.replace("    <application", extra + "    <application", 1)
+
+
+# --- Shape fixtures ------------------------------------------------------------------------------
+
+TILE = "com.readfilestech.read_files_tech.{}TileService"
+TILE_PERMISSION = "android.permission.BIND_QUICK_SETTINGS_TILE"
+
+
+def tile(name: str) -> str:
+    return (
+        f'        <service android:name="{TILE.format(name)}" android:exported="true"\n'
+        f'            android:permission="{TILE_PERMISSION}">\n'
+        '            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>\n'
+        '        </service>\n'
+    )
+
+
+QUERIES = (
+    '    <queries>\n'
+    '        <package android:name="com.pdftech.pdf_tech" />\n'
+    '        <package android:name="com.infomaniak.drive" />\n'
+    '        <package android:name="me.proton.android.drive" />\n'
+    '        <package android:name="com.google.android.apps.docs" />\n'
+    '    </queries>\n'
+)
+
+METRICS_OPT_OUT = '        <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />\n'
+EMOJI_INITIALIZER = '<meta-data android:name="androidx.emoji2.text.EmojiCompatInitializer" android:value="androidx.startup" />'
+EMOJI_FONT_QUERY = '        <intent><action android:name="androidx.content.action.LOAD_EMOJI_FONT" /></intent>\n'
+# The opt-out as the merged manifest writes it (one attribute a line) and as apkanalyzer prints the APK's.
+METRICS_OPT_OUT_RX = r'<meta-data\s+android:name="android\.webkit\.WebView\.MetricsOptOut"[^>]*/>'
+
+SHAPE_OK = (
+    '<?xml version="1.0" encoding="utf-8"?>\n'
+    '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
+    f'    package="{ISOLATED}">\n'
+    f'{QUERIES}'
+    '    <application\n'
+    '        android:allowBackup="false"\n'
+    '        android:fullBackupContent="false"\n'
+    '        android:dataExtractionRules="@xml/data_extraction_rules"\n'
+    '        android:usesCleartextTraffic="false"\n'
+    '        android:localeConfig="@xml/_generated_res_locale_config"\n'
+    '        android:requestLegacyExternalStorage="true">\n'
+    f'{METRICS_OPT_OUT}'
+    f'        <activity android:name="{MAIN_ACTIVITY}" android:exported="true" android:taskAffinity="">\n'
+    '            <intent-filter><action android:name="android.intent.action.MAIN" /></intent-filter>\n'
+    '        </activity>\n'
+    f'{tile("Scanner")}{tile("Ocr")}{tile("Vault")}'
+    '        <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver"\n'
+    '            android:exported="true" android:permission="android.permission.DUMP">\n'
+    '            <intent-filter><action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" /></intent-filter>\n'
+    '        </receiver>\n'
+    '        <provider android:name="androidx.startup.InitializationProvider" android:exported="false" />\n'
+    f'        <provider android:name="androidx.core.content.FileProvider" android:authorities="{ISOLATED}.fileprovider"\n'
+    '            android:exported="false" android:grantUriPermissions="true" />\n'
+    '    </application>\n'
+    '</manifest>\n'
+)
+
+
+def in_application(content: str, extra: str) -> str:
+    return content.replace("    </application>", extra + "    </application>", 1)
+
+
+EXTRA_EXPORTED_ACTIVITY = '        <activity android:name="com.example.TestActivity" android:exported="true" />\n'
+IMPLICITLY_EXPORTED = (
+    '        <activity android:name="com.example.Implicit">\n'
+    '            <intent-filter><action android:name="android.intent.action.VIEW" /></intent-filter>\n'
+    '        </activity>\n'
+)
+EXPORTED_PROVIDER = '        <provider android:name="com.example.Provider" android:exported="true" />\n'
+# What ML Kit brought into the merged manifest until phase 5 (docs D-032), each NOT exported: the telemetry
+# transport's scheduler, ML Kit's init provider, Firebase's component discovery and its registrars.
+TELEMETRY_SERVICE = (
+    '        <service android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"\n'
+    '            android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />\n'
+)
+MLKIT_INIT_PROVIDER = (
+    '        <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider"\n'
+    '            android:authorities="x.mlkitinitprovider" android:exported="false" />\n'
+)
+FIREBASE_DISCOVERY = (
+    '        <service android:name="com.google.firebase.components.ComponentDiscoveryService" android:exported="false">\n'
+    '            <meta-data android:name="com.google.firebase.components:com.google.mlkit.vision.text.internal.TextRegistrar"\n'
+    '                android:value="com.google.firebase.components.ComponentRegistrar" />\n'
+    '        </service>\n'
+)
+# Play services' version, as its libraries declare it: a meta-data, no component at all.
+PLAY_SERVICES_VERSION = '        <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version" />\n'
+# Another library of Google's, not one of its services: not refused.
+MATERIAL_ACTIVITY = '        <activity android:name="com.google.android.material.datepicker.Picker" android:exported="false" />\n'
+
+# --- Release APK fixtures (aapt2 badging output) -------------------------------------------------
+
+RANKS = {"universal": 0, "armeabi-v7a": 1, "arm64-v8a": 2, "x86_64": 3}
+
+
+def version_base() -> int:
+    with open(VERSION_PROPERTIES, encoding="utf-8") as f:
+        for line in f:
+            match = re.match(r"\s*versionCode\s*=\s*(\d+)\s*$", line)
+            if match:
+                return int(match.group(1))
+    raise ValueError(f"no versionCode in {VERSION_PROPERTIES}")
+
+
+def translated_languages() -> list[str]:
+    """The languages besides English, by the rule of app/build.gradle.kts: what a healthy APK carries."""
+    res = os.path.join(os.path.dirname(HERE), "app", "src", "main", "res")
+    return sorted(
+        d[len("values-"):] for d in os.listdir(res)
+        if re.fullmatch(r"values-(?!car$)[a-z]{2,3}", d) and os.path.isfile(os.path.join(res, d, "strings.xml"))
+    )
+
+
+def badging(package: str, code: int, locales: list[str] | None = None) -> str:
+    shipped = translated_languages() if locales is None else locales
+    return (f"package: name='{package}' versionCode='{code}' versionName='3.0.0' platformBuildVersionName='16'\n"
+            "locales: '--_--' " + " ".join(f"'{lang}'" for lang in shipped) + "\n")
+
+
+def locale_config(offered: list[str] | None = None) -> str:
+    """`aapt2 dump xmltree` of the generated locale config, both variants (default and v35), as AGP writes it."""
+    names = ["en"] + translated_languages() if offered is None else offered
+    entries = "".join(
+        f"      E: locale (line={i + 2})\n"
+        f'        A: http://schemas.android.com/apk/res/android:name(0x01010003)="{lang}" (Raw: "{lang}")\n'
+        for i, lang in enumerate(names)
+    )
+    return ("N: android=http://schemas.android.com/apk/res/android (line=1)\n  E: locale-config (line=1)\n" + entries) * 2
+
+
+# The paths of an APK that matter to the check: About's legal texts, among the others.
+LEGAL_ENTRIES = "AndroidManifest.xml\nclasses.dex\nassets/legal/NOTICE\nassets/legal/LICENSE\n"
+
+
+def badgings(package: str = ISOLATED, codes: dict[str, int] | None = None) -> dict[str, str]:
+    base = version_base()
+    codes = {abi: base * 10 + rank for abi, rank in RANKS.items()} | (codes or {})
+    files = {f"app-{abi}-release.apk.badging.txt": badging(package, code) for abi, code in codes.items()}
+    files |= {f"app-{abi}-release.apk.entries.txt": LEGAL_ENTRIES for abi in codes}
+    return files | {f"app-{abi}-release.apk.localeconfig.txt": locale_config() for abi in codes}
+
+
+# --- Test report fixtures ------------------------------------------------------------------------
+
+def report(name: str, tests: int, skipped: int = 0) -> str:
+    cases = "".join(f'  <testcase name="t{i}" classname="{name}" time="0.001"/>\n' for i in range(tests))
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<testsuite name="{name}" tests="{tests}" skipped="{skipped}" failures="0" errors="0">\n'
+        f"{cases}</testsuite>\n"
+    )
+
+
+def report_skips_marked_in_cases_only(name: str, tests: int) -> str:
+    """Every test skipped, marked by a <skipped/> element while the suite attribute says 0 — the shape
+    an instrumented report may take for failed assumptions."""
+    cases = "".join(
+        f'  <testcase name="t{i}" classname="{name}" time="0.001"><skipped/></testcase>\n'
+        for i in range(tests)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<testsuite name="{name}" tests="{tests}" skipped="0" failures="0" errors="0">\n'
+        f"{cases}</testsuite>\n"
+    )
+
+
+REPORTS_OK = {
+    "TEST-com.example.ATest.xml": report("com.example.ATest", 3),
+    "TEST-com.example.BTest.xml": report("com.example.BTest", 2, skipped=1),
+}
+
+
+# --- Release classpath fixtures (`:app:dependencies --configuration releaseRuntimeClasspath`) ------
+
+CLASSPATH_HEADER = (
+    "------------------------------------------------------------\n"
+    "Project ':app'\n"
+    "------------------------------------------------------------\n"
+    "\n"
+    "releaseRuntimeClasspath - Runtime classpath of '/release'.\n"
+)
+CLASSPATH_TREE = (
+    "+--- org.jetbrains.kotlin:kotlin-stdlib:2.4.10\n"
+    "|    +--- org.jetbrains:annotations:13.0 -> 23.0.0\n"
+    "|    \\--- org.jetbrains.kotlin:kotlin-stdlib-common:2.4.10 (c)\n"
+    "+--- androidx.core:core-ktx:1.19.1\n"
+    "|    \\--- androidx.core:core:1.19.1\n"
+    "|         \\--- androidx.annotation:annotation:1.10.0\n"
+    "+--- org.bouncycastle:bcutil-jdk15to18:1.72 -> org.bouncycastle:bcutil-jdk18on:1.86 (*)\n"
+    "\\--- cz.adaptech.tesseract4android:tesseract4android:4.9.0\n"
+    "     \\--- androidx.annotation:annotation:1.3.0 -> 1.10.0 (*)\n"
+)
+CLASSPATH_LEGEND = (
+    "\n"
+    "(c) - A dependency constraint, not a dependency. The dependency affected by the constraint occurs elsewhere in the tree.\n"
+    "(*) - Indicates repeated occurrences of a transitive dependency subtree.\n"
+)
+CLASSPATH_OK = CLASSPATH_HEADER + CLASSPATH_TREE + CLASSPATH_LEGEND
+
+
+def classpath_with(lines: str) -> str:
+    """The healthy report with [lines] as the first dependencies of the tree."""
+    return CLASSPATH_HEADER + lines + CLASSPATH_TREE + CLASSPATH_LEGEND
+
+
+# --- Harness -------------------------------------------------------------------------------------
+
+def write(path: str, content: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+
+
+def run(script: str, target: str, extra: list[str]) -> tuple[int, str]:
+    r = subprocess.run(
+        [sys.executable, script, *extra, target],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", env=GUARD_ENV,
+    )
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+def mutated(real: str, content: str) -> str:
+    """A REAL manifest changed by a case. Unchanged — an attribute only another manifest carries, a text that
+    moved — the case would measure the healthy manifest, and its "detected" would prove nothing."""
+    if content == real:
+        raise SystemExit("NEGATIVE CONTROL BROKEN: a mutation of the real manifest changed nothing.")
+    return content
+
+
+def manifest_case(work: str, content: str | None) -> str:
+    """Writes the manifest (None = no file at all) and returns its path."""
+    path = os.path.join(work, "manifest", "AndroidManifest.xml")
+    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+    if content is not None:
+        write(path, content)
+    return path
+
+
+def report_case(work: str, content: str | None) -> str:
+    """Writes a dependency report (None = no file at all) and returns its path."""
+    path = os.path.join(work, "classpath", "release-runtime-classpath.txt")
+    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+    if content is not None:
+        write(path, content)
+    return path
+
+
+def files_case(work: str, name: str, files: dict[str, str] | None) -> str:
+    """Writes the files into a fresh directory (None = no directory at all) and returns it."""
+    path = os.path.join(work, name)
+    shutil.rmtree(path, ignore_errors=True)
+    if files is not None:
+        # Gradle always writes a `binary/` directory next to the test reports: an empty run keeps it.
+        os.makedirs(os.path.join(path, "binary"))
+        for file_name, content in files.items():
+            write(os.path.join(path, file_name), content)
+    return path
+
+
+def without(files: dict[str, str], name: str) -> dict[str, str]:
+    return {k: v for k, v in files.items() if k != name}
+
+
+def permission_cases(work: str) -> list[tuple]:
+    network = "NETWORK permission in the release manifest"
+    wrong_package = "is not the release manifest of"
+    return [
+        ("permissions: POSITIVE WITNESS (multi-line element)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK), 0, "OK: no network permission"),
+        ("permissions: POSITIVE WITNESS, replacing build (--replace)", MANIFEST_CHECK, ["--replace"],
+         lambda: manifest_case(work, manifest(FLUTTER)), 0, "OK: no network permission"),
+        ("permissions: INTERNET on one line", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, permission("android.permission.INTERNET"))),
+         1, network),
+        ("permissions: INTERNET across several lines", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_MULTI_LINE)), 1, network),
+        ("permissions: INTERNET via uses-permission-sdk-23", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_SDK_23)), 1, network),
+        ("permissions: INTERNET via uses-permission-sdk-m", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(MANIFEST_OK, INTERNET_SDK_M)), 1, network),
+        ("permissions: ACCESS_NETWORK_STATE (androidx.work's)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.ACCESS_NETWORK_STATE"))), 1, network),
+        ("permissions: ACCESS_WIFI_STATE", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.ACCESS_WIFI_STATE"))), 1, network),
+        ("permissions: replacing build read as the isolated one", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, manifest(FLUTTER)), 1, wrong_package + " " + ISOLATED),
+        ("permissions: isolated build read with --replace", MANIFEST_CHECK, ["--replace"],
+         lambda: manifest_case(work, MANIFEST_OK), 1, wrong_package + " " + FLUTTER),
+        ("permissions: no package attribute", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(f'\n    package="{ISOLATED}"', "")), 1, "(package=None)"),
+        ("permissions: permission outside the reviewed list", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.READ_CONTACTS"))), 1, "outside the reviewed list"),
+        ("permissions: reviewed permission absent", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(
+             "DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION", "OTHER_PERMISSION")), 1, "absent from the manifest"),
+        ("permissions: all-files access absent (the explorer would see nothing on Android 11+)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(
+             '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n', "")),
+         1, "absent from the manifest"),
+        ("permissions: APK install absent (the system's installer would cancel in silence)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace(
+             '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n', "")),
+         1, "absent from the manifest"),
+        ("permissions: READ_MEDIA_IMAGES back (docs D-027)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.READ_MEDIA_IMAGES"))), 1, "outside the reviewed list"),
+        ("permissions: CAMERA back (docs D-027)", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, with_before_application(
+             MANIFEST_OK, permission("android.permission.CAMERA"))), 1, "outside the reviewed list"),
+        ("permissions: no permission at all", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.split("    <uses-permission")[0]
+                               + '    <application android:label="x" />\n</manifest>\n'),
+         1, "no permission found"),
+        ("permissions: not an application manifest", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace('    <application android:label="Read Files Tech" />\n', "")),
+         1, "is not an application manifest"),
+        ("permissions: file missing", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, None), 1, "merged manifest not found"),
+        ("permissions: malformed XML", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, MANIFEST_OK.replace("</manifest>", "")), 1, "merged manifest unreadable"),
+    ]
+
+
+def shape_cases(work: str) -> list[tuple]:
+    def case(label: str, content: str | None, code: int, text: str, extra: list[str] | None = None) -> tuple:
+        return (f"shape: {label}", SHAPE_CHECK, extra or [], lambda: manifest_case(work, content), code, text)
+
+    return [
+        case("POSITIVE WITNESS", SHAPE_OK, 0, "OK: backup off"),
+        case("allowBackup=\"true\"", SHAPE_OK.replace('allowBackup="false"', 'allowBackup="true"'),
+             1, "android:allowBackup> is 'true'"),
+        case("allowBackup absent (its default is true)", SHAPE_OK.replace('        android:allowBackup="false"\n', ""),
+             1, "android:allowBackup> is None"),
+        case("fullBackupContent absent", SHAPE_OK.replace('        android:fullBackupContent="false"\n', ""),
+             1, "android:fullBackupContent> is None"),
+        case("dataExtractionRules absent",
+             SHAPE_OK.replace('        android:dataExtractionRules="@xml/data_extraction_rules"\n', ""),
+             1, "android:dataExtractionRules> is None"),
+        case("usesCleartextTraffic=\"true\"", SHAPE_OK.replace('usesCleartextTraffic="false"', 'usesCleartextTraffic="true"'),
+             1, "android:usesCleartextTraffic> is 'true'"),
+        case("debuggable=\"true\"", SHAPE_OK.replace("<application\n", '<application\n        android:debuggable="true"\n'),
+             1, "android:debuggable='true'"),
+        case("debuggable by resource reference", SHAPE_OK.replace("<application\n", '<application\n        android:debuggable="@bool/dbg"\n'),
+             1, "android:debuggable='@bool/dbg'"),
+        case("an activity exported by resource reference",
+             in_application(SHAPE_OK, '        <activity android:name="com.example.ByRef" android:exported="@bool/x" />\n'),
+             1, "outside the reviewed list: com.example.ByRef"),
+        case("MainActivity without taskAffinity", SHAPE_OK.replace(' android:taskAffinity=""', ""),
+             1, "android:taskAffinity is None"),
+        case("an extra exported activity", in_application(SHAPE_OK, EXTRA_EXPORTED_ACTIVITY),
+             1, "outside the reviewed list: com.example.TestActivity"),
+        case("an activity exported by its intent filter alone", in_application(SHAPE_OK, IMPLICITLY_EXPORTED),
+             1, "outside the reviewed list: com.example.Implicit"),
+        case("an exported provider", in_application(SHAPE_OK, EXPORTED_PROVIDER),
+             1, "outside the reviewed list: com.example.Provider"),
+        case("the telemetry transport's scheduler, not exported", in_application(SHAPE_OK, TELEMETRY_SERVICE),
+             1, "Google component in the manifest: <service> com.google.android.datatransport."),
+        case("ML Kit's init provider, not exported", in_application(SHAPE_OK, MLKIT_INIT_PROVIDER),
+             1, "Google component in the manifest: <provider> com.google.mlkit.common.internal.MlKitInitProvider"),
+        case("Firebase's component discovery, not exported", in_application(SHAPE_OK, FIREBASE_DISCOVERY),
+             1, "Google component in the manifest: <service> com.google.firebase.components.ComponentDiscoveryService"),
+        case("an ML Kit registrar named in a meta-data", in_application(SHAPE_OK, FIREBASE_DISCOVERY.replace(
+             "com.google.firebase.components.ComponentDiscoveryService", "com.example.Discovery")),
+             1, "Google component in the manifest: <meta-data> com.google.firebase.components:com.google.mlkit."),
+        case("Play services' version, a meta-data alone", in_application(SHAPE_OK, PLAY_SERVICES_VERSION),
+             1, "Google component in the manifest: <meta-data> com.google.android.gms.version"),
+        case("another library of Google's (Material) is not refused", in_application(SHAPE_OK, MATERIAL_ACTIVITY),
+             0, "OK: backup off"),
+        case("ProfileInstallReceiver without its permission",
+             SHAPE_OK.replace(' android:permission="android.permission.DUMP"', ""),
+             1, "ProfileInstallReceiver is guarded by None"),
+        case("MainActivity renamed", SHAPE_OK.replace(MAIN_ACTIVITY, "com.readfilestech.rft.MainActivity"),
+             1, "reviewed exported component absent: " + MAIN_ACTIVITY),
+        case("localeConfig absent (no per-app language picker)",
+             SHAPE_OK.replace('        android:localeConfig="@xml/_generated_res_locale_config"\n', ""),
+             1, "android:localeConfig> is None"),
+        case("requestLegacyExternalStorage absent (Android 10 lists nothing)",
+             SHAPE_OK.replace('\n        android:requestLegacyExternalStorage="true"', ""),
+             1, "android:requestLegacyExternalStorage> is None"),
+        case("a tile without its permission (any app could bind it)",
+             SHAPE_OK.replace(f'android:name="{TILE.format("Vault")}" android:exported="true"\n            android:permission="{TILE_PERMISSION}"',
+                              f'android:name="{TILE.format("Vault")}" android:exported="true"'),
+             1, "VaultTileService is guarded by None"),
+        case("a tile renamed (the user's placed tile would vanish)", SHAPE_OK.replace(TILE.format("Ocr"), TILE.format("Text")),
+             1, "reviewed exported component absent: " + TILE.format("Ocr")),
+        case("the FileProvider exported",
+             SHAPE_OK.replace('android:exported="false" android:grantUriPermissions="true"', 'android:exported="true" android:grantUriPermissions="true"'),
+             1, "outside the reviewed list: androidx.core.content.FileProvider"),
+        case("the FileProvider under another authority",
+             SHAPE_OK.replace(f'"{ISOLATED}.fileprovider"', f'"{ISOLATED}.provider"'),
+             1, "FileProvider: authorities is"),
+        case("the FileProvider without per-URI grants",
+             SHAPE_OK.replace(' android:grantUriPermissions="true"', ""),
+             1, "android:grantUriPermissions is None"),
+        case("the FileProvider absent", SHAPE_OK.replace("androidx.core.content.FileProvider", "com.example.OtherProvider"),
+             1, "FileProvider found 0 times"),
+        case("a package queried beyond the reviewed four",
+             SHAPE_OK.replace("    </queries>", '        <package android:name="com.whatsapp" />\n    </queries>'),
+             1, "<queries> packages are"),
+        case("PDF Tech no longer queried (\"Edit in PDF Tech\" would vanish on Android 11+)",
+             SHAPE_OK.replace('        <package android:name="com.pdftech.pdf_tech" />\n', ""),
+             1, "<queries> packages are"),
+        case("replacing build read as the isolated one", SHAPE_OK.replace(f'package="{ISOLATED}"', f'package="{FLUTTER}"'),
+             1, "is not the release manifest of " + ISOLATED),
+        # The package everywhere, the FileProvider's authority included.
+        case("POSITIVE WITNESS, replacing build (--replace)",
+             SHAPE_OK.replace(ISOLATED, FLUTTER), 0, "OK: backup off", ["--replace"]),
+        case("file missing", None, 1, "merged manifest not found"),
+        case("malformed XML", SHAPE_OK.replace("</manifest>", ""), 1, "merged manifest unreadable"),
+        case("the WebView's metrics not opted out", SHAPE_OK.replace(METRICS_OPT_OUT, ""),
+             1, "meta-data android.webkit.WebView.MetricsOptOut is None"),
+        case("the WebView's metrics opt-out set to false",
+             SHAPE_OK.replace(METRICS_OPT_OUT, METRICS_OPT_OUT.replace('"true"', '"false"')),
+             1, "MetricsOptOut is 'false'"),
+        case("EmojiCompat's initializer back under androidx.startup",
+             SHAPE_OK.replace('<provider android:name="androidx.startup.InitializationProvider" android:exported="false" />',
+                              '<provider android:name="androidx.startup.InitializationProvider" android:exported="false">'
+                              + EMOJI_INITIALIZER + '</provider>'),
+             1, "meta-data androidx.emoji2.text.EmojiCompatInitializer in the manifest"),
+        case("an intent queried (every emoji-font provider made visible)",
+             SHAPE_OK.replace("    </queries>", EMOJI_FONT_QUERY + "    </queries>"),
+             1, "<queries> declares an <intent>"),
+    ]
+
+
+def apk_cases(work: str) -> list[tuple]:
+    base = version_base()
+    universal = "app-universal-release.apk.badging.txt"
+    universal_config = "app-universal-release.apk.localeconfig.txt"
+
+    def case(label: str, files: dict[str, str] | None, code: int, text: str, extra: list[str] | None = None) -> tuple:
+        return (f"apks: {label}", APKS_CHECK, (extra or []) + ["--from-badging"],
+                lambda: files_case(work, "badging", files), code, text)
+
+    return [
+        case("POSITIVE WITNESS (four APKs)", badgings(), 0, "OK: four release APKs"),
+        case("POSITIVE WITNESS, replacing build (--replace)", badgings(FLUTTER), 0, "OK: four release APKs", ["--replace"]),
+        case("universal APK left at the bare base", badgings(codes={"universal": base}),
+             1, f"app-universal-release.apk: versionCode {base}, expected {base * 10}"),
+        case("one ABI with the rank of another", badgings(codes={"x86_64": base * 10 + 2}),
+             1, f"app-x86_64-release.apk: versionCode {base * 10 + 2}, expected {base * 10 + 3}"),
+        case("a code not above Flutter 2.15.3", badgings(codes={"universal": 25503}),
+             1, "versionCode 25503 is not above 25503"),
+        case("isolated APKs released as the replacing build", badgings(), 1,
+             f"package {ISOLATED}, expected {FLUTTER}", ["--replace"]),
+        case("replacing APKs read as the isolated build", badgings(FLUTTER), 1, f"package {FLUTTER}, expected {ISOLATED}"),
+        case("an APK missing", without(badgings(), universal), 1, "release APK missing: app-universal-release.apk"),
+        case("an unexpected APK", badgings() | {"app-riscv64-release.apk.badging.txt": badging(ISOLATED, base * 10 + 4)},
+             1, "unexpected release APK: app-riscv64-release.apk"),
+        case("unreadable badging", badgings() | {universal: "ERROR: not an APK\n"}, 1, "no package line"),
+        case("a translated language stripped from one APK",
+             badgings() | {universal: badging(ISOLATED, base * 10, translated_languages()[1:])},
+             1, f"translated but not in the APK: {translated_languages()[0]}"),
+        case("the libraries' languages left in (localeFilters gone)",
+             badgings() | {universal: badging(ISOLATED, base * 10, translated_languages() + ["ar", "ja"])},
+             1, "languages no translation of this app ships: ar, ja"),
+        case("no locales line", badgings() | {universal: badging(ISOLATED, base * 10).split("locales:")[0]},
+             1, "no locales line"),
+        case("no unqualified resources (English gone)",
+             badgings() | {universal: badging(ISOLATED, base * 10).replace("'--_--' ", "")},
+             1, "English, the source, is missing"),
+        case("the picker offers a language no translation ships (a module's values-ja)",
+             badgings() | {universal_config: locale_config(["en", "ja"] + translated_languages())},
+             1, "the language picker offers ja"),
+        case("the picker does not offer a translated language",
+             badgings() | {universal_config: locale_config(["en"] + translated_languages()[1:])},
+             1, f"the language picker does not offer {translated_languages()[0]}"),
+        case("no generated locale config", without(badgings(), universal_config),
+             1, "no generated locale config"),
+        case("the licences left out of one APK (legalAssets not wired)",
+             badgings() | {"app-universal-release.apk.entries.txt": LEGAL_ENTRIES.replace("assets/legal/NOTICE\n", "")},
+             1, "assets/legal/NOTICE missing"),
+        case("directory missing", None, 1, "directory not found"),
+    ]
+
+
+def test_cases(work: str) -> list[tuple]:
+    def case(label: str, files: dict[str, str] | None, code: int, text: str) -> tuple:
+        return (f"tests: {label}", TESTS_CHECK, [], lambda: files_case(work, "test-results", files), code, text)
+
+    return [
+        case("POSITIVE WITNESS (4 executed, 1 skipped)", REPORTS_OK, 0, "Tests executed: 4 (1 skipped, 2 reports)"),
+        case("no report at all (the JUnit 6 symptom)", {}, 1, "no TEST-*.xml report"),
+        case("directory missing", None, 1, "test results directory not found"),
+        case("suites that count zero tests", {"TEST-com.example.ATest.xml": report("com.example.ATest", 0)},
+             1, "0 tests executed in"),
+        case("every test skipped, marked in the cases only",
+             {"TEST-device-_app-.xml": report_skips_marked_in_cases_only("com.example.ATest", 3)}, 1, "0 tests executed in"),
+        case("every test skipped", {"TEST-com.example.ATest.xml": report("com.example.ATest", 3, skipped=3)},
+             1, "0 tests executed in"),
+        case("malformed report", {"TEST-com.example.ATest.xml": "<testsuite tests="}, 1, "test report unreadable"),
+        case("not a JUnit report", {"TEST-com.example.ATest.xml": "<coverage/>\n"}, 1, "no <testsuite> element"),
+    ]
+
+
+def classpath_cases(work: str) -> list[tuple]:
+    def case(label: str, content: str | None, code: int, text: str) -> tuple:
+        return (f"classpath: {label}", CLASSPATH_CHECK, [], lambda: report_case(work, content), code, text)
+
+    found = "Google artefact in the release classpath: "
+    return [
+        case("POSITIVE WITNESS", CLASSPATH_OK, 0, "OK: nothing of ML Kit"),
+        case("ML Kit's text recognition, declared", classpath_with("+--- com.google.mlkit:text-recognition:16.0.1\n"),
+             1, found + "com.google.mlkit:text-recognition:16.0.1"),
+        case("Play services, three levels down, its version raised",
+             classpath_with("+--- com.example:lib:1.0\n|    \\--- com.example:inner:1.0\n"
+                            "|         \\--- com.google.android.gms:play-services-basement:18.4.0 -> 18.5.0 (*)\n"),
+             1, found + "com.google.android.gms:play-services-basement:18.5.0"),
+        case("the telemetry transport", classpath_with("+--- com.google.android.datatransport:transport-backend-cct:3.1.9\n"),
+             1, found + "com.google.android.datatransport:transport-backend-cct:3.1.9"),
+        case("Firebase's components", classpath_with("+--- com.google.firebase:firebase-components:16.1.0\n"),
+             1, found + "com.google.firebase:firebase-components:16.1.0"),
+        case("ML Kit's on-device runtime (odml)", classpath_with("+--- com.google.android.odml:image:1.0.0-beta1\n"),
+             1, found + "com.google.android.odml:image:1.0.0-beta1"),
+        case("a sub-group of a forbidden group", classpath_with("+--- com.google.firebase.example:lib:1.0\n"),
+             1, found + "com.google.firebase.example:lib:1.0"),
+        case("a module SUBSTITUTED by one of Play services",
+             classpath_with("+--- com.example:stub:1.0 -> com.google.android.gms:play-services-base:18.5.0\n"),
+             1, found + "com.google.android.gms:play-services-base:18.5.0"),
+        case("a rich version (strictly)", classpath_with("+--- com.google.mlkit:vision-common:{strictly 17.3.0} -> 17.3.0\n"),
+             1, found + "com.google.mlkit:vision-common:17.3.0"),
+        case("a constraint alone, not a dependency, is not counted",
+             classpath_with("+--- com.google.android.gms:play-services-base:18.5.0 (c)\n"), 0, "OK: nothing of ML Kit"),
+        case("another library of Google's (Material) is not refused",
+             classpath_with("+--- com.google.android.material:material:1.12.0\n"), 0, "OK: nothing of ML Kit"),
+        case("a report of another configuration",
+             CLASSPATH_OK.replace("releaseRuntimeClasspath - Runtime classpath of '/release'.", "debugRuntimeClasspath - x"),
+             1, "is not a report of releaseRuntimeClasspath"),
+        case("a resolution FAILED", classpath_with("+--- com.example:missing:1.0 FAILED\n"), 1, "a resolution FAILED"),
+        case("no dependency at all", CLASSPATH_HEADER + "No dependencies\n", 1, "lists no dependency"),
+        case("file missing", None, 1, "dependency report not found"),
+    ]
+
+
+def real_cases(work: str, path: str, merged: bool) -> list[tuple] | None:
+    with open(path, encoding="utf-8") as f:
+        real = f.read()
+    if "<application" not in real or "</application>" not in real:
+        return None
+    internet = permission("android.permission.INTERNET").strip()
+    cases = [
+        ("REAL manifest: permissions POSITIVE WITNESS", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, real), 0, "OK: no network permission"),
+        ("REAL manifest + INTERNET", MANIFEST_CHECK, [],
+         lambda: manifest_case(work, mutated(real, real.replace("<application", internet + "\n    <application", 1))),
+         1, "NETWORK permission in the release manifest"),
+    ]
+    # The shape guard reads both: the merged manifest as it is, the APK's with --apk (S8), where a
+    # resource reference is an id.
+    shape = [] if merged else ["--apk"]
+    kind = "merged manifest" if merged else "APK manifest"
+    cases += [
+        (f"REAL {kind}: shape POSITIVE WITNESS", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, real), 0, "OK: backup off"),
+        (f"REAL {kind} + an exported activity", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", EXTRA_EXPORTED_ACTIVITY + "    </application>", 1))),
+         1, "outside the reviewed list: com.example.TestActivity"),
+        (f"REAL {kind} with allowBackup=\"true\"", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace('android:allowBackup="false"', 'android:allowBackup="true"', 1))),
+         1, "android:allowBackup> is 'true'"),
+        (f"REAL {kind} without its data extraction rules", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, re.sub(r'\s*android:dataExtractionRules="[^"]*"', "", real, count=1))),
+         1, "android:dataExtractionRules> is None"),
+        (f"REAL {kind} without its per-app language list", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, re.sub(r'\s*android:localeConfig="[^"]*"', "", real, count=1))),
+         1, "android:localeConfig> is None"),
+        (f"REAL {kind} + the telemetry transport's scheduler", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", TELEMETRY_SERVICE + "    </application>", 1))),
+         1, "Google component in the manifest: <service> com.google.android.datatransport."),
+        (f"REAL {kind} + ML Kit's init provider", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", MLKIT_INIT_PROVIDER + "    </application>", 1))),
+         1, "Google component in the manifest: <provider> com.google.mlkit."),
+        (f"REAL {kind} without the WebView's metrics opt-out", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, re.sub(METRICS_OPT_OUT_RX, "", real, count=1))),
+         1, "MetricsOptOut is None"),
+        (f"REAL {kind} + EmojiCompat's initializer", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", EMOJI_INITIALIZER + "</application>", 1))),
+         1, "meta-data androidx.emoji2.text.EmojiCompatInitializer in the manifest"),
+        (f"REAL {kind} + Play services' version", SHAPE_CHECK, shape,
+         lambda: manifest_case(work, mutated(real, real.replace("</application>", PLAY_SERVICES_VERSION + "    </application>", 1))),
+         1, "Google component in the manifest: <meta-data> com.google.android.gms.version"),
+    ]
+    return cases
+
+
+def real_classpath_cases(work: str, path: str) -> list[tuple] | None:
+    with open(path, encoding="utf-8") as f:
+        real = f.read()
+    if "\n\\--- " not in real and "\n+--- " not in real:
+        return None
+    # Appended as the tree's first dependencies: ML Kit directly, Play services three levels down.
+    head, sep, tail = real.partition("releaseRuntimeClasspath - Runtime classpath of '/release'.\n")
+    if not sep:
+        return None
+
+    def injected(lines: str) -> str:
+        return head + sep + lines + tail
+
+    return [
+        ("REAL classpath: POSITIVE WITNESS", CLASSPATH_CHECK, [], lambda: report_case(work, real), 0, "OK: nothing of ML Kit"),
+        ("REAL classpath + ML Kit's text recognition", CLASSPATH_CHECK, [],
+         lambda: report_case(work, injected("+--- com.google.mlkit:text-recognition:16.0.1\n")),
+         1, "Google artefact in the release classpath: com.google.mlkit:text-recognition:16.0.1"),
+        ("REAL classpath + Play services deep in the tree", CLASSPATH_CHECK, [],
+         lambda: report_case(work, injected(
+             "+--- androidx.example:lib:1.0\n|    \\--- androidx.example:inner:1.0\n"
+             "|         \\--- com.google.android.gms:play-services-basement:18.4.0 -> 18.5.0 (*)\n")),
+         1, "Google artefact in the release classpath: com.google.android.gms:play-services-basement:18.5.0"),
+    ]
+
+
+def main(argv: list[str]) -> int:
+    real_path, merged = None, False
+    if len(argv) == 3 and argv[1] in ("--real-manifest", "--real-merged-manifest", "--real-classpath"):
+        real_path, merged = argv[2], argv[1] == "--real-merged-manifest"
+    elif len(argv) != 1:
+        print(__doc__)
+        return 2
+
+    for script in (MANIFEST_CHECK, SHAPE_CHECK, APKS_CHECK, TESTS_CHECK, CLASSPATH_CHECK):
+        if not os.path.isfile(script):
+            print(f"ERROR: {script} not found.")
+            return 2
+    if real_path is not None and not os.path.isfile(real_path):
+        # Asked for and absent is a failure, never a skip: a skipped case would pass for a green one.
+        print(f"ERROR: {argv[1]} {real_path} not found. Build it first.")
+        return 1
+
+    work = tempfile.mkdtemp(prefix="ci-guards-")
+    cases = permission_cases(work) + shape_cases(work) + apk_cases(work) + test_cases(work) + classpath_cases(work)
+    if real_path is not None:
+        classpath = argv[1] == "--real-classpath"
+        extra = real_classpath_cases(work, real_path) if classpath else real_cases(work, real_path, merged)
+        if extra is None:
+            print(f"ERROR: {real_path} has no {'dependency tree' if classpath else '<application> element'} to inject into.")
+            shutil.rmtree(work, ignore_errors=True)
+            return 1
+        cases += extra
+
+    failures = []
+    try:
+        for label, guard, extra_args, setup, expected_code, expected_text in cases:
+            code, output = run(guard, setup(), extra_args)
+            if code != expected_code:
+                verdict = "NOT DETECTED" if expected_code else "REFUSED a healthy input"
+                print(f"  FAIL  {label:62s} code={code} (expected {expected_code}) {verdict}")
+                print("        " + output.strip().replace("\n", "\n        "))
+                failures.append(label)
+            elif expected_text not in output:
+                print(f"  FAIL  {label:62s} right code, but for ANOTHER reason")
+                print(f"        expected: {expected_text}")
+                print("        " + output.strip().replace("\n", "\n        "))
+                failures.append(label)
+            else:
+                print(f"  OK    {label:62s} {'passes' if expected_code == 0 else 'detected, right cause'}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+    print()
+    if failures:
+        print(f"NEGATIVE CONTROL: {len(cases) - len(failures)}/{len(cases)} -- FAILED: {', '.join(failures)}")
+        return 1
+    print(f"NEGATIVE CONTROL: {len(cases)}/{len(cases)} -- every defect is detected, and for the right reason.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

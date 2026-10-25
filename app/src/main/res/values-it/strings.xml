@@ -1,0 +1,1398 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Italian. Formal address (Lei, capitalised: Lei, Suo, Sua, Le), as in App Manager Tech; vocabulary
+     shared with Notes Tech, SMS Tech and App Manager Tech: cassaforte (vault), cestino (trash), modalità
+     panico (panic mode), backup / eseguire il backup (backup / back up), ripristinare (restore), bloccare /
+     sbloccare (lock / unlock), impostazioni (settings), autorizzazione (permission), cronologia (history),
+     password, cifrare / decifrare (encrypt / decrypt), visualizzatore (viewer), codifica (encoding),
+     memoria (storage), volume (volume), voce (archive entry), modello (regex pattern). Plurals: "one",
+     "many" (CLDR's form for millions, "1 000 000 di file") and "other". Every apostrophe is escaped.
+     Android's own labels are quoted as Android shows them in Italian. -->
+<resources>
+
+    <!-- Common actions -->
+    <string name="action_allow">Consenti</string>
+    <string name="action_back">Indietro</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_close">Chiudi</string>
+    <string name="action_create">Crea</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_delete_forever">Elimina definitivamente</string>
+    <string name="action_later">Più tardi</string>
+    <string name="action_more">Altre opzioni</string>
+    <string name="action_ok">OK</string>
+    <string name="action_open">Apri</string>
+    <string name="action_open_settings">Apri le impostazioni</string>
+    <string name="action_refresh">Aggiorna</string>
+    <string name="action_settings">Impostazioni</string>
+    <string name="action_undo">Annulla</string>
+    <string name="yes">sì</string>
+    <string name="entry_selected">Selezionato</string>
+
+    <!-- Size units (binary, as the 2.15.x) -->
+    <string name="unit_bytes">B</string>
+    <string name="unit_kilobytes">KB</string>
+    <string name="unit_megabytes">MB</string>
+    <string name="unit_gigabytes">GB</string>
+
+    <!-- First launch and storage access -->
+    <string name="welcome_title">Le diamo il benvenuto in Read Files Tech</string>
+    <string name="welcome_body_all_files">Per esplorare e leggere i Suoi file (PDF, DOCX, immagini, ZIP…) ovunque sul Suo telefono, l\'app ha bisogno dell\'autorizzazione «Accesso a tutti i file».\n\n➜ Si apriranno le impostazioni.\n➜ Attivi «Consenti l\'accesso per gestire tutti i file».\n➜ Torni all\'app.\n\nNessun file viene inviato altrove.</string>
+    <string name="welcome_body_storage">Per esplorare e leggere i Suoi file (PDF, DOCX, immagini, ZIP…) ovunque sul Suo telefono, l\'app ha bisogno di accedere alla memoria: Android ora Le chiederà l\'autorizzazione.\n\nNessun file viene inviato altrove.</string>
+    <string name="all_files_instructions">Attivi «Consenti l\'accesso per gestire tutti i file», poi torni all\'app.</string>
+    <string name="access_banner_all_files">Accesso ai file limitato — consenta l\'accesso a tutti i file.</string>
+    <string name="access_banner_storage">Accesso ai file limitato — consenta l\'accesso alla memoria.</string>
+    <string name="access_denied_title">Accesso ai file negato</string>
+    <string name="access_denied_body">Per mostrare i file di questa cartella, consenta a Read Files Tech di accedere ai Suoi file.</string>
+
+    <!-- Explorer -->
+    <string name="explorer_title">Esplora file</string>
+    <string name="explorer_search_hint">Cerca…</string>
+    <string name="folder_empty">Cartella vuota</string>
+    <string name="folder_unreadable">Questa cartella non può essere letta</string>
+    <string name="folder_pick_volume">Apra uno dei volumi che contiene:</string>
+    <string name="folder_no_match">Nessun elemento corrisponde a «%1$s»</string>
+    <string name="folder_only_hidden">Qui ci sono solo elementi nascosti</string>
+    <string name="pick_folder_title">Scegli una cartella</string>
+    <string name="pick_file_title">Scegli un file</string>
+    <string name="pick_files_title">Scegli dei file</string>
+    <string name="folder_no_compatible">Nessun file compatibile qui (%1$s)</string>
+    <string name="picker_tab_recents">Recenti</string>
+    <string name="picker_tab_browse">Sfoglia</string>
+    <string name="picker_shortcuts">Scorciatoie</string>
+    <string name="picker_all_folders">Tutte le cartelle</string>
+    <string name="picker_filter">Filtro attivo: %1$s</string>
+    <string name="picker_empty_title">Nessun file recente</string>
+    <string name="picker_empty_body">I file che apre, e quelli creati dagli strumenti (conversioni, scanner, OCR…), compaiono qui da soli.</string>
+    <string name="recent_remove">Rimuovi dai recenti</string>
+    <string name="recent_removed">Rimosso dai recenti</string>
+    <string name="picker_downloads">Download</string>
+    <string name="picker_documents">Documenti</string>
+    <string name="picker_camera">Foto</string>
+    <string name="picker_pictures">Galleria</string>
+    <string name="picker_movies">Video</string>
+    <string name="picker_music">Musica</string>
+    <string name="picker_screenshots">Screenshot</string>
+    <string name="picker_apks">APK</string>
+    <string name="output_private">Conservato nella memoria privata dell\'app: non può essere condiviso da qui.</string>
+    <string name="home_tab_home">Home</string>
+    <string name="home_tab_tools">Strumenti</string>
+    <string name="home_open_file">Apri un file</string>
+    <string name="home_storage">Memoria interna</string>
+    <string name="home_space_used">%1$s usati su %2$s</string>
+    <string name="home_space_free">%1$s liberi</string>
+    <string name="home_resume">Riprendi</string>
+    <string name="home_quick_access">Accesso rapido</string>
+    <string name="home_favorites">Preferiti</string>
+    <string name="home_recent">Aperti di recente</string>
+    <string name="home_search">Cerca nei file recenti</string>
+    <string name="home_search_hint">Nome di un file recente</string>
+    <string name="home_no_result">Nessun risultato</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="theme_system">Come il sistema</string>
+    <string name="quick_camera">Fotocamera</string>
+    <string name="favorite_add">Aggiungi ai preferiti</string>
+    <string name="favorite_remove">Rimuovi dai preferiti</string>
+    <string name="date_today">Oggi</string>
+    <string name="date_yesterday">Ieri</string>
+    <plurals name="date_days_ago">
+        <item quantity="one">%d giorno fa</item>
+        <item quantity="many">%d di giorni fa</item>
+        <item quantity="other">%d giorni fa</item>
+    </plurals>
+    <string name="action_choose_this_folder">Scegli questa cartella</string>
+    <string name="action_new_folder">Nuova cartella</string>
+    <string name="new_folder_hint">Nome della cartella</string>
+    <string name="action_hide_hidden">Nascondi i file nascosti</string>
+    <string name="action_show_hidden">Mostra i file nascosti</string>
+    <string name="action_sort">Ordina</string>
+    <string name="sort_name">Nome</string>
+    <string name="sort_date">Data</string>
+    <string name="sort_size">Dimensione</string>
+    <string name="action_volumes">Volumi di archiviazione</string>
+    <string name="action_clear_search">Cancella la ricerca</string>
+    <string name="action_clear_selection">Annulla la selezione</string>
+    <string name="action_select_all">Seleziona tutto</string>
+    <string name="action_open_with">Apri con…</string>
+    <string name="open_with_title">Apri con</string>
+    <string name="action_preview">Anteprima</string>
+    <string name="action_edit_in_pdf_tech">Modifica in PDF Tech</string>
+    <string name="action_share">Condividi</string>
+    <string name="share_title">Condividi</string>
+    <string name="action_send_to_kdrive">Invia a kDrive</string>
+    <string name="action_send_to_proton">Invia a Proton Drive</string>
+    <string name="action_rename">Rinomina</string>
+    <string name="action_copy_to">Copia in…</string>
+    <string name="action_move_to">Sposta in…</string>
+    <string name="action_info">Informazioni</string>
+    <string name="action_trash">Sposta nel cestino</string>
+    <string name="action_copy_path">Copia il percorso</string>
+    <string name="share_no_files">Nessun file da condividere (le cartelle sono escluse)</string>
+    <string name="delete_forever_file">Eliminare definitivamente «%1$s»?\nL\'operazione è irreversibile: il file non passa dal cestino.</string>
+    <string name="delete_forever_folder">Eliminare definitivamente «%1$s»?\nLa cartella e tutto il suo contenuto verranno eliminati.\nL\'operazione è irreversibile: niente passa dal cestino.</string>
+    <plurals name="delete_forever_many">
+        <item quantity="one">Eliminare definitivamente %d elemento?\nLe cartelle vengono eliminate con tutto il loro contenuto.\nL\'operazione è irreversibile: niente passa dal cestino.</item>
+        <item quantity="many">Eliminare definitivamente %d di elementi?\nLe cartelle vengono eliminate con tutto il loro contenuto.\nL\'operazione è irreversibile: niente passa dal cestino.</item>
+        <item quantity="other">Eliminare definitivamente %d elementi?\nLe cartelle vengono eliminate con tutto il loro contenuto.\nL\'operazione è irreversibile: niente passa dal cestino.</item>
+    </plurals>
+    <plurals name="item_count">
+        <item quantity="one">%d elemento</item>
+        <item quantity="many">%d di elementi</item>
+        <item quantity="other">%d elementi</item>
+    </plurals>
+    <plurals name="action_confirm_files">
+        <item quantity="one">Conferma (%d file)</item>
+        <item quantity="many">Conferma (%d di file)</item>
+        <item quantity="other">Conferma (%d file)</item>
+    </plurals>
+    <plurals name="selected_count">
+        <item quantity="one">%d selezionato</item>
+        <item quantity="many">%d selezionati</item>
+        <item quantity="other">%d selezionati</item>
+    </plurals>
+
+    <!-- File information -->
+    <string name="info_type">Tipo</string>
+    <string name="info_type_file">File</string>
+    <string name="info_type_folder">Cartella</string>
+    <string name="info_extension">Estensione</string>
+    <string name="info_mime">Tipo MIME</string>
+    <string name="info_size">Dimensione</string>
+    <plurals name="bytes_count">
+        <item quantity="one">%,d byte</item>
+        <item quantity="many">%,d di byte</item>
+        <item quantity="other">%,d byte</item>
+    </plurals>
+    <string name="info_items">Elementi</string>
+    <string name="info_modified">Modificato</string>
+    <string name="info_accessed">Ultimo accesso</string>
+    <string name="info_symlink">Collegamento simbolico</string>
+    <string name="info_path">Percorso</string>
+    <string name="info_unknown">sconosciuto</string>
+
+    <!-- Preview -->
+    <string name="preview_empty">File vuoto</string>
+    <string name="preview_unreadable">Impossibile leggere il file.</string>
+
+    <!-- Results of file operations -->
+    <string name="trashed_one">«%1$s» spostato nel cestino</string>
+    <plurals name="trashed_many">
+        <item quantity="one">%d spostato nel cestino</item>
+        <item quantity="many">%d spostati nel cestino</item>
+        <item quantity="other">%d spostati nel cestino</item>
+    </plurals>
+    <string name="restored_one">Ripristinato: %1$s</string>
+    <plurals name="restore_failed">
+        <item quantity="one">Impossibile ripristinare %d elemento</item>
+        <item quantity="many">Impossibile ripristinare %d di elementi</item>
+        <item quantity="other">Impossibile ripristinare %d elementi</item>
+    </plurals>
+    <plurals name="deleted_many">
+        <item quantity="one">%d eliminato</item>
+        <item quantity="many">%d eliminati</item>
+        <item quantity="other">%d eliminati</item>
+    </plurals>
+    <plurals name="copied_many">
+        <item quantity="one">%d copiato</item>
+        <item quantity="many">%d copiati</item>
+        <item quantity="other">%d copiati</item>
+    </plurals>
+    <plurals name="moved_many">
+        <item quantity="one">%d spostato</item>
+        <item quantity="many">%d spostati</item>
+        <item quantity="other">%d spostati</item>
+    </plurals>
+    <plurals name="errors_count">
+        <item quantity="one">%d errore</item>
+        <item quantity="many">%d di errori</item>
+        <item quantity="other">%d errori</item>
+    </plurals>
+    <plurals name="folders_skipped">
+        <item quantity="one">%d cartella esclusa (solo file)</item>
+        <item quantity="many">%d di cartelle escluse (solo file)</item>
+        <item quantity="other">%d cartelle escluse (solo file)</item>
+    </plurals>
+
+    <!-- Why an operation failed -->
+    <string name="error_create_folder">Impossibile creare questa cartella: %1$s</string>
+    <string name="error_rename">Impossibile rinominare: %1$s</string>
+    <string name="error_trash">Impossibile spostare nel cestino: %1$s</string>
+    <string name="error_restore">Impossibile ripristinare: %1$s</string>
+    <string name="error_invalid_name">nome non valido (/ \\ . e .. non sono consentiti)</string>
+    <string name="error_already_exists">esiste già un elemento con questo nome</string>
+    <string name="error_no_free_name">nessun nome libero rimasto nella cartella</string>
+    <string name="error_access_denied">autorizzazione negata</string>
+    <string name="error_not_found">l\'elemento non esiste più</string>
+    <string name="error_read_only">il volume è di sola lettura</string>
+    <string name="error_no_space">spazio insufficiente</string>
+    <string name="error_name_too_long">nome troppo lungo</string>
+    <string name="error_io">errore di lettura o di scrittura</string>
+    <string name="error_unexpected">Qualcosa è andato storto.</string>
+    <string name="error_no_app">Nessuna app trovata per aprire questo file.</string>
+    <string name="error_app_not_installed">%1$s non è installata su questo dispositivo.</string>
+    <string name="error_file_not_shareable">Questo file non può essere passato a un\'altra app.</string>
+    <string name="error_open_failed">Impossibile aprire questo file.</string>
+
+    <!-- Trash -->
+    <string name="trash_title">Cestino</string>
+    <string name="action_restore">Ripristina</string>
+    <string name="trash_empty_action">Svuota il cestino</string>
+    <string name="trash_empty_title">Il cestino è vuoto</string>
+    <string name="trash_empty_body">Gli elementi spostati nel cestino da Esplora file restano qui finché non li elimina.</string>
+    <string name="trash_delete_one">Eliminare definitivamente «%1$s»?\nL\'operazione è irreversibile.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">Eliminare definitivamente %d elemento?\nL\'operazione è irreversibile.</item>
+        <item quantity="many">Eliminare definitivamente %d di elementi?\nL\'operazione è irreversibile.</item>
+        <item quantity="other">Eliminare definitivamente %d elementi?\nL\'operazione è irreversibile.</item>
+    </plurals>
+
+    <!-- Global search -->
+    <string name="search_title">Ricerca globale</string>
+    <string name="search_name_label">Il nome del file contiene</string>
+    <string name="search_name_hint">es. fattura</string>
+    <string name="search_content_label">Il contenuto contiene (solo file di testo)</string>
+    <string name="search_content_hint">es. IVA</string>
+    <string name="search_choose_root">Scegli la cartella in cui cercare</string>
+    <string name="search_needs_criteria">Inserisca un nome OPPURE un contenuto da cercare</string>
+    <string name="action_search">Cerca</string>
+    <string name="action_stop">Interrompi</string>
+    <plurals name="search_scanned">
+        <item quantity="one">Esaminato: %d file</item>
+        <item quantity="many">Esaminati: %d di file</item>
+        <item quantity="other">Esaminati: %d file</item>
+    </plurals>
+    <plurals name="search_found">
+        <item quantity="one">%d trovato</item>
+        <item quantity="many">%d trovati</item>
+        <item quantity="other">%d trovati</item>
+    </plurals>
+    <string name="search_running">Ricerca…</string>
+    <string name="search_enter">Inserisca parte di un nome o di un contenuto, poi avvii la ricerca.</string>
+    <string name="search_no_result">Nessun file trovato.</string>
+    <string name="search_stopped">Ricerca interrotta prima della fine.</string>
+    <plurals name="search_name_only">
+        <item quantity="one">%1$d file di testo oltre %2$d MB è stato cercato solo per nome</item>
+        <item quantity="many">%1$d file di testo oltre %2$d MB sono stati cercati solo per nome</item>
+        <item quantity="other">%1$d file di testo oltre %2$d MB sono stati cercati solo per nome</item>
+    </plurals>
+    <plurals name="search_results">
+        <item quantity="one">%d risultato</item>
+        <item quantity="many">%d di risultati</item>
+        <item quantity="other">%d risultati</item>
+    </plurals>
+
+    <!-- Quick-settings tiles -->
+    <string name="tile_scanner">Scanner Files Tech</string>
+    <string name="tile_ocr">OCR Files Tech</string>
+    <string name="tile_vault">Cassaforte Files Tech</string>
+
+    <!-- Screens of a later phase of the port (reached from the quick-settings tiles) -->
+    <string name="feature_scanner">Scanner</string>
+    <string name="feature_ocr">OCR</string>
+    <string name="feature_vault">Cassaforte</string>
+    <string name="feature_apk_install">Installa un\'app</string>
+    <string name="action_install">Installa</string>
+    <string name="install_version">Versione %1$s · %2$s</string>
+    <string name="install_not_apk">Android non riesce a leggere questo file come un\'app da installare.</string>
+    <string name="install_permission">Per installare un\'app da Read Files Tech, consenta prima «Installa app sconosciute» per Read Files Tech nelle impostazioni di Android, poi torni qui.</string>
+    <string name="error_no_settings">Questa impostazione non può essere aperta su questo telefono.</string>
+    <string name="install_changed">Il file è cambiato da quando è stato mostrato: lo controlli di nuovo.</string>
+    <string name="feature_color_picker">Selettore colore</string>
+    <string name="feature_txt_tools">Strumenti testo</string>
+    <string name="feature_csv_tools">Strumenti CSV</string>
+    <string name="feature_diff">Confronta</string>
+    <string name="feature_hash">Hash dei file</string>
+    <string name="feature_encode">Codifica</string>
+    <string name="feature_format">Formatta</string>
+    <string name="feature_editor">Editor</string>
+    <string name="feature_content_search">Cerca</string>
+    <string name="feature_csv_editor">Editor CSV</string>
+    <string name="feature_zip_creator">Crea uno ZIP</string>
+    <string name="feature_convert">Converti</string>
+    <string name="feature_compress">Comprimi</string>
+    <string name="feature_exif">Rimuovi EXIF</string>
+    <string name="feature_duplicates">Duplicati &amp; file grandi</string>
+    <string name="feature_settings">Impostazioni</string>
+    <string name="feature_about">Informazioni</string>
+    <string name="settings_appearance">Aspetto</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_language">Lingua dell\'app</string>
+    <string name="settings_language_summary">Apre le impostazioni di Android, dove può scegliere la lingua di questa app. Read Files Tech segue la lingua del Suo telefono, a meno che non ne scelga un\'altra lì.</string>
+    <string name="settings_outputs">File che crea</string>
+    <string name="settings_output_folder">Cartella di destinazione</string>
+    <string name="settings_output_choose">Scegliere la cartella di destinazione</string>
+    <string name="settings_output_open">Aprire la cartella in Esplora file</string>
+    <string name="settings_output_reset">Ripristinare la cartella predefinita</string>
+    <string name="settings_output_fallback">Impossibile scrivere in questa cartella: per ora i Suoi file vanno in %1$s.</string>
+    <string name="settings_output_fallback_private">Nessuna cartella della memoria del telefono può ricevere i Suoi file: per ora vanno nella memoria propria dell\'app, che Esplora file non può aprire.</string>
+    <string name="settings_output_nowhere">Nessuna cartella può ricevere i Suoi file: gli strumenti non possono salvare ciò che creano.</string>
+    <string name="settings_output_changed">Ora i Suoi file vanno in %1$s. Quelli creati prima restano in %2$s.</string>
+    <string name="settings_output_not_on_storage">Questa cartella non si trova nella memoria del telefono.</string>
+    <string name="settings_output_app_folder">Android riserva le cartelle Android/data e Android/obb a ciascuna app: scelga un\'altra cartella.</string>
+    <string name="settings_output_not_writable">Impossibile scrivere in questa cartella: ne scelga un\'altra.</string>
+    <string name="settings_not_saved">Non è stato possibile salvare l\'impostazione.</string>
+    <string name="settings_auto_share">Condividere automaticamente dopo la creazione</string>
+    <string name="settings_auto_share_summary">Apre la finestra di condivisione di Android appena uno strumento ha creato un file (scansione, conversione, OCR…).</string>
+    <string name="settings_subfolders">Sottocartelle</string>
+    <string name="settings_outputs_info">I file creati dagli strumenti vengono salvati automaticamente in questa cartella, ogni tipo nella sua sottocartella. Li ritrova in qualsiasi momento in Esplora file, anche senza averli condivisi.</string>
+    <string name="output_category_scans">Documenti scansionati (PDF)</string>
+    <string name="output_category_conversions">Conversioni, PDF di testi e di file CSV, file CSV uniti, copie create da «Sostituisci tutto», archivi ZIP, file formattati</string>
+    <string name="output_category_compressions">Immagini compresse</string>
+    <string name="output_category_no_exif">Immagini senza i loro dati EXIF</string>
+    <string name="output_category_ocr">Testi riconosciuti dall\'OCR</string>
+    <string name="output_category_vault_backups">Backup della cassaforte (.rftvault)</string>
+    <string name="output_category_extractions">Archivi estratti dal visualizzatore ZIP, una cartella ciascuno</string>
+    <string name="about_tagline">Visualizzatore, editor ed esploratore di file</string>
+    <string name="about_check_updates">Verificare gli aggiornamenti</string>
+    <string name="about_check_updates_note">Apre la pagina delle versioni su GitHub nel Suo browser — l\'app stessa non si connette mai a Internet.</string>
+    <string name="about_privacy">Privacy</string>
+    <string name="about_privacy_title">I Suoi file restano sul Suo telefono</string>
+    <string name="about_badge_no_ads">Nessuna pubblicità</string>
+    <string name="about_badge_no_trackers">Nessun tracker</string>
+    <string name="about_badge_no_internet">Nessuna autorizzazione Internet</string>
+    <string name="about_badge_no_collection">Nessun dato raccolto</string>
+    <string name="about_badge_no_sharing">Niente condiviso senza di Lei</string>
+    <string name="about_badge_no_google">Nessun servizio Google</string>
+    <string name="about_features">Funzionalità</string>
+    <string name="about_feature_viewer">Visualizzatore</string>
+    <string name="about_feature_viewer_desc">Testo e codice, Markdown, JSON, HTML, CSV, fogli di calcolo (XLSX, XLS, ODS), documenti (DOCX, ODT, ODP), EPUB, PDF, ZIP, immagini</string>
+    <string name="about_feature_editor_desc">Codice e testo con cronologia automatica delle versioni, CSV come tabella modificabile</string>
+    <string name="about_feature_explorer_desc">Sfogliare, cercare, ordinare, rinominare, copiare, spostare, cestino con annullamento, installare un APK</string>
+    <string name="about_feature_tools">Strumenti</string>
+    <string name="about_feature_tools_desc">Selettore di colori, confronto, hash di file, codifica, formattazione, ricerca nel contenuto, creazione di ZIP, strumenti per testo e CSV</string>
+    <string name="about_feature_home">Home</string>
+    <string name="about_feature_home_desc">Memoria, riprendere, accesso rapido alle cartelle, preferiti, file recenti</string>
+    <string name="about_feature_vault_desc">File cifrati sul telefono (AES-256-GCM, chiave derivata dalla Sua password con Argon2id), blocco automatico</string>
+    <string name="about_feature_convert_desc">Immagini → PDF, CSV → XLSX, testo → PDF, PDF e DOCX → testo, immagini in JPG o PNG</string>
+    <string name="about_feature_ocr_desc">Testo riconosciuto nelle immagini, sul telefono (Tesseract): inglese, francese, tedesco, italiano, spagnolo</string>
+    <string name="about_feature_scanner_desc">Documenti in PDF: bordi rilevati, prospettiva raddrizzata</string>
+    <string name="about_feature_compress_desc">Immagini più leggere: qualità e dimensioni</string>
+    <string name="about_feature_exif_desc">Rimuove da una foto il luogo, la data e il modello della fotocamera prima di condividerla</string>
+    <string name="about_feature_rename">Rinomina multipla</string>
+    <string name="about_feature_rename_desc">Numerazione, prefisso e suffisso, espressioni regolari, su una selezione</string>
+    <string name="about_feature_reader">Modalità lettura</string>
+    <string name="about_feature_reader_desc">Libri EPUB e pagine HTML senza elementi superflui, nella dimensione del testo che preferisce</string>
+    <string name="about_feature_tiles">Riquadri delle impostazioni rapide</string>
+    <string name="about_feature_tiles_desc">Scanner, OCR e Cassaforte dalla tendina delle notifiche</string>
+    <string name="about_feature_cloud">Invio a un\'app cloud</string>
+    <string name="about_feature_cloud_desc">Su Sua richiesta, a kDrive, Google Drive o Proton Drive se installati — l\'app stessa non invia nulla</string>
+    <string name="about_feature_search">Ricerca globale</string>
+    <string name="about_feature_search_desc">Per nome e per contenuto, in tutto il telefono</string>
+    <string name="about_feature_duplicates_desc">File identici trovati tramite il loro SHA-256, i più grandi elencati, per liberare spazio</string>
+    <string name="about_permissions">Autorizzazioni e perché</string>
+    <string name="about_perm_all_files">Da Android 11: l\'accesso a tutti i file, che Lei concede nelle impostazioni di Android. Permette a Esplora file di sfogliare, aprire e modificare i Suoi file, solo quando lo chiede: in background non viene letto nulla.</string>
+    <string name="about_perm_storage">Lo stesso accesso sulle versioni precedenti (lettura fino ad Android 12, scrittura fino ad Android 10); fino ad Android 10 è Android a chiederglielo nella propria finestra di dialogo.</string>
+    <string name="about_perm_install">Affida un APK che tocca in Esplora file al programma di installazione di Android, che chiede la propria conferma. Android Le chiede inoltre, una volta, di consentire a questa app di installare app sconosciute.</string>
+    <string name="about_perm_no_internet_name">INTERNET — non richiesta</string>
+    <string name="about_perm_no_internet">L\'app non ha alcuna autorizzazione di rete. I link di questa pagina si aprono nel Suo browser, fuori dall\'app.</string>
+    <string name="about_author">Autore</string>
+    <string name="about_author_role">Sviluppatore</string>
+    <string name="about_settings">Cartella di destinazione e condivisione automatica</string>
+    <string name="about_settings_summary">Scegliere dove vengono salvati scansioni, conversioni e gli altri file che crea</string>
+    <string name="about_help">Guida rapida</string>
+    <string name="about_help_open">Aprire un file</string>
+    <string name="about_help_open_1">«Apri un file» in fondo alla schermata iniziale</string>
+    <string name="about_help_open_2">Oppure sfogli Esplora file, poi tocchi il file</string>
+    <string name="about_help_open_3">Oppure tocchi una cartella dell\'accesso rapido per andarci direttamente</string>
+    <string name="about_help_access">Accesso alla memoria (se le cartelle sembrano vuote)</string>
+    <string name="about_help_access_1">Al primo avvio, consenta l\'accesso a tutti i Suoi file</string>
+    <string name="about_help_access_2">Altrimenti tocchi «Impostazioni» sul banner di avviso di Esplora file: apre la pagina giusta delle impostazioni di Android</string>
+    <string name="about_help_updates">Aggiornamenti</string>
+    <string name="about_help_updates_1">L\'app non si connette a Internet: non cerca mai aggiornamenti da sola</string>
+    <string name="about_help_updates_2">Tocchi «Verificare gli aggiornamenti» qui sopra: la pagina delle versioni si apre nel Suo browser</string>
+    <string name="about_support">Aiuto e assistenza</string>
+    <string name="about_contact">Contattare l\'assistenza</string>
+    <string name="about_website">Sito ufficiale</string>
+    <string name="about_source">Codice sorgente</string>
+    <string name="about_report_bug">Segnalare un bug</string>
+    <string name="about_report_bug_summary">Un\'e-mail con le versioni dell\'app e di Android già compilate, che scrive e invia personalmente</string>
+    <string name="about_mail_bug_body">Descriva il problema:\n\n\n— Versione: %1$s\n— Android: %2$s\n— Telefono: </string>
+    <string name="about_no_mail_app">Nessuna app di posta: l\'indirizzo è stato copiato, %1$s.</string>
+    <string name="about_legal">Note legali</string>
+    <string name="legal_privacy">Informativa sulla privacy</string>
+    <string name="legal_terms">Condizioni d\'uso</string>
+    <string name="legal_notices">Licenze dei componenti di terze parti</string>
+    <string name="legal_notices_summary">Il software incluso in Read Files Tech, con le sue note di copyright e le sue licenze</string>
+    <string name="legal_license">Licenza di Read Files Tech</string>
+    <string name="legal_license_summary">Licenza Apache 2.0 — il codice sorgente è pubblicato su GitHub</string>
+    <string name="about_credits">Realizzata con cura da %1$s. Software libero e open source: il codice è pubblico e verificabile.</string>
+    <string name="settings_security">Sicurezza</string>
+    <string name="settings_about">Informazioni su Read Files Tech</string>
+    <string name="settings_about_summary">Privacy, funzionalità, guida e note legali</string>
+    <string name="legacy_section">Versione precedente (prima della 3.0)</string>
+    <string name="legacy_extractions_title">Vecchie estrazioni</string>
+    <plurals name="legacy_extractions_summary">
+        <item quantity="one">%1$d file, %2$s, in una cartella che solo questa app può aprire</item>
+        <item quantity="many">%1$d di file, %2$s, in una cartella che solo questa app può aprire</item>
+        <item quantity="other">%1$d file, %2$s, in una cartella che solo questa app può aprire</item>
+    </plurals>
+    <plurals name="legacy_extractions_body">
+        <item quantity="one">Con “Estrai tutto”, la versione precedente ha messo %1$d file (%2$s) in una cartella privata dell\'app: né Esplora file né le altre app possono aprirla.\n\nSpostato nella cartella qui sotto, si potrà aprire, anche da qualsiasi app con accesso alla memoria.</item>
+        <item quantity="many">Con “Estrai tutto”, la versione precedente ha messo %1$d di file (%2$s) in una cartella privata dell\'app: né Esplora file né le altre app possono aprirla.\n\nSpostati nella cartella qui sotto, si potranno aprire, anche da qualsiasi app con accesso alla memoria.</item>
+        <item quantity="other">Con “Estrai tutto”, la versione precedente ha messo %1$d file (%2$s) in una cartella privata dell\'app: né Esplora file né le altre app possono aprirla.\n\nSpostati nella cartella qui sotto, si potranno aprire, anche da qualsiasi app con accesso alla memoria.</item>
+    </plurals>
+    <string name="legacy_later_note">Li ritroverà nelle impostazioni.</string>
+    <string name="legacy_move">Sposta</string>
+    <string name="legacy_extractions_access">Consenta prima l\'«Accesso a tutti i file»: senza, Android lascia scrivere l\'app solo nelle sue cartelle, eliminate con essa.</string>
+    <string name="legacy_moving">Spostamento delle vecchie estrazioni…</string>
+    <string name="legacy_extractions_no_folder">Nulla è stato spostato: impossibile scrivere in %1$s. Consenta l\'«Accesso a tutti i file» o scelga un\'altra cartella di destinazione nelle impostazioni.</string>
+    <string name="legacy_extractions_none_left">Niente da spostare: le vecchie estrazioni non ci sono più.</string>
+    <string name="legacy_working">In corso…</string>
+    <string name="legacy_extractions_delete_title">Eliminare le vecchie estrazioni?</string>
+    <plurals name="legacy_extractions_delete_body">
+        <item quantity="one">%1$d file (%2$s) sarà eliminato definitivamente: niente passa dal cestino. L\'archivio da cui proviene non viene toccato.</item>
+        <item quantity="many">%1$d di file (%2$s) saranno eliminati definitivamente: niente passa dal cestino. Gli archivi da cui provengono non vengono toccati.</item>
+        <item quantity="other">%1$d file (%2$s) saranno eliminati definitivamente: niente passa dal cestino. Gli archivi da cui provengono non vengono toccati.</item>
+    </plurals>
+    <string name="legacy_extractions_move_stopped">Spostamento interrotto: %1$s. Spostati: %2$d. Ancora nella cartella privata: %3$d.</string>
+    <plurals name="legacy_extractions_moved">
+        <item quantity="one">%1$d file spostato in %2$s</item>
+        <item quantity="many">%1$d di file spostati in %2$s</item>
+        <item quantity="other">%1$d file spostati in %2$s</item>
+    </plurals>
+    <string name="legacy_extractions_deleted">Vecchie estrazioni eliminate</string>
+    <string name="legacy_extractions_delete_failed">Non è stato possibile eliminare alcune vecchie estrazioni</string>
+    <string name="legacy_history_title">Elimina la vecchia cronologia</string>
+    <plurals name="legacy_history_summary">
+        <item quantity="one">%1$d copia, %2$s, conservata dall\'editor della versione precedente prima di un salvataggio</item>
+        <item quantity="many">%1$d di copie, %2$s, conservate dall\'editor della versione precedente prima di un salvataggio</item>
+        <item quantity="other">%1$d copie, %2$s, conservate dall\'editor della versione precedente prima di un salvataggio</item>
+    </plurals>
+    <string name="legacy_history_delete_title">Eliminare la vecchia cronologia?</string>
+    <plurals name="legacy_history_delete_body">
+        <item quantity="one">%1$d copia (%2$s) della versione precedente sarà eliminata definitivamente. La cronologia tenuta dalla 3.0 resta.</item>
+        <item quantity="many">%1$d di copie (%2$s) della versione precedente saranno eliminate definitivamente. La cronologia tenuta dalla 3.0 resta.</item>
+        <item quantity="other">%1$d copie (%2$s) della versione precedente saranno eliminate definitivamente. La cronologia tenuta dalla 3.0 resta.</item>
+    </plurals>
+    <string name="legacy_history_deleted">Vecchia cronologia eliminata</string>
+    <string name="legacy_history_delete_failed">Non è stato possibile eliminare del tutto la vecchia cronologia</string>
+    <string name="panic_title">Modalità panico — cancella tutto</string>
+    <string name="panic_summary">La cassaforte, le impostazioni, i file temporanei, la cronologia, le vecchie estrazioni e il cestino, subito</string>
+    <string name="panic_confirm_title">Modalità panico</string>
+    <string name="panic_confirm_body">Questa operazione cancella SUBITO e DEFINITIVAMENTE:\n\n• l\'intera cassaforte, tutti i suoi file cifrati e le sue chiavi\n• tutte le impostazioni, compreso l\'elenco dei file recenti\n• i file temporanei: copie decifrate, PDF sbloccati, pagine scansionate\n• la cronologia degli editor, di codice e CSV\n• le cartelle di «Estrai tutto» conservate dalle versioni precedenti\n• il cestino\n\nI Suoi file e ciò che gli strumenti hanno salvato nella cartella Files Tech non vengono toccati. Nulla può essere recuperato senza un backup .rftvault.\n\nContinuare?</string>
+    <string name="panic_confirm">Cancella tutto</string>
+    <string name="panic_erasing">Cancellazione…</string>
+    <string name="panic_done">Tutto è stato cancellato.</string>
+    <string name="panic_incomplete">Non è stato possibile cancellare tutto: %1$s. Riprovi.</string>
+    <string name="panic_part_vault">la cassaforte</string>
+    <string name="panic_part_preferences">le impostazioni</string>
+    <string name="panic_part_cache">i file temporanei</string>
+    <string name="panic_part_history">la cronologia degli editor</string>
+    <string name="panic_part_extractions">le vecchie estrazioni</string>
+    <string name="panic_part_trash">il cestino</string>
+    <string name="tool_hint_txt_tools">Parole, ricerca, PDF</string>
+    <string name="tool_hint_csv_tools">Statistiche, PDF, unione</string>
+    <string name="tool_hint_diff">Differenze tra due file</string>
+    <string name="tool_hint_editor">Modifica e salva</string>
+    <string name="tool_hint_content_search">Nel contenuto dei file</string>
+    <string name="tool_hint_csv_editor">Modifica celle, righe, colonne</string>
+    <string name="tool_hint_zip_creator">Comprimi dei file</string>
+    <string name="tool_hint_convert">Immagini/PDF, CSV/XLSX, TXT/PDF</string>
+    <string name="tool_hint_ocr">Da immagine a testo (sul telefono)</string>
+    <string name="tool_hint_compress">Riduci le immagini</string>
+    <string name="tool_hint_vault">File cifrati con AES-256</string>
+    <string name="tool_hint_scanner">Documento → PDF (fotocamera)</string>
+    <string name="tool_hint_exif">Rimuovi posizione e data dalle immagini</string>
+    <string name="tool_hint_global_search">Per nome e contenuto, in tutto il telefono</string>
+    <string name="tool_hint_duplicates">Libera spazio</string>
+    <string name="tool_hint_trash">Ripristina gli elementi eliminati</string>
+    <string name="missing_screen_title">Impossibile aprire questa schermata</string>
+    <string name="missing_screen_body">Proviene da un\'altra versione di Read Files Tech. Torni indietro, poi la riapra dalla schermata iniziale.</string>
+
+    <!-- Viewers (phase 4): why a file does not open, said in words — never the parser's exception. -->
+    <string name="viewer_too_large">Questo file è troppo grande per essere aperto qui (oltre %1$s).</string>
+    <string name="viewer_unreadable">Questo file è danneggiato, o non è nel formato indicato dal suo nome.</string>
+    <string name="viewer_unsupported">Questo formato non può essere aperto qui. Provi «Apri con…».</string>
+    <string name="viewer_out_of_memory">Memoria insufficiente su questo telefono per aprire questo file.</string>
+    <string name="viewer_cannot_open">Impossibile aprire questo file: %1$s</string>
+    <string name="viewer_image_too_large">Questa immagine è troppo grande per essere mostrata qui: %1$,d × %2$,d px, mentre i limiti sono %3$,d px per lato e %4$,d Mpx in tutto.</string>
+    <string name="viewer_too_many_items">Questo file contiene troppi elementi per essere mostrato qui (oltre %1$,d).</string>
+    <string name="text_colors">Colori</string>
+    <string name="text_size">Dimensione del testo</string>
+    <string name="text_syntax_colours">Colori della sintassi</string>
+    <string name="text_size_value">%1$d pt</string>
+    <string name="value_copied">Copiato: %1$s</string>
+
+    <!-- CSV viewer -->
+    <string name="action_edit">Modifica</string>
+    <plurals name="csv_rows">
+        <item quantity="one">%d riga</item>
+        <item quantity="many">%d di righe</item>
+        <item quantity="other">%d righe</item>
+    </plurals>
+    <!-- "12 rows of 1200": the rows the search found, of all of them. -->
+    <plurals name="csv_rows_found">
+        <item quantity="one">%1$d riga su %2$d</item>
+        <item quantity="many">%1$d di righe su %2$d</item>
+        <item quantity="other">%1$d righe su %2$d</item>
+    </plurals>
+    <plurals name="csv_columns">
+        <item quantity="one">%d colonna</item>
+        <item quantity="many">%d di colonne</item>
+        <item quantity="other">%d colonne</item>
+    </plurals>
+    <plurals name="csv_rows_cut">
+        <item quantity="one">Viene mostrata solo %d riga, il massimo che un foglio di calcolo può contenere.</item>
+        <item quantity="many">Vengono mostrate solo le prime %d di righe, il massimo che un foglio di calcolo può contenere.</item>
+        <item quantity="other">Vengono mostrate solo le prime %d righe, il massimo che un foglio di calcolo può contenere.</item>
+    </plurals>
+    <plurals name="csv_columns_cut">
+        <item quantity="one">Viene mostrata solo %d colonna, il massimo che un foglio di calcolo può contenere.</item>
+        <item quantity="many">Vengono mostrate solo le prime %d di colonne, il massimo che un foglio di calcolo può contenere.</item>
+        <item quantity="other">Vengono mostrate solo le prime %d colonne, il massimo che un foglio di calcolo può contenere.</item>
+    </plurals>
+    <string name="csv_no_match">Nessuna riga contiene «%1$s»</string>
+    <string name="csv_sort">Ordina per questa colonna</string>
+    <string name="csv_sorted_ascending">Ordinato, crescente</string>
+    <string name="csv_sorted_descending">Ordinato, decrescente</string>
+    <!-- A column whose header is empty, for TalkBack. -->
+    <string name="csv_column_number">Colonna %1$d</string>
+
+    <!-- The CSV editor -->
+    <string name="csv_editor_choose">Scegli un CSV da modificare</string>
+    <string name="csv_editor_intro">Modifichi le celle, aggiunga o elimini righe e colonne. Il salvataggio riscrive solo ciò che ha cambiato: il resto del file resta com\'era.</string>
+    <string name="csv_editor_cut_kept">Ciò che non viene mostrato viene salvato così com\'era.</string>
+    <string name="csv_editor_read_only_nul">Questo file contiene byte NUL: non è un testo di un byte per carattere (UTF-16 senza indicatore dell\'ordine dei byte, o non è affatto un testo). Viene mostrato, non modificato.</string>
+    <string name="csv_editor_read_only_dos">Questo file sembra scritto in una tabella codici MS-DOS o Mac, non in Windows-1252: ciò che scrive verrebbe letto in modo errato. Viene mostrato, non modificato.</string>
+    <string name="csv_editor_cell_undecodable">Questa cella contiene byte che %1$s non restituisce così come sono: modificarla li cambierebbe. Non può essere modificata qui.</string>
+    <string name="csv_editor_encoding">Salvato in %1$s</string>
+    <string name="csv_editor_encoding_unstated">Il file non indica la sua codifica (letto come %1$s): verrà chiesta al primo accento digitato.</string>
+    <string name="csv_editor_encoding_title">Codifica del file</string>
+    <string name="csv_editor_encoding_ask">Questo file non indica la sua codifica. Salvare ciò che scrive in UTF-8, o in Windows-1252, la codifica con cui Excel legge un CSV su Windows?</string>
+    <string name="csv_editor_encoding_windows_only">Questo file non indica la sua codifica: viene letto come Windows-1252, la codifica di Excel su Windows, e ciò che scrive viene salvato in questa codifica.</string>
+    <string name="csv_editor_encoding_utf8">UTF-8</string>
+    <string name="csv_editor_encoding_windows">Windows-1252 (Excel)</string>
+    <string name="csv_editor_hint">Tocchi una cella per modificarla; la tenga premuta per inserire o eliminare la sua riga o la sua colonna.</string>
+    <string name="csv_editor_cell_header">Intestazione · colonna %1$d</string>
+    <string name="csv_editor_cell_title">Riga %1$d · colonna %2$d</string>
+    <string name="csv_editor_formula_guarded">Inizia come una formula: viene salvata con \' davanti, così che un foglio di calcolo la mostri come testo e non la esegua.</string>
+    <string name="csv_editor_unwritable">Un carattere non può essere scritto nella codifica di questo file (%1$s).</string>
+    <plurals name="csv_editor_too_long">
+        <item quantity="one">Una cella contiene al massimo %1$,d carattere.</item>
+        <item quantity="many">Una cella contiene al massimo %1$,d di caratteri.</item>
+        <item quantity="other">Una cella contiene al massimo %1$,d caratteri.</item>
+    </plurals>
+    <plurals name="csv_editor_cell_too_long">
+        <item quantity="one">Questa cella è più lunga di %1$,d carattere: non può essere modificata qui.</item>
+        <item quantity="many">Questa cella è più lunga di %1$,d di caratteri: non può essere modificata qui.</item>
+        <item quantity="other">Questa cella è più lunga di %1$,d caratteri: non può essere modificata qui.</item>
+    </plurals>
+    <string name="csv_editor_add_row">Aggiungi una riga</string>
+    <string name="csv_editor_add_column">Aggiungi una colonna</string>
+    <string name="csv_editor_insert_row">Inserisci una riga sotto</string>
+    <string name="csv_editor_insert_column">Inserisci una colonna dopo</string>
+    <string name="csv_editor_delete_row">Elimina questa riga</string>
+    <string name="csv_editor_delete_column">Elimina questa colonna</string>
+    <string name="csv_editor_delete_row_title">Eliminare la riga %1$d?</string>
+    <string name="csv_editor_delete_column_title">Eliminare la colonna %1$d?</string>
+    <string name="csv_editor_delete_body">Le sue celle escono dalla tabella. Nel file non viene scritto nulla prima del salvataggio: uscendo senza salvare, resta com\'è.</string>
+    <string name="csv_editor_history_empty">Ancora nessuna versione precedente di questo file. Ogni salvataggio conserva la versione che sostituisce: le ultime %1$d, per i file fino a %2$d MB.</string>
+    <string name="csv_editor_history_hint">Il ripristino carica la versione nell\'editor: le Sue modifiche non salvate vanno prima nella cronologia, e il file viene scritto solo quando salva.</string>
+    <string name="csv_editor_unsaved_too_large">le Sue modifiche non salvate superano %1$d MB, troppo per essere conservate nella cronologia — le salvi prima</string>
+    <string name="csv_editor_over_cap">Questo file supera %1$d MB: la sua versione attuale non può essere conservata nella cronologia. Salvare comunque?</string>
+
+    <string name="document_no_text">Questo documento non contiene testo.</string>
+
+    <!-- HTML viewer -->
+    <string name="html_view_source">Codice sorgente</string>
+    <string name="html_view_page">Pagina formattata</string>
+    <string name="html_link_refused">Questo link non può essere aperto.</string>
+    <!-- The WebView's renderer stopped on this page: the app goes on. -->
+    <string name="html_render_gone">Non è stato possibile mostrare questa pagina.</string>
+    <string name="html_reading_mode">Modalità lettura (testo semplificato)</string>
+
+    <!-- Reader: an EPUB's chapters, and the HTML viewer's reading mode -->
+    <string name="reader_chapters">Capitoli</string>
+    <string name="reader_previous">Capitolo precedente</string>
+    <string name="reader_next">Capitolo successivo</string>
+    <!-- Which chapter is shown, out of how many. -->
+    <string name="reader_position">Capitolo %1$d di %2$d</string>
+    <!-- A chapter in the list: its number, then its title. -->
+    <string name="reader_chapter_entry">%1$d. %2$s</string>
+    <string name="reader_empty">Questo capitolo non ha testo da mostrare.</string>
+    <string name="reader_no_chapter">Questo libro non ha capitoli da mostrare.</string>
+
+    <!-- Spreadsheet viewer -->
+    <string name="sheet_no_sheet">Questa cartella di lavoro non contiene fogli.</string>
+    <string name="sheet_empty">Questo foglio è vuoto.</string>
+    <!-- A sheet saved without a name. -->
+    <string name="sheet_number">Foglio %1$d</string>
+    <plurals name="sheet_rows_cut">
+        <item quantity="one">Viene mostrata solo %d riga.</item>
+        <item quantity="many">Vengono mostrate solo le prime %d di righe.</item>
+        <item quantity="other">Vengono mostrate solo le prime %d righe.</item>
+    </plurals>
+    <plurals name="sheet_columns_cut">
+        <item quantity="one">Viene mostrata solo %d colonna.</item>
+        <item quantity="many">Vengono mostrate solo le prime %d di colonne.</item>
+        <item quantity="other">Vengono mostrate solo le prime %d colonne.</item>
+    </plurals>
+    <!-- Tools (phase 5) -->
+    <string name="action_choose_file">Scegli un file</string>
+    <string name="action_change">Cambia</string>
+    <string name="action_copy">Copia</string>
+    <string name="hash_intro">MD5, SHA-1, SHA-256 e SHA-512 di qualsiasi file</string>
+    <string name="hash_digests">Impronte</string>
+    <string name="hash_computing">Calcolo… %1$d %%</string>
+    <string name="hash_failed">Impossibile calcolare le impronte: %1$s</string>
+
+    <!-- Encoding, format, compare and color picker tools -->
+    <string name="action_clear">Cancella</string>
+    <string name="action_save">Salva</string>
+    <string name="tool_result">Risultato</string>
+    <string name="tool_result_copied">Risultato copiato</string>
+    <plurals name="tool_result_beginning">
+        <item quantity="one">Viene mostrato solo l\'inizio: %1$,d carattere su %2$,d.</item>
+        <item quantity="many">Viene mostrato solo l\'inizio: %1$,d di caratteri su %2$,d.</item>
+        <item quantity="other">Viene mostrato solo l\'inizio: %1$,d caratteri su %2$,d.</item>
+    </plurals>
+    <plurals name="tool_result_length">
+        <item quantity="one">%1$,d carattere</item>
+        <item quantity="many">%1$,d di caratteri</item>
+        <item quantity="other">%1$,d caratteri</item>
+    </plurals>
+    <string name="tool_read_failed">Impossibile leggere «%1$s»: %2$s</string>
+    <string name="tool_too_large">«%1$s» è troppo grande (oltre %2$,d %3$s).</string>
+    <string name="encode_encode">Codifica</string>
+    <string name="encode_decode">Decodifica</string>
+    <string name="encode_input">Testo</string>
+    <string name="encode_input_hint">Digiti o incolli qui il testo</string>
+    <string name="encode_swap">Inverti</string>
+    <string name="encode_base64_invalid">Non è Base64: un carattere fuori dal suo alfabeto, o una lunghezza che nessun testo Base64 ha.</string>
+    <string name="encode_percent_invalid" formatted="false">Non è una codifica URL: ogni «%» deve essere seguito da due cifre esadecimali.</string>
+    <string name="encode_not_utf8">I byte decodificati non sono testo (UTF-8): forse un\'immagine, o un altro file binario.</string>
+    <string name="format_indent">Indenta</string>
+    <string name="format_minify">Minifica</string>
+    <string name="format_input">Input</string>
+    <string name="format_input_hint">Incolli il testo, o apra un file</string>
+    <string name="format_open_file">Apri un file</string>
+    <string name="format_not_json">JSON non valido dalla riga %1$,d, colonna %2$,d.</string>
+    <string name="format_too_deep">Array e oggetti annidati troppo in profondità (il limite è %1$,d).</string>
+    <string name="format_too_many_values">Troppi valori (oltre %1$,d).</string>
+    <string name="format_save_failed">Impossibile salvare il risultato: %1$s</string>
+    <string name="format_saved_body">Il risultato è salvato qui:</string>
+    <string name="diff_file_a">File A</string>
+    <string name="diff_file_b">File B</string>
+    <string name="diff_intro">Scelga due file di testo: le loro righe vengono confrontate dalla prima all\'ultima.</string>
+    <string name="diff_line_endings">Considera i fine riga (CRLF ≠ LF)</string>
+    <string name="diff_computing">Confronto…</string>
+    <string name="diff_identical">I file sono identici.</string>
+    <string name="diff_same_lines">Le righe sono le stesse: i file differiscono solo per i fine riga o per la codifica.</string>
+    <plurals name="diff_removed">
+        <item quantity="one">%1$,d riga rimossa</item>
+        <item quantity="many">%1$,d di righe rimosse</item>
+        <item quantity="other">%1$,d righe rimosse</item>
+    </plurals>
+    <plurals name="diff_added">
+        <item quantity="one">%1$,d riga aggiunta</item>
+        <item quantity="many">%1$,d di righe aggiunte</item>
+        <item quantity="other">%1$,d righe aggiunte</item>
+    </plurals>
+    <plurals name="diff_skipped">
+        <item quantity="one">%1$,d riga invariata</item>
+        <item quantity="many">%1$,d di righe invariate</item>
+        <item quantity="other">%1$,d righe invariate</item>
+    </plurals>
+    <plurals name="diff_truncated">
+        <item quantity="one">Viene mostrata solo la prima riga del risultato; i conteggi sono quelli dei file interi.</item>
+        <item quantity="many">Vengono mostrate solo le prime %1$,d di righe del risultato; i conteggi sono quelli dei file interi.</item>
+        <item quantity="other">Vengono mostrate solo le prime %1$,d righe del risultato; i conteggi sono quelli dei file interi.</item>
+    </plurals>
+    <string name="diff_approximate">I file sono troppo diversi per essere confrontati per intero in un tempo ragionevole: in una parte del risultato, righe invariate appaiono come rimosse e aggiunte.</string>
+    <string name="diff_cancelled">Confronto annullato.</string>
+    <string name="diff_compare_again">Confronta di nuovo</string>
+    <string name="diff_too_many_lines">«%1$s» ha troppe righe per essere confrontato (oltre %2$,d).</string>
+    <string name="color_palette">Tavolozza</string>
+    <string name="color_area_description">Saturazione e luminosità: trascini per scegliere</string>
+    <string name="color_hue_description">Tonalità: trascini per scegliere</string>
+    <!-- Code editor (CodeEditorScreen of the 2.15.3) -->
+    <string name="editor_choose">Scegli un file da modificare</string>
+    <string name="editor_intro">Modifichi un file di testo — codice, impostazioni, note — e lo salvi com\'era: stessa codifica, stessi fine riga.</string>
+    <string name="editor_modified">modificato</string>
+    <string name="editor_redo">Ripeti</string>
+    <string name="editor_saved">File salvato</string>
+    <string name="editor_save_failed">Non salvato: %1$s</string>
+    <string name="editor_not_text">«%1$s» non è un file di testo: l\'editor non lo apre.</string>
+    <string name="editor_not_reversible">«%1$s» contiene byte che non sono caratteri della sua codifica — un carattere troncato, o un danno: salvarlo li cambierebbe. Il visualizzatore lo mostra.</string>
+    <!-- "Windows-1252, the encoding of this file, has no “😀”" -->
+    <string name="editor_unencodable">%1$s, la codifica di questo file, non ha «%2$s»: lo rimuova, poi salvi.</string>
+    <string name="editor_text_too_large">il testo supera %1$d MB, il massimo che l\'editor apre: lo accorci, poi salvi</string>
+    <string name="editor_changed_title">«%1$s» è cambiato</string>
+    <string name="editor_changed_message">Un\'altra app ha modificato, spostato o eliminato questo file da quando è stato aperto qui. Sovrascriverlo con il Suo testo? La versione presente sul disco va prima nella cronologia.</string>
+    <string name="editor_changed_message_lost">Un\'altra app ha modificato, spostato o eliminato questo file da quando è stato aperto qui. Sovrascriverlo con il Suo testo? La sua versione sul disco supera %1$d MB, troppo per la cronologia: andrà persa.</string>
+    <string name="editor_overwrite">Sovrascrivi</string>
+    <string name="editor_leave_title">Modifiche non salvate</string>
+    <string name="editor_leave_message">Salvare prima di uscire?</string>
+    <string name="editor_discard">Scarta</string>
+    <string name="editor_history">Cronologia</string>
+    <string name="editor_history_empty">Ancora nessuna versione salvata: ogni salvataggio conserva la versione che sostituisce, le ultime %1$d.</string>
+    <string name="editor_history_hint">Tocchi una versione per vederne l\'inizio. Il ripristino la carica nell\'editor: il Suo testo va prima nella cronologia, e il file viene scritto solo quando salva.</string>
+    <string name="editor_legacy_title">Vecchia cronologia (prima della 3.0)</string>
+    <string name="editor_legacy_warning">Conservata dalla versione precedente dell\'app solo in base al nome di questo file: una copia può provenire da un altro file con lo stesso nome.</string>
+    <string name="editor_restored">Versione precedente caricata: salvi per conservarla.</string>
+    <string name="editor_restore_failed">Non ripristinata: %1$s</string>
+    <string name="editor_version_not_text">questa versione non è un testo che l\'editor apre</string>
+
+    <!-- ZIP viewer: the listing, one entry shared, "Extract all" -->
+    <string name="zip_empty">Questo archivio è vuoto.</string>
+    <string name="zip_extract_all">Estrai tutto</string>
+    <string name="zip_share_entry">Condividi %1$s</string>
+    <string name="zip_problem_encrypted">Cifrato: non aperto</string>
+    <string name="zip_problem_method">Compresso con un metodo non supportato</string>
+    <string name="zip_problem_link">Collegamento simbolico: non estratto</string>
+    <string name="zip_problem_overlapping">Si sovrappone a un\'altra voce: archivio contraffatto o danneggiato</string>
+    <string name="zip_problem_too_large">Oltre %1$s una volta decompresso</string>
+    <string name="zip_problem_damaged">Danneggiato</string>
+    <string name="zip_unsafe_name">Il suo nome esce dalla cartella o non è un nome di file valido</string>
+    <string name="zip_name_taken">Un\'altra voce ha lo stesso nome</string>
+    <string name="zip_over_total">Oltre i %1$s che un\'estrazione può scrivere</string>
+    <string name="zip_extracting">Estrazione…</string>
+    <plurals name="zip_extracting_progress">
+        <item quantity="one">%1$d su %2$d voce · %3$s</item>
+        <item quantity="many">%1$d su %2$d di voci · %3$s</item>
+        <item quantity="other">%1$d su %2$d voci · %3$s</item>
+    </plurals>
+    <string name="zip_extract_done">Estrazione completata</string>
+    <string name="zip_extract_stopped">Estrazione interrotta</string>
+    <plurals name="zip_extract_written">
+        <item quantity="one">%1$d file scritto in %2$s.</item>
+        <item quantity="many">%1$d di file scritti in %2$s.</item>
+        <item quantity="other">%1$d file scritti in %2$s.</item>
+    </plurals>
+    <string name="zip_extract_nothing">Nessun file è stato estratto.</string>
+    <string name="zip_extract_no_file">L\'archivio non contiene file.</string>
+    <plurals name="zip_extract_refused">
+        <item quantity="one">%d voce non estratta:</item>
+        <item quantity="many">%d di voci non estratte:</item>
+        <item quantity="other">%d voci non estratte:</item>
+    </plurals>
+    <plurals name="zip_extract_refused_more">
+        <item quantity="one">…e %1$d altra</item>
+        <item quantity="many">…e altre %1$d</item>
+        <item quantity="other">…e altre %1$d</item>
+    </plurals>
+    <string name="zip_stop_total">Sono stati raggiunti i %1$s che un\'estrazione può scrivere: le voci successive non vengono estratte.</string>
+    <string name="zip_stop_cancelled">Interrotta: i file scritti vengono conservati, quello in corso viene rimosso.</string>
+    <string name="zip_stop_failed">Scrittura interrotta: %1$s</string>
+    <string name="zip_no_location">Nessuna cartella della memoria ha potuto accogliere l\'estrazione.</string>
+    <plurals name="zip_extract_left">
+        <item quantity="one">Estrazione interrotta all\'uscita dalla sua schermata: %1$d file scritto in %2$s.</item>
+        <item quantity="many">Estrazione interrotta all\'uscita dalla sua schermata: %1$d di file scritti in %2$s.</item>
+        <item quantity="other">Estrazione interrotta all\'uscita dalla sua schermata: %1$d file scritti in %2$s.</item>
+    </plurals>
+    <string name="zip_share_failed">Impossibile condividere questa voce: %1$s</string>
+    <string name="action_open_folder">Apri la cartella</string>
+    <string name="scanner_intro">Bordi rilevati automaticamente, prospettiva raddrizzata, salvataggio in PDF, tutto su questo telefono: i Suoi documenti non lo lasciano mai.</string>
+    <string name="scanner_take_photo">Scatta una foto</string>
+    <string name="scanner_import">Importa immagini</string>
+    <plurals name="scanner_make_pdf">
+        <item quantity="one">Crea il PDF (%d pagina)</item>
+        <item quantity="many">Crea il PDF (%d di pagine)</item>
+        <item quantity="other">Crea il PDF (%d pagine)</item>
+    </plurals>
+    <string name="scanner_page">Pagina %1$d</string>
+    <string name="scanner_edit_page">Regola la pagina %1$d</string>
+    <string name="scanner_move_earlier">Sposta prima</string>
+    <string name="scanner_move_later">Sposta dopo</string>
+    <string name="scanner_delete_page">Elimina la pagina %1$d</string>
+    <string name="scanner_delete_page_title">Eliminare la pagina %1$d?</string>
+    <string name="scanner_delete_page_owned">La sua foto, scattata qui, viene eliminata definitivamente.</string>
+    <string name="scanner_delete_page_external">Esce dalla scansione. L\'immagine da cui proviene resta dov\'è sul telefono.</string>
+    <string name="scanner_adjust_title">Regola la pagina</string>
+    <string name="scanner_keep_page">Tieni questa pagina</string>
+    <string name="scanner_detect_again">Rileva di nuovo</string>
+    <string name="scanner_whole_image">Immagine intera</string>
+    <string name="scanner_rotate">Ruota</string>
+    <string name="scanner_turned">Pagina ruotata di %1$d°</string>
+    <string name="scanner_filter_original">Originale</string>
+    <string name="scanner_filter_grey">Grigio</string>
+    <string name="scanner_filter_black_white">Bianco e nero</string>
+    <string name="scanner_filter_white_paper">Carta bianca</string>
+    <string name="scanner_detecting">Ricerca della pagina…</string>
+    <string name="scanner_not_found">Nessuna pagina trovata: trascini gli angoli sul documento.</string>
+    <string name="scanner_frame_description">La foto e il riquadro della pagina: trascini un angolo per spostarlo</string>
+    <string name="scanner_adding">Aggiunta dell\'immagine %1$d di %2$d…</string>
+    <string name="scanner_making_page">Creazione della pagina…</string>
+    <string name="scanner_making_pdf">Creazione del PDF…</string>
+    <string name="scanner_saved_title">Scansione salvata sul Suo telefono</string>
+    <string name="scanner_saved_body">Il PDF è qui, può ritrovarlo in qualsiasi momento:</string>
+    <!-- Convert (ConvertScreen of the 2.15.3) -->
+    <string name="convert_images_to_pdf">Immagini → PDF</string>
+    <string name="convert_images_to_pdf_hint">JPG, PNG… un\'immagine per pagina, in un solo PDF</string>
+    <string name="convert_csv_to_xlsx">CSV → XLSX</string>
+    <string name="convert_csv_to_xlsx_hint">Un CSV come cartella di lavoro Excel</string>
+    <string name="convert_text_to_pdf">Testo → PDF</string>
+    <string name="convert_text_to_pdf_hint">TXT o Markdown in PDF</string>
+    <string name="convert_pdf_to_text">PDF → Testo</string>
+    <string name="convert_pdf_to_text_hint">Il testo di un PDF in un file .txt</string>
+    <string name="convert_docx_to_text">DOCX → Testo</string>
+    <string name="convert_docx_to_text_hint">Il testo di un documento Word in un file .txt</string>
+    <string name="convert_image_to_jpg">Immagine → JPG</string>
+    <string name="convert_image_to_png">Immagine → PNG</string>
+    <string name="convert_working">Conversione…</string>
+    <string name="convert_working_percent">Conversione… %1$d %%</string>
+    <string name="convert_saved_title">Salvato sul Suo telefono</string>
+    <string name="convert_saved_body">Il risultato è qui, può ritrovarlo in qualsiasi momento:</string>
+    <string name="convert_csv_empty">Questo CSV non contiene righe: non c\'è nulla da convertire.</string>
+    <string name="convert_pdf_no_text">Nessun testo selezionabile in questo PDF. Se è una scansione, usi prima lo strumento OCR.</string>
+    <string name="convert_document_empty">Questo documento non contiene testo: non c\'è nulla da convertire.</string>
+    <string name="convert_excel_rows">Questo CSV ha più righe di quante ne contenga un foglio Excel (%1$,d).</string>
+    <string name="convert_excel_columns">Questo CSV ha più colonne di quante ne contenga un foglio Excel (%1$,d).</string>
+    <string name="convert_excel_cell">Una cella di questo CSV contiene più caratteri di quanti Excel ne consenta (%1$,d).</string>
+    <string name="convert_selection_too_large">Le immagini scelte sono troppo grandi nel complesso (oltre %1$,d %2$s).</string>
+    <plurals name="convert_too_many_pages">
+        <item quantity="one">Questo testo produrrebbe più di %1$,d pagina: troppo lungo per essere convertito qui.</item>
+        <item quantity="many">Questo testo produrrebbe più di %1$,d di pagine: troppo lungo per essere convertito qui.</item>
+        <item quantity="other">Questo testo produrrebbe più di %1$,d pagine: troppo lungo per essere convertito qui.</item>
+    </plurals>
+    <string name="convert_image_too_large">«%1$s» è troppo grande per la conversione: %2$,d × %3$,d px, mentre i limiti sono %4$,d px per lato e %5$,d Mpx in tutto.</string>
+    <string name="convert_unreadable">«%1$s» è danneggiato, o non è nel formato indicato dal suo nome.</string>
+    <string name="convert_unsupported">«%1$s» è in un formato che non può essere convertito qui.</string>
+    <string name="convert_out_of_memory">Memoria insufficiente su questo telefono per convertire «%1$s».</string>
+    <string name="tool_out_of_memory">Memoria insufficiente su questo telefono per creare il risultato.</string>
+    <string name="convert_no_output">Nessuna cartella può accogliere il risultato: la cartella di destinazione e le sue alternative lo rifiutano.</string>
+    <string name="convert_failed">Impossibile convertire «%1$s»: %2$s</string>
+    <plurals name="scanner_full">
+        <item quantity="one">Al massimo %d pagina: le altre immagini non sono state aggiunte.</item>
+        <item quantity="many">Al massimo %d di pagine: le altre immagini non sono state aggiunte.</item>
+        <item quantity="other">Al massimo %d pagine: le altre immagini non sono state aggiunte.</item>
+    </plurals>
+    <string name="scanner_no_camera">Nessuna app fotocamera su questo telefono: importi invece delle immagini.</string>
+    <string name="scanner_photo_failed">Impossibile leggere questa foto: %1$s</string>
+    <string name="scanner_page_failed">Impossibile aggiungere %1$s: %2$s</string>
+    <string name="scanner_page_not_made">Impossibile creare questa pagina: %1$s</string>
+    <string name="scanner_pdf_failed">Impossibile salvare il PDF: %1$s</string>
+    <string name="scanner_too_large">Questa immagine supera %1$d MB.</string>
+    <string name="scanner_discard_title">Scartare questa scansione?</string>
+    <plurals name="scanner_discard_body">
+        <item quantity="one">%d pagina della scansione non è stata salvata come PDF.</item>
+        <item quantity="many">Le %d di pagine della scansione non sono state salvate come PDF.</item>
+        <item quantity="other">Le %d pagine della scansione non sono state salvate come PDF.</item>
+    </plurals>
+    <string name="scanner_discard">Scarta</string>
+    <string name="ocr_intro">Scatti una foto di una pagina o scelga un\'immagine: il suo testo (%1$s) viene riconosciuto su questo telefono. Nulla lascia il telefono.</string>
+    <string name="ocr_choose_image">Scegli un\'immagine</string>
+    <string name="ocr_image_read">L\'immagine letta</string>
+    <string name="ocr_working">Riconoscimento del testo…</string>
+    <string name="ocr_cancelled">Riconoscimento annullato: non è stato conservato nulla.</string>
+    <string name="ocr_no_text">Nessun testo trovato in questa immagine.</string>
+    <string name="ocr_failed">Impossibile leggere il testo di questa immagine: %1$s</string>
+    <string name="ocr_recognition_failed">il riconoscimento del testo non è riuscito su questo telefono</string>
+    <string name="ocr_save_txt">Salva come .txt</string>
+    <string name="ocr_save_failed">Impossibile salvare il testo: %1$s</string>
+    <string name="ocr_saved_title">Testo salvato</string>
+    <string name="ocr_saved_body">Il testo è qui:</string>
+    <string name="markdown_show_rendered">Vista formattata</string>
+    <string name="markdown_show_source">Sorgente Markdown</string>
+    <string name="markdown_too_long">Oltre %1$s: mostrato come testo, non formattato.</string>
+    <string name="markdown_too_many_cells">Le sue tabelle potrebbero contenere troppe celle (oltre %1$,d): mostrato come testo, non formattato.</string>
+    <string name="markdown_too_many_brackets">Troppe parentesi quadre aperte contemporaneamente (oltre %1$,d): mostrato come testo, non formattato.</string>
+    <string name="markdown_image">Immagine, non caricata</string>
+    <string name="markdown_no_app">Nessuna app trovata per aprire questo link.</string>
+    <string name="markdown_link_refused">Questo link non viene aperto: vengono aperti solo i link web ed e-mail.</string>
+    <string name="json_show_pretty">Testo indentato</string>
+    <string name="json_show_tree">Albero</string>
+    <plurals name="json_keys">
+        <item quantity="one">{%d chiave}</item>
+        <item quantity="many">{%d di chiavi}</item>
+        <item quantity="other">{%d chiavi}</item>
+    </plurals>
+    <plurals name="json_items">
+        <item quantity="one">[%d elemento]</item>
+        <item quantity="many">[%d di elementi]</item>
+        <item quantity="other">[%d elementi]</item>
+    </plurals>
+    <string name="json_not_json">JSON non valido dalla riga %1$,d, colonna %2$,d: mostrato come testo.</string>
+    <string name="json_too_deep">Array e oggetti annidati troppo in profondità (il limite è %1$,d): mostrato come testo.</string>
+    <string name="json_too_many_values">Troppi valori (oltre %1$,d): mostrato come testo.</string>
+    <string name="json_copied">Copiato</string>
+    <plurals name="json_too_long_to_copy">
+        <item quantity="one">Troppo lungo da copiare (oltre %1$,d carattere).</item>
+        <item quantity="many">Troppo lungo da copiare (oltre %1$,d di caratteri).</item>
+        <item quantity="other">Troppo lungo da copiare (oltre %1$,d caratteri).</item>
+    </plurals>
+
+    <!-- Create a ZIP, Duplicates, Content search, Bulk rename (phase 5) -->
+    <string name="zip_intro">Mette i file che sceglie in un unico archivio ZIP, salvato in %1$s</string>
+    <string name="zip_pick_title">File da comprimere</string>
+    <string name="zip_add_files">Aggiungi file</string>
+    <plurals name="zip_files_count">
+        <item quantity="one">%1$d file · %2$s</item>
+        <item quantity="many">%1$d di file · %2$s</item>
+        <item quantity="other">%1$d file · %2$s</item>
+    </plurals>
+    <string name="zip_remove">Rimuovi dall\'elenco</string>
+    <plurals name="zip_create">
+        <item quantity="one">Crea lo ZIP (%d file)</item>
+        <item quantity="many">Crea lo ZIP (%d di file)</item>
+        <item quantity="other">Crea lo ZIP (%d file)</item>
+    </plurals>
+    <string name="zip_working">Compressione… %1$d %%</string>
+    <string name="zip_saved_title">ZIP creato</string>
+    <plurals name="zip_saved_body">
+        <item quantity="one">%d file, con il proprio nome. Lo ZIP è qui:</item>
+        <item quantity="many">%d di file, ciascuno con il proprio nome. Lo ZIP è qui:</item>
+        <item quantity="other">%d file, ciascuno con il proprio nome. Lo ZIP è qui:</item>
+    </plurals>
+    <string name="zip_too_large">I file scelti sono troppo grandi nel complesso (oltre %1$,d %2$s).</string>
+    <string name="zip_failed">Impossibile creare lo ZIP: %1$s</string>
+    <string name="duplicates_intro">Trova i file con lo stesso contenuto in una cartella, e i suoi file più grandi. Ciò che rimuove va nel cestino.</string>
+    <string name="duplicates_choose_folder">Scegli la cartella da analizzare</string>
+    <string name="duplicates_scan">Analizza</string>
+    <string name="duplicates_tab_duplicates">Duplicati</string>
+    <string name="duplicates_tab_largest">Più grandi</string>
+    <plurals name="duplicates_listing">
+        <item quantity="one">Elenco: %d file</item>
+        <item quantity="many">Elenco: %d di file</item>
+        <item quantity="other">Elenco: %d file</item>
+    </plurals>
+    <string name="duplicates_sampling">Confronto di inizio e fine dei file: %1$d su %2$d</string>
+    <string name="duplicates_reading">Confronto dei contenuti: %1$d su %2$d</string>
+    <plurals name="duplicates_files_compared">
+        <item quantity="one">%d file confrontato</item>
+        <item quantity="many">%d di file confrontati</item>
+        <item quantity="other">%d file confrontati</item>
+    </plurals>
+    <plurals name="duplicates_groups">
+        <item quantity="one">%d gruppo di duplicati</item>
+        <item quantity="many">%d di gruppi di duplicati</item>
+        <item quantity="other">%d gruppi di duplicati</item>
+    </plurals>
+    <string name="duplicates_wasted">%1$s sprecati</string>
+    <plurals name="walk_unreadable_folders">
+        <item quantity="one">%d cartella non leggibile</item>
+        <item quantity="many">%d di cartelle non leggibili</item>
+        <item quantity="other">%d cartelle non leggibili</item>
+    </plurals>
+    <plurals name="duplicates_unreadable_files">
+        <item quantity="one">%d file non leggibile</item>
+        <item quantity="many">%d di file non leggibili</item>
+        <item quantity="other">%d file non leggibili</item>
+    </plurals>
+    <plurals name="duplicates_truncated">
+        <item quantity="one">È stato confrontato solo %1$,d file.</item>
+        <item quantity="many">Sono stati confrontati solo i primi %1$,d di file.</item>
+        <item quantity="other">Sono stati confrontati solo i primi %1$,d file.</item>
+    </plurals>
+    <string name="duplicates_none">Nessun duplicato trovato.\nI file sotto i %1$s non vengono confrontati.</string>
+    <string name="duplicates_no_files">Nessun file di %1$s o più in questa cartella</string>
+    <plurals name="duplicates_group">
+        <item quantity="one">%1$d copia · %2$s ciascuna · %3$s sprecati</item>
+        <item quantity="many">%1$d di copie · %2$s ciascuna · %3$s sprecati</item>
+        <item quantity="other">%1$d copie · %2$s ciascuna · %3$s sprecati</item>
+    </plurals>
+    <string name="duplicates_keep_one">Resta sempre una copia di ogni gruppo: l\'ultima non può essere selezionata.</string>
+    <plurals name="duplicates_trash">
+        <item quantity="one">Sposta %d nel cestino</item>
+        <item quantity="many">Sposta %d nel cestino</item>
+        <item quantity="other">Sposta %d nel cestino</item>
+    </plurals>
+    <plurals name="duplicates_kept_back">
+        <item quantity="one">%d file non spostato: il file, o la copia conservata, è cambiato dopo l\'analisi.</item>
+        <item quantity="many">%d di file non spostati: i file, o la copia conservata, sono cambiati dopo l\'analisi.</item>
+        <item quantity="other">%d file non spostati: i file, o la copia conservata, sono cambiati dopo l\'analisi.</item>
+    </plurals>
+    <string name="duplicates_not_found">Questa cartella non esiste più.</string>
+    <string name="duplicates_failed">Impossibile analizzare questa cartella: %1$s</string>
+    <string name="content_search_choose_folder">Scegli una cartella…</string>
+    <string name="content_search_hint">Parola, frase o regex…</string>
+    <string name="content_search_match_case">Maiuscole/minuscole</string>
+    <string name="content_search_regex">Espressione regolare</string>
+    <string name="content_search_needs_text">Inserisca cosa cercare</string>
+    <plurals name="content_search_lines">
+        <item quantity="one">%d riga corrispondente</item>
+        <item quantity="many">%d di righe corrispondenti</item>
+        <item quantity="other">%d righe corrispondenti</item>
+    </plurals>
+    <plurals name="content_search_files">
+        <item quantity="one">%d file</item>
+        <item quantity="many">%d di file</item>
+        <item quantity="other">%d file</item>
+    </plurals>
+    <string name="content_search_summary">%1$s in %2$s</string>
+    <plurals name="content_search_more_lines">
+        <item quantity="one">%d altra riga non mostrata</item>
+        <item quantity="many">%d di altre righe non mostrate</item>
+        <item quantity="other">%d altre righe non mostrate</item>
+    </plurals>
+    <plurals name="content_search_too_large">
+        <item quantity="one">%1$d file oltre %2$d MB non è stato esaminato</item>
+        <item quantity="many">%1$d di file oltre %2$d MB non sono stati esaminati</item>
+        <item quantity="other">%1$d file oltre %2$d MB non sono stati esaminati</item>
+    </plurals>
+    <plurals name="content_search_unreadable">
+        <item quantity="one">%d file non leggibile</item>
+        <item quantity="many">%d di file non leggibili</item>
+        <item quantity="other">%d file non leggibili</item>
+    </plurals>
+    <plurals name="content_search_full">
+        <item quantity="one">La ricerca si è fermata a %1$,d file trovato.</item>
+        <item quantity="many">La ricerca si è fermata a %1$,d di file trovati.</item>
+        <item quantity="other">La ricerca si è fermata a %1$,d file trovati.</item>
+    </plurals>
+    <string name="content_search_choose_first">Scelga una cartella per iniziare</string>
+    <string name="content_search_enter">Inserisca una parola e tocchi Cerca</string>
+    <string name="content_search_nothing">Nessun risultato</string>
+    <plurals name="pattern_too_long">
+        <item quantity="one">Il modello è troppo lungo: al massimo %1$d carattere.</item>
+        <item quantity="many">Il modello è troppo lungo: al massimo %1$d di caratteri.</item>
+        <item quantity="other">Il modello è troppo lungo: al massimo %1$d caratteri.</item>
+    </plurals>
+    <string name="pattern_invalid">Questo modello non è valido (le asserzioni di lookaround e i riferimenti all\'indietro non sono supportati).</string>
+    <plurals name="pattern_too_many_repeats">
+        <item quantity="one">Questo modello si ripete troppo: insieme, le sue ripetizioni {n} produrrebbero più di %1$,d copia.</item>
+        <item quantity="many">Questo modello si ripete troppo: insieme, le sue ripetizioni {n} produrrebbero più di %1$,d di copie.</item>
+        <item quantity="other">Questo modello si ripete troppo: insieme, le sue ripetizioni {n} produrrebbero più di %1$,d copie.</item>
+    </plurals>
+    <string name="pattern_bad_replacement">La sostituzione fa riferimento a un gruppo che il modello non ha.</string>
+    <string name="pattern_too_slow">Questo modello richiede troppo tempo su questi nomi.</string>
+    <string name="action_bulk_rename">Rinomina la selezione</string>
+    <plurals name="bulk_rename_title">
+        <item quantity="one">Rinomina %d elemento</item>
+        <item quantity="many">Rinomina %d di elementi</item>
+        <item quantity="other">Rinomina %d elementi</item>
+    </plurals>
+    <string name="bulk_rename_numbering">Numera</string>
+    <string name="bulk_rename_affixes">Prefisso</string>
+    <string name="bulk_rename_replace">Regex</string>
+    <string name="bulk_rename_base">Nome base</string>
+    <string name="bulk_rename_base_hint">es. Foto</string>
+    <string name="bulk_rename_base_default">Foto</string>
+    <string name="bulk_rename_start">Primo numero</string>
+    <string name="bulk_rename_digits">Cifre (3 → 001)</string>
+    <string name="bulk_rename_prefix">Prefisso</string>
+    <string name="bulk_rename_suffix">Suffisso (prima dell\'estensione)</string>
+    <string name="bulk_rename_pattern">Modello (regex)</string>
+    <string name="bulk_rename_pattern_hint">es. IMG_(\\d+)</string>
+    <string name="bulk_rename_replacement">Sostituzione</string>
+    <string name="bulk_rename_replacement_hint">es. Foto_$1</string>
+    <string name="bulk_rename_keep_extension">Mantieni l\'estensione</string>
+    <string name="bulk_rename_duplicate">assegnato due volte nella selezione</string>
+    <string name="bulk_rename_unchanged">invariato</string>
+    <plurals name="bulk_rename_refused">
+        <item quantity="one">%d nome rifiutato: non verrà rinominato nulla.</item>
+        <item quantity="many">%d di nomi rifiutati: non verrà rinominato nulla.</item>
+        <item quantity="other">%d nomi rifiutati: non verrà rinominato nulla.</item>
+    </plurals>
+    <plurals name="bulk_rename_done">
+        <item quantity="one">%d rinominato</item>
+        <item quantity="many">%d rinominati</item>
+        <item quantity="other">%d rinominati</item>
+    </plurals>
+    <plurals name="bulk_rename_not_renamed">
+        <item quantity="one">%1$d non rinominato: «%2$s», %3$s</item>
+        <item quantity="many">%1$d non rinominati, il primo «%2$s»: %3$s</item>
+        <item quantity="other">%1$d non rinominati, il primo «%2$s»: %3$s</item>
+    </plurals>
+
+    <!-- The PDF viewer -->
+    <string name="pdf_contents">Indice</string>
+    <string name="pdf_contents_untitled">(senza titolo)</string>
+    <string name="pdf_first_page">Prima pagina</string>
+    <string name="pdf_previous_page">Pagina precedente</string>
+    <string name="pdf_next_page">Pagina successiva</string>
+    <string name="pdf_last_page">Ultima pagina</string>
+    <string name="pdf_page_counter">%1$d / %2$d</string>
+    <string name="pdf_page_description">Pagina %1$d</string>
+    <string name="pdf_go_to_page">Vai alla pagina</string>
+    <string name="pdf_go_to_hint">1 – %1$d</string>
+    <string name="pdf_go_to_invalid">Inserisca una pagina da 1 a %1$d.</string>
+    <string name="pdf_go">Vai</string>
+    <string name="pdf_password_title">Password richiesta</string>
+    <string name="pdf_password_required">Questo PDF è protetto da una password.</string>
+    <string name="pdf_password_label">Password</string>
+    <string name="pdf_password_wrong">Password errata. Riprovi.</string>
+    <string name="pdf_certificate_encrypted">Questo PDF è cifrato per i certificati dei suoi destinatari: nessuna password lo apre, e Read Files Tech non può aprirlo. Provi «Apri con…».</string>
+    <string name="pdf_reader_stopped">Questo PDF ha arrestato il lettore PDF: potrebbe essere danneggiato, o creato apposta per mandarlo in crash. Il resto dell\'app non ne risente. Provi «Apri con…».</string>
+
+    <!-- Compress and Remove EXIF (phase 5) -->
+    <string name="action_strip_metadata">Rimuovi i metadati</string>
+    <string name="action_compress">Comprimi</string>
+    <string name="compress_intro">Salva una copia JPEG più leggera di un\'immagine, senza la sua posizione né altri metadati</string>
+    <string name="compress_quality">Qualità JPEG: %1$d / 100</string>
+    <string name="compress_max_width">Larghezza massima: %1$d px</string>
+    <string name="compress_working">Compressione…</string>
+    <string name="compress_saved_title">Copia compressa salvata</string>
+    <string name="image_copy_saved_body">Orientata correttamente, senza EXIF, posizione né XMP; l\'originale resta intatto. La copia è qui:</string>
+    <string name="compress_sizes">Prima: %1$s · Dopo: %2$s</string>
+    <string name="compress_reduction">Riduzione: -%1$d %%</string>
+    <string name="compress_larger">La copia non è più leggera dell\'originale: provi una qualità o una larghezza inferiore.</string>
+    <string name="compress_failed">Impossibile comprimere questa immagine: %1$s</string>
+    <string name="exif_intro">Mostra la posizione, la data e la fotocamera registrate in un\'immagine, e ne salva una copia senza questi dati</string>
+    <string name="exif_found">Metadati trovati</string>
+    <string name="exif_none">Nessun metadato rilevante</string>
+    <string name="exif_gps">Posizione GPS</string>
+    <string name="exif_present">presente</string>
+    <string name="exif_taken">Scattata il</string>
+    <string name="exif_make">Marca</string>
+    <string name="exif_model">Modello</string>
+    <string name="exif_software">Software</string>
+    <string name="exif_dimensions">Dimensioni</string>
+    <string name="exif_dimensions_value">%1$d × %2$d</string>
+    <string name="exif_gps_warning">Questa immagine indica dove è stata scattata: ne rimuova i metadati prima di condividerla pubblicamente.</string>
+    <string name="exif_working">Rimozione…</string>
+    <string name="exif_saved_title">Copia pulita salvata</string>
+    <string name="exif_read_failed">Impossibile leggere questa immagine: %1$s</string>
+    <string name="tools_copy_failed">Impossibile salvare la copia: %1$s</string>
+
+    <!-- Text tools and CSV tools (phase 5) -->
+    <string name="tools_pdf_created">PDF creato</string>
+    <string name="tools_pdf_working">Creazione del PDF… %1$d %%</string>
+    <string name="tools_pdf_failed">Impossibile creare il PDF: %1$s</string>
+    <string name="txt_intro">Conta i caratteri, le parole e le righe di un testo, vi cerca e sostituisce, lo esporta in PDF</string>
+    <string name="txt_pick_title">Scegli un file di testo</string>
+    <string name="txt_reading">Lettura…</string>
+    <string name="txt_statistics">Statistiche</string>
+    <string name="txt_characters">Caratteri</string>
+    <string name="txt_words">Parole</string>
+    <string name="txt_lines">Righe</string>
+    <string name="txt_counting">Conteggio… %1$d %%</string>
+    <string name="txt_search_replace">Cerca e sostituisci</string>
+    <string name="txt_search">Cerca</string>
+    <string name="txt_replace_with">Sostituisci con</string>
+    <string name="txt_searching">Ricerca…</string>
+    <string name="txt_not_found">Non trovato</string>
+    <plurals name="txt_matches">
+        <item quantity="one">%1$,d corrispondenza</item>
+        <item quantity="many">%1$,d di corrispondenze</item>
+        <item quantity="other">%1$,d corrispondenze</item>
+    </plurals>
+    <string name="txt_replace_all">Sostituisci tutto in una copia</string>
+    <string name="txt_replace_note">Il file stesso resta com\'è: una copia con le sostituzioni viene salvata in %1$s.</string>
+    <string name="txt_replacing">Sostituzione… %1$d %%</string>
+    <string name="txt_export">Esporta</string>
+    <string name="txt_to_pdf">Converti in PDF</string>
+    <string name="txt_replaced_title">Copia salvata con le sostituzioni</string>
+    <plurals name="txt_replaced_body">
+        <item quantity="one">%1$,d sostituzione; il file originale resta intatto. La copia è qui:</item>
+        <item quantity="many">%1$,d di sostituzioni; il file originale resta intatto. La copia è qui:</item>
+        <item quantity="other">%1$,d sostituzioni; il file originale resta intatto. La copia è qui:</item>
+    </plurals>
+    <string name="txt_replace_not_text">«%1$s» non è un file di testo: non è stato sostituito nulla.</string>
+    <string name="txt_replace_not_reversible">«%1$s» contiene byte che non sono caratteri della sua codifica — un carattere troncato, o un danno: una copia li cambierebbe. Non è stato sostituito nulla.</string>
+    <string name="txt_replace_unencodable">%1$s, la codifica di questo file, non ha «%2$s»: cambi la sostituzione.</string>
+    <string name="txt_replace_too_large">La copia supererebbe %1$,d %2$s: non è stato scritto nulla.</string>
+    <string name="txt_replace_no_match">Il testo cercato non è in questo file: non c\'è nulla da sostituire.</string>
+    <string name="txt_pdf_too_large">Troppo lungo da convertire in PDF: oltre %1$,d %2$s di testo.</string>
+    <string name="csv_tools_intro">Conta le righe e le colonne di un CSV, lo esporta come tabella PDF, unisce più file CSV in uno solo</string>
+    <string name="csv_tools_pick_title">Scegli un file CSV</string>
+    <string name="csv_tools_merge_pick_title">File CSV da unire</string>
+    <string name="csv_tools_merge_several">Unisci più file CSV</string>
+    <string name="csv_tools_merge_with">Unisci con altri file CSV</string>
+    <string name="csv_tools_rows">Righe</string>
+    <string name="csv_tools_columns">Colonne</string>
+    <string name="csv_tools_rows_cut">Più righe di quante ne mostri il visualizzatore: contate fino a %1$,d.</string>
+    <string name="csv_tools_columns_cut">Più colonne di quante ne mostri il visualizzatore: contate fino a %1$,d.</string>
+    <plurals name="csv_tools_more_columns">
+        <item quantity="one">e %1$,d altra</item>
+        <item quantity="many">e altre %1$,d</item>
+        <item quantity="other">e altre %1$,d</item>
+    </plurals>
+    <string name="csv_tools_actions">Azioni</string>
+    <string name="csv_tools_merging">Unione… %1$d %%</string>
+    <string name="csv_tools_to_pdf">Esporta in PDF</string>
+    <string name="csv_tools_merge_note">Le righe dei file scelti vanno dopo quelle di questo file, sotto la sua intestazione; i file stessi restano intatti.</string>
+    <string name="csv_tools_merged_title">File CSV uniti</string>
+    <plurals name="csv_tools_merged_files">
+        <item quantity="one">Da %1$d file</item>
+        <item quantity="many">Da %1$d di file</item>
+        <item quantity="other">Da %1$d file</item>
+    </plurals>
+    <plurals name="csv_tools_merged_body">
+        <item quantity="one">%1$,d riga sotto l\'intestazione del primo file. Il file unito è qui:</item>
+        <item quantity="many">%1$,d di righe sotto l\'intestazione del primo file. Il file unito è qui:</item>
+        <item quantity="other">%1$,d righe sotto l\'intestazione del primo file. Il file unito è qui:</item>
+    </plurals>
+    <string name="csv_tools_merge_empty">Nessuno di questi file contiene righe: non c\'è nulla da unire.</string>
+    <string name="csv_tools_merge_other_columns">«%1$s» non ha le colonne del primo file: non può andare sotto la sua intestazione.</string>
+    <plurals name="csv_tools_merge_too_many_columns">
+        <item quantity="one">Una riga di «%1$s» ha più di %2$,d colonna.</item>
+        <item quantity="many">Una riga di «%1$s» ha più di %2$,d di colonne.</item>
+        <item quantity="other">Una riga di «%1$s» ha più di %2$,d colonne.</item>
+    </plurals>
+    <plurals name="csv_tools_merge_cell_too_long">
+        <item quantity="one">Una cella di «%1$s» contiene più di %2$,d carattere, più di una cella di un foglio di calcolo.</item>
+        <item quantity="many">Una cella di «%1$s» contiene più di %2$,d di caratteri, più di una cella di un foglio di calcolo.</item>
+        <item quantity="other">Una cella di «%1$s» contiene più di %2$,d caratteri, più di una cella di un foglio di calcolo.</item>
+    </plurals>
+    <string name="csv_tools_merge_failed">Impossibile unire questi file: %1$s</string>
+    <plurals name="csv_tools_too_many_pages">
+        <item quantity="one">Questa tabella produrrebbe più di %1$,d pagina: troppo grande per essere esportata qui.</item>
+        <item quantity="many">Questa tabella produrrebbe più di %1$,d di pagine: troppo grande per essere esportata qui.</item>
+        <item quantity="other">Questa tabella produrrebbe più di %1$,d pagine: troppo grande per essere esportata qui.</item>
+    </plurals>
+    <!-- The vault (phase 6; VaultScreen of the 2.15.3). -->
+    <string name="vault_setup_title">Crea una cassaforte</string>
+    <string name="vault_setup_body">La cassaforte cifra i Suoi file con AES-256-GCM. La sua chiave è derivata dalla Sua password su questo telefono (Argon2id, calibrato su questo dispositivo: qualche secondo), e la password non viene mai memorizzata.</string>
+    <string name="vault_password">Password</string>
+    <string name="vault_password_confirm">Conferma</string>
+    <string name="vault_password_min">Almeno %1$d caratteri</string>
+    <string name="vault_password_show">Mostra la password</string>
+    <string name="vault_password_hide">Nascondi la password</string>
+    <string name="vault_password_too_short">La password deve avere almeno %1$d caratteri.</string>
+    <string name="vault_password_mismatch">Le password non coincidono.</string>
+    <string name="vault_create">Crea la cassaforte</string>
+    <string name="vault_creating">Creazione della cassaforte…</string>
+    <string name="vault_creating_detail">Calibrazione su questo telefono</string>
+    <string name="vault_no_recovery">Nessun recupero è possibile: se dimentica la password, i file cifrati sono persi per sempre.</string>
+    <string name="vault_created">Cassaforte creata</string>
+    <string name="vault_setup_failed">Impossibile creare la cassaforte: %1$s</string>
+    <string name="vault_locked_title">Cassaforte bloccata</string>
+    <string name="vault_unlock">Sblocca</string>
+    <string name="vault_wrong_password">Password errata.</string>
+    <string name="vault_lockout">Troppi tentativi. Riprovi tra %1$s.</string>
+    <string name="vault_corrupted">I dati della cassaforte sono danneggiati: non può essere aperta. Può reimpostarla, e i suoi file andranno quindi persi.</string>
+    <string name="vault_unlock_failed">Impossibile aprire la cassaforte: %1$s</string>
+    <string name="vault_reset">Reimposta la cassaforte</string>
+    <string name="vault_reset_title">Reimpostare la cassaforte?</string>
+    <string name="vault_reset_message">Tutti i file cifrati verranno eliminati. L\'operazione è irreversibile.</string>
+    <string name="vault_reset_confirm">Reimposta</string>
+    <string name="vault_reset_done">Cassaforte reimpostata</string>
+    <string name="vault_reset_failed">Impossibile reimpostare la cassaforte: %1$s</string>
+    <string name="vault_lock">Blocca</string>
+    <string name="vault_empty">La cassaforte è vuota</string>
+    <string name="vault_empty_hint">Importi un file per cifrarlo.</string>
+    <string name="vault_import">Importa</string>
+    <string name="vault_import_pick_title">Importa nella cassaforte</string>
+    <string name="vault_import_folder">Importa una cartella</string>
+    <string name="vault_import_folder_hint">Cifra molti file in una volta</string>
+    <string name="vault_import_folder_pick_title">Scegli una cartella da cifrare</string>
+    <string name="vault_importing">Cifratura di %1$d su %2$d…</string>
+    <string name="vault_backup">Backup della cassaforte</string>
+    <string name="vault_backup_hint">Un file .rftvault cifrato</string>
+    <string name="vault_restore">Ripristina un backup</string>
+    <string name="vault_restore_hint">Da un file .rftvault</string>
+    <string name="vault_open">Apri</string>
+    <string name="vault_share">Condividi (decifrato)</string>
+    <string name="vault_export">Esporta…</string>
+    <string name="vault_not_viewable">Questo tipo di file non si apre nell\'app: lo condivida o lo esporti.</string>
+    <string name="vault_namesake_title">Già presente</string>
+    <string name="vault_namesake_message">«%1$s» è già nella cassaforte. Sostituirlo?</string>
+    <string name="vault_export_namesake_message">«%1$s» esiste già in quella cartella. Sostituirlo?</string>
+    <string name="vault_keep">Mantieni</string>
+    <string name="vault_replace">Sostituisci</string>
+    <string name="vault_export_pick_title">Esporta in una cartella</string>
+    <string name="vault_exported">Esportato: %1$s</string>
+    <string name="vault_export_cancelled">Esportazione annullata: il file già presente in quella cartella viene conservato.</string>
+    <string name="vault_export_failed">Impossibile esportare il file: %1$s</string>
+    <string name="vault_share_failed">Impossibile decifrare il file da condividere: %1$s</string>
+    <string name="vault_delete_title">Elimina dalla cassaforte</string>
+    <string name="vault_delete_message">Eliminare «%1$s»? L\'operazione è irreversibile.</string>
+    <string name="vault_delete_failed">Impossibile eliminare il file: %1$s</string>
+    <string name="vault_list_failed">Impossibile elencare i file della cassaforte: %1$s</string>
+    <string name="vault_backup_empty">La cassaforte è vuota: non c\'è nulla di cui eseguire il backup.</string>
+    <string name="vault_backup_password_info">Scelga una password per il backup: Le servirà per ripristinarlo.\n\nNon è la password della cassaforte. La scelga con cura: senza di essa, il backup non può essere aperto.\n\nIl file verrà salvato in %1$s.</string>
+    <string name="vault_backup_app_folder">⚠ Questa cartella appartiene all\'app: viene eliminata con essa, insieme al backup. Consenta l\'«Accesso a tutti i file», o scelga un\'altra cartella di destinazione nelle impostazioni, per conservare il backup se l\'app viene rimossa.</string>
+    <string name="vault_backup_go">Esegui backup</string>
+    <string name="vault_backing_up">Backup della cassaforte…</string>
+    <string name="vault_backup_done_title">Backup della cassaforte eseguito</string>
+    <string name="vault_backup_done_body">Il backup si trova in %1$s.</string>
+    <string name="vault_backup_failed">Impossibile eseguire il backup della cassaforte: %1$s</string>
+    <string name="vault_restore_pick_title">Scegli un backup .rftvault</string>
+    <string name="vault_restore_extension_title">Estensione inattesa</string>
+    <string name="vault_restore_extension_message">Il file non termina con .rftvault. Continuare comunque?</string>
+    <string name="vault_restore_password_info">Inserisca la password scelta quando è stato creato il backup. I file già presenti nella cassaforte vengono saltati, non sostituiti.</string>
+    <string name="vault_restore_go">Ripristina</string>
+    <string name="vault_restoring">Ripristino del backup…</string>
+    <string name="vault_restore_failed">Impossibile ripristinare il backup: %1$s</string>
+    <string name="vault_restore_nothing_title">Nessun file ripristinato</string>
+    <plurals name="vault_restore_nothing_message">
+        <item quantity="one">%d file del backup è già nella cassaforte. Sostituirlo con quello del backup?</item>
+        <item quantity="many">%d di file del backup sono già nella cassaforte. Sostituirli con quelli del backup?</item>
+        <item quantity="other">%d file del backup sono già nella cassaforte. Sostituirli con quelli del backup?</item>
+    </plurals>
+    <string name="vault_restore_replace_message">I file della cassaforte con lo stesso nome verranno sostituiti da quelli del backup. L\'operazione è irreversibile.</string>
+    <string name="vault_restore_check_space">%1$s: controlli lo spazio libero.</string>
+    <plurals name="vault_imported">
+        <item quantity="one">%d cifrato</item>
+        <item quantity="many">%d cifrati</item>
+        <item quantity="other">%d cifrati</item>
+    </plurals>
+    <plurals name="vault_kept">
+        <item quantity="one">%d mantenuto</item>
+        <item quantity="many">%d mantenuti</item>
+        <item quantity="other">%d mantenuti</item>
+    </plurals>
+    <plurals name="vault_restored">
+        <item quantity="one">%d ripristinato</item>
+        <item quantity="many">%d ripristinati</item>
+        <item quantity="other">%d ripristinati</item>
+    </plurals>
+    <plurals name="vault_already_there">
+        <item quantity="one">%d già presente</item>
+        <item quantity="many">%d già presenti</item>
+        <item quantity="other">%d già presenti</item>
+    </plurals>
+    <plurals name="vault_left_out">
+        <item quantity="one">%d escluso: il suo nome non può essere usato nella cassaforte</item>
+        <item quantity="many">%d esclusi: i loro nomi non possono essere usati nella cassaforte</item>
+        <item quantity="other">%d esclusi: i loro nomi non possono essere usati nella cassaforte</item>
+    </plurals>
+    <string name="vault_reason_locked">la cassaforte si è bloccata nel frattempo</string>
+    <string name="vault_reason_corrupted">i dati della cassaforte sono danneggiati</string>
+    <string name="vault_reason_storage">il telefono ha rifiutato la scrittura</string>
+    <string name="vault_reason_too_large">oltre il limite di %1$d %2$s</string>
+    <string name="vault_reason_name">questo nome non può essere usato nella cassaforte</string>
+    <string name="vault_reason_backup_name">un ripristino rifiuterebbe il nome di «%1$s»: lo esporti, poi lo importi di nuovo con un altro nome</string>
+    <string name="vault_reason_auth">password errata, o il backup è stato alterato</string>
+    <string name="vault_reason_format">non è un backup .rftvault leggibile</string>
+    <string name="vault_reason_too_costly">richiede più memoria di quella che ha questo telefono</string>
+    <string name="vault_reason_lockout">troppi tentativi, riprovi tra %1$s</string>
+    <plurals name="vault_wait_seconds">
+        <item quantity="one">%d secondo</item>
+        <item quantity="many">%d di secondi</item>
+        <item quantity="other">%d secondi</item>
+    </plurals>
+    <plurals name="vault_wait_minutes">
+        <item quantity="one">%d minuto</item>
+        <item quantity="many">%d di minuti</item>
+        <item quantity="other">%d minuti</item>
+    </plurals>
+    <string name="vault_repair_title">Riparazione della cassaforte</string>
+    <string name="vault_repair_intro">Le versioni dalla 2.5.5 alla 2.15.2 potevano salvare un file della cassaforte con una chiave di zeri, quando la cassaforte si bloccava durante un\'importazione o un ripristino.</string>
+    <string name="vault_repair_repaired">Riparati, si aprono di nuovo con la Sua password:\n%1$s\n\nQuesti file non si aprivano più da quell\'incidente. Se uno di essi si apriva normalmente subito prima dell\'aggiornamento, non si fidi del suo contenuto.</string>
+    <string name="vault_repair_unexamined">Non verificati (troppo grandi, o errore di lettura):\n%1$s\n\nSe non si aprono, importi di nuovo l\'originale se esiste ancora, o ripristini il Suo backup .rftvault.</string>
+    <string name="vault_folder_include_sub">Includi le sottocartelle</string>
+    <string name="vault_folder_delete_originals">Elimina poi gli originali</string>
+    <string name="vault_folder_delete_originals_hint">Le verrà chiesto di nuovo prima di qualsiasi eliminazione</string>
+    <string name="vault_folder_cap">Raggiunto il limite di %1$d file. Scelga una sottocartella più precisa per vedere tutto.</string>
+    <string name="vault_folder_empty">Nessun file</string>
+    <string name="vault_folder_empty_recursive">La cartella e le sue sottocartelle non contengono file.</string>
+    <string name="vault_folder_empty_flat">La cartella non contiene file. Includere le sue sottocartelle?</string>
+    <string name="vault_folder_select_all">Seleziona tutto</string>
+    <string name="vault_folder_select_none">Deseleziona tutto</string>
+    <string name="vault_folder_none_selected">Nessun file selezionato</string>
+    <plurals name="vault_folder_encrypt">
+        <item quantity="one">Cifra %1$d file (%2$s)</item>
+        <item quantity="many">Cifra %1$d di file (%2$s)</item>
+        <item quantity="other">Cifra %1$d file (%2$s)</item>
+    </plurals>
+    <string name="vault_folder_progress">Cifratura… %1$d %%</string>
+    <string name="vault_folder_delete_title">Eliminare gli originali?</string>
+    <plurals name="vault_folder_delete_message">
+        <item quantity="one">Una volta cifrato, %d file verrà eliminato dalla sua cartella. L\'operazione è irreversibile.</item>
+        <item quantity="many">Una volta cifrati, %d di file verranno eliminati dalla loro cartella. L\'operazione è irreversibile.</item>
+        <item quantity="other">Una volta cifrati, %d file verranno eliminati dalla loro cartella. L\'operazione è irreversibile.</item>
+    </plurals>
+    <string name="vault_folder_delete_confirm">Elimina dopo la cifratura</string>
+    <plurals name="vault_originals_deleted">
+        <item quantity="one">%d originale eliminato</item>
+        <item quantity="many">%d di originali eliminati</item>
+        <item quantity="other">%d originali eliminati</item>
+    </plurals>
+    <plurals name="vault_originals_not_deleted">
+        <item quantity="one">%d originale lasciato al suo posto (modificato nel frattempo, o la sua eliminazione è stata rifiutata)</item>
+        <item quantity="many">%d di originali lasciati al loro posto (modificati nel frattempo, o la loro eliminazione è stata rifiutata)</item>
+        <item quantity="other">%d originali lasciati al loro posto (modificati nel frattempo, o la loro eliminazione è stata rifiutata)</item>
+    </plurals>
+    <plurals name="vault_namesakes_kept">
+        <item quantity="one">%d mantenuto (già nella cassaforte)</item>
+        <item quantity="many">%d mantenuti (già nella cassaforte)</item>
+        <item quantity="other">%d mantenuti (già nella cassaforte)</item>
+    </plurals>
+    <string name="vault_continue">Continua</string>
+    <string name="vault_folder_unreadable">Questa cartella non può essere letta.</string>
+    <string name="vault_folder_locked">La cassaforte si è bloccata: la cifratura si è interrotta, e gli originali non ancora cifrati sono intatti. Importi di nuovo la cartella per proseguire: i file già nella cassaforte vengono saltati.</string>
+    <string name="vault_folder_stopping">Interruzione dopo il file in corso… %1$d %%</string>
+    <string name="vault_folder_stopped">Interrotto: gli originali non ancora cifrati sono intatti. Importi di nuovo la cartella per proseguire: i file già nella cassaforte vengono saltati.</string>
+</resources>
