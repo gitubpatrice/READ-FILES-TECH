@@ -42,7 +42,7 @@ coroutines              = "1.11.0"
 # never poi-ooxml (+12 MB of jars, StAX absent from Android, java.awt through XSSFColor: D-015; the .xlsx
 # has a reader of its own). Apache-2.0, as its dependencies (commons-codec, -collections4, -io, -math3,
 # SparseBitSet, log4j-api), read in their POMs. 5.5.1 published 2025-11-26, measured by the prototype.
-poi                     = "5.5.1"
+poi                     = "6.0.0"
 
 # --- Markdown (phase 4, the Markdown viewer): commonmark-java parses to a tree the viewer lays out itself,
 # never to HTML. BSD-2-Clause (its POM and LICENSE.txt), no dependency, maintained (a release every few
