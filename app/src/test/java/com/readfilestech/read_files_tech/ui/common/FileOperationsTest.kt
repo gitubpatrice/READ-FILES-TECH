@@ -90,6 +90,20 @@ class FileOperationsTest {
         assertThat((said.text as UiText.Res).id).isEqualTo(R.string.error_trash)
     }
 
+    /** A restore that fails says why, as a failed move to the trash does (coherence audit, phase 9). */
+    @Test
+    fun `a restore that fails gives its reason`() = runTest(dispatcher) {
+        val folder = File(work, "sub").apply { mkdirs() }
+        val note = File(folder, "note.txt").apply { writeText("hello") }
+        val trashed = posted { it.moveToTrash(listOf(note)) }.single()
+        // Its folder replaced by a FILE of the same name: nothing can be put back under it.
+        folder.delete()
+        folder.writeText("not a folder")
+        val said = posted { requireNotNull(trashed.action).run() }.single()
+        assertThat(said.isError).isTrue()
+        assertThat((said.text as UiText.Res).id).isEqualTo(R.string.error_restore)
+    }
+
     @Test
     fun `a batch counts what went, what failed, and offers Undo for what went`() = runTest(dispatcher) {
         val a = File(work, "a.txt").apply { writeText("a") }

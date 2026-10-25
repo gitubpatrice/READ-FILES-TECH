@@ -30,7 +30,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.TextFiles
 import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.ui.theme.BrandColors
-import com.readfilestech.read_files_tech.ui.theme.DangerRed
+import com.readfilestech.read_files_tech.ui.theme.dangerContent
 
 /**
  * A file's menu, in the 2.15.x order. "Remove metadata" is offered on the formats that carry EXIF (the
@@ -89,7 +89,7 @@ fun FolderMenu(entry: FileEntry, onAction: (EntryAction, FileEntry) -> Unit, dis
 @Composable
 private fun DeleteItems(item: MenuItems) {
     item(EntryAction.TRASH, R.string.action_trash, Icons.Outlined.Delete)
-    item(EntryAction.DELETE_FOREVER, R.string.action_delete_forever, Icons.Filled.DeleteForever, DangerRed, coloredText = true)
+    item(EntryAction.DELETE_FOREVER, R.string.action_delete_forever, Icons.Filled.DeleteForever, dangerContent, coloredText = true)
 }
 
 /** The items of one row's menu: each closes the menu, then acts on the row's entry. */

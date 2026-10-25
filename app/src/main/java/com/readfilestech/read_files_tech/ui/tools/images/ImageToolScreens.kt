@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.Compress
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -53,6 +52,7 @@ import com.readfilestech.read_files_tech.data.images.ImageSize
 import com.readfilestech.read_files_tech.data.images.ImageToolRules
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
@@ -219,7 +219,7 @@ private class ActionLabels(@param:StringRes val idle: Int, @param:StringRes val 
 
 @Composable
 private fun ActionButton(icon: ImageVector, labels: ActionLabels, busy: Boolean, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+    BrandButton(onClick = onClick, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
         Icon(icon, contentDescription = null)
         Spacer(Modifier.size(8.dp))
         Text(stringResource(if (busy) labels.busy else labels.idle))

@@ -202,6 +202,7 @@
     <string name="error_create_folder">Dieser Ordner kann nicht erstellt werden: %1$s</string>
     <string name="error_rename">Umbenennen nicht möglich: %1$s</string>
     <string name="error_trash">Verschieben in den Papierkorb nicht möglich: %1$s</string>
+    <string name="error_restore">Wiederherstellen nicht möglich: %1$s</string>
     <string name="error_invalid_name">ungültiger Name (/ \\ . und .. sind nicht erlaubt)</string>
     <string name="error_already_exists">ein Element mit diesem Namen existiert bereits</string>
     <string name="error_no_free_name">kein freier Name mehr im Ordner</string>
@@ -657,7 +658,7 @@
         <item quantity="other">Nur die ersten %1$,d Zeilen des Ergebnisses werden angezeigt; die Zahlen beziehen sich auf die gesamten Dateien.</item>
     </plurals>
     <string name="diff_approximate">Die Dateien unterscheiden sich zu stark, um in vertretbarer Zeit vollständig verglichen zu werden: In einem Teil des Ergebnisses erscheinen unveränderte Zeilen als entfernt und hinzugefügt.</string>
-    <string name="diff_stopped">Vergleich abgebrochen.</string>
+    <string name="diff_cancelled">Vergleich abgebrochen.</string>
     <string name="diff_compare_again">Erneut vergleichen</string>
     <string name="diff_too_many_lines">„%1$s“ hat zu viele Zeilen für einen Vergleich (über %2$,d).</string>
     <string name="color_palette">Palette</string>

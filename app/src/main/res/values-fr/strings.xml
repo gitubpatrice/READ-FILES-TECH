@@ -210,6 +210,7 @@
     <string name="error_create_folder">Impossible de créer ce dossier : %1$s</string>
     <string name="error_rename">Impossible de renommer : %1$s</string>
     <string name="error_trash">Mise à la corbeille impossible : %1$s</string>
+    <string name="error_restore">Restauration impossible : %1$s</string>
     <string name="error_invalid_name">nom invalide (/ \\ . et .. interdits)</string>
     <string name="error_already_exists">un élément de ce nom existe déjà</string>
     <string name="error_no_free_name">aucun nom libre dans le dossier</string>
@@ -685,7 +686,7 @@
         <item quantity="other">Seules les %1$,d premières lignes sont affichées ; les décomptes portent sur les fichiers entiers.</item>
     </plurals>
     <string name="diff_approximate">Les fichiers diffèrent trop pour être comparés en entier en un temps raisonnable : dans une partie du résultat, des lignes inchangées apparaissent supprimées et ajoutées.</string>
-    <string name="diff_stopped">Comparaison arrêtée.</string>
+    <string name="diff_cancelled">Comparaison annulée.</string>
     <string name="diff_compare_again">Comparer à nouveau</string>
     <string name="diff_too_many_lines">« %1$s » a trop de lignes pour être comparé (plus de %2$,d).</string>
     <string name="color_palette">Nuancier</string>

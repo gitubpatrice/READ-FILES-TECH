@@ -45,6 +45,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.theme.Damier
 
 /**
  * The explorer screen. In folder-choosing mode ([ExplorerUiState.pickFolder]) it is the destination
@@ -188,7 +189,11 @@ fun ExplorerScreen(
         floatingActionButton = {
             // A new folder: to browse, or as a destination — not while choosing files.
             if (!state.selecting && (state.pick == null || state.pickFolder)) {
-                FloatingActionButton(onClick = { viewModel.show(ExplorerDialog.NewFolder) }) {
+                FloatingActionButton(
+                    onClick = { viewModel.show(ExplorerDialog.NewFolder) },
+                    containerColor = Damier.Blue,
+                    contentColor = Damier.OnBlue,
+                ) {
                     Icon(Icons.Outlined.CreateNewFolder, contentDescription = stringResource(R.string.action_new_folder))
                 }
             }

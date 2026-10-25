@@ -205,6 +205,7 @@
     <string name="error_create_folder">Cannot create this folder: %1$s</string>
     <string name="error_rename">Cannot rename: %1$s</string>
     <string name="error_trash">Cannot move to the trash: %1$s</string>
+    <string name="error_restore">Cannot restore: %1$s</string>
     <string name="error_invalid_name">invalid name (/ \\ . and .. are not allowed)</string>
     <string name="error_already_exists">an item with this name already exists</string>
     <string name="error_no_free_name">no free name left in the folder</string>
@@ -676,7 +677,7 @@
         <item quantity="other">Only the first %1$,d lines of the result are shown; the counts are those of the whole files.</item>
     </plurals>
     <string name="diff_approximate">The files differ too much to be compared in full in reasonable time: in part of the result, unchanged lines show as removed and added.</string>
-    <string name="diff_stopped">Comparison stopped.</string>
+    <string name="diff_cancelled">Comparison cancelled.</string>
     <string name="diff_compare_again">Compare again</string>
     <string name="diff_too_many_lines">“%1$s” has too many lines to compare (over %2$,d).</string>
     <string name="color_palette">Palette</string>

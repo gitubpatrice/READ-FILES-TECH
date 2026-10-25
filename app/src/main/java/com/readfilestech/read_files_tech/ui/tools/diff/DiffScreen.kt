@@ -160,11 +160,12 @@ private fun Status(state: DiffState, onStop: () -> Unit, onCompare: () -> Unit) 
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.diff_computing), Modifier.weight(1f))
-                OutlinedButton(onClick = onStop) { Text(stringResource(R.string.action_stop)) }
+                // "Cancel": a comparison stopped keeps nothing (docs D-039; coherence audit, phase 9).
+                OutlinedButton(onClick = onStop) { Text(stringResource(R.string.action_cancel)) }
             }
         }
         state.stopped -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.diff_stopped), Modifier.weight(1f))
+            Text(stringResource(R.string.diff_cancelled), Modifier.weight(1f))
             OutlinedButton(onClick = onCompare) { Text(stringResource(R.string.diff_compare_again)) }
         }
         failure != null -> Text(failure.resolve(), color = MaterialTheme.colorScheme.error)

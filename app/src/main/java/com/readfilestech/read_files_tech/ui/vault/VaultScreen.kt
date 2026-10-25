@@ -61,7 +61,7 @@ import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.theme.Damier
-import com.readfilestech.read_files_tech.ui.theme.DangerRed
+import com.readfilestech.read_files_tech.ui.theme.dangerContent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import javax.inject.Inject
@@ -285,7 +285,7 @@ private fun VaultRow(item: VaultItem, viewModel: VaultViewModel, onNavigate: (St
                         viewModel.pickFor(VaultPick.EXPORT, item)
                         onNavigate(Routes.picker(PickMode.FOLDER, title = titles.export))
                     })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.action_delete), color = DangerRed) }, onClick = {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_delete), color = dangerContent) }, onClick = {
                         menu = false
                         viewModel.askDelete(item)
                     })

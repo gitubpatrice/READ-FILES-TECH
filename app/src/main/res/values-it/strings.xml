@@ -217,6 +217,7 @@
     <string name="error_create_folder">Impossibile creare questa cartella: %1$s</string>
     <string name="error_rename">Impossibile rinominare: %1$s</string>
     <string name="error_trash">Impossibile spostare nel cestino: %1$s</string>
+    <string name="error_restore">Impossibile ripristinare: %1$s</string>
     <string name="error_invalid_name">nome non valido (/ \\ . e .. non sono consentiti)</string>
     <string name="error_already_exists">esiste già un elemento con questo nome</string>
     <string name="error_no_free_name">nessun nome libero rimasto nella cartella</string>
@@ -698,7 +699,7 @@
         <item quantity="other">Vengono mostrate solo le prime %1$,d righe del risultato; i conteggi sono quelli dei file interi.</item>
     </plurals>
     <string name="diff_approximate">I file sono troppo diversi per essere confrontati per intero in un tempo ragionevole: in una parte del risultato, righe invariate appaiono come rimosse e aggiunte.</string>
-    <string name="diff_stopped">Confronto interrotto.</string>
+    <string name="diff_cancelled">Confronto annullato.</string>
     <string name="diff_compare_again">Confronta di nuovo</string>
     <string name="diff_too_many_lines">«%1$s» ha troppe righe per essere confrontato (oltre %2$,d).</string>
     <string name="color_palette">Tavolozza</string>

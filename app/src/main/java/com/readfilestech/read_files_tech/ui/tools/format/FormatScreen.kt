@@ -18,7 +18,6 @@ import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -47,6 +46,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.tools.FormatAction
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -108,7 +108,7 @@ fun FormatScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: ()
                 failure != null -> Text(failure.resolve(), color = MaterialTheme.colorScheme.error)
                 !state.working && state.length > 0 -> {
                     ToolResult(state.preview, state.length, viewModel::copyText, viewModel::copied)
-                    Button(onClick = viewModel::save, enabled = !state.saving) {
+                    BrandButton(onClick = viewModel::save, enabled = !state.saving) {
                         Icon(Icons.Outlined.Save, contentDescription = null)
                         Text(stringResource(R.string.action_save), Modifier.padding(start = 6.dp))
                     }

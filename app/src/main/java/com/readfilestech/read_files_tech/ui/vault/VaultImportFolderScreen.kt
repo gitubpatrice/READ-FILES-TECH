@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,6 +55,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.SecureWindow
 import com.readfilestech.read_files_tech.ui.common.formatBytes
@@ -216,7 +216,7 @@ private fun EncryptBar(state: FolderImportState, onEncrypt: () -> Unit, onStop: 
             }
             val enabled = state.progress == null && !state.scanning && selected.isNotEmpty()
             val total = formatBytes(selected.sumOf(FolderEntry::size))
-            Button(onClick = onEncrypt, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+            BrandButton(onClick = onEncrypt, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.Lock, contentDescription = null)
                 Text(
                     if (selected.isEmpty()) {

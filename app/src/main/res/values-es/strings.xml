@@ -216,6 +216,7 @@
     <string name="error_create_folder">No se puede crear esta carpeta: %1$s</string>
     <string name="error_rename">No se puede cambiar el nombre: %1$s</string>
     <string name="error_trash">No se puede mover a la papelera: %1$s</string>
+    <string name="error_restore">No se puede restaurar: %1$s</string>
     <string name="error_invalid_name">nombre no válido (/ \\ . y .. no están permitidos)</string>
     <string name="error_already_exists">ya existe un elemento con este nombre</string>
     <string name="error_no_free_name">no queda ningún nombre libre en la carpeta</string>
@@ -697,7 +698,7 @@
         <item quantity="other">Solo se muestran las primeras %1$,d líneas del resultado; los recuentos son los de los archivos completos.</item>
     </plurals>
     <string name="diff_approximate">Los archivos difieren demasiado para compararlos por completo en un tiempo razonable: en parte del resultado, líneas sin cambios aparecen como eliminadas y añadidas.</string>
-    <string name="diff_stopped">Comparación detenida.</string>
+    <string name="diff_cancelled">Comparación cancelada.</string>
     <string name="diff_compare_again">Comparar de nuevo</string>
     <string name="diff_too_many_lines">«%1$s» tiene demasiadas líneas para compararlo (más de %2$,d).</string>
     <string name="color_palette">Paleta</string>

@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.TableView
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -68,6 +67,7 @@ import com.readfilestech.read_files_tech.data.viewer.csv.CsvTable
 import com.readfilestech.read_files_tech.data.viewer.text.TextEncoding
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.BusyButton
 import com.readfilestech.read_files_tech.ui.common.BusyIconButton
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
@@ -168,7 +168,7 @@ private fun OverCapDialog(capMb: Int, onAnswer: (saveAnyway: Boolean) -> Unit) {
     AlertDialog(
         onDismissRequest = { onAnswer(false) },
         text = { Text(stringResource(R.string.csv_editor_over_cap, capMb)) },
-        confirmButton = { Button(onClick = { onAnswer(true) }) { Text(stringResource(R.string.action_save)) } },
+        confirmButton = { BrandButton(onClick = { onAnswer(true) }) { Text(stringResource(R.string.action_save)) } },
         dismissButton = { TextButton(onClick = { onAnswer(false) }) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
@@ -478,7 +478,7 @@ private fun CellDialog(
                 }
             }
         },
-        confirmButton = { Button(onClick = confirm) { Text(stringResource(R.string.action_ok)) } },
+        confirmButton = { BrandButton(onClick = confirm) { Text(stringResource(R.string.action_ok)) } },
         dismissButton = {
             if (initial != null) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
@@ -513,7 +513,9 @@ private fun EncodingDialog(choices: List<TextEncoding>, onChoose: (TextEncoding)
             Text(stringResource(if (windowsOnly) R.string.csv_editor_encoding_windows_only else R.string.csv_editor_encoding_ask))
         },
         confirmButton = {
-            Button(onClick = { onChoose(TextEncoding.WINDOWS_1252) }) { Text(stringResource(R.string.csv_editor_encoding_windows)) }
+            BrandButton(onClick = { onChoose(TextEncoding.WINDOWS_1252) }) {
+                Text(stringResource(R.string.csv_editor_encoding_windows))
+            }
         },
         dismissButton = {
             if (windowsOnly) {

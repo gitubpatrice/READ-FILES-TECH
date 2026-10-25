@@ -41,9 +41,10 @@ class TwoTone(private val light: Color, private val dark: Color) {
  * The tools' colours of the 2.15.3 (`_ToolsTab`, one per tool), in two tones: Material 700 on the light card,
  * 300 on the dark one, where 700 sank. Each draws an ICON only, beside its title in `onSurface`: the colour
  * identifies, the text says. Icon on its 14 % tint, measured (light / dark): pink 4.6 / 4.7, blue-grey 5.7 / 5.3,
- * green 3.4 / 6.5, indigo 7.0 / 4.2, teal 4.3 / 5.6, orange 2.3 / 7.4, purple 6.3 / 4.1, cyan 2.9 / 7.1, deep
- * orange 3.2 / 5.9, deep purple 7.1 / 3.9, blue 3.8 / 6.0, amber 1.8 / 8.7, red 3.9 / 4.8, brown 7.3 / 4.3.
- * Amber, orange and cyan stay under 3:1 in light: the 2.15.3 drew them paler still (Material 500).
+ * green 3.4 / 6.5, indigo 7.0 / 4.2, teal 4.3 / 5.6, orange 3.5 / 7.4, purple 6.3 / 4.1, cyan 3.7 / 7.1, deep
+ * orange 3.2 / 5.9, deep purple 7.1 / 3.9, blue 3.8 / 6.0, amber 3.5 / 8.7, red 3.9 / 4.8, brown 7.3 / 4.3.
+ * Amber, orange and cyan are darker than their Material 700 in light (#B26A00, #C25E00, Cyan 800): at 700 they
+ * stayed under the 3:1 a graphic needs (1.8, 2.3, 2.9), and Amber 900 still reads 2.4.
  */
 object ToolColors {
     val Pink = TwoTone(Color(0xFFC2185B), Color(0xFFF06292))
@@ -51,13 +52,13 @@ object ToolColors {
     val Green = TwoTone(Color(0xFF388E3C), Color(0xFF81C784))
     val Indigo = TwoTone(Color(0xFF303F9F), Color(0xFF7986CB))
     val Teal = TwoTone(Color(0xFF00796B), Color(0xFF4DB6AC))
-    val Orange = TwoTone(Color(0xFFF57C00), Color(0xFFFFB74D))
+    val Orange = TwoTone(Color(0xFFC25E00), Color(0xFFFFB74D))
     val Purple = TwoTone(Color(0xFF7B1FA2), Color(0xFFBA68C8))
-    val Cyan = TwoTone(Color(0xFF0097A7), Color(0xFF4DD0E1))
+    val Cyan = TwoTone(Color(0xFF00838F), Color(0xFF4DD0E1))
     val DeepOrange = TwoTone(Color(0xFFE64A19), Color(0xFFFF8A65))
     val DeepPurple = TwoTone(Color(0xFF512DA8), Color(0xFF9575CD))
     val Blue = TwoTone(Color(0xFF1976D2), Color(0xFF64B5F6))
-    val Amber = TwoTone(Color(0xFFFFA000), Color(0xFFFFD54F))
+    val Amber = TwoTone(Color(0xFFB26A00), Color(0xFFFFD54F))
     val Red = TwoTone(Color(0xFFD32F2F), Color(0xFFE57373))
     val Brown = TwoTone(Color(0xFF5D4037), Color(0xFFA1887F))
 }

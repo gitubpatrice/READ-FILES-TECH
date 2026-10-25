@@ -53,7 +53,7 @@ import com.readfilestech.read_files_tech.data.trash.TrashEntry
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
 import com.readfilestech.read_files_tech.ui.common.formatBytes
-import com.readfilestech.read_files_tech.ui.theme.DangerRed
+import com.readfilestech.read_files_tech.ui.theme.dangerContent
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -94,7 +94,7 @@ fun TrashScreen(onBack: () -> Unit, viewModel: TrashViewModel = hiltViewModel())
                         Icon(
                             Icons.Filled.DeleteForever,
                             contentDescription = stringResource(R.string.trash_empty_action),
-                            tint = if (state.entries.isNotEmpty()) DangerRed else MaterialTheme.colorScheme.outline
+                            tint = if (state.entries.isNotEmpty()) dangerContent else MaterialTheme.colorScheme.outline
                         )
                     }
                 },
@@ -191,8 +191,8 @@ private fun TrashRow(entry: TrashEntry, onRestore: () -> Unit, onDelete: () -> U
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_delete_forever), color = DangerRed) },
-                        leadingIcon = { Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = DangerRed) },
+                        text = { Text(stringResource(R.string.action_delete_forever), color = dangerContent) },
+                        leadingIcon = { Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = dangerContent) },
                         onClick = {
                             menu = false
                             onDelete()

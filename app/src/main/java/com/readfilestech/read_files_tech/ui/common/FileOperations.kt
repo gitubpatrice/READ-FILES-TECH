@@ -119,16 +119,20 @@ class FileOperations @Inject constructor(
      */
     fun restore(entries: List<TrashEntry>, announce: Boolean = true) = launch {
         var failed = 0
+        var lastError: IOException? = null
         val restored = mutableListOf<File>()
         for (entry in entries) {
             try {
                 restored += trash.restore(entry)
-            } catch (expected: IOException) {
+            } catch (e: IOException) {
                 failed++
+                lastError = e
             }
         }
         mediaIndex.refresh(mediaIndex.filesUnder(restored))
         when {
+            // One item: why, as a failed move to the trash says it (coherence audit, phase 9).
+            entries.size == 1 && failed == 1 -> messages.error(uiText(R.string.error_restore, IoErrors.reasonOf(requireNotNull(lastError))))
             failed > 0 -> messages.error(UiText.Plural(R.plurals.restore_failed, failed))
             announce && entries.size == 1 -> messages.info(uiText(R.string.restored_one, restored.single().name))
         }
