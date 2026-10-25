@@ -177,7 +177,7 @@ class VaultImportFolderViewModel @Inject constructor(
                 mutableState.update { it.copy(progress = (index + 1f) / chosen.size) }
             }
             // Up to Android 10 the media index kept a deleted original's name, path and size (MediaIndex).
-            withContext(io) { mediaIndex.forget(tally.deleted) }
+            withContext(io) { mediaIndex.refresh(tally.deleted) }
             report(tally)
             mutableState.update { it.copy(progress = null, stopping = false, done = true) }
         }

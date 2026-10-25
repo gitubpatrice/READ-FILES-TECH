@@ -14,7 +14,8 @@ import javax.inject.Inject
 class InvalidFileNameException(name: String) : IOException("invalid file name: $name")
 
 /** What a batch did: done, failed, and folders left out (copy and move take files only, as the 2.15.x). */
-data class BatchResult(val done: Int, val failed: Int, val skippedFolders: Int = 0)
+/** What a batch did; [written] the files it put in place (a copy or a move: their new paths). */
+data class BatchResult(val done: Int, val failed: Int, val skippedFolders: Int = 0, val written: List<File> = emptyList())
 
 /**
  * The explorer's own changes to the user's files — `BatchOpsService` and the single-item actions of
@@ -116,27 +117,28 @@ class FileActions @Inject constructor() {
      * folder changes nothing (the 2.15.x made a "(1)" copy and deleted the original).
      */
     fun transfer(sources: List<File>, destDir: File, move: Boolean): BatchResult {
-        var done = 0
         var failed = 0
         var folders = 0
+        val written = mutableListOf<File>()
         for (source in sources) {
-            when {
-                Files.isDirectory(source.toPath()) -> folders++
-                transferOne(source, destDir, move) -> done++
-                else -> failed++
+            if (Files.isDirectory(source.toPath())) {
+                folders++
+                continue
             }
+            val placed = transferOne(source, destDir, move)
+            if (placed != null) written += placed else failed++
         }
-        return BatchResult(done, failed, folders)
+        return BatchResult(written.size, failed, folders, written)
     }
 
-    private fun transferOne(source: File, destDir: File, move: Boolean): Boolean = when {
-        !Files.isRegularFile(source.toPath()) -> false
-        move && isSameFolder(source.absoluteFile.parentFile, destDir) -> true
+    /** Where [source] now is (itself, moved into its own folder), or null when it failed. */
+    private fun transferOne(source: File, destDir: File, move: Boolean): File? = when {
+        !Files.isRegularFile(source.toPath()) -> null
+        move && isSameFolder(source.absoluteFile.parentFile, destDir) -> source
         else -> try {
-            transferReserved(source, FileMoves.reserveUniquePath(destDir, source.name, isDir = false), move)
-            true
+            FileMoves.reserveUniquePath(destDir, source.name, isDir = false).also { transferReserved(source, it, move) }
         } catch (expected: IOException) {
-            false
+            null
         }
     }
 

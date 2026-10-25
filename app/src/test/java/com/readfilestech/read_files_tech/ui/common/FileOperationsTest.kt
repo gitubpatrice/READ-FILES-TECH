@@ -6,6 +6,7 @@ import com.readfilestech.read_files_tech.data.browse.BulkRename
 import com.readfilestech.read_files_tech.data.browse.FileActions
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.RenameRule
+import com.readfilestech.read_files_tech.data.files.MediaIndex
 import com.readfilestech.read_files_tech.data.files.SharedStorageNames
 import com.readfilestech.read_files_tech.data.trash.TrashStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,6 +30,8 @@ class FileOperationsTest {
     private lateinit var trash: TrashStore
     private val dispatcher = StandardTestDispatcher()
     private val messages = UserMessages()
+    private val indexed = mutableListOf<String>()
+    private val mediaIndex = MediaIndex { indexed += it }
 
     @BeforeEach
     fun setUp() {
@@ -50,7 +53,7 @@ class FileOperationsTest {
         // A queue serves one reader: this one stops before the next call starts its own.
         val reader = backgroundScope.launch { messages.showEach { seen += it } }
         runCurrent()
-        block(FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher))
+        block(FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher, mediaIndex))
         runCurrent()
         reader.cancel()
         return seen
@@ -59,7 +62,7 @@ class FileOperationsTest {
     /** Claude review R5: a message posted while nothing listens (the app in the background) waits. */
     @Test
     fun `a message posted with no one listening waits for the next reader`() = runTest(dispatcher) {
-        val operations = FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher)
+        val operations = FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher, mediaIndex)
         operations.createFolder(work, "a/b")
         runCurrent()
         assertThat(posted { }).hasSize(1)
@@ -151,10 +154,74 @@ class FileOperationsTest {
         assertThat(File(work, "c.txt").readText()).isEqualTo("a")
     }
 
+    /**
+     * Up to Android 10 the media index kept a trashed or deleted photo — path, size, thumbnail, readable by any app —
+     * and missed a copy or a file put back (motif audit, phase 9): each change has it read both ends again.
+     */
+    @Test
+    fun `the media index reads again what the trash took away, and what Undo put back`() = runTest(dispatcher) {
+        val photo = File(work, "photo.jpg").apply { writeText("jpg") }
+        val album = File(work, "album").apply { mkdirs() }
+        val inAlbum = File(album, "b.jpg").apply { writeText("b") }
+        val said = posted { it.moveToTrash(listOf(photo, album)) }.single()
+        assertThat(indexed).containsExactly(photo.path, inAlbum.path)
+        indexed.clear()
+        posted { requireNotNull(said.action).run() }
+        assertThat(indexed).containsExactly(photo.path, inAlbum.path)
+    }
+
+    @Test
+    fun `the media index reads again a deleted file, both ends of a move, a copy, a renamed file`() = runTest(dispatcher) {
+        val gone = File(work, "gone.jpg").apply { writeText("g") }
+        posted { it.deleteForever(listOf(gone)) }
+        assertThat(indexed).containsExactly(gone.path)
+        indexed.clear()
+
+        val dest = File(work, "dest").apply { mkdirs() }
+        val moving = File(work, "moving.jpg").apply { writeText("m") }
+        posted { it.transfer(listOf(moving), dest, move = true) }
+        assertThat(indexed).containsExactly(moving.path, File(dest, "moving.jpg").path)
+        indexed.clear()
+
+        val copied = File(work, "copied.jpg").apply { writeText("c") }
+        posted { it.transfer(listOf(copied), dest, move = false) }
+        assertThat(indexed).containsExactly(File(dest, "copied.jpg").path)
+        indexed.clear()
+
+        posted { it.rename(copied, "renamed.jpg") }
+        assertThat(indexed).containsExactly(copied.path, File(work, "renamed.jpg").path)
+    }
+
+    @Test
+    fun `a bulk rename has the media index read the old names and the new`() = runTest(dispatcher) {
+        val a = File(work, "a.jpg").apply { writeText("a") }
+        val entry = FileEntry(a.path, a.name, isDirectory = false, size = 1, modifiedMs = 0, isSymlink = false)
+        posted { it.renameAll(BulkRename.preview(listOf(entry), RenameRule.Affixes("new-", ""), true, { emptySet() })) }
+        assertThat(indexed).containsExactly(a.path, File(work, "new-a.jpg").path)
+    }
+
+    /** From Android 11 the file system keeps the index: no tree is walked for it. */
+    @Test
+    fun `when Android keeps the media index itself, nothing is listed for it`() = runTest(dispatcher) {
+        val photo = File(work, "photo.jpg").apply { writeText("jpg") }
+        val asked = mutableListOf<String>()
+        val selfKept = object : MediaIndex {
+            override val needsPaths = false
+
+            override fun refresh(paths: List<String>) {
+                asked += paths
+            }
+        }
+        FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher, selfKept).moveToTrash(listOf(photo))
+        runCurrent()
+        assertThat(photo.exists()).isFalse()
+        assertThat(asked).isEmpty()
+    }
+
     @Test
     fun `every operation tells the screens to refresh, even a failed one`() = runTest(dispatcher) {
         var refreshes = 0
-        val operations = FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher)
+        val operations = FileOperations(FileActions(), trash, messages, backgroundScope, dispatcher, mediaIndex)
         backgroundScope.launch { operations.changes.collect { refreshes++ } }
         runCurrent()
         operations.createFolder(work, "new")

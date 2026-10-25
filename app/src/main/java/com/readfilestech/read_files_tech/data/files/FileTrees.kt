@@ -9,8 +9,25 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
-/** Deleting a directory tree without ever leaving it. */
+/** Walking and deleting a directory tree without ever leaving it. */
 object FileTrees {
+    /** Every regular file at or under [root], by path: a symbolic link is never followed, an unreadable entry skipped. */
+    fun regularFiles(root: File): List<File> {
+        val out = mutableListOf<File>()
+        Files.walkFileTree(
+            root.toPath(),
+            object : SimpleFileVisitor<Path>() {
+                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    if (attrs.isRegularFile) out += file.toFile()
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = FileVisitResult.CONTINUE
+            },
+        )
+        return out.sortedBy { it.path }
+    }
+
     /**
      * Deletes [root] and everything under it, as far as it can: an entry that resists is left and the
      * walk goes on. A symbolic link is deleted as a link, never followed — Kotlin's

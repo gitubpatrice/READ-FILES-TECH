@@ -48,7 +48,7 @@ class LegacyExtractions(
     fun find(): List<Folder> = appFlutter.listFiles().orEmpty()
         .filter(::isExtractionFolder)
         .map { dir ->
-            val files = Trees.regularFiles(dir)
+            val files = FileTrees.regularFiles(dir)
             Folder(dir, dir.name.removeSuffix(SUFFIX), files.size, files.sumOf { it.length() })
         }
         .sortedBy { it.dir.name }
@@ -70,7 +70,7 @@ class LegacyExtractions(
         // Every subfolder first, empty ones included: the private folder is deleted once its files are
         // moved, and an empty folder of the archive would be lost with it (GPT review R3).
         Trees.subfolders(folder.dir).forEach { File(destination, it.relativeTo(folder.dir).path).mkdirs() }
-        val sources = Trees.regularFiles(folder.dir)
+        val sources = FileTrees.regularFiles(folder.dir)
         var moved = 0
         var stoppedBy: IOException? = null
         for (source in sources) {
@@ -192,22 +192,5 @@ private object Trees {
             },
         )
         return out
-    }
-
-    /** Every regular file under [root]; a symbolic link is never followed nor moved. */
-    fun regularFiles(root: File): List<File> {
-        val out = mutableListOf<File>()
-        Files.walkFileTree(
-            root.toPath(),
-            object : SimpleFileVisitor<Path>() {
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                    if (attrs.isRegularFile) out += file.toFile()
-                    return FileVisitResult.CONTINUE
-                }
-
-                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = FileVisitResult.CONTINUE
-            },
-        )
-        return out.sortedBy { it.path }
     }
 }

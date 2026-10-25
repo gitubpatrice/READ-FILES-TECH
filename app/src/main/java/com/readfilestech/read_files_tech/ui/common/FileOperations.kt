@@ -5,6 +5,9 @@ import com.readfilestech.read_files_tech.data.browse.BatchResult
 import com.readfilestech.read_files_tech.data.browse.BulkRename
 import com.readfilestech.read_files_tech.data.browse.FileActions
 import com.readfilestech.read_files_tech.data.browse.RenameProposal
+import com.readfilestech.read_files_tech.data.files.FileTrees
+import com.readfilestech.read_files_tech.data.files.MediaIndex
+import com.readfilestech.read_files_tech.data.files.filesUnder
 import com.readfilestech.read_files_tech.data.trash.TrashEntry
 import com.readfilestech.read_files_tech.data.trash.TrashStore
 import kotlinx.coroutines.CoroutineDispatcher
@@ -32,6 +35,9 @@ import javax.inject.Singleton
  * Not covered: the process itself being frozen or killed in the background (no foreground service, as
  * the 2.15.x). Then nothing is lost — the trash writes its metadata first, a copy is published only
  * once whole, a source is deleted only after — but the batch stops where it was.
+ *
+ * Each change has the media index read again what it took away and what it brought ([MediaIndex]: up to
+ * Android 10 a trashed or deleted photo stayed in the gallery, path and size readable by any app).
  */
 @Singleton
 class FileOperations @Inject constructor(
@@ -40,6 +46,7 @@ class FileOperations @Inject constructor(
     private val messages: UserMessages,
     @param:ApplicationScope private val scope: CoroutineScope,
     @param:IoDispatcher private val io: CoroutineDispatcher,
+    private val mediaIndex: MediaIndex,
 ) {
     private val serial = Mutex()
     private val changed = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -51,7 +58,11 @@ class FileOperations @Inject constructor(
         actions.createFolder(parent, name)
     }
 
-    fun rename(target: File, newName: String) = single(R.string.error_rename) { actions.rename(target, newName) }
+    fun rename(target: File, newName: String) = single(R.string.error_rename) {
+        val leaving = mediaIndex.filesUnder(listOf(target))
+        val renamed = actions.rename(target, newName)
+        mediaIndex.refresh(leaving + mediaIndex.filesUnder(listOf(renamed)))
+    }
 
     /**
      * The bulk rename's batch, its names checked beforehand ([BulkRename.preview]): renamed one by one by
@@ -59,7 +70,10 @@ class FileOperations @Inject constructor(
      * how many were not, naming the first with its reason.
      */
     fun renameAll(proposals: List<RenameProposal>) = launch {
+        val renaming = proposals.filter(RenameProposal::changes).map { File(it.entry.path) to it.newName }
+        val leaving = mediaIndex.filesUnder(renaming.map { it.first })
         val report = BulkRename.apply(proposals, actions::rename)
+        mediaIndex.refresh(leaving + mediaIndex.filesUnder(renaming.map { (file, name) -> File(file.absoluteFile.parentFile, name) }))
         val done = UiText.Plural(R.plurals.bulk_rename_done, report.renamed)
         val text = report.failures.firstOrNull()?.let { (file, error) ->
             val failed = report.failures.size
@@ -77,6 +91,7 @@ class FileOperations @Inject constructor(
         val entries = mutableListOf<TrashEntry>()
         var failed = 0
         var lastError: IOException? = null
+        val leaving = mediaIndex.filesUnder(targets)
         for (target in targets) {
             try {
                 entries += trash.moveToTrash(target)
@@ -85,6 +100,7 @@ class FileOperations @Inject constructor(
                 lastError = e
             }
         }
+        mediaIndex.refresh(leaving)
         onTrashed(entries.map(TrashEntry::originalPath))
         val text = when {
             targets.size == 1 && failed == 0 -> uiText(R.string.trashed_one, targets.single().name)
@@ -103,28 +119,34 @@ class FileOperations @Inject constructor(
      */
     fun restore(entries: List<TrashEntry>, announce: Boolean = true) = launch {
         var failed = 0
-        var restored: File? = null
+        val restored = mutableListOf<File>()
         for (entry in entries) {
             try {
-                restored = trash.restore(entry)
+                restored += trash.restore(entry)
             } catch (expected: IOException) {
                 failed++
             }
         }
+        mediaIndex.refresh(mediaIndex.filesUnder(restored))
         when {
             failed > 0 -> messages.error(UiText.Plural(R.plurals.restore_failed, failed))
-            announce && entries.size == 1 -> messages.info(uiText(R.string.restored_one, requireNotNull(restored).name))
+            announce && entries.size == 1 -> messages.info(uiText(R.string.restored_one, restored.single().name))
         }
     }
 
     /** Deletion for good; the screen confirmed it first (a red dialog, as the 2.15.x). */
     fun deleteForever(targets: List<File>) = launch {
-        messages.post(BatchMessages.of(actions.deleteAll(targets), R.plurals.deleted_many))
+        val leaving = mediaIndex.filesUnder(targets)
+        val result = actions.deleteAll(targets)
+        mediaIndex.refresh(leaving)
+        messages.post(BatchMessages.of(result, R.plurals.deleted_many))
     }
 
     /** Copy or move to [destDir]: files only, under free names, sources kept whole on failure. */
     fun transfer(sources: List<File>, destDir: File, move: Boolean) = launch {
+        val leaving = if (move) mediaIndex.filesUnder(sources.filter(FileTrees::isRegularFile)) else emptyList()
         val result = actions.transfer(sources, destDir, move)
+        mediaIndex.refresh(leaving + result.written.map(File::getPath))
         messages.post(BatchMessages.of(result, if (move) R.plurals.moved_many else R.plurals.copied_many))
     }
 

@@ -98,7 +98,7 @@ class FileActionsTest {
         file(src, "report.pdf", "new")
         file(dest, "report.pdf", "old")
         val result = actions.transfer(listOf(File(src, "report.pdf")), dest, move = false)
-        assertThat(result).isEqualTo(BatchResult(done = 1, failed = 0))
+        assertThat(result).isEqualTo(BatchResult(done = 1, failed = 0, written = listOf(File(dest, "report (1).pdf"))))
         assertThat(File(dest, "report.pdf").readText()).isEqualTo("old")
         assertThat(File(dest, "report (1).pdf").readText()).isEqualTo("new")
         assertThat(File(src, "report.pdf").readText()).isEqualTo("new")
@@ -136,7 +136,7 @@ class FileActionsTest {
         val folder = File(src, "album").apply { mkdirs() }
         val photo = file(src, "a.jpg", "A")
         val result = actions.transfer(listOf(folder, photo), dest, move = false)
-        assertThat(result).isEqualTo(BatchResult(done = 1, failed = 0, skippedFolders = 1))
+        assertThat(result).isEqualTo(BatchResult(done = 1, failed = 0, skippedFolders = 1, written = listOf(File(dest, "a.jpg"))))
         assertThat(dest.list()!!.toList()).containsExactly("a.jpg")
     }
 
