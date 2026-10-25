@@ -41,7 +41,9 @@ coroutines              = "1.11.0"
 # --- Spreadsheets (docs D-006): the .xls (BIFF8) read by Apache POI's HSSF, the `poi` module ALONE —
 # never poi-ooxml (+12 MB of jars, StAX absent from Android, java.awt through XSSFColor: D-015; the .xlsx
 # has a reader of its own). Apache-2.0, as its dependencies (commons-codec, -collections4, -io, -math3,
-# SparseBitSet, log4j-api), read in their POMs. 5.5.1 published 2025-11-26, measured by the prototype.
+# SparseBitSet, log4j-api), read in their POMs. 6.0.0 (published 2026-10-19, Dependabot #19): the same six
+# dependencies, newer versions, read in its POM; its .xls opened by the minified release on Android 8 (API 26
+# emulator) and 14 on 2026-10-25 — the JVM tests alone cannot see an API that Android lacks.
 poi                     = "6.0.0"
 
 # --- Markdown (phase 4, the Markdown viewer): commonmark-java parses to a tree the viewer lays out itself,
