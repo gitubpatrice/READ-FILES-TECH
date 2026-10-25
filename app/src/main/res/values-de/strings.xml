@@ -404,6 +404,7 @@
     <string name="legacy_extractions_access">Erlauben Sie zuerst den „Zugriff auf alle Dateien“: Ohne ihn lässt Android die App nur in ihre eigenen Ordner schreiben, die mit ihr gelöscht werden.</string>
     <string name="legacy_moving">Alte Extraktionen werden verschoben…</string>
     <string name="legacy_extractions_no_folder">Nichts verschoben: In %1$s kann nicht geschrieben werden. Erlauben Sie den „Zugriff auf alle Dateien“ oder wählen Sie in den Einstellungen einen anderen Ausgabeordner.</string>
+    <string name="legacy_extractions_none_left">Nichts zu verschieben: Die alten Extraktionen sind nicht mehr vorhanden.</string>
     <string name="legacy_working">Läuft…</string>
     <string name="legacy_extractions_delete_title">Alte Extraktionen löschen?</string>
     <plurals name="legacy_extractions_delete_body">

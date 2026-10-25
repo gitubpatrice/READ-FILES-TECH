@@ -1,6 +1,6 @@
 # Conditions d'utilisation — Read Files Tech
 
-_Dernière mise à jour : 24 octobre 2026 (version 3.0.0)_
+_Dernière mise à jour : 25 octobre 2026 (version 3.0.0)_
 
 ## Objet
 
@@ -24,7 +24,7 @@ L'application est mise à disposition **gratuitement** par un particulier, à ti
 ## Le coffre et la perte de données
 
 - **Oublier le mot de passe du coffre rend ses fichiers illisibles pour toujours** : il n'est jamais enregistré, il sert seulement à dériver la clé. Aucune procédure de récupération n'existe. Il en va de même du mot de passe d'une sauvegarde `.rftvault`.
-- Le **mode panique** efface immédiatement et définitivement le coffre, les réglages, l'historique et la corbeille : **aucune récupération n'est possible**, c'est voulu. Faites d'abord une sauvegarde du coffre si vous voulez pouvoir le retrouver.
+- Le **mode panique** efface immédiatement et définitivement le coffre, les réglages, le cache, l'historique, les anciennes extractions et la corbeille : **aucune récupération n'est possible**, c'est voulu. Faites d'abord une sauvegarde du coffre si vous voulez pouvoir le retrouver.
 - Un fichier mis à la **corbeille** peut être restauré tant que vous ne l'avez pas vidée. **Supprimer définitivement**, vider la corbeille ou remplacer un fichier sont irréversibles.
 - **Désinstaller l'application efface le coffre**, qui est dans son stockage privé : faites d'abord une sauvegarde, et vérifiez qu'elle n'est pas dans un dossier de l'application, effacé lui aussi (le dialogue de la sauvegarde le signale).
 

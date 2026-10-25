@@ -1,6 +1,6 @@
 # Condiciones de uso — Read Files Tech
 
-_Última actualización: 24 de octubre de 2026 (versión 3.0.0)_
+_Última actualización: 25 de octubre de 2026 (versión 3.0.0)_
 
 ## Objeto
 
@@ -24,7 +24,7 @@ La aplicación la pone a disposición **gratuitamente** un particular, a título
 ## La caja fuerte y la pérdida de datos
 
 - **Olvidar la contraseña de la caja fuerte hace sus archivos ilegibles para siempre**: nunca se guarda, solo sirve para derivar la clave. No existe ningún procedimiento de recuperación. Lo mismo ocurre con la contraseña de una copia de seguridad `.rftvault`.
-- El **modo pánico** borra de inmediato y para siempre la caja fuerte, los ajustes, el historial y la papelera: **no es posible ninguna recuperación**, es intencionado. Haga antes una copia de seguridad de la caja fuerte si quiere poder recuperarla.
+- El **modo pánico** borra de inmediato y para siempre la caja fuerte, los ajustes, la caché, el historial, las extracciones antiguas y la papelera: **no es posible ninguna recuperación**, es intencionado. Haga antes una copia de seguridad de la caja fuerte si quiere poder recuperarla.
 - Un archivo enviado a la **papelera** se puede restaurar mientras no la haya vaciado. **Eliminar definitivamente**, vaciar la papelera y reemplazar un archivo son irreversibles.
 - **Desinstalar la aplicación borra la caja fuerte**, que está en su almacenamiento privado: haga antes una copia de seguridad, y compruebe que no esté en una carpeta de la aplicación, que también se borra (el diálogo de la copia lo indica).
 

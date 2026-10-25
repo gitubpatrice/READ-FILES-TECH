@@ -64,7 +64,7 @@ Der HTML-Betrachter zeigt eine Seite ohne JavaScript und ohne jede Verbindung an
 
 ## Panikmodus
 
-In den Einstellungen löscht der Panikmodus nach einer Bestätigung sofort: den Tresor und seine Einstellungen, alle Einstellungen der App (zuletzt geöffnete Dateien eingeschlossen), den gesamten Cache, den Verlauf der Editoren, die alten entpackten Archive und **den Papierkorb** auf allen Datenträgern. Er löscht nicht: Ihre Dateien, den Ordner `Files Tech` (Tresor-Sicherungen eingeschlossen), die aus dem Tresor exportierten Dateien, die bereits anderen Apps übergebenen Kopien und auch nicht die Zwischenablage. Das Löschen entfernt die Dateien, ohne ihren Inhalt zu überschreiben.
+In den Einstellungen löscht der Panikmodus nach einer Bestätigung sofort: den Tresor und seine Einstellungen, alle Einstellungen der App (zuletzt geöffnete Dateien eingeschlossen), den gesamten Cache, den Verlauf der Editoren, die alten Extraktionen und **den Papierkorb** auf allen Datenträgern. Er löscht nicht: Ihre Dateien, den Ordner `Files Tech` (Tresor-Sicherungen eingeschlossen), die aus dem Tresor exportierten Dateien, die bereits anderen Apps übergebenen Kopien und auch nicht die Zwischenablage. Das Löschen entfernt die Dateien, ohne ihren Inhalt zu überschreiben.
 
 ## Android-Sicherung
 

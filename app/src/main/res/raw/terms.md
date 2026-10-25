@@ -1,6 +1,6 @@
 # Terms of use — Read Files Tech
 
-_Last updated: 24 October 2026 (version 3.0.0)_
+_Last updated: 25 October 2026 (version 3.0.0)_
 
 ## Purpose
 
@@ -24,7 +24,7 @@ The app is made available **free of charge** by an individual, on a personal and
 ## The vault and data loss
 
 - **Forgetting the vault's password makes its files unreadable forever**: it is never stored, it only derives the key. No recovery procedure exists. The same goes for the password of a `.rftvault` backup.
-- **Panic mode** erases the vault, the settings, the history and the trash at once and for good: **no recovery is possible**, by design. Back up the vault first if you want to be able to get it back.
+- **Panic mode** erases the vault, the settings, the cache, the history, the old extractions and the trash at once and for good: **no recovery is possible**, by design. Back up the vault first if you want to be able to get it back.
 - A file moved to the **trash** can be restored as long as you have not emptied it. **Deleting permanently**, emptying the trash and replacing a file cannot be undone.
 - **Uninstalling the app erases the vault**, which is in its private storage: back it up first, and check the backup is not in a folder of the app, erased too (the backup's dialog says so).
 

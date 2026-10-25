@@ -98,11 +98,35 @@ class LegacyExtractionsTest {
         }
         val moved = watching.move(watching.find().single())
         val (part, reservedSize) = seen.single()
-        assertThat(part).startsWith(".1.txt.")
+        assertThat(part).startsWith(".rft-")
         assertThat(part).endsWith(".rft-part")
         assertThat(reservedSize).isEqualTo(0) // the real name, still empty while the copy is written
         assertThat(File(moved.destination, "1.txt").readText()).isEqualTo("one")
         assertThat(moved.destination.list()!!.toList()).containsExactly("1.txt") // no part left behind
+    }
+
+    /** The part file named after the file, a name near the 255 bytes a volume allows stopped every move (3-axis audit, phase 8). */
+    @Test
+    fun `a file whose name is near the longest a volume allows is moved too`() {
+        val long = "n".repeat(240) + ".txt"
+        extraction("docs", long to "long")
+        val moved = legacy.move(legacy.find().single())
+        assertThat(moved.stoppedBy).isNull()
+        assertThat(moved.moved).isEqualTo(1)
+        assertThat(File(moved.destination, long).readText()).isEqualTo("long")
+    }
+
+    /** Counted as moved, a source that could not be removed stayed in both places; the next move copied it again. */
+    @Test
+    fun `a file that cannot be removed from the private folder is not moved - its copy goes, the move stops`() {
+        val dir = extraction("docs", "1.txt" to "one", "2.txt" to "two")
+        val stuck = LegacyExtractions(appFlutter, { extractions }, remove = { false })
+        val moved = stuck.move(stuck.find().single())
+        assertThat(moved.moved).isEqualTo(0)
+        assertThat(moved.left).isEqualTo(2)
+        assertThat(moved.stoppedBy).hasMessageThat().contains("could not be removed")
+        assertThat(File(dir, "1.txt").readText()).isEqualTo("one")
+        assertThat(moved.destination.list()!!.toList()).isEmpty()
     }
 
     @Test

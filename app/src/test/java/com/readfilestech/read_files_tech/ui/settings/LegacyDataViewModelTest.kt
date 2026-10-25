@@ -122,6 +122,20 @@ class LegacyDataViewModelTest {
         assertThat(legacy.summary().extractionFiles).isEqualTo(2)
     }
 
+    /** Moved or deleted from another screen meanwhile: "Moving…" had no end (3-axis audit, phase 8). */
+    @Test
+    fun `a move that finds nothing left says so`() {
+        extraction("photos", "a.jpg")
+        val vm = viewModel()
+        vm.refresh()
+        File(appFlutter, "photos_extracted").deleteRecursively()
+        vm.move()
+        assertThat(shown()).containsExactly(
+            UserMessage(uiText(R.string.legacy_moving)),
+            UserMessage(uiText(R.string.legacy_extractions_none_left)),
+        ).inOrder()
+    }
+
     /** Without the access, the notice asks for it instead of moving: Android would let the app write only in its own folders. */
     @Test
     fun `the access to all files is read with what is left, again at each refresh`() {

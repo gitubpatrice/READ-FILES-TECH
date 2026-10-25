@@ -419,6 +419,7 @@
     <string name="legacy_extractions_access">Autorisez d\'abord « Accès à tous les fichiers » : sans lui, Android ne laisse l\'application écrire que dans ses propres dossiers, effacés avec elle.</string>
     <string name="legacy_moving">Déplacement des anciennes extractions…</string>
     <string name="legacy_extractions_no_folder">Rien n\'a été déplacé : impossible d\'écrire dans %1$s. Autorisez « Accès à tous les fichiers », ou choisissez un autre dossier de sortie dans les réglages.</string>
+    <string name="legacy_extractions_none_left">Rien à déplacer : les anciennes extractions ont déjà disparu.</string>
     <string name="legacy_working">En cours…</string>
     <string name="legacy_extractions_delete_title">Supprimer les anciennes extractions ?</string>
     <plurals name="legacy_extractions_delete_body">

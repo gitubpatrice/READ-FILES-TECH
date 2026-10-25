@@ -426,6 +426,7 @@
     <string name="legacy_extractions_access">Consenta prima l\'«Accesso a tutti i file»: senza, Android lascia scrivere l\'app solo nelle sue cartelle, eliminate con essa.</string>
     <string name="legacy_moving">Spostamento delle vecchie estrazioni…</string>
     <string name="legacy_extractions_no_folder">Nulla è stato spostato: impossibile scrivere in %1$s. Consenta l\'«Accesso a tutti i file» o scelga un\'altra cartella di destinazione nelle impostazioni.</string>
+    <string name="legacy_extractions_none_left">Niente da spostare: le vecchie estrazioni non ci sono più.</string>
     <string name="legacy_working">In corso…</string>
     <string name="legacy_extractions_delete_title">Eliminare le vecchie estrazioni?</string>
     <plurals name="legacy_extractions_delete_body">

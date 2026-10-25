@@ -124,8 +124,9 @@ class LegacyDataViewModel @Inject constructor(
                 destination != null -> messages.info(
                     UiText.Plural(R.plurals.legacy_extractions_moved, outcome.moved, listOf(outcome.moved, destination.path)),
                 )
-                // Nothing was left to move: moved or deleted meanwhile, from another screen.
-                else -> Unit
+                // Nothing was left to move: moved or deleted meanwhile, from another screen. Said, after "Moving…"
+                // (3-axis audit, phase 8).
+                else -> messages.info(uiText(R.string.legacy_extractions_none_left))
             }
         }
     }

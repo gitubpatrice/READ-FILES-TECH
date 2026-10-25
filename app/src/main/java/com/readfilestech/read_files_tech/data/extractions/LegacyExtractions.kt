@@ -29,6 +29,8 @@ class LegacyExtractions(
      * It throws an [IOException] when no folder of shared storage can.
      */
     private val extractionsRoot: () -> File,
+    /** The removal of a source once its copy has its name; a test passes one that fails. */
+    private val remove: (File) -> Boolean = File::delete,
     /**
      * The copy of one file into the hidden part file beside its reservation (truncated, never unlinked first); a
      * test passes one that fails, as a full disk would.
@@ -94,6 +96,11 @@ class LegacyExtractions(
      * The copy goes into a hidden part file beside it, and takes the reserved name only once verified: the app
      * killed half-way through a large file left it cut short under its real name, nothing to tell it from the
      * others (Claude review, phase 8). Now the name stays an empty file, the part hidden, the source in place.
+     * The part's name is short whatever the file's: built from it, a name near the 255 bytes a volume allows
+     * made it too long, and every move stopped on that file (3-axis audit, phase 8).
+     *
+     * A source that cannot be removed is not moved: counted as moved, it stayed in both places and the next move
+     * copied it again (3-axis audit, phase 8). Its copy goes, the source stays, the move stops.
      */
     private fun moveOne(source: File, target: File): IOException? {
         try {
@@ -104,11 +111,11 @@ class LegacyExtractions(
         }
         var part: Path? = null
         return try {
-            part = Files.createTempFile(target.toPath().parent, ".${target.name}.", PART)
+            part = Files.createTempFile(target.toPath().parent, PART_PREFIX, PART)
             copyVerified(source, part.toFile())
             // Over the reservation, ours and empty: it was created exclusively, no other case of the name exists.
             Files.move(part, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            source.delete()
+            if (!remove(source) && source.exists()) throw IOException("${source.name} could not be removed from the private folder")
             null
         } catch (e: IOException) {
             part?.let { runCatching { Files.deleteIfExists(it) } }
@@ -139,7 +146,8 @@ class LegacyExtractions(
         const val EXTRACTIONS_DIR = "Extractions"
         private const val MAX_CANDIDATES = 1_000
 
-        /** The hidden part file a copy is written into before it takes its name. */
+        /** The hidden part file a copy is written into before it takes its name: `.rft-<random>.rft-part`. */
+        private const val PART_PREFIX = ".rft-"
         private const val PART = ".rft-part"
 
         /**

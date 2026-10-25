@@ -1,6 +1,6 @@
 # Condizioni d'uso — Read Files Tech
 
-_Ultimo aggiornamento: 24 ottobre 2026 (versione 3.0.0)_
+_Ultimo aggiornamento: 25 ottobre 2026 (versione 3.0.0)_
 
 ## Oggetto
 
@@ -24,7 +24,7 @@ L'app è messa a disposizione **gratuitamente** da un privato, a titolo personal
 ## La cassaforte e la perdita di dati
 
 - **Dimenticare la password della cassaforte rende i suoi file illeggibili per sempre**: non viene mai salvata, serve solo a derivare la chiave. Non esiste alcuna procedura di recupero. Lo stesso vale per la password di un backup `.rftvault`.
-- La **modalità panico** cancella subito e definitivamente la cassaforte, le impostazioni, la cronologia e il cestino: **nessun recupero è possibile**, è voluto. Faccia prima un backup della cassaforte se vuole poterla ritrovare.
+- La **modalità panico** cancella subito e definitivamente la cassaforte, le impostazioni, la cache, la cronologia, le vecchie estrazioni e il cestino: **nessun recupero è possibile**, è voluto. Faccia prima un backup della cassaforte se vuole poterla ritrovare.
 - Un file spostato nel **cestino** può essere ripristinato finché non lo ha svuotato. **Eliminare definitivamente**, svuotare il cestino e sostituire un file sono irreversibili.
 - **Disinstallare l'app cancella la cassaforte**, che si trova nella sua memoria privata: ne faccia prima un backup, e verifichi che non sia in una cartella dell'app, cancellata anch'essa (la finestra del backup lo segnala).
 
