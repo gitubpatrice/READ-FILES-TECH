@@ -39,7 +39,6 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,7 +72,8 @@ import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.SortMode
 import com.readfilestech.read_files_tech.data.storage.VolumeRoot
-import com.readfilestech.read_files_tech.ui.theme.DangerRed
+import com.readfilestech.read_files_tech.ui.common.BrandButton
+import com.readfilestech.read_files_tech.ui.theme.dangerContent
 import java.io.File
 
 /** The bar while browsing: title and folder, then refresh, hidden files, trash, sort, volumes, search. */
@@ -206,12 +206,12 @@ fun PickBottomBar(
 ) {
     val modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)
     when (state.pick) {
-        PickMode.FOLDER -> Button(
+        PickMode.FOLDER -> BrandButton(
             onClick = { state.dir?.let { onFolderChosen(it.path) } },
             enabled = state.dir != null && state.problem == null,
             modifier = modifier,
         ) { Text(stringResource(R.string.action_choose_this_folder)) }
-        PickMode.FILES -> Button(
+        PickMode.FILES -> BrandButton(
             onClick = { onFilesChosen(picked) },
             enabled = picked.isNotEmpty(),
             modifier = modifier,
@@ -274,14 +274,17 @@ private fun VolumeButton(volumes: List<VolumeRoot>, onVolume: (File) -> Unit) {
     }
 }
 
-/** A menu rather than a button: a permanent deletion is never one tap away from the bar (2.15.x). */
+/**
+ * A menu rather than a button: a permanent deletion is never one tap away from the bar (2.15.x). The bar's icon is
+ * neutral — its first choice is the trash, which can be undone —; the permanent deletion stays red in the menu.
+ */
 @Composable
 private fun DeleteButton(onTrash: () -> Unit, onDeleteForever: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(
             onClick = { open = true }
-        ) { Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete), tint = DangerRed) }
+        ) { Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_trash)) },
@@ -292,8 +295,8 @@ private fun DeleteButton(onTrash: () -> Unit, onDeleteForever: () -> Unit) {
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_delete_forever), color = DangerRed) },
-                leadingIcon = { Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = DangerRed) },
+                text = { Text(stringResource(R.string.action_delete_forever), color = dangerContent) },
+                leadingIcon = { Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = dangerContent) },
                 onClick = {
                     open = false
                     onDeleteForever()
@@ -411,7 +414,7 @@ fun FolderEmptyState(state: ExplorerUiState, onSettings: () -> Unit, onVolume: (
                 )
                 Text(stringResource(R.string.access_denied_title), style = MaterialTheme.typography.titleMedium)
                 Text(stringResource(R.string.access_denied_body), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                Button(onClick = onSettings) {
+                BrandButton(onClick = onSettings) {
                     Icon(Icons.Outlined.Settings, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.action_open_settings))

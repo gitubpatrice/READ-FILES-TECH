@@ -17,7 +17,6 @@ import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.FolderZip
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +44,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -159,7 +159,7 @@ private fun CreateBar(state: ZipState, onCreate: () -> Unit, onStop: () -> Unit)
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val progress = state.progress
         if (progress == null) {
-            Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
+            BrandButton(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
                 Text(pluralStringResource(R.plurals.zip_create, state.files.size, state.files.size))
             }
         } else {

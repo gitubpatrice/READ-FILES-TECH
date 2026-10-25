@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.FindInPage
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Title
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -58,6 +57,7 @@ import com.readfilestech.read_files_tech.data.search.SearchHit
 import com.readfilestech.read_files_tech.data.storage.StorageModel
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.explorer.AccessBanner
 import java.io.File
@@ -144,7 +144,7 @@ fun SearchScreen(
                             Text(stringResource(R.string.action_stop))
                         }
                     } else {
-                        Button(onClick = start) {
+                        BrandButton(onClick = start) {
                             Icon(Icons.Filled.Search, contentDescription = null)
                             Spacer(Modifier.size(4.dp))
                             Text(stringResource(R.string.action_search))

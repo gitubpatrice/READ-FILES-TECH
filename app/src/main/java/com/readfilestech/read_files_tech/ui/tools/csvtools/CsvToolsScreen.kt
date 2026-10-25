@@ -17,7 +17,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.MergeType
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.TableChart
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -42,6 +41,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -195,7 +195,7 @@ private fun Tools(summary: CsvSummary, idle: Boolean, onPdf: () -> Unit, onMerge
         if (more > 0) Text(pluralStringResource(R.plurals.csv_tools_more_columns, more, more), style = MaterialTheme.typography.bodySmall)
     }
     Text(stringResource(R.string.csv_tools_actions), style = MaterialTheme.typography.titleSmall)
-    Button(onClick = onPdf, enabled = idle, modifier = Modifier.fillMaxWidth()) {
+    BrandButton(onClick = onPdf, enabled = idle, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
         Spacer(Modifier.size(8.dp))
         Text(stringResource(R.string.csv_tools_to_pdf))

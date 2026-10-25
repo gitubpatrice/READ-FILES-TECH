@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,6 +46,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.TextPreview
 import com.readfilestech.read_files_tech.data.sharing.MimeTypes
 import com.readfilestech.read_files_tech.data.text.CsvRows
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -123,7 +123,7 @@ fun EntryInfoDialog(entry: FileEntry, onCopied: (String) -> Unit, onDismiss: () 
                 }
             }) { Text(stringResource(R.string.action_copy_path)) }
         },
-        confirmButton = { Button(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+        confirmButton = { BrandButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
     )
 }
 

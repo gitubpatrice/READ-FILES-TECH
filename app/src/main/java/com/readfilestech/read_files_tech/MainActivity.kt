@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.startup.StartupCleanup
@@ -55,6 +56,9 @@ class MainActivity : ComponentActivity() {
     private var accessGranted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Before super.onCreate: the manifest's theme is the splash (res/values/themes.xml); this puts the app's
+        // window theme in its place, and the splash goes at the first frame.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         // Before any screen: a scan left by a process that died is kept only when its screen comes back.
         startupCleanup.clearScansOnce(restoring = savedInstanceState != null)
@@ -64,7 +68,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) takeShortcut(intent)
         dropExtras(intent)
         setContent {
-            // Followed, not read once: the home's theme menu applies at once.
+            // Followed, not read once: the theme chosen in the settings applies at once.
             val theme by themes.current.collectAsStateWithLifecycle()
             val dark = theme.isDark(isSystemInDarkTheme())
             // The bars' icons follow the APP's theme: left to the system's, a dark theme chosen on a light

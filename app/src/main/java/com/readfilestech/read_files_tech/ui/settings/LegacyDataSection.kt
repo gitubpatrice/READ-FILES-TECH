@@ -10,12 +10,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,9 +29,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.legacy.LegacyData
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
+import com.readfilestech.read_files_tech.ui.common.DialogAction
+import com.readfilestech.read_files_tech.ui.common.SectionCard
+import com.readfilestech.read_files_tech.ui.common.SectionTitle
 import com.readfilestech.read_files_tech.ui.common.formatBytes
-import com.readfilestech.read_files_tech.ui.theme.DangerRed
+import com.readfilestech.read_files_tech.ui.theme.dangerContent
 
 /**
  * The notice of the 2.x's extractions, at launch, once in the app's life (docs D-022). A move it starts holds no
@@ -59,29 +62,33 @@ internal fun LegacyDataSection(viewModel: LegacyDataViewModel) {
     val summary = state.summary
     if (summary != null && !summary.isEmpty) {
         SectionTitle(stringResource(R.string.legacy_section))
-        if (working) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.legacy_working), style = MaterialTheme.typography.bodySmall)
-                LinearProgressIndicator(Modifier.fillMaxWidth())
+        SectionCard {
+            if (working) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.legacy_working), style = MaterialTheme.typography.bodySmall)
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                HorizontalDivider()
             }
-        }
-        if (summary.extractions.isNotEmpty()) {
-            SettingRow(
-                icon = Icons.Outlined.Unarchive,
-                title = stringResource(R.string.legacy_extractions_title),
-                summary = filesAndSize(R.plurals.legacy_extractions_summary, summary.extractionFiles, summary.extractionBytes),
-                onClick = viewModel::askExtractions,
-                enabled = !working,
-            )
-        }
-        if (summary.history.isNotEmpty()) {
-            SettingRow(
-                icon = Icons.Outlined.History,
-                title = stringResource(R.string.legacy_history_title),
-                summary = filesAndSize(R.plurals.legacy_history_summary, summary.history.size, summary.historyBytes),
-                onClick = viewModel::askDeleteHistory,
-                enabled = !working,
-            )
+            if (summary.extractions.isNotEmpty()) {
+                SettingRow(
+                    icon = Icons.Outlined.Unarchive,
+                    title = stringResource(R.string.legacy_extractions_title),
+                    summary = filesAndSize(R.plurals.legacy_extractions_summary, summary.extractionFiles, summary.extractionBytes),
+                    onClick = viewModel::askExtractions,
+                    enabled = !working,
+                )
+            }
+            if (summary.extractions.isNotEmpty() && summary.history.isNotEmpty()) HorizontalDivider()
+            if (summary.history.isNotEmpty()) {
+                SettingRow(
+                    icon = Icons.Outlined.History,
+                    title = stringResource(R.string.legacy_history_title),
+                    summary = filesAndSize(R.plurals.legacy_history_summary, summary.history.size, summary.historyBytes),
+                    onClick = viewModel::askDeleteHistory,
+                    enabled = !working,
+                )
+            }
         }
     }
     LegacyDialogs(viewModel)
@@ -122,6 +129,7 @@ private fun LegacyDialogs(viewModel: LegacyDataViewModel) {
  * Move (what "Extract all" was for), delete — asked again, for good —, or later: nothing is moved in silence,
  * out of the private folder the files become readable by any app with storage access. Without the access to
  * write there, "Allow" leads to it first: the app's own folders, where Android would let it write, go with it.
+ * "Delete" and "Later" are actions of the same weight, "Delete" outlined in red (ConfirmDangerDialog's form).
  */
 @Composable
 private fun ExtractionsDialog(
@@ -153,14 +161,14 @@ private fun ExtractionsDialog(
         },
         confirmButton = {
             if (state.accessGranted) {
-                Button(onClick = onMove) { Text(stringResource(R.string.legacy_move)) }
+                BrandButton(onClick = onMove) { Text(stringResource(R.string.legacy_move)) }
             } else {
-                Button(onClick = access.request) { Text(stringResource(R.string.action_allow)) }
+                BrandButton(onClick = access.request) { Text(stringResource(R.string.action_allow)) }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete), color = DangerRed) }
-            TextButton(onClick = onLater) { Text(stringResource(R.string.action_later)) }
+            DialogAction(stringResource(R.string.action_delete), onClick = onDelete, color = dangerContent)
+            DialogAction(stringResource(R.string.action_later), onClick = onLater)
         },
     )
 }

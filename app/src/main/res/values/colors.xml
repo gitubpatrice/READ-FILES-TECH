@@ -3,6 +3,6 @@
     <!-- Background of the adaptive launcher icon: the value of the 2.15.x, so the icon does not change. -->
     <color name="ic_launcher_background">#1565C0</color>
     <!-- Window backgrounds before Compose draws: the scaffold colours of the two themes (ui/theme). -->
-    <color name="window_background_light">#FFF9F9FF</color>
+    <color name="window_background_light">#FFFDFCFF</color>
     <color name="window_background_dark">#FF0D1117</color>
 </resources>

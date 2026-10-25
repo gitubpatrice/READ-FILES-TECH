@@ -5,7 +5,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -39,6 +38,7 @@ import com.readfilestech.read_files_tech.data.storage.StorageModel
 import com.readfilestech.read_files_tech.ui.about.LegalDocument
 import com.readfilestech.read_files_tech.ui.about.LegalScreen
 import com.readfilestech.read_files_tech.ui.apps.ApkInstallDialog
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.common.startFirst
@@ -347,7 +347,7 @@ private fun FirstLaunchWelcome(access: StorageAccess, settings: StorageSettings,
             }) { Text(stringResource(R.string.action_later)) }
         },
         confirmButton = {
-            Button(onClick = {
+            BrandButton(onClick = {
                 show = false
                 onDone()
                 settings.request()

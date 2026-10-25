@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -25,6 +24,7 @@ import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.recents.RecentFiles
 import com.readfilestech.read_files_tech.data.sharing.KnownApps
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
@@ -112,7 +112,7 @@ fun OutputActionsRow(path: String, onNavigate: (String) -> Unit, viewModel: Outp
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             // Another app can open it only if it may leave the app.
             if (target is FileTarget.Internal || state.canLeave) {
-                Button(onClick = {
+                BrandButton(onClick = {
                     when (target) {
                         is FileTarget.Internal -> onNavigate(target.route)
                         FileTarget.External -> viewModel.launching.view(context, entry, chooser = false)

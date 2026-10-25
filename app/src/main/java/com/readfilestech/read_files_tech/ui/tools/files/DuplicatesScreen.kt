@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +58,7 @@ import com.readfilestech.read_files_tech.data.tools.DuplicateProgress
 import com.readfilestech.read_files_tech.data.tools.DuplicateReport
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -102,7 +102,7 @@ fun DuplicatesScreen(
         },
         bottomBar = {
             if (state.ticked.isNotEmpty()) {
-                Button(
+                BrandButton(
                     onClick = viewModel::trash,
                     enabled = !state.trashing,
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
@@ -175,7 +175,7 @@ private fun RootRow(state: DuplicatesState, onChoose: () -> Unit, onScan: () -> 
                 Text(stringResource(R.string.action_stop))
             }
         } else {
-            Button(onClick = onScan) {
+            BrandButton(onClick = onScan) {
                 Icon(Icons.Filled.Search, contentDescription = null)
                 Spacer(Modifier.size(4.dp))
                 Text(stringResource(R.string.duplicates_scan))

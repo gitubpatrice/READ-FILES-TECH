@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 
 /**
@@ -59,7 +59,7 @@ fun ToolIntro(
             textAlign = TextAlign.Center,
         )
         onChoose?.let { choose ->
-            Button(onClick = choose) {
+            BrandButton(onClick = choose) {
                 Icon(Icons.Outlined.FolderOpen, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
                 Text(chooseLabel)

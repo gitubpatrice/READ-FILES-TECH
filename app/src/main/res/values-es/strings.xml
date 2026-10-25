@@ -86,10 +86,9 @@
     <string name="home_search">Buscar en los archivos recientes</string>
     <string name="home_search_hint">Nombre de un archivo reciente</string>
     <string name="home_no_result">Sin resultados</string>
-    <string name="home_theme">Tema</string>
     <string name="theme_light">Claro</string>
     <string name="theme_dark">Oscuro</string>
-    <string name="theme_system">Automático</string>
+    <string name="theme_system">Según el sistema</string>
     <string name="quick_camera">Cámara</string>
     <string name="favorite_add">Añadir a favoritos</string>
     <string name="favorite_remove">Quitar de favoritos</string>
@@ -313,7 +312,8 @@
     <string name="feature_duplicates">Duplicados y archivos grandes</string>
     <string name="feature_settings">Ajustes</string>
     <string name="feature_about">Acerca de</string>
-    <string name="settings_general">General</string>
+    <string name="settings_appearance">Apariencia</string>
+    <string name="settings_theme">Tema</string>
     <string name="settings_language">Idioma de la aplicación</string>
     <string name="settings_language_summary">Abre los ajustes de Android, donde puede elegir el idioma de esta app. Read Files Tech sigue el idioma de su teléfono, salvo que elija otro allí.</string>
     <string name="settings_outputs">Archivos que crea</string>
@@ -341,7 +341,6 @@
     <string name="output_category_vault_backups">Copias de seguridad de la caja fuerte (.rftvault)</string>
     <string name="output_category_extractions">Archivos comprimidos extraídos por el visor ZIP, una carpeta cada uno</string>
     <string name="about_tagline">Visor, editor y explorador de archivos</string>
-    <string name="about_version">Versión %1$s</string>
     <string name="about_check_updates">Buscar actualizaciones</string>
     <string name="about_check_updates_note">Abre la página de versiones de GitHub en su navegador — la aplicación nunca se conecta a Internet por sí misma.</string>
     <string name="about_privacy">Privacidad</string>
@@ -378,6 +377,12 @@
     <string name="about_feature_search">Búsqueda global</string>
     <string name="about_feature_search_desc">Por nombre y por contenido, en todo el teléfono</string>
     <string name="about_feature_duplicates_desc">Archivos idénticos detectados por su SHA-256, los más grandes listados, para liberar espacio</string>
+    <string name="about_permissions">Permisos y para qué</string>
+    <string name="about_perm_all_files">Desde Android 11: el acceso a todos los archivos, que usted concede en los ajustes de Android. Permite al explorador recorrer, abrir y modificar sus archivos, solo cuando usted lo pide: nada se ejecuta en segundo plano.</string>
+    <string name="about_perm_storage">El mismo acceso en las versiones anteriores (lectura hasta Android 12, escritura hasta Android 10); hasta Android 10, Android se lo pide en su propio diálogo.</string>
+    <string name="about_perm_install">Entrega un APK que usted toca en el explorador al instalador de Android, que pide su propia confirmación. Android también le pide, una vez, que permita a esta aplicación instalar aplicaciones desconocidas.</string>
+    <string name="about_perm_no_internet_name">INTERNET — no solicitado</string>
+    <string name="about_perm_no_internet">La aplicación no tiene ningún permiso de red. Los enlaces de esta página se abren en su navegador, fuera de la aplicación.</string>
     <string name="about_author">Autor</string>
     <string name="about_author_role">Desarrollador</string>
     <string name="about_settings">Carpeta de salida y compartir automáticamente</string>
@@ -396,6 +401,7 @@
     <string name="about_support">Ayuda y soporte</string>
     <string name="about_contact">Contactar con el soporte</string>
     <string name="about_website">Sitio web oficial</string>
+    <string name="about_source">Código fuente</string>
     <string name="about_report_bug">Informar de un error</string>
     <string name="about_report_bug_summary">Un correo con las versiones de la app y de Android ya indicadas, que usted redacta y envía</string>
     <string name="about_mail_bug_body">Describa el problema:\n\n\n— Versión: %1$s\n— Android: %2$s\n— Teléfono: </string>
@@ -407,7 +413,10 @@
     <string name="legal_notices_summary">El software que incluye Read Files Tech, con sus avisos de copyright y sus licencias</string>
     <string name="legal_license">Licencia de Read Files Tech</string>
     <string name="legal_license_summary">Licencia Apache 2.0 — el código fuente se publica en GitHub</string>
+    <string name="about_credits">Hecha con cuidado por %1$s. Software libre y de código abierto: el código es público y auditable.</string>
     <string name="settings_security">Seguridad</string>
+    <string name="settings_about">Acerca de Read Files Tech</string>
+    <string name="settings_about_summary">Privacidad, funciones, ayuda e información legal</string>
     <string name="legacy_section">Versión anterior (antes de la 3.0)</string>
     <string name="legacy_extractions_title">Extracciones antiguas</string>
     <plurals name="legacy_extractions_summary">

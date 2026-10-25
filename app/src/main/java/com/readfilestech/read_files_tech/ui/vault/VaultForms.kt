@@ -21,9 +21,9 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,11 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.theme.CautionAmber
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
+import com.readfilestech.read_files_tech.ui.theme.dangerContent
 
 /** The 2.15.3's floor: a password of at least 8 characters, for the vault as for a backup. */
 internal const val PASSWORD_MIN_CHARS = 8
@@ -115,7 +117,7 @@ internal fun SetupForm(state: VaultState, onCreate: (String) -> Unit, modifier: 
             focus = confirmFocus,
         )
         FormError((problem ?: state.error)?.resolve())
-        Button(onClick = submit, enabled = !creating, modifier = Modifier.fillMaxWidth()) {
+        BrandButton(onClick = submit, enabled = !creating, modifier = Modifier.fillMaxWidth()) {
             ButtonIcon(creating) { Icon(Icons.Outlined.Check, contentDescription = null) }
             Text(stringResource(R.string.vault_create))
         }
@@ -162,7 +164,7 @@ internal fun UnlockForm(state: VaultState, onUnlock: (String) -> Unit, onReset: 
             enabled = !unlocking,
         )
         FormError(state.error?.resolve())
-        Button(onClick = submit, enabled = !unlocking && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+        BrandButton(onClick = submit, enabled = !unlocking && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
             ButtonIcon(unlocking) { Icon(Icons.Outlined.LockOpen, contentDescription = null) }
             Text(stringResource(R.string.vault_unlock))
         }
@@ -190,12 +192,13 @@ internal fun BrokenVault(onReset: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
+/** In the danger's red as text: [DangerRed] on the light page (5.5:1), the dark theme's error red on the dark one. */
 @Composable
 private fun ResetButton(onReset: () -> Unit, enabled: Boolean) {
     TextButton(onClick = onReset, enabled = enabled) {
-        Icon(Icons.Outlined.DeleteForever, contentDescription = null, tint = DangerRed)
+        Icon(Icons.Outlined.DeleteForever, contentDescription = null, tint = dangerContent)
         Spacer(Modifier.size(8.dp))
-        Text(stringResource(R.string.vault_reset), color = DangerRed)
+        Text(stringResource(R.string.vault_reset), color = dangerContent)
     }
 }
 
@@ -206,11 +209,11 @@ private fun FormError(text: String?) {
     }
 }
 
-/** A spinner in place of the button's icon while its work runs. */
+/** A spinner in place of the button's icon while its work runs, in the button's content colour (disabled then). */
 @Composable
 private fun ButtonIcon(working: Boolean, icon: @Composable () -> Unit) {
     if (working) {
-        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
     } else {
         icon()
     }

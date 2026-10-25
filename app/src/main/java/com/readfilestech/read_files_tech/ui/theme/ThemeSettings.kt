@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The theme chosen in the home's menu: applied at once, kept in `theme_mode` as the 2.15.x keeps it. */
+/** The theme chosen in the settings: applied at once, kept in `theme_mode` as the 2.15.x keeps it. */
 @Singleton
 class ThemeSettings @Inject constructor(private val prefs: FlutterPreferences) {
     private val mode = MutableStateFlow(ThemeMode.read(prefs))

@@ -13,8 +13,6 @@ import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.EntryLaunching
-import com.readfilestech.read_files_tech.ui.theme.ThemeMode
-import com.readfilestech.read_files_tech.ui.theme.ThemeSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -47,7 +45,6 @@ class HomeViewModel @Inject constructor(
     private val recents: RecentFiles,
     private val volumes: StorageVolumes,
     private val messages: UserMessages,
-    val themes: ThemeSettings,
     val launching: EntryLaunching,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
@@ -98,11 +95,6 @@ class HomeViewModel @Inject constructor(
             }
             if (then(entry)) change { recents.addOrUpdate(path) }
         }
-    }
-
-    /** Applied at once, written off the main thread (a synchronous commit). */
-    fun setTheme(mode: ThemeMode) {
-        viewModelScope.launch(io) { themes.set(mode) }
     }
 
     private fun change(write: () -> Unit) {

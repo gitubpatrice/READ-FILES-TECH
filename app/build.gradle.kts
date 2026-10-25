@@ -373,6 +373,8 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     // The HTML viewer's WebViewAssetLoader: a page and its folder served by the app, never by file:// (D20).
     implementation(libs.androidx.webkit)
+    // The splash screen at launch: the logo on white (res/values/themes.xml, docs: libs.versions.toml).
+    implementation(libs.androidx.splashscreen)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
