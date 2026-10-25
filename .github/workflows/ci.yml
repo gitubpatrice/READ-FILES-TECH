@@ -87,6 +87,16 @@ jobs:
           # FileProvider, <queries> — read from the artefact that ships, references being ids there.
           python3 tools/check-manifest-shape.py --apk "$RUNNER_TEMP/apk-manifest.xml"
 
+      # The check release.yml runs against the published release (certificate, versionCode, launcher, tiles,
+      # FileProvider) runs only twice a release: kept honest in between by its negative control on a
+      # published APK itself, downloaded (the smallest of the latest release).
+      - name: Negative control of the release continuity check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download -R "$GITHUB_REPOSITORY" -p '*armeabi-v7a*.apk' -D "$RUNNER_TEMP/published"
+          python3 tools/check-release-continuity.py --self-test "$RUNNER_TEMP/published"
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v7
