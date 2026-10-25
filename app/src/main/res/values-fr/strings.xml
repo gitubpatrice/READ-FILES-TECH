@@ -373,7 +373,7 @@
     <string name="about_feature_search_desc">Par nom et par contenu, sur tout le téléphone</string>
     <string name="about_feature_duplicates_desc">Fichiers identiques repérés par leur SHA-256, les plus gros listés, pour libérer de la place</string>
     <string name="about_permissions">Permissions et pourquoi</string>
-    <string name="about_perm_all_files">Android 11 et plus : l\'accès à tous les fichiers, que vous accordez dans les paramètres d\'Android. Il permet à l\'explorateur de parcourir, d\'ouvrir et de modifier vos fichiers, seulement quand vous le demandez : rien ne tourne en arrière-plan.</string>
+    <string name="about_perm_all_files">Android 11 et plus : l\'accès à tous les fichiers, que vous accordez dans les paramètres d\'Android. Il permet à l\'explorateur de parcourir, d\'ouvrir et de modifier vos fichiers, seulement quand vous le demandez : rien n\'est lu en arrière-plan.</string>
     <string name="about_perm_storage">Le même accès sur les versions plus anciennes (lecture jusqu\'à Android 12, écriture jusqu\'à Android 10) ; jusqu\'à Android 10, Android vous le demande dans sa propre boîte de dialogue.</string>
     <string name="about_perm_install">Confie un APK que vous touchez dans l\'explorateur à l\'installateur d\'Android, qui demande sa propre confirmation. Android vous demande aussi, une fois, d\'autoriser cette application à installer des applications inconnues.</string>
     <string name="about_perm_no_internet_name">INTERNET — non demandée</string>
@@ -460,7 +460,7 @@
     <string name="legacy_history_deleted">Ancien historique supprimé</string>
     <string name="legacy_history_delete_failed">L\'ancien historique n\'a pas pu être supprimé entièrement</string>
     <string name="panic_title">Mode panique — tout effacer</string>
-    <string name="panic_summary">Le coffre, les réglages, les fichiers temporaires, l\'historique et la corbeille, immédiatement</string>
+    <string name="panic_summary">Le coffre, les réglages, les fichiers temporaires, l\'historique, les anciennes extractions et la corbeille, immédiatement</string>
     <string name="panic_confirm_title">Mode panique</string>
     <string name="panic_confirm_body">Cette action efface IMMÉDIATEMENT et DÉFINITIVEMENT :\n\n• le coffre entier, tous les fichiers chiffrés et leurs clés\n• tous les réglages, dont la liste des fichiers récents\n• les fichiers temporaires : copies déchiffrées, PDF déverrouillés, pages scannées\n• l\'historique des éditeurs, de code et CSV\n• les dossiers de « Extraire tout » gardés par les versions précédentes\n• la corbeille\n\nVos fichiers et ce que les outils ont enregistré dans le dossier Files Tech ne sont pas touchés. Aucune récupération possible sans sauvegarde .rftvault.\n\nContinuer ?</string>
     <string name="panic_confirm">Tout effacer</string>
@@ -1207,7 +1207,7 @@
         <item quantity="other">Ce tableau ferait plus de %1$,d pages : trop grand pour être exporté ici.</item>
     </plurals>
     <!-- Le coffre (phase 6 ; VaultScreen de la 2.15.3). -->
-    <string name="vault_setup_title">Créer un coffre fort</string>
+    <string name="vault_setup_title">Créer un coffre</string>
     <string name="vault_setup_body">Le coffre chiffre vos fichiers avec AES-256-GCM. Sa clé est dérivée de votre mot de passe sur ce téléphone (Argon2id, réglé pour cet appareil : quelques secondes), et le mot de passe n\'est jamais enregistré.</string>
     <string name="vault_password">Mot de passe</string>
     <string name="vault_password_confirm">Confirmer</string>

@@ -1,6 +1,6 @@
 # Privacy policy — Read Files Tech
 
-_Last updated: 24 October 2026 (version 3.0.0)_
+_Last updated: 25 October 2026 (version 3.0.0)_
 
 ## In one sentence
 
@@ -42,7 +42,7 @@ If the folder of the files the tools create refuses writes ("All files access" r
 ## The vault
 
 - Each file is encrypted with **AES-256-GCM**, with a key derived from your password by **Argon2id**. A vault created with an older version keeps the derivation it was created with (PBKDF2, or a lighter Argon2id). The password is never stored.
-- **Not encrypted**: the **names** of the vault's files, their **sizes**, their number and dates, nor the key derivation settings.
+- **Not encrypted**: the **names** of the vault's files, their **sizes**, their number and dates, as well as the key derivation settings.
 - The vault locks 30 seconds after you leave the app — the phone in deep sleep, when it wakes, and always before the vault shows again —, after 3 minutes without touching the screen, and when you leave its screen. After 5 wrong passwords, each attempt waits longer, up to 30 minutes.
 - The vault's screens, and the vault files opened in the app, cannot be captured and do not appear in the recent apps' preview.
 - A `.rftvault` **backup** is encrypted whole, names included, under a separate backup password; it is written to the vault backups' folder, which the backup's dialog shows first: on shared storage or, when the output folder refuses writes, in a folder of the app, erased with it.

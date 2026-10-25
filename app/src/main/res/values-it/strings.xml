@@ -380,9 +380,9 @@
     <string name="about_feature_search_desc">Per nome e per contenuto, in tutto il telefono</string>
     <string name="about_feature_duplicates_desc">File identici trovati tramite il loro SHA-256, i più grandi elencati, per liberare spazio</string>
     <string name="about_permissions">Autorizzazioni e perché</string>
-    <string name="about_perm_all_files">Da Android 11: l\'accesso a tutti i file, che Lei concede nelle impostazioni di Android. Permette all\'esploratore di sfogliare, aprire e modificare i Suoi file, solo quando lo chiede: nulla viene eseguito in background.</string>
+    <string name="about_perm_all_files">Da Android 11: l\'accesso a tutti i file, che Lei concede nelle impostazioni di Android. Permette a Esplora file di sfogliare, aprire e modificare i Suoi file, solo quando lo chiede: in background non viene letto nulla.</string>
     <string name="about_perm_storage">Lo stesso accesso sulle versioni precedenti (lettura fino ad Android 12, scrittura fino ad Android 10); fino ad Android 10 è Android a chiederglielo nella propria finestra di dialogo.</string>
-    <string name="about_perm_install">Affida un APK che tocca nell\'esploratore al programma di installazione di Android, che chiede la propria conferma. Android Le chiede inoltre, una volta, di consentire a questa app di installare app sconosciute.</string>
+    <string name="about_perm_install">Affida un APK che tocca in Esplora file al programma di installazione di Android, che chiede la propria conferma. Android Le chiede inoltre, una volta, di consentire a questa app di installare app sconosciute.</string>
     <string name="about_perm_no_internet_name">INTERNET — non richiesta</string>
     <string name="about_perm_no_internet">L\'app non ha alcuna autorizzazione di rete. I link di questa pagina si aprono nel Suo browser, fuori dall\'app.</string>
     <string name="about_author">Autore</string>
@@ -405,7 +405,7 @@
     <string name="about_website">Sito ufficiale</string>
     <string name="about_source">Codice sorgente</string>
     <string name="about_report_bug">Segnalare un bug</string>
-    <string name="about_report_bug_summary">Un\'e-mail con le versioni dell\'app e di Android già compilate, che scrive e invia Lei stesso</string>
+    <string name="about_report_bug_summary">Un\'e-mail con le versioni dell\'app e di Android già compilate, che scrive e invia personalmente</string>
     <string name="about_mail_bug_body">Descriva il problema:\n\n\n— Versione: %1$s\n— Android: %2$s\n— Telefono: </string>
     <string name="about_no_mail_app">Nessuna app di posta: l\'indirizzo è stato copiato, %1$s.</string>
     <string name="about_legal">Note legali</string>
@@ -427,9 +427,9 @@
         <item quantity="other">%1$d file, %2$s, in una cartella che solo questa app può aprire</item>
     </plurals>
     <plurals name="legacy_extractions_body">
-        <item quantity="one">Con “Estrai tutto”, la versione precedente ha messo %1$d file (%2$s) in una cartella privata dell\'app: né il suo esplora file né le altre app possono aprirla.\n\nSpostato nella cartella qui sotto, si potrà aprire, anche da qualsiasi app con accesso alla memoria.</item>
-        <item quantity="many">Con “Estrai tutto”, la versione precedente ha messo %1$d di file (%2$s) in una cartella privata dell\'app: né il suo esplora file né le altre app possono aprirla.\n\nSpostati nella cartella qui sotto, si potranno aprire, anche da qualsiasi app con accesso alla memoria.</item>
-        <item quantity="other">Con “Estrai tutto”, la versione precedente ha messo %1$d file (%2$s) in una cartella privata dell\'app: né il suo esplora file né le altre app possono aprirla.\n\nSpostati nella cartella qui sotto, si potranno aprire, anche da qualsiasi app con accesso alla memoria.</item>
+        <item quantity="one">Con “Estrai tutto”, la versione precedente ha messo %1$d file (%2$s) in una cartella privata dell\'app: né Esplora file né le altre app possono aprirla.\n\nSpostato nella cartella qui sotto, si potrà aprire, anche da qualsiasi app con accesso alla memoria.</item>
+        <item quantity="many">Con “Estrai tutto”, la versione precedente ha messo %1$d di file (%2$s) in una cartella privata dell\'app: né Esplora file né le altre app possono aprirla.\n\nSpostati nella cartella qui sotto, si potranno aprire, anche da qualsiasi app con accesso alla memoria.</item>
+        <item quantity="other">Con “Estrai tutto”, la versione precedente ha messo %1$d file (%2$s) in una cartella privata dell\'app: né Esplora file né le altre app possono aprirla.\n\nSpostati nella cartella qui sotto, si potranno aprire, anche da qualsiasi app con accesso alla memoria.</item>
     </plurals>
     <string name="legacy_later_note">Li ritroverà nelle impostazioni.</string>
     <string name="legacy_move">Sposta</string>
@@ -467,7 +467,7 @@
     <string name="legacy_history_deleted">Vecchia cronologia eliminata</string>
     <string name="legacy_history_delete_failed">Non è stato possibile eliminare del tutto la vecchia cronologia</string>
     <string name="panic_title">Modalità panico — cancella tutto</string>
-    <string name="panic_summary">La cassaforte, le impostazioni, i file temporanei, la cronologia e il cestino, subito</string>
+    <string name="panic_summary">La cassaforte, le impostazioni, i file temporanei, la cronologia, le vecchie estrazioni e il cestino, subito</string>
     <string name="panic_confirm_title">Modalità panico</string>
     <string name="panic_confirm_body">Questa operazione cancella SUBITO e DEFINITIVAMENTE:\n\n• l\'intera cassaforte, tutti i suoi file cifrati e le sue chiavi\n• tutte le impostazioni, compreso l\'elenco dei file recenti\n• i file temporanei: copie decifrate, PDF sbloccati, pagine scansionate\n• la cronologia degli editor, di codice e CSV\n• le cartelle di «Estrai tutto» conservate dalle versioni precedenti\n• il cestino\n\nI Suoi file e ciò che gli strumenti hanno salvato nella cartella Files Tech non vengono toccati. Nulla può essere recuperato senza un backup .rftvault.\n\nContinuare?</string>
     <string name="panic_confirm">Cancella tutto</string>

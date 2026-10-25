@@ -1,6 +1,6 @@
 # Politique de confidentialité — Read Files Tech
 
-_Dernière mise à jour : 24 octobre 2026 (version 3.0.0)_
+_Dernière mise à jour : 25 octobre 2026 (version 3.0.0)_
 
 ## En une phrase
 
@@ -42,7 +42,7 @@ Si le dossier des fichiers créés refuse l'écriture (« Accès à tous les fic
 ## Le coffre
 
 - Chaque fichier est chiffré en **AES-256-GCM**, avec une clé dérivée de votre mot de passe par **Argon2id**. Un coffre créé avec une version plus ancienne garde la dérivation de sa création (PBKDF2, ou un Argon2id plus léger). Le mot de passe n'est jamais enregistré.
-- **Ne sont pas chiffrés** : le **nom** des fichiers du coffre, leur **taille**, leur nombre et leurs dates, ni les réglages de dérivation de la clé.
+- **Ne sont pas chiffrés** : le **nom** des fichiers du coffre, leur **taille**, leur nombre et leurs dates, ainsi que les réglages de dérivation de la clé.
 - Le coffre se verrouille 30 secondes après que vous avez quitté l'application — téléphone en veille profonde, à son réveil, et toujours avant que le coffre ne réapparaisse —, après 3 minutes sans toucher l'écran, et quand vous quittez son écran. Après 5 mots de passe faux, chaque essai attend plus longtemps, jusqu'à 30 minutes.
 - Les écrans du coffre, et les fichiers du coffre ouverts dans l'application, ne peuvent pas être capturés et n'apparaissent pas dans l'aperçu des applications récentes.
 - Une **sauvegarde** `.rftvault` est chiffrée en entier, noms compris, sous un mot de passe de sauvegarde distinct ; elle est écrite dans le dossier des sauvegardes du coffre, que le dialogue de la sauvegarde affiche avant : sur le stockage partagé ou, si le dossier de sortie refuse l'écriture, dans un dossier de l'application, effacé avec elle.

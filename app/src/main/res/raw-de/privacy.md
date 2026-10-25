@@ -1,6 +1,6 @@
 # Datenschutzerklärung — Read Files Tech
 
-_Zuletzt aktualisiert: 24. Oktober 2026 (Version 3.0.0)_
+_Zuletzt aktualisiert: 25. Oktober 2026 (Version 3.0.0)_
 
 ## In einem Satz
 
@@ -43,7 +43,7 @@ Nimmt der Ordner der erstellten Dateien keine Dateien an („Zugriff auf alle Da
 
 - Jede Datei wird mit **AES-256-GCM** verschlüsselt, mit einem Schlüssel, der per **Argon2id** aus Ihrem Passwort abgeleitet wird. Ein mit einer älteren Version erstellter Tresor behält die Ableitung seiner Erstellung (PBKDF2 oder ein leichteres Argon2id). Das Passwort wird nie gespeichert.
 - **Nicht verschlüsselt** sind: die **Namen** der Tresordateien, ihre **Größe**, ihre Anzahl und ihre Daten, sowie die Einstellungen der Schlüsselableitung.
-- Der Tresor sperrt sich 30 Sekunden, nachdem Sie die App verlassen haben — im Tiefschlaf des Telefons beim Aufwachen, und immer, bevor der Tresor wieder erscheint —, nach 3 Minuten ohne Berührung des Bildschirms und wenn Sie seinen Bildschirm verlassen. Nach 5 falschen Passwörtern wartet jeder Versuch länger, bis zu 30 Minuten.
+- Der Tresor sperrt sich 30 Sekunden, nachdem Sie die App verlassen haben — bei Tiefschlaf des Telefons erst beim Aufwachen, und immer, bevor der Tresor wieder erscheint —, nach 3 Minuten ohne Berührung des Bildschirms und wenn Sie seinen Bildschirm verlassen. Nach 5 falschen Passwörtern wartet jeder Versuch länger, bis zu 30 Minuten.
 - Die Bildschirme des Tresors und die in der App geöffneten Tresordateien können nicht aufgenommen werden und erscheinen nicht in der Vorschau der letzten Apps.
 - Eine **Sicherung** `.rftvault` ist vollständig verschlüsselt, Namen eingeschlossen, mit einem eigenen Sicherungspasswort; sie wird in den Ordner der Tresor-Sicherungen geschrieben, den der Dialog der Sicherung vorher anzeigt: im gemeinsamen Speicher oder, wenn der Ausgabeordner keine Dateien annimmt, in einem Ordner der App, der mit ihr gelöscht wird.
 - **Teilen (entschlüsselt)** erstellt eine temporäre unverschlüsselte Kopie, die beim Sperren und beim nächsten Start gelöscht wird. **Exportieren** schreibt eine dauerhafte unverschlüsselte Kopie in den von Ihnen gewählten Ordner. Was die App, die eine Datei erhält, damit macht, hängt nicht mehr von Read Files Tech ab.
@@ -79,7 +79,7 @@ Die Sicherung von Android — in die Cloud oder von einem Telefon auf ein andere
 | `REQUEST_INSTALL_PACKAGES` | Eine im Explorer angetippte APK an das Installationsprogramm von Android übergeben, das selbst um Bestätigung bittet |
 | `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | Von einer Android-Bibliothek hinzugefügt, intern in der App |
 
-Weder Kamera noch Standort, Kontakte, Mikrofon, Benachrichtigungen oder Internet.
+Weder Kamera noch Standort noch Kontakte noch Mikrofon noch Benachrichtigungen noch Internet.
 
 ## Systemprotokoll
 

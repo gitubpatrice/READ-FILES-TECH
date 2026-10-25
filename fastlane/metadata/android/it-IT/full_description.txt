@@ -8,7 +8,7 @@ Read Files Tech è un coltellino svizzero per i file del Suo telefono Android: u
 <li>Editor — codice e testo con una cronologia automatica delle versioni, CSV come tabella modificabile</li>
 <li>Scanner di documenti — bordi trovati, prospettiva raddrizzata, salvato in PDF</li>
 <li>OCR sul telefono (Tesseract), in italiano, inglese, francese, tedesco e spagnolo</li>
-<li>Cassaforte cifrata — AES-256-GCM, una chiave derivata dalla Sua password con Argon2id, blocco automatico e una cancellazione di emergenza</li>
+<li>Cassaforte cifrata — AES-256-GCM, una chiave derivata dalla Sua password con Argon2id, blocco automatico e una modalità panico</li>
 <li>Conversione — immagini in PDF, CSV in XLSX, testo in PDF, PDF e DOCX in testo, immagini in JPG o PNG</li>
 <li>Foto — immagini più leggere, e posizione, data e modello della fotocamera rimossi prima di condividere</li>
 <li>Ricerca globale per nome e per contenuto, duplicati trovati con SHA-256, rinomina in blocco con espressioni regolari</li>

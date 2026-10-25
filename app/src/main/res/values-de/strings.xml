@@ -360,7 +360,7 @@
     <string name="about_feature_search_desc">Nach Name und Inhalt, auf dem ganzen Telefon</string>
     <string name="about_feature_duplicates_desc">Identische Dateien anhand ihres SHA-256 gefunden, die größten aufgelistet, um Platz zu schaffen</string>
     <string name="about_permissions">Berechtigungen und wozu</string>
-    <string name="about_perm_all_files">Ab Android 11: der Zugriff auf alle Dateien, den Sie in den Android-Einstellungen erteilen. Damit kann der Explorer Ihre Dateien durchsuchen, öffnen und ändern, nur wenn Sie es verlangen: Im Hintergrund läuft nichts.</string>
+    <string name="about_perm_all_files">Ab Android 11: der Zugriff auf alle Dateien, den Sie in den Android-Einstellungen erteilen. Damit kann der Explorer Ihre Dateien durchsuchen, öffnen und ändern, nur wenn Sie es verlangen: Im Hintergrund wird nichts gelesen.</string>
     <string name="about_perm_storage">Derselbe Zugriff auf älteren Versionen (Lesen bis Android 12, Schreiben bis Android 10); bis Android 10 fragt Android Sie in seinem eigenen Dialog danach.</string>
     <string name="about_perm_install">Übergibt eine APK, die Sie im Explorer antippen, an das Installationsprogramm von Android, das selbst um Bestätigung bittet. Android bittet Sie außerdem einmalig, dieser App das Installieren unbekannter Apps zu erlauben.</string>
     <string name="about_perm_no_internet_name">INTERNET — nicht angefordert</string>
@@ -441,7 +441,7 @@
     <string name="legacy_history_deleted">Alter Verlauf gelöscht</string>
     <string name="legacy_history_delete_failed">Der alte Verlauf konnte nicht vollständig gelöscht werden</string>
     <string name="panic_title">Panikmodus – alles löschen</string>
-    <string name="panic_summary">Der Tresor, die Einstellungen, die temporären Dateien, der Verlauf und der Papierkorb, auf einmal</string>
+    <string name="panic_summary">Der Tresor, die Einstellungen, die temporären Dateien, der Verlauf, die alten Extraktionen und der Papierkorb, auf einmal</string>
     <string name="panic_confirm_title">Panikmodus</string>
     <string name="panic_confirm_body">Dies löscht SOFORT und ENDGÜLTIG:\n\n• den gesamten Tresor, alle verschlüsselten Dateien und ihre Schlüssel\n• alle Einstellungen, darunter die Liste der zuletzt verwendeten Dateien\n• die temporären Dateien: entschlüsselte Kopien, entsperrte PDFs, gescannte Seiten\n• den Verlauf der Editoren, für Code und CSV\n• die Ordner von „Alle extrahieren“, die von früheren Versionen aufbewahrt wurden\n• den Papierkorb\n\nIhre Dateien und das, was die Werkzeuge im Ordner Files Tech gespeichert haben, bleiben unberührt. Ohne eine .rftvault-Sicherung lässt sich nichts wiederherstellen.\n\nFortfahren?</string>
     <string name="panic_confirm">Alles löschen</string>
@@ -552,7 +552,7 @@
     <string name="csv_editor_delete_column">Diese Spalte löschen</string>
     <string name="csv_editor_delete_row_title">Zeile %1$d löschen?</string>
     <string name="csv_editor_delete_column_title">Spalte %1$d löschen?</string>
-    <string name="csv_editor_delete_body">Ihre Zellen werden aus der Tabelle entfernt. In die Datei wird erst beim Speichern geschrieben: Ohne Speichern bleibt sie, wie sie ist.</string>
+    <string name="csv_editor_delete_body">Die Zellen werden aus der Tabelle entfernt. In die Datei wird erst beim Speichern geschrieben: Ohne Speichern bleibt sie, wie sie ist.</string>
     <string name="csv_editor_history_empty">Noch keine frühere Version dieser Datei. Jedes Speichern bewahrt die Version auf, die es ersetzt: die letzten %1$d, für Dateien bis %2$d MB.</string>
     <string name="csv_editor_history_hint">Wiederherstellen lädt die Version in den Editor: Ihre ungespeicherten Änderungen kommen zuerst in den Verlauf, und die Datei wird erst geschrieben, wenn Sie speichern.</string>
     <string name="csv_editor_unsaved_too_large">Ihre ungespeicherten Änderungen sind größer als %1$d MB, zu groß für den Verlauf – speichern Sie sie zuerst</string>
@@ -678,7 +678,7 @@
     <string name="editor_text_too_large">der Text ist größer als %1$d MB, das Maximum, das der Editor öffnet: Kürzen Sie ihn und speichern Sie dann</string>
     <string name="editor_changed_title">„%1$s“ wurde geändert</string>
     <string name="editor_changed_message">Eine andere App hat diese Datei geändert, verschoben oder gelöscht, seit sie hier geöffnet wurde. Mit Ihrem Text überschreiben? Die Version auf dem Datenträger kommt zuerst in den Verlauf.</string>
-    <string name="editor_changed_message_lost">Eine andere App hat diese Datei geändert, verschoben oder gelöscht, seit sie hier geöffnet wurde. Mit Ihrem Text überschreiben? Ihre Fassung auf dem Speicher ist größer als %1$d MB, zu groß für den Verlauf: Sie geht verloren.</string>
+    <string name="editor_changed_message_lost">Eine andere App hat diese Datei geändert, verschoben oder gelöscht, seit sie hier geöffnet wurde. Mit Ihrem Text überschreiben? Die Version auf dem Datenträger ist größer als %1$d MB, zu groß für den Verlauf: Sie geht verloren.</string>
     <string name="editor_overwrite">Überschreiben</string>
     <string name="editor_leave_title">Ungespeicherte Änderungen</string>
     <string name="editor_leave_message">Vor dem Verlassen speichern?</string>
@@ -711,7 +711,7 @@
         <item quantity="other">%1$d von %2$d Einträgen · %3$s</item>
     </plurals>
     <string name="zip_extract_done">Extraktion abgeschlossen</string>
-    <string name="zip_extract_stopped">Extraktion abgebrochen</string>
+    <string name="zip_extract_stopped">Extraktion angehalten</string>
     <plurals name="zip_extract_written">
         <item quantity="one">%1$d Datei in %2$s geschrieben.</item>
         <item quantity="other">%1$d Dateien in %2$s geschrieben.</item>
@@ -728,11 +728,11 @@
     </plurals>
     <string name="zip_stop_total">Die %1$s, die eine Extraktion schreiben darf, sind erreicht: Die folgenden Einträge werden nicht extrahiert.</string>
     <string name="zip_stop_cancelled">Angehalten: Die geschriebenen Dateien bleiben erhalten, die angefangene wird entfernt.</string>
-    <string name="zip_stop_failed">Schreiben abgebrochen: %1$s</string>
+    <string name="zip_stop_failed">Schreiben angehalten: %1$s</string>
     <string name="zip_no_location">Kein Ordner des Speichers konnte die Extraktion aufnehmen.</string>
     <plurals name="zip_extract_left">
-        <item quantity="one">Extraktion beim Verlassen ihres Bildschirms abgebrochen: %1$d Datei in %2$s geschrieben.</item>
-        <item quantity="other">Extraktion beim Verlassen ihres Bildschirms abgebrochen: %1$d Dateien in %2$s geschrieben.</item>
+        <item quantity="one">Extraktion beim Verlassen ihres Bildschirms angehalten: %1$d Datei in %2$s geschrieben.</item>
+        <item quantity="other">Extraktion beim Verlassen ihres Bildschirms angehalten: %1$d Dateien in %2$s geschrieben.</item>
     </plurals>
     <string name="zip_share_failed">Dieser Eintrag kann nicht geteilt werden: %1$s</string>
     <string name="action_open_folder">Ordner öffnen</string>
@@ -749,7 +749,7 @@
     <string name="scanner_move_later">Nach hinten verschieben</string>
     <string name="scanner_delete_page">Seite %1$d löschen</string>
     <string name="scanner_delete_page_title">Seite %1$d löschen?</string>
-    <string name="scanner_delete_page_owned">Ihr hier aufgenommenes Foto wird endgültig gelöscht.</string>
+    <string name="scanner_delete_page_owned">Das hier aufgenommene Foto der Seite wird endgültig gelöscht.</string>
     <string name="scanner_delete_page_external">Sie wird aus dem Scan entfernt. Das Bild, aus dem sie stammt, bleibt, wo es auf dem Telefon ist.</string>
     <string name="scanner_adjust_title">Seite anpassen</string>
     <string name="scanner_keep_page">Diese Seite behalten</string>
@@ -1294,7 +1294,7 @@
     </plurals>
     <string name="vault_continue">Fortfahren</string>
     <string name="vault_folder_unreadable">Dieser Ordner kann nicht gelesen werden.</string>
-    <string name="vault_folder_locked">Der Tresor wurde gesperrt: Die Verschlüsselung wurde abgebrochen, und die noch nicht verschlüsselten Originale sind unberührt. Importieren Sie den Ordner erneut, um fortzufahren: Die Dateien, die bereits im Tresor sind, werden übersprungen.</string>
+    <string name="vault_folder_locked">Der Tresor wurde gesperrt: Die Verschlüsselung wurde angehalten, und die noch nicht verschlüsselten Originale sind unberührt. Importieren Sie den Ordner erneut, um fortzufahren: Die Dateien, die bereits im Tresor sind, werden übersprungen.</string>
     <string name="vault_folder_stopping">Wird nach der aktuellen Datei angehalten… %1$d %%</string>
     <string name="vault_folder_stopped">Angehalten: Die noch nicht verschlüsselten Originale sind unberührt. Importieren Sie den Ordner erneut, um fortzufahren: Die Dateien, die bereits im Tresor sind, werden übersprungen.</string>
 </resources>
