@@ -35,7 +35,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -44,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
-import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.tools.FormatAction
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
@@ -53,11 +51,9 @@ import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.outputs.AutoShare
 import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import com.readfilestech.read_files_tech.ui.tools.ToolResult
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
 
 private const val INPUT_MIN_LINES = 6
 private const val INPUT_MAX_LINES = 10
@@ -70,7 +66,6 @@ private const val INPUT_MAX_LINES = 10
 @Composable
 fun FormatScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -> Unit, viewModel: FormatViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val title = stringResource(R.string.feature_format)
     LaunchedEffect(picked.files) {
         picked.files?.firstOrNull()?.let {
@@ -78,13 +73,7 @@ fun FormatScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: ()
             viewModel.choose(it)
         }
     }
-    LaunchedEffect(state.share) {
-        state.share?.let { path ->
-            val entry = withContext(Dispatchers.IO) { DirectoryListing.entryOf(File(path)) }
-            viewModel.launching.share(context, listOf(entry))
-            viewModel.shared()
-        }
-    }
+    AutoShare(state.share, viewModel.launching, viewModel::shared)
     val open = { onNavigate(Routes.picker(PickMode.FILE, extensions = setOf(state.action.extension), title = title)) }
     Scaffold(
         topBar = {

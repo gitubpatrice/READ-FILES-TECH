@@ -48,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,7 +71,9 @@ import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.BusyButton
 import com.readfilestech.read_files_tech.ui.common.BusyIconButton
 import com.readfilestech.read_files_tech.ui.common.ConfirmDangerDialog
+import com.readfilestech.read_files_tech.ui.common.date
 import com.readfilestech.read_files_tech.ui.common.formatBytes
+import com.readfilestech.read_files_tech.ui.common.rememberHistoryDateFormatter
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
@@ -83,10 +84,6 @@ import com.readfilestech.read_files_tech.ui.viewer.table.TableCells
 import com.readfilestech.read_files_tech.ui.viewer.table.TableGrid
 import com.readfilestech.read_files_tech.ui.viewer.table.TableHeaderText
 import com.readfilestech.read_files_tech.ui.viewer.table.TableMessage
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private const val NONE = -1
 
@@ -564,10 +561,7 @@ private fun LeaveDialog(state: CsvEditorState, onSave: () -> Unit, onDiscard: ()
 /** The versions the saves replaced (docs D-021), newest first: one restored is loaded in the editor, not written. */
 @Composable
 private fun HistoryDialog(versions: List<HistoryCopy>, onRestore: (HistoryCopy) -> Unit, onDismiss: () -> Unit) {
-    val locale = LocalConfiguration.current.locales[0]
-    val formatter = remember(locale) {
-        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM).withLocale(locale)
-    }
+    val formatter = rememberHistoryDateFormatter()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.editor_history)) },
@@ -580,7 +574,7 @@ private fun HistoryDialog(versions: List<HistoryCopy>, onRestore: (HistoryCopy) 
                     LazyColumn(Modifier.heightIn(max = 320.dp)) {
                         items(versions, key = { it.file.name }) { copy ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val date = formatter.format(Instant.ofEpochMilli(copy.writtenAtMs).atZone(ZoneId.systemDefault()))
+                                val date = formatter.date(copy)
                                 Text(stringResource(R.string.joined_dot, date, formatBytes(copy.size)), Modifier.weight(1f))
                                 TextButton(onClick = { onRestore(copy) }) { Text(stringResource(R.string.action_restore)) }
                             }

@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.vault
 
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileTrees
+import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.vault.format.VaultNames
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -23,7 +24,7 @@ class VaultFiles @Inject constructor(
     private val dirs: VaultDirs,
     private val session: VaultSession,
     private val cipher: VaultCipher,
-    @param:VaultDispatcher private val dispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
     /**
      * The user's files, sorted by name. Not the sentinel, not the residue of an interrupted write

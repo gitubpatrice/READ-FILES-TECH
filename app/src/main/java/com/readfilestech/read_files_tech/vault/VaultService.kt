@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.vault
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
+import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
 import com.readfilestech.read_files_tech.vault.format.VaultFormatException
@@ -38,7 +39,7 @@ class VaultService @Inject constructor(
     private val cipher: VaultCipher,
     private val argon2: Argon2Policy,
     private val storedKdf: StoredKdf,
-    @param:VaultDispatcher private val dispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
     private val background = CoroutineScope(SupervisorJob() + dispatcher)
 

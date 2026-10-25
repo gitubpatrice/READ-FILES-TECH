@@ -95,9 +95,12 @@ class FormatViewModel @Inject constructor(
 
     fun choose(path: String) {
         job?.cancel()
+        // The previous file's result goes at once: kept while this one was read, or when it could not be, "Save"
+        // wrote the PREVIOUS file's result (motif audit, phase 9).
+        ready = null
         job = viewModelScope.launch {
             val file = File(path)
-            mutableState.update { it.copy(working = true, failure = null, saved = null) }
+            mutableState.update { it.copy(working = true, failure = null, saved = null, preview = "", length = 0) }
             loadOrFailure { withContext(io) { DirectoryListing.entryOf(file) to ToolTexts.read(file) } }
                 .onSuccess { (entry, read) ->
                     val (bytes, size) = read

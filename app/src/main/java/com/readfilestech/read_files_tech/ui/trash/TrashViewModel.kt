@@ -22,6 +22,13 @@ data class TrashUiState(val loading: Boolean = true, val entries: List<TrashEntr
     val totalBytes: Long get() = entries.sumOf { it.size.coerceAtLeast(0) }
 }
 
+/** What the trash screen asks to confirm. */
+internal sealed interface TrashDialog {
+    data class DeleteOne(val entry: TrashEntry) : TrashDialog
+
+    data object EmptyAll : TrashDialog
+}
+
 /** The trash (`trash_screen.dart` of the 2.15.x): every volume's, the most recent first. Nothing is purged by itself. */
 @HiltViewModel
 class TrashViewModel @Inject constructor(
@@ -32,6 +39,16 @@ class TrashViewModel @Inject constructor(
     private val state = MutableStateFlow(TrashUiState())
     val uiState: StateFlow<TrashUiState> = state.asStateFlow()
     private var loading: Job? = null
+
+    private val shownDialog = MutableStateFlow<TrashDialog?>(null)
+
+    /** The confirmation on top, kept across a rotation: held by the screen, it went with the activity (coherence audit, phase 9). */
+    internal val dialog: StateFlow<TrashDialog?> = shownDialog.asStateFlow()
+
+    /** Shows [dialog], or closes the one shown (null). */
+    internal fun show(dialog: TrashDialog?) {
+        shownDialog.value = dialog
+    }
 
     init {
         load()

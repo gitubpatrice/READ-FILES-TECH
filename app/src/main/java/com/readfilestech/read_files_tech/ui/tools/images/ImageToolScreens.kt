@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -88,18 +90,23 @@ fun CompressScreen(
             ToolColumn(padding) {
                 ChosenFileRow(file, choose, enabled = !state.working)
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                Text(stringResource(R.string.compress_quality, state.quality))
+                // Each slider named by the label above it, which TalkBack did not tie to it (coherence audit, phase 9).
+                val quality = stringResource(R.string.compress_quality, state.quality)
+                Text(quality)
                 Slider(
                     value = state.quality.toFloat(),
                     onValueChange = { viewModel.setQuality(it.roundToInt()) },
+                    modifier = Modifier.semantics { contentDescription = quality },
                     valueRange = ImageToolRules.QUALITY_MIN.toFloat()..ImageToolRules.QUALITY_MAX.toFloat(),
                     steps = ImageToolRules.SLIDER_STEPS,
                     enabled = !state.working,
                 )
-                Text(stringResource(R.string.compress_max_width, state.maxWidth))
+                val maxWidth = stringResource(R.string.compress_max_width, state.maxWidth)
+                Text(maxWidth)
                 Slider(
                     value = state.maxWidth.toFloat(),
                     onValueChange = { viewModel.setMaxWidth(it.roundToInt()) },
+                    modifier = Modifier.semantics { contentDescription = maxWidth },
                     valueRange = ImageToolRules.WIDTH_MIN.toFloat()..ImageToolRules.WIDTH_MAX.toFloat(),
                     steps = ImageToolRules.SLIDER_STEPS,
                     enabled = !state.working,

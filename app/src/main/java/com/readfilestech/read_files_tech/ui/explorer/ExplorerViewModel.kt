@@ -25,6 +25,22 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
+/** A dialog or sheet of the explorer; at most one at a time. */
+internal sealed interface ExplorerDialog {
+    data object NewFolder : ExplorerDialog
+
+    data class Rename(val entry: FileEntry) : ExplorerDialog
+
+    data class DeleteForever(val entries: List<FileEntry>) : ExplorerDialog
+
+    data class Info(val entry: FileEntry) : ExplorerDialog
+
+    data class Preview(val entry: FileEntry) : ExplorerDialog
+
+    /** The selection's bulk rename (`FES:728`), over the explorer. */
+    data class BulkRename(val entries: List<FileEntry>) : ExplorerDialog
+}
+
 /**
  * The explorer: `FileExplorerScreen` of the 2.15.x. [browser] goes from folder to folder, [launching]
  * hands files to other apps; this selects, and sends the changes to [FileOperations], which finishes
@@ -51,6 +67,11 @@ class ExplorerViewModel @Inject constructor(
         ),
     )
     val uiState: StateFlow<ExplorerUiState> = state.asStateFlow()
+
+    private val shownDialog = MutableStateFlow<ExplorerDialog?>(null)
+
+    /** The dialog or sheet on top, kept across a rotation: held by the screen, it went with the activity (coherence audit, phase 9). */
+    internal val dialog: StateFlow<ExplorerDialog?> = shownDialog.asStateFlow()
 
     /** The files chosen in [PickMode.FILES], across folders: kept across a process death, as a transfer is. */
     val picked = PickedFiles(savedState)
@@ -82,6 +103,11 @@ class ExplorerViewModel @Inject constructor(
 
     /** "Copy the path" of the info dialog, said as every other copy is: below Android 13 nothing else says it. */
     fun copied(path: String) = messages.info(uiText(R.string.value_copied, path))
+
+    /** Shows [dialog] over the explorer, or closes the one shown (null). */
+    internal fun show(dialog: ExplorerDialog?) {
+        shownDialog.value = dialog
+    }
 
     fun createFolder(name: String) {
         state.value.dir?.let { operations.createFolder(it, name.trim()) }

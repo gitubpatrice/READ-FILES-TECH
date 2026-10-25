@@ -54,7 +54,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -76,15 +75,14 @@ import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.BusyButton
 import com.readfilestech.read_files_tech.ui.common.BusyIconButton
+import com.readfilestech.read_files_tech.ui.common.date
 import com.readfilestech.read_files_tech.ui.common.formatBytes
+import com.readfilestech.read_files_tech.ui.common.rememberHistoryDateFormatter
 import com.readfilestech.read_files_tech.ui.common.resolve
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.tools.ToolIntro
-import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /** The text sizes of the 2.15.3's menu, in points (`code_editor_screen.dart:374`), and its default. */
 @Suppress("MagicNumber") // the menu's values themselves, as the 2.15.3 listed them
@@ -337,25 +335,13 @@ private fun LeaveDialog(state: CodeEditorState, onSave: () -> Unit, onDiscard: (
     )
 }
 
-@Composable
-private fun rememberDateFormatter(): DateTimeFormatter {
-    val locale = LocalConfiguration.current.locales[0]
-    return remember(locale) {
-        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM).withLocale(locale)
-    }
-}
-
-// When the copy was WRITTEN, as the CSV editor shows it: its name orders the copies, and runs ahead after a clock change (R21).
-private fun DateTimeFormatter.date(copy: HistoryCopy): String =
-    format(Instant.ofEpochMilli(copy.writtenAtMs).atZone(ZoneId.systemDefault()))
-
 /**
  * The versions the saves replaced (docs D-021), newest first, and apart those the 2.15.x kept under the
  * file's name — maybe another file's. A tap shows a version's beginning, from where it is restored.
  */
 @Composable
 private fun HistoryDialog(versions: EditorVersions, onPreview: (HistoryCopy, Boolean) -> Unit, onDismiss: () -> Unit) {
-    val formatter = rememberDateFormatter()
+    val formatter = rememberHistoryDateFormatter()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.editor_history)) },
@@ -397,7 +383,7 @@ private fun VersionRow(copy: HistoryCopy, formatter: DateTimeFormatter, onClick:
 /** A version's first lines; Restore loads it in the editor — the file is written only when the user saves. */
 @Composable
 private fun PreviewDialog(preview: VersionPreview, onRestore: () -> Unit, onDismiss: () -> Unit) {
-    val formatter = rememberDateFormatter()
+    val formatter = rememberHistoryDateFormatter()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(formatter.date(preview.copy)) },

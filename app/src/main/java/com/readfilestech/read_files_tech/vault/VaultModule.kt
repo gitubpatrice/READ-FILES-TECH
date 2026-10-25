@@ -7,16 +7,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import java.io.File
-import javax.inject.Qualifier
 import javax.inject.Singleton
-
-/** The dispatcher the vault's file and crypto work runs on; tests pass their own. */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class VaultDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -41,9 +33,5 @@ abstract class VaultModule {
             vault = File(context.getDir("flutter", Context.MODE_PRIVATE), "vault"),
             cache = context.cacheDir,
         )
-
-        @Provides
-        @VaultDispatcher
-        fun dispatcher(): CoroutineDispatcher = Dispatchers.IO
     }
 }

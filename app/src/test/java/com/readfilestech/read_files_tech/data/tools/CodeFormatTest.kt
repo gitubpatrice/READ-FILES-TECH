@@ -132,6 +132,14 @@ class CodeFormatTest {
         assertThat(format(FormatAction.JS_MINIFIED, "t = `a \${ b } // c`")).isEqualTo("t=`a \${b} // c`")
     }
 
+    /** After the `)` of an `if`, `while`, `for` or `with` header a statement begins: a `/` there is a regex (motif audit, phase 9). */
+    @Test
+    fun `JS reads a regex after the header of an if or a while, and a division after a call`() {
+        assertThat(format(FormatAction.JS_MINIFIED, "if (a) / +/.test(s)")).isEqualTo("if(a)/ +/.test(s)")
+        assertThat(format(FormatAction.JS_MINIFIED, "while (b(c)) /x  y/.exec(d)")).isEqualTo("while(b(c))/x  y/.exec(d)")
+        assertThat(format(FormatAction.JS_MINIFIED, "z = f(a) / 2 / g(b); o.if (a) / 2")).isEqualTo("z=f(a)/2/g(b);o.if(a)/2")
+    }
+
     // The space before a colon stays everywhere: in a selector, `div :first-child` is not `div:first-child`.
     @Test
     fun `CSS keeps calc's spaces and a descendant's, drops the rest`() {

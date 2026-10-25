@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,7 +78,8 @@ fun PdfViewerScreen(onBack: () -> Unit, viewModel: PdfViewerViewModel = hiltView
     val state by viewModel.content.state.collectAsStateWithLifecycle()
     val source = viewModel.source
     val list = rememberLazyListState()
-    var contents by remember { mutableStateOf(false) }
+    // Kept across a rotation, as the other dialogs (coherence audit, phase 9).
+    var contents by rememberSaveable { mutableStateOf(false) }
     // The screen's own scope: a jump from the panel outlives the panel, which closes as it starts.
     val scope = rememberCoroutineScope()
     ViewerScaffold(
@@ -146,7 +148,7 @@ private fun PdfDocumentView(pages: PdfPageImages, list: LazyListState, padding: 
             PdfView.currentPage(visible, screenHeight, zoom.value) ?: 0
         }
     }
-    var goTo by remember { mutableStateOf(false) }
+    var goTo by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val jump: (Int) -> Unit = { page -> scope.launch { list.scrollToItem(page.coerceIn(0, count - 1)) } }
     Column(Modifier.padding(padding).fillMaxSize()) {

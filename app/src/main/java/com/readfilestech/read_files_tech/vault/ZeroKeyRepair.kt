@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.vault
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
 import com.readfilestech.read_files_tech.data.prefs.PrefRead
+import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
 import com.readfilestech.read_files_tech.vault.format.VaultFormatException
@@ -44,7 +45,7 @@ class ZeroKeyRepair @Inject constructor(
     private val session: VaultSession,
     private val cipher: VaultCipher,
     private val files: VaultFiles,
-    @param:VaultDispatcher dispatcher: CoroutineDispatcher,
+    @param:IoDispatcher dispatcher: CoroutineDispatcher,
 ) {
     data class Result(val scanned: Int, val repaired: List<String>, val unexamined: List<String>)
 

@@ -20,9 +20,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -48,22 +45,6 @@ import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
-
-/** A dialog or sheet of the explorer; at most one at a time. */
-private sealed interface ExplorerDialog {
-    data object NewFolder : ExplorerDialog
-
-    data class Rename(val entry: FileEntry) : ExplorerDialog
-
-    data class DeleteForever(val entries: List<FileEntry>) : ExplorerDialog
-
-    data class Info(val entry: FileEntry) : ExplorerDialog
-
-    data class Preview(val entry: FileEntry) : ExplorerDialog
-
-    /** The selection's bulk rename (`FES:728`), over the explorer. */
-    data class BulkRename(val entries: List<FileEntry>) : ExplorerDialog
-}
 
 /**
  * The explorer screen. In folder-choosing mode ([ExplorerUiState.pickFolder]) it is the destination
@@ -104,7 +85,7 @@ fun ExplorerScreen(
     // for "Undo" typed into the filter (seen on the emulator).
     val focus = LocalFocusManager.current
     val storageSettings = LocalStorageSettings.current
-    var dialog by remember { mutableStateOf<ExplorerDialog?>(null) }
+    val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val browser = viewModel.browser
     val launching = viewModel.launching
 
@@ -160,19 +141,19 @@ fun ExplorerScreen(
                 is FileTarget.Internal -> onNavigate(target.route)
                 FileTarget.External -> launching.view(context, entry, chooser = true)
             }
-            EntryAction.PREVIEW -> dialog = ExplorerDialog.Preview(entry)
+            EntryAction.PREVIEW -> viewModel.show(ExplorerDialog.Preview(entry))
             EntryAction.EDIT -> FileRouter.editorFor(entry.path, entry.extension)?.let(onNavigate)
             EntryAction.EDIT_IN_PDF_TECH -> launching.editInPdfTech(context, entry)
             EntryAction.STRIP_METADATA -> onNavigate(Routes.feature(Feature.EXIF, entry.path))
             EntryAction.SHARE -> launching.share(context, listOf(entry))
             EntryAction.SEND_TO_KDRIVE -> launching.sendTo(context, entry, KnownApps.KDRIVE, EntryLaunching.KDRIVE_NAME)
             EntryAction.SEND_TO_PROTON -> launching.sendTo(context, entry, KnownApps.PROTON_DRIVE, EntryLaunching.PROTON_DRIVE_NAME)
-            EntryAction.RENAME -> dialog = ExplorerDialog.Rename(entry)
+            EntryAction.RENAME -> viewModel.show(ExplorerDialog.Rename(entry))
             EntryAction.COPY_TO -> transfer(listOf(entry), move = false)
             EntryAction.MOVE_TO -> transfer(listOf(entry), move = true)
-            EntryAction.INFO -> dialog = ExplorerDialog.Info(entry)
+            EntryAction.INFO -> viewModel.show(ExplorerDialog.Info(entry))
             EntryAction.TRASH -> viewModel.moveToTrash(listOf(entry))
-            EntryAction.DELETE_FOREVER -> dialog = ExplorerDialog.DeleteForever(listOf(entry))
+            EntryAction.DELETE_FOREVER -> viewModel.show(ExplorerDialog.DeleteForever(listOf(entry)))
         }
     }
 
@@ -188,9 +169,9 @@ fun ExplorerScreen(
                     onShare = { launching.share(context, state.selectedEntries) },
                     onCopy = { transfer(state.selectedEntries, move = false) },
                     onMove = { transfer(state.selectedEntries, move = true) },
-                    onRename = { dialog = ExplorerDialog.BulkRename(state.selectedEntries) },
+                    onRename = { viewModel.show(ExplorerDialog.BulkRename(state.selectedEntries)) },
                     onTrash = { viewModel.moveToTrash(state.selectedEntries) },
-                    onDeleteForever = { dialog = ExplorerDialog.DeleteForever(state.selectedEntries) },
+                    onDeleteForever = { viewModel.show(ExplorerDialog.DeleteForever(state.selectedEntries)) },
                 )
                 else -> BrowseTopBar(
                     state = state,
@@ -207,7 +188,7 @@ fun ExplorerScreen(
         floatingActionButton = {
             // A new folder: to browse, or as a destination — not while choosing files.
             if (!state.selecting && (state.pick == null || state.pickFolder)) {
-                FloatingActionButton(onClick = { dialog = ExplorerDialog.NewFolder }) {
+                FloatingActionButton(onClick = { viewModel.show(ExplorerDialog.NewFolder) }) {
                     Icon(Icons.Outlined.CreateNewFolder, contentDescription = stringResource(R.string.action_new_folder))
                 }
             }
@@ -288,9 +269,9 @@ fun ExplorerScreen(
             hint = stringResource(R.string.new_folder_hint),
             onConfirm = {
                 viewModel.createFolder(it)
-                dialog = null
+                viewModel.show(null)
             },
-            onDismiss = { dialog = null },
+            onDismiss = { viewModel.show(null) },
         )
         is ExplorerDialog.Rename -> NameDialog(
             title = stringResource(R.string.action_rename),
@@ -299,9 +280,9 @@ fun ExplorerScreen(
             hint = null,
             onConfirm = {
                 viewModel.rename(shown.entry, it)
-                dialog = null
+                viewModel.show(null)
             },
-            onDismiss = { dialog = null },
+            onDismiss = { viewModel.show(null) },
         )
         is ExplorerDialog.DeleteForever -> ConfirmDangerDialog(
             title = stringResource(R.string.action_delete_forever),
@@ -309,19 +290,19 @@ fun ExplorerScreen(
             confirmLabel = stringResource(R.string.action_delete_forever),
             onConfirm = {
                 viewModel.deleteForever(shown.entries)
-                dialog = null
+                viewModel.show(null)
             },
-            onDismiss = { dialog = null },
+            onDismiss = { viewModel.show(null) },
         )
-        is ExplorerDialog.Info -> EntryInfoDialog(shown.entry, onCopied = viewModel::copied) { dialog = null }
+        is ExplorerDialog.Info -> EntryInfoDialog(shown.entry, onCopied = viewModel::copied) { viewModel.show(null) }
         is ExplorerDialog.Preview -> PreviewSheet(shown.entry, onOpen = {
-            dialog = null
+            viewModel.show(null)
             open(shown.entry)
-        }, onDismiss = { dialog = null })
+        }, onDismiss = { viewModel.show(null) })
         is ExplorerDialog.BulkRename -> BulkRenameDialog(shown.entries, onRename = {
             viewModel.renameAll(it)
-            dialog = null
-        }, onDismiss = { dialog = null })
+            viewModel.show(null)
+        }, onDismiss = { viewModel.show(null) })
     }
 }
 

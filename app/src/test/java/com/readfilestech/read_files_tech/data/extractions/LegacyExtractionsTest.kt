@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.extractions
 
 import com.google.common.truth.Truth.assertThat
+import com.readfilestech.read_files_tech.data.files.FileMoves
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -98,8 +99,7 @@ class LegacyExtractionsTest {
         }
         val moved = watching.move(watching.find().single())
         val (part, reservedSize) = seen.single()
-        assertThat(part).startsWith(".rft-")
-        assertThat(part).endsWith(".rft-part")
+        assertThat(part).startsWith(FileMoves.PART_PREFIX) // the app's hidden part name, as every other move's
         assertThat(reservedSize).isEqualTo(0) // the real name, still empty while the copy is written
         assertThat(File(moved.destination, "1.txt").readText()).isEqualTo("one")
         assertThat(moved.destination.list()!!.toList()).containsExactly("1.txt") // no part left behind

@@ -152,6 +152,14 @@ private class JsMinifier(private val js: String, private val out: Appendable) {
     private var afterRegex = false
     private var afterDot = false
 
+    /**
+     * Each `(` open, true when it opens the header of an `if`, `while`, `for` or `with`: after ITS `)` a statement
+     * begins, and a `/` there is a regex — `if (a) / +/.test(s)` was read as a division, and spoiled (motif audit,
+     * phase 9). After any other `)` a `/` divides.
+     */
+    private val parens = ArrayDeque<Boolean>()
+    private var beforeHeader = false
+
     /** The `{` open in the code of the innermost `${…}`, and those of the templates around it. */
     private var braces = 0
     private val templates = ArrayDeque<Int>()
@@ -215,18 +223,24 @@ private class JsMinifier(private val js: String, private val out: Appendable) {
     private fun word() {
         var end = i + 1
         while (end < js.length && isWordChar(js[end])) end++
-        val keyword = !afterDot && js.substring(i, end) in REGEX_KEYWORDS
+        val name = js.substring(i, end)
+        val keyword = !afterDot && name in REGEX_KEYWORDS
+        val header = !afterDot && name in HEADER_KEYWORDS
         emit(end, regexNext = keyword)
+        beforeHeader = header
     }
 
     private fun punctuator(c: Char) {
         // `a++ / b`: after a postfix `++` or `--` comes a division.
         val postfix = (c == '+' || c == '-') && i > 0 && js[i - 1] == c
+        var closesHeader = false
         when (c) {
             '{' -> braces++
             '}' -> if (braces > 0) braces--
+            '(' -> parens.addLast(beforeHeader)
+            ')' -> closesHeader = parens.removeLastOrNull() == true
         }
-        emit(i + 1, regexNext = c !in VALUE_ENDS && !postfix)
+        emit(i + 1, regexNext = (c !in VALUE_ENDS || closesHeader) && !postfix)
         afterDot = c == '.'
     }
 
@@ -261,6 +275,7 @@ private class JsMinifier(private val js: String, private val out: Appendable) {
         regexAllowed = regexNext
         afterRegex = false
         afterDot = false
+        beforeHeader = false
     }
 
     /** Whether [previous] and [next], written side by side, would make another token. */
@@ -332,6 +347,9 @@ private class JsMinifier(private val js: String, private val out: Appendable) {
 
         /** After these a `/` divides. */
         const val VALUE_ENDS = ")]"
+
+        /** The statements whose `(…)` header a statement follows (see [parens]). */
+        val HEADER_KEYWORDS = setOf("if", "while", "for", "with")
 
         /** After these names a `/` begins a regular expression (`return /x/`), unless they follow a `.`. */
         val REGEX_KEYWORDS = setOf(

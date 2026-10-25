@@ -57,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
-import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.images.DecodedImage
 import com.readfilestech.read_files_tech.data.viewer.image.Gallery
 import com.readfilestech.read_files_tech.data.viewer.image.ImagePage
@@ -81,7 +80,8 @@ fun ImageViewerScreen(onBack: () -> Unit, viewModel: ImageViewerViewModel = hilt
     val state by viewModel.content.state.collectAsStateWithLifecycle()
     var chosen by rememberSaveable { mutableIntStateOf(NO_PAGE) }
     var barVisible by rememberSaveable { mutableStateOf(true) }
-    var info by remember { mutableStateOf<FileEntry?>(null) }
+    // The information of the page shown, kept across a rotation (coherence audit, phase 9).
+    var infoShown by rememberSaveable { mutableStateOf(false) }
     val gallery = (state as? ViewerState.Ready)?.content
     val index = gallery?.let { if (chosen in it.pages.indices) chosen else it.start }
     val page = index?.let { gallery.pages[it] }
@@ -101,8 +101,8 @@ fun ImageViewerScreen(onBack: () -> Unit, viewModel: ImageViewerViewModel = hilt
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
             }
-            page?.entry?.let { entry ->
-                IconButton(onClick = { info = entry }) {
+            if (page?.entry != null) {
+                IconButton(onClick = { infoShown = true }) {
                     Icon(Icons.Outlined.Info, contentDescription = stringResource(R.string.action_info))
                 }
             }
@@ -117,7 +117,7 @@ fun ImageViewerScreen(onBack: () -> Unit, viewModel: ImageViewerViewModel = hilt
             viewModel = viewModel,
         )
     }
-    info?.let { EntryInfoDialog(it, onCopied = viewModel::copied) { info = null } }
+    page?.entry?.takeIf { infoShown }?.let { EntryInfoDialog(it, onCopied = viewModel::copied) { infoShown = false } }
 }
 
 @Composable

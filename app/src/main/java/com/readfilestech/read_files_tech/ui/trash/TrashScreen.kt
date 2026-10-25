@@ -60,18 +60,11 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/** What the trash screen asks to confirm. */
-private sealed interface TrashDialog {
-    data class DeleteOne(val entry: TrashEntry) : TrashDialog
-
-    data object EmptyAll : TrashDialog
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrashScreen(onBack: () -> Unit, viewModel: TrashViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var dialog by remember { mutableStateOf<TrashDialog?>(null) }
+    val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     Scaffold(
         snackbarHost = { AppSnackbarHost() },
         topBar = {
@@ -97,7 +90,7 @@ fun TrashScreen(onBack: () -> Unit, viewModel: TrashViewModel = hiltViewModel())
                     IconButton(
                         onClick = viewModel::load
                     ) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh)) }
-                    IconButton(onClick = { dialog = TrashDialog.EmptyAll }, enabled = state.entries.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.show(TrashDialog.EmptyAll) }, enabled = state.entries.isNotEmpty()) {
                         Icon(
                             Icons.Filled.DeleteForever,
                             contentDescription = stringResource(R.string.trash_empty_action),
@@ -121,7 +114,11 @@ fun TrashScreen(onBack: () -> Unit, viewModel: TrashViewModel = hiltViewModel())
                 state.entries.isEmpty() -> LazyColumn(Modifier.fillMaxSize()) { item { EmptyTrash() } }
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     items(state.entries, key = { it.id + it.trashRoot.path }) { entry ->
-                        TrashRow(entry, onRestore = { viewModel.restore(entry) }, onDelete = { dialog = TrashDialog.DeleteOne(entry) })
+                        TrashRow(
+                            entry,
+                            onRestore = { viewModel.restore(entry) },
+                            onDelete = { viewModel.show(TrashDialog.DeleteOne(entry)) },
+                        )
                     }
                 }
             }
@@ -135,9 +132,9 @@ fun TrashScreen(onBack: () -> Unit, viewModel: TrashViewModel = hiltViewModel())
             confirmLabel = stringResource(R.string.action_delete_forever),
             onConfirm = {
                 viewModel.deleteForever(shown.entry)
-                dialog = null
+                viewModel.show(null)
             },
-            onDismiss = { dialog = null },
+            onDismiss = { viewModel.show(null) },
         )
         TrashDialog.EmptyAll -> ConfirmDangerDialog(
             title = stringResource(R.string.trash_empty_action),
@@ -145,9 +142,9 @@ fun TrashScreen(onBack: () -> Unit, viewModel: TrashViewModel = hiltViewModel())
             confirmLabel = stringResource(R.string.action_delete_forever),
             onConfirm = {
                 viewModel.emptyAll()
-                dialog = null
+                viewModel.show(null)
             },
-            onDismiss = { dialog = null },
+            onDismiss = { viewModel.show(null) },
         )
     }
 }

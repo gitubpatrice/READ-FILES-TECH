@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
@@ -36,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,9 +106,16 @@ fun DiffScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -
                     }
                     ChosenFile(fileA, state.fileA) { choose(DiffSlot.A) }
                     ChosenFile(fileB, state.fileB) { choose(DiffSlot.B) }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // The whole row is the switch: the label names it for TalkBack (coherence audit, phase 9).
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(state.lineEndings, role = Role.Switch, onValueChange = viewModel::lineEndings),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(stringResource(R.string.diff_line_endings), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = state.lineEndings, onCheckedChange = viewModel::lineEndings)
+                        Switch(checked = state.lineEndings, onCheckedChange = null)
                     }
                     Status(state, viewModel::stop, viewModel::compare)
                 }

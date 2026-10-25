@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.data.history
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileBytes
 import com.readfilestech.read_files_tech.data.files.FileTrees
+import com.readfilestech.read_files_tech.data.tools.toHex
 import java.io.File
 import java.security.MessageDigest
 
@@ -101,7 +102,7 @@ class EditorHistory(
 
     private fun folderOf(path: String): File {
         val digest = MessageDigest.getInstance("SHA-256").digest(path.toByteArray(Charsets.UTF_8))
-        return File(newHistoryDir, digest.joinToString("") { "%02x".format(it) })
+        return File(newHistoryDir, digest.toHex())
     }
 
     companion object {

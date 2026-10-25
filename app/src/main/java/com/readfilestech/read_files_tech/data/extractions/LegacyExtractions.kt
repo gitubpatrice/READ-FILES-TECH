@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.data.extractions
 
+import com.readfilestech.read_files_tech.data.files.FileMoves
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.tools.FileHashes
 import java.io.File
@@ -9,7 +10,6 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
-import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 
@@ -111,10 +111,12 @@ class LegacyExtractions(
         }
         var part: Path? = null
         return try {
-            part = Files.createTempFile(target.toPath().parent, PART_PREFIX, PART)
+            // The app's hidden part name, short whatever the file's (FileMoves.PART_PREFIX).
+            part = Files.createTempFile(target.toPath().parent, FileMoves.PART_PREFIX, "")
             copyVerified(source, part.toFile())
-            // Over the reservation, ours and empty: it was created exclusively, no other case of the name exists.
-            Files.move(part, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            // Over the reservation, ours and empty, in ONE rename (FileMoves.move): REPLACE_EXISTING unlinks first,
+            // and renames after (motif audit, phase 9). Created exclusively, no other case of the name exists.
+            FileMoves.move(part.toFile(), target, isDir = false)
             if (!remove(source) && source.exists()) throw IOException("${source.name} could not be removed from the private folder")
             null
         } catch (e: IOException) {
@@ -145,10 +147,6 @@ class LegacyExtractions(
         const val SUFFIX = "_extracted"
         const val EXTRACTIONS_DIR = "Extractions"
         private const val MAX_CANDIDATES = 1_000
-
-        /** The hidden part file a copy is written into before it takes its name: `.rft-<random>.rft-part`. */
-        private const val PART_PREFIX = ".rft-"
-        private const val PART = ".rft-part"
 
         /**
          * `<archive>_extracted`, a folder itself (not a link to one), with an archive name before the suffix —

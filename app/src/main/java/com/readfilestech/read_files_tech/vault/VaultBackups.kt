@@ -2,6 +2,8 @@ package com.readfilestech.read_files_tech.vault
 
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileTrees
+import com.readfilestech.read_files_tech.data.tools.toHex
+import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.vault.format.Argon2Params
 import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
 import com.readfilestech.read_files_tech.vault.format.VaultBackupFormat
@@ -43,7 +45,7 @@ class VaultBackups @Inject constructor(
     private val lockouts: VaultLockoutStore,
     private val argon2: Argon2Policy,
     private val files: VaultFiles,
-    @param:VaultDispatcher private val dispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
     private val restoring = Mutex()
 
@@ -280,7 +282,7 @@ class VaultBackups @Inject constructor(
         private val op: VaultSession.Op,
         private val overwrite: Boolean,
     ) : VaultBackupPayload.EntrySink {
-        private val folder = File(dirs.vault, VaultNames.STAGING_PREFIX + hex(cipher.randomBytes(STAGING_ID_BYTES)))
+        private val folder = File(dirs.vault, VaultNames.STAGING_PREFIX + cipher.randomBytes(STAGING_ID_BYTES).toHex())
         private val staged = mutableListOf<Pair<String, File>>()
         private val failedToStage = mutableListOf<String>()
         private var skipped = 0
@@ -352,8 +354,6 @@ class VaultBackups @Inject constructor(
         private const val MAGIC_LEN = 4
     }
 }
-
-private fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
 /** Reads [input] to its end — where an opening stream checks its tag — wiping what passed through. */
 private fun drain(input: InputStream) {

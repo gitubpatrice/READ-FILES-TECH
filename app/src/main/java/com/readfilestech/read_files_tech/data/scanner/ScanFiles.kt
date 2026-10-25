@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.data.scanner
 
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileTrees
+import com.readfilestech.read_files_tech.data.tools.toHex
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -126,7 +127,7 @@ class ScanFiles(val root: File) {
         private val random = SecureRandom()
 
         /** A random id: sixteen hexadecimal digits, the shape [ScanSession.isId] checks. */
-        fun newId(): String = ByteArray(ID_BYTES).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+        fun newId(): String = ByteArray(ID_BYTES).also(random::nextBytes).toHex()
 
         const val DIR = "scanner"
         const val CAPTURE_DIR = "capture"

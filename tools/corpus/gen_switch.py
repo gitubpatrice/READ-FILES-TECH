@@ -15,7 +15,7 @@ part named, by RELATIVE path: a file missing, one extra or one whose SHA-256 dif
 requires each copy to fail: a comparison that passes those measures nothing (protocol §5).
 
 What the parts are for, in the 2.15.x before the update:
-- vault/    imported into the vault (accented names, 60 MiB, a folder of 50 files, a ZIP), then exported back;
+- vault/    imported into the vault (accented names, 20 MiB, a folder of 50 files, a ZIP), then exported back;
 - recents/  five files opened, two made favourites, one removed from the list;
 - trash/    one file and one folder deleted from the explorer, restored after the update;
 - editor/   one text saved three times: three copies in the old history;
@@ -58,7 +58,10 @@ def corpus():
     files = {
         "vault/Été à l'école — notes.txt": "Première ligne, accentuée : àâçéèêëîïôûùüÿœæ.\nDeuxième ligne.\n".encode("utf-8"),
         "vault/Données çà.csv": "nom;quantité;prix\npommes;3;2,50\npoires;5;3,10\n".encode("utf-8"),
-        "vault/gros fichier 60 Mo.bin": _bytes("vault-large", 60 * MIB),
+        # 20 MiB, not the 60 of the protocol's first draft: importing 60 MiB into its vault kills the published
+        # 2.15.3 on the emulator (OutOfMemoryError, a 120 MiB byte array through a Flutter MethodChannel, 192 MiB
+        # heap limit; seen 2026-10-25). The corpus must go into the 2.15.x on every phone of the protocol.
+        "vault/gros fichier 20 Mo.bin": _bytes("vault-large", 20 * MIB),
         "vault/archive du coffre.zip": _zip([
             ("lisez-moi.txt", "Une archive dans le coffre.\n".encode("utf-8")),
             ("sous dossier/", b""),

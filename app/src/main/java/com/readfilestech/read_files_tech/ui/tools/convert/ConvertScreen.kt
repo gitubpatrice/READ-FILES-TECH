@@ -35,24 +35,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
-import com.readfilestech.read_files_tech.data.browse.DirectoryListing
 import com.readfilestech.read_files_tech.data.convert.Conversion
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.outputs.AutoShare
 import com.readfilestech.read_files_tech.ui.outputs.OutputSavedCard
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
 import com.readfilestech.read_files_tech.ui.viewer.pdf.PasswordDialog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
 
 private const val PERCENT = 100
 
@@ -133,21 +129,13 @@ private fun lookOf(conversion: Conversion): ConversionLook = when (conversion) {
 @Composable
 fun ConvertScreen(picked: PickedResults, onNavigate: (String) -> Unit, onBack: () -> Unit, viewModel: ConvertViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     LaunchedEffect(picked.files) {
         picked.files?.let {
             picked.consume()
             viewModel.picked(it)
         }
     }
-    LaunchedEffect(state.share) {
-        state.share?.let { path ->
-            val entry = withContext(Dispatchers.IO) { DirectoryListing.entryOf(File(path)) }
-            viewModel.launching.share(context, listOf(entry))
-            // Marked done only once handed over: done first, its own recomposition cancelled this effect.
-            viewModel.shared()
-        }
-    }
+    AutoShare(state.share, viewModel.launching, viewModel::shared)
     Scaffold(
         topBar = {
             TopAppBar(

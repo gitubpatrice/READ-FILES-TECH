@@ -3,7 +3,6 @@ package com.readfilestech.read_files_tech.ui.vault
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -140,19 +139,29 @@ fun VaultImportFolderScreen(onDone: () -> Unit, viewModel: VaultImportFolderView
 @Composable
 private fun Options(state: FolderImportState, running: Boolean, viewModel: VaultImportFolderViewModel) {
     Card(Modifier.fillMaxWidth().padding(12.dp)) {
+        // The whole row is the switch, one node for TalkBack, as the other rows of the app: a clickable row holding a
+        // clickable Switch was two (coherence audit, phase 9).
         ListItem(
-            modifier = Modifier.clickable(enabled = !running) { viewModel.setRecursive(!state.recursive) },
+            modifier = Modifier.toggleable(
+                state.recursive,
+                enabled = !running,
+                role = Role.Switch,
+                onValueChange = viewModel::setRecursive,
+            ),
             headlineContent = { Text(stringResource(R.string.vault_folder_include_sub)) },
-            trailingContent = { Switch(checked = state.recursive, onCheckedChange = viewModel::setRecursive, enabled = !running) },
+            trailingContent = { Switch(checked = state.recursive, onCheckedChange = null, enabled = !running) },
         )
         HorizontalDivider()
         ListItem(
-            modifier = Modifier.clickable(enabled = !running) { viewModel.setDeleteOriginals(!state.deleteOriginals) },
+            modifier = Modifier.toggleable(
+                state.deleteOriginals,
+                enabled = !running,
+                role = Role.Switch,
+                onValueChange = viewModel::setDeleteOriginals,
+            ),
             headlineContent = { Text(stringResource(R.string.vault_folder_delete_originals)) },
             supportingContent = { Text(stringResource(R.string.vault_folder_delete_originals_hint)) },
-            trailingContent = {
-                Switch(checked = state.deleteOriginals, onCheckedChange = viewModel::setDeleteOriginals, enabled = !running)
-            },
+            trailingContent = { Switch(checked = state.deleteOriginals, onCheckedChange = null, enabled = !running) },
         )
     }
 }
