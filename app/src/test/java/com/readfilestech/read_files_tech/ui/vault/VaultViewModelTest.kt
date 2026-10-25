@@ -63,7 +63,7 @@ class VaultViewModelTest {
         val outputs = OutputStorage(vault.prefs, { File(dir, "storage") }, { null }, File(dir, "app_flutter"))
         val factory = viewModelFactory {
             initializer {
-                with(vault) { VaultViewModel(service, files, dirs, cipher, backups, repair, outputs, messages, io) }
+                with(vault) { VaultViewModel(service, files, dirs, cipher, backups, repair, outputs, messages, clock, io) }
             }
         }
         return ViewModelProvider.create(store, factory)[VaultViewModel::class]
@@ -258,6 +258,31 @@ class VaultViewModelTest {
         val backup = File(dir, "storage").walk().single { it.extension == "rftvault" }.path
         restore(backup, BACKUP_PASSWORD)
         assertThat(state.value.dialog).isEqualTo(VaultDialog.RestoreAllThere(1))
+    }
+
+    /**
+     * The 2.15.3 said "N s" once, frozen until the next attempt (S9, 2026-10-25: "19 minutes" two minutes later): the
+     * form is given the lockout's END, which another attempt does not move, and which the unlock clears.
+     */
+    @Test
+    fun `a lockout gives the form its end, unmoved by another attempt, cleared by the unlock`() {
+        val viewModel = opened()
+        vault.service.lock()
+        repeat(5) { viewModel.unlock("wrong password") }
+        viewModel.unlock(PASSWORD)
+        val end = vault.clock.mono + 60_000
+        assertThat(viewModel.state.value.phase).isEqualTo(VaultPhase.LOCKED)
+        assertThat(viewModel.state.value.lockoutEndsAt).isEqualTo(end)
+        assertThat(viewModel.state.value.error).isNull()
+
+        vault.clock.advance(20_000)
+        viewModel.unlock(PASSWORD)
+        assertThat(viewModel.state.value.lockoutEndsAt).isEqualTo(end)
+
+        vault.clock.advance(41_000)
+        viewModel.unlock(PASSWORD)
+        assertThat(viewModel.state.value.phase).isEqualTo(VaultPhase.OPEN)
+        assertThat(viewModel.state.value.lockoutEndsAt).isNull()
     }
 
     @Test

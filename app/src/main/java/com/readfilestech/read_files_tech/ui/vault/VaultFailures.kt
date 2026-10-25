@@ -49,5 +49,11 @@ internal fun waitText(remainingMs: Long): UiText {
     }
 }
 
+/** What the unlock form says of a lockout ending at [endsAt] when the clock reads [now] (`elapsedRealtime`): null once over. */
+internal fun lockoutText(endsAt: Long, now: Long): UiText? {
+    val remaining = endsAt - now
+    return if (remaining > 0) uiText(R.string.vault_lockout, waitText(remaining)) else null
+}
+
 private const val MS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L

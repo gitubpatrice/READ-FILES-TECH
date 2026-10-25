@@ -18,6 +18,7 @@ import com.readfilestech.read_files_tech.vault.NameTakenException
 import com.readfilestech.read_files_tech.vault.VaultAlreadySetUpException
 import com.readfilestech.read_files_tech.vault.VaultBackups
 import com.readfilestech.read_files_tech.vault.VaultCipher
+import com.readfilestech.read_files_tech.vault.VaultClock
 import com.readfilestech.read_files_tech.vault.VaultCorruptedException
 import com.readfilestech.read_files_tech.vault.VaultDirs
 import com.readfilestech.read_files_tech.vault.VaultFiles
@@ -86,6 +87,11 @@ data class VaultState(
     val work: VaultWork? = null,
     /** Under the password field: why the vault was not created or opened. */
     val error: UiText? = null,
+    /**
+     * The `elapsedRealtime` the brute-force lockout ends at, from the last refused unlock: the form counts down to it
+     * (lockoutText) instead of a time frozen at the attempt, which the 2.15.3 showed until the next one.
+     */
+    val lockoutEndsAt: Long? = null,
     val dialog: VaultDialog? = null,
     /** A copy decrypted for a share the user asked for, to hand to the share sheet once (docs D-034). */
     val share: String? = null,
@@ -118,6 +124,7 @@ class VaultViewModel @Inject constructor(
     private val repair: ZeroKeyRepair,
     private val outputs: OutputStorage,
     private val messages: UserMessages,
+    private val clock: VaultClock,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(VaultState())
@@ -181,13 +188,19 @@ class VaultViewModel @Inject constructor(
 
     fun unlock(password: String) {
         if (busy) return
-        mutableState.update { it.copy(work = VaultWork.Unlocking, error = null) }
+        mutableState.update { it.copy(work = VaultWork.Unlocking, error = null, lockoutEndsAt = null) }
         job = viewModelScope.launch {
             val result = loadOrFailure { vault.unlock(password) }
             mutableState.update { current ->
                 result.fold(
                     { open -> current.copy(work = null, error = if (open) null else uiText(R.string.vault_wrong_password)) },
-                    { current.copy(work = null, error = unlockFailure(it)) },
+                    {
+                        if (it is VaultLockoutException) {
+                            current.copy(work = null, lockoutEndsAt = clock.elapsedRealtimeMs() + it.remainingMs)
+                        } else {
+                            current.copy(work = null, error = unlockFailure(it))
+                        }
+                    },
                 )
             }
         }
@@ -204,7 +217,7 @@ class VaultViewModel @Inject constructor(
             val done = loadOrFailure { vault.reset() }
             done.onSuccess {
                 messages.info(uiText(R.string.vault_reset_done))
-                mutableState.update { it.copy(phase = VaultPhase.SETUP, error = null) }
+                mutableState.update { it.copy(phase = VaultPhase.SETUP, error = null, lockoutEndsAt = null) }
             }.onFailure { messages.error(uiText(R.string.vault_reset_failed, vaultReason(it))) }
         }
     }
@@ -471,8 +484,8 @@ class VaultViewModel @Inject constructor(
         }
     }
 
+    /** A lockout is not among them: it is counted down (lockoutEndsAt). */
     private fun unlockFailure(error: Throwable): UiText = when (error) {
-        is VaultLockoutException -> uiText(R.string.vault_lockout, waitText(error.remainingMs))
         is VaultCorruptedException -> uiText(R.string.vault_corrupted)
         else -> uiText(R.string.vault_unlock_failed, vaultReason(error))
     }

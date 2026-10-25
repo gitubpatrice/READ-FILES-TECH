@@ -1,5 +1,6 @@
 package com.readfilestech.read_files_tech.ui.vault
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +53,7 @@ import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.theme.CautionAmber
 import com.readfilestech.read_files_tech.ui.theme.DangerRed
 import com.readfilestech.read_files_tech.ui.theme.dangerContent
+import kotlinx.coroutines.delay
 
 /** The 2.15.3's floor: a password of at least 8 characters, for the vault as for a backup. */
 internal const val PASSWORD_MIN_CHARS = 8
@@ -163,7 +167,8 @@ internal fun UnlockForm(state: VaultState, onUnlock: (String) -> Unit, onReset: 
             focusFirst = true,
             enabled = !unlocking,
         )
-        FormError(state.error?.resolve())
+        val lockoutEndsAt = state.lockoutEndsAt
+        if (lockoutEndsAt != null) LockoutCountdown(lockoutEndsAt) else FormError(state.error?.resolve())
         BrandButton(onClick = submit, enabled = !unlocking && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
             ButtonIcon(unlocking) { Icon(Icons.Outlined.LockOpen, contentDescription = null) }
             Text(stringResource(R.string.vault_unlock))
@@ -208,6 +213,25 @@ private fun FormError(text: String?) {
         Text(text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth())
     }
 }
+
+/**
+ * The lockout's remaining time, read again every second from `elapsedRealtime` — a phone that slept shows the
+ * right time on waking, which a decremented counter would not — and gone when it ends: trying is then the next step.
+ */
+@Composable
+private fun LockoutCountdown(endsAt: Long) {
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(endsAt) {
+        while (true) {
+            now = SystemClock.elapsedRealtime()
+            if (now >= endsAt) break
+            delay(COUNTDOWN_TICK_MS)
+        }
+    }
+    FormError(lockoutText(endsAt, now)?.resolve())
+}
+
+private const val COUNTDOWN_TICK_MS = 1_000L
 
 /** A spinner in place of the button's icon while its work runs, in the button's content colour (disabled then). */
 @Composable
