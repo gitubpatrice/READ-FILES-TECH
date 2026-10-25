@@ -1,4 +1,5 @@
 Version 3.0, rewritten in Kotlin. It installs over 2.x and keeps your data, the vault included.
+• As a precaution, first back up the 2.x vault to a .rftvault file.
 • Five languages: English, French, German, Italian, Spanish.
 • OCR and the scanner no longer use any Google service; OCR reads the five languages.
 • Signing PDFs has moved to PDF Tech.

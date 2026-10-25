@@ -1,4 +1,5 @@
 Versione 3.0, riscritta in Kotlin. Si installa sopra la 2.x e conserva i Suoi dati, cassaforte compresa.
+• Per prudenza, salvi prima la cassaforte della 2.x in un .rftvault.
 • Cinque lingue: italiano, inglese, francese, tedesco, spagnolo.
 • OCR e scanner non usano più alcun servizio Google; l'OCR legge le cinque lingue.
 • La firma dei PDF si è spostata in PDF Tech.
