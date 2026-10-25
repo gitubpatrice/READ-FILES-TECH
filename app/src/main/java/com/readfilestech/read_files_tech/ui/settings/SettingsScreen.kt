@@ -270,7 +270,8 @@ internal fun SettingRow(
     enabled: Boolean = true,
     tint: Color = Color.Unspecified,
 ) {
-    val tap = if (onClick == null) Modifier else Modifier.clickable(enabled = enabled, onClick = onClick)
+    // A button to TalkBack, which said nothing of what a tap does (3-axis audit, phase 9).
+    val tap = if (onClick == null) Modifier else Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
     val alpha = if (enabled) 1f else DISABLED_ALPHA
     val content = (if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint).copy(alpha = alpha)
     Row(

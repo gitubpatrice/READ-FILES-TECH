@@ -119,7 +119,10 @@ internal val DarkColors = darkColorScheme(
     // 7.2:1, as Agenda Tech and App Manager Tech.
     errorContainer = Color(0xFF8E1519),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = GithubBorder,
+    // The outline of a text field and the tint of the explorer's chevrons and empty-state icons: GitHub's subtle grey,
+    // 3.8:1 on the surface, 4.1:1 on the page. The border (#30363D) read 1.4:1 there, under WCAG 1.4.11's 3:1 (3-axis
+    // audit, phase 9); it stays for outlineVariant, the dividers and the cards' edges, which only separate.
+    outline = Color(0xFF6E7681),
     outlineVariant = GithubBorder,
     scrim = Color.Black,
     surfaceBright = GithubSurface,

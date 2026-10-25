@@ -54,8 +54,8 @@ class BrandColorsTest {
 
     /**
      * A dark surface takes a tool's light tone and the reverse — swapping the two would break no contrast assertion
-     * that reads the tone the function returns, so the side is checked itself. On the dark card every tone stands
-     * out as an icon; in light, amber, orange and cyan do not (AccentColors, measured), their title says them.
+     * that reads the tone the function returns, so the side is checked itself. On either card every tone stands out
+     * as an icon: in light, amber, orange and cyan are darker than their Material 700, which read 1.8 to 2.9:1.
      */
     @Test
     fun `a tool's colour follows the surface it is drawn on`() {
@@ -69,6 +69,16 @@ class BrandColorsTest {
         tones.forEach { tone ->
             assertThat(tone.on(DarkColors).luminance()).isGreaterThan(tone.on(LightColors).luminance())
             assertThat(contrast(tone.on(DarkColors), DarkColors.surface)).isAtLeast(NON_TEXT)
+            assertThat(contrast(tone.on(LightColors), LightColors.surface)).isAtLeast(NON_TEXT)
+        }
+    }
+
+    /** A text field's outline and the icons tinted with it stand out (1.4.11): the dark border read 1.4:1 (3-axis audit). */
+    @Test
+    fun `the outline stands out on the surface and on the page of both themes`() {
+        for (scheme in listOf(LightColors, DarkColors)) {
+            assertThat(contrast(scheme.outline, scheme.surface)).isAtLeast(NON_TEXT)
+            assertThat(contrast(scheme.outline, scheme.background)).isAtLeast(NON_TEXT)
         }
     }
 

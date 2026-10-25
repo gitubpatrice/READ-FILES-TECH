@@ -79,6 +79,15 @@ class OutputStorageTest {
             .inOrder()
     }
 
+    /** Only an absolute path is a base: a URI or a relative name would resolve against the working directory. */
+    @Test
+    fun `a configured base that is not an absolute path is the default one`() {
+        for (stored in listOf("content://com.android.externalstorage.documents/tree/primary%3ADocuments", "Documents", "")) {
+            prefs.commit { putString(OutputStorage.KEY_BASE_PATH, stored) }
+            assertThat(storage().basePath()).isEqualTo(storage().defaultBase)
+        }
+    }
+
     /** A base it cannot write to (here a FILE where the folder should be): the app's own folders, in turn. */
     @Test
     fun `an unwritable base falls back to the app's folders, which the picker also lists`() {

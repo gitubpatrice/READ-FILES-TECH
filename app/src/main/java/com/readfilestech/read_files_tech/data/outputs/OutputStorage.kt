@@ -63,7 +63,9 @@ class OutputStorage(
     private val clock: () -> LocalDateTime = LocalDateTime::now,
 ) {
     /** The configured base (`output_base_path`, verbatim, as the 2.15.x reads it), or `<primary>/<folder>`. */
-    fun basePath(): File = (prefs.string(KEY_BASE_PATH) as? PrefRead.Present)?.value?.takeIf(String::isNotEmpty)?.let(::File) ?: defaultBase
+    // Only an absolute path: anything else — a `content://` URI, a relative name — would resolve against the process's
+    // working directory and fall back in silence (3-axis audit, phase 9). The 2.15.x stored paths.
+    fun basePath(): File = (prefs.string(KEY_BASE_PATH) as? PrefRead.Present)?.value?.let(::File)?.takeIf(File::isAbsolute) ?: defaultBase
 
     /** "Share automatically after creation" (`output_auto_share`), off by default. */
     fun autoShare(): Boolean = (prefs.boolean(KEY_AUTO_SHARE) as? PrefRead.Present)?.value ?: false
