@@ -1,0 +1,7 @@
+Version 3.0.1, fixes.
+• The vault locks as soon as you leave it, the Scanner or OCR tile included.
+• A link in an HTML page shows its address before the browser opens.
+• A file name can no longer hide its real extension.
+• An open HTML page's name no longer goes to the system log.
+• A copy or an import that fails says why: not enough space…
+• An HTML page opens even when Android's WebView is missing.

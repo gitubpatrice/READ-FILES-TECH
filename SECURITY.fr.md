@@ -45,14 +45,14 @@ read-files-tech-universel-<version>.apk
 Comparez le fichier téléchargé à l'empreinte publiée pour lui ; si elle diffère, ne l'installez pas :
 
 ```bash
-sha256sum read-files-tech-arm64-v8a-3.0.0.apk
+sha256sum read-files-tech-arm64-v8a-3.0.1.apk
 ```
 
 Vérifiez ensuite le certificat de signature, qui est ce qui relie un téléchargement à ce projet, quel que soit
 le nom du fichier :
 
 ```bash
-apksigner verify --print-certs read-files-tech-arm64-v8a-3.0.0.apk
+apksigner verify --print-certs read-files-tech-arm64-v8a-3.0.1.apk
 ```
 
 Son SHA-256 n'a pas changé depuis les versions 2.x : un APK qui en présente un autre ne vient pas d'ici.
