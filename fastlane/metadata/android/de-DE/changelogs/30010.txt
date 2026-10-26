@@ -1,0 +1,7 @@
+Version 3.0.1, Korrekturen.
+• Der Tresor sperrt sich, sobald Sie ihn verlassen, auch über die Kachel Scanner oder OCR.
+• Ein Link einer HTML-Seite zeigt seine Adresse, bevor der Browser öffnet.
+• Ein Dateiname kann seine echte Endung nicht mehr verbergen.
+• Der Name einer geöffneten HTML-Seite gelangt nicht mehr ins Systemprotokoll.
+• Eine fehlgeschlagene Kopie oder ein Import sagt warum: zu wenig Speicher…
+• Eine HTML-Seite öffnet sich auch ohne WebView von Android.

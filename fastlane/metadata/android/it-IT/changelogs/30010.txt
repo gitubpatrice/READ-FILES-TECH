@@ -1,0 +1,7 @@
+Versione 3.0.1, correzioni.
+• La cassaforte si blocca appena la si lascia, anche dal riquadro Scanner o OCR.
+• Un link di una pagina HTML mostra il suo indirizzo prima di aprire il browser.
+• Un nome di file non può più nascondere la sua vera estensione.
+• Il nome di una pagina HTML aperta non va più nel registro di sistema.
+• Una copia o un'importazione che non riesce dice perché: spazio insufficiente…
+• Una pagina HTML si apre anche senza la WebView di Android.

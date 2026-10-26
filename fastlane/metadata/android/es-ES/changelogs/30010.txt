@@ -1,0 +1,7 @@
+Versión 3.0.1, correcciones.
+• La caja fuerte se bloquea en cuanto se deja, también desde el mosaico Escáner u OCR.
+• Un enlace de una página HTML muestra su dirección antes de abrir el navegador.
+• Un nombre de archivo ya no puede ocultar su verdadera extensión.
+• El nombre de una página HTML abierta ya no va al registro del sistema.
+• Una copia o una importación que falla dice por qué: no hay espacio…
+• Una página HTML se abre aunque falte la WebView de Android.

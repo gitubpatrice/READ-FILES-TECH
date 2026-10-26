@@ -1,0 +1,7 @@
+Version 3.0.1, correctifs.
+• Le coffre se verrouille dès qu'on le quitte, tuile Scanner ou OCR comprise.
+• Un lien d'une page HTML montre son adresse avant d'ouvrir le navigateur.
+• Un nom de fichier ne peut plus cacher sa vraie extension.
+• Le nom d'une page HTML ouverte ne va plus dans le journal du système.
+• Une copie ou un import qui échoue dit pourquoi : espace insuffisant…
+• Une page HTML s'ouvre même quand la WebView d'Android manque.
