@@ -70,12 +70,22 @@ class HtmlViewerViewModel @Inject constructor(
         }
     }
 
+    private val leaving = MutableStateFlow<String?>(null)
+
+    /**
+     * The web or e-mail address a tapped link leads to, shown before another app opens it (security audit of the
+     * 3.0, A-1): a page styles its own links, and one stretched over the whole page made any tap a visit — which
+     * told its author the file was opened, when, and from where.
+     */
+    val pendingWeb: StateFlow<String?> = leaving.asStateFlow()
+
     fun copied(code: String) = messages.info(uiText(R.string.value_copied, code))
 
     /**
      * Follows [link], which the user tapped on [page]: a file of the folder opens as the explorer opens it
-     * — the route of a viewer of the app is returned, another app is started — and a web address in the
-     * app the user chose for it. Says so when nothing can open it. [from] is the activity, never kept.
+     * — the route of a viewer of the app is returned, another app is started — and a web address, once the user
+     * has seen it ([pendingWeb]), in the app they chose for it. Says so when nothing can open it. [from] is the
+     * activity, never kept.
      */
     suspend fun follow(link: HtmlLink, page: HtmlPage, from: Context): String? {
         when (link) {
@@ -92,15 +102,22 @@ class HtmlViewerViewModel @Inject constructor(
                     }
                 }
             }
-            is HtmlLink.Web -> openWeb(from, link.url)
+            is HtmlLink.Web -> leaving.value = link.url
             HtmlLink.Refused -> refused()
             HtmlLink.Scroll -> Unit
         }
         return null
     }
 
-    private fun openWeb(from: Context, url: String) {
+    /** The address of [pendingWeb], confirmed: opened in the app the user chose for it. [from] is the activity. */
+    fun openWeb(from: Context) {
+        val url = leaving.value ?: return
+        leaving.value = null
         FileLauncher.messageFor(Links.open(from, url))?.let(messages::post)
+    }
+
+    fun stayOnPage() {
+        leaving.value = null
     }
 
     private fun refused() = messages.info(uiText(R.string.html_link_refused))

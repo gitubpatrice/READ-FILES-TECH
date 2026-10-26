@@ -145,8 +145,9 @@
 
         <!--
             The files handed to other apps (open with, share, send). The authority of the 2.15.x, kept
-            (docs D-012). NOT exported: an app reads only the one URI an intent granted it, for the time
-            of that intent. What may be served is decided by PathGuard first, then by file_paths.xml.
+            (docs D-012). NOT exported: an app reads only the one URI an intent granted it, at that path, while
+            Android keeps the grant (the receiving app's task). What may be served is decided by PathGuard first,
+            then by file_paths.xml.
         -->
         <!--
             androidx.startup runs, at the app's start, the initializers its libraries declare. EmojiCompat's

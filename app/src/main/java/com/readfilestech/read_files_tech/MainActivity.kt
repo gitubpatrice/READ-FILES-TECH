@@ -22,6 +22,7 @@ import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
 import com.readfilestech.read_files_tech.ui.theme.ReadFilesTechTheme
 import com.readfilestech.read_files_tech.ui.theme.ThemeSettings
 import com.readfilestech.read_files_tech.vault.VaultAutoLock
+import com.readfilestech.read_files_tech.vault.VaultService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
@@ -52,6 +53,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var autoLock: VaultAutoLock
 
+    @Inject
+    lateinit var vault: VaultService
+
     private val shortcut = MutableStateFlow<Feature?>(null)
     private var accessGranted = false
 
@@ -81,7 +85,7 @@ class MainActivity : ComponentActivity() {
                 onDispose { }
             }
             ReadFilesTechTheme(darkTheme = dark) {
-                AppRoot(access, messages, shortcut, onShortcutHandled = { shortcut.value = null })
+                AppRoot(access, messages, vault, shortcut, onShortcutHandled = { shortcut.value = null })
             }
         }
     }

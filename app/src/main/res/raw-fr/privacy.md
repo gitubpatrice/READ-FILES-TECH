@@ -1,6 +1,6 @@
 # Politique de confidentialité — Read Files Tech
 
-_Dernière mise à jour : 25 octobre 2026 (version 3.0.0)_
+_Dernière mise à jour : 26 octobre 2026 (version 3.0.1)_
 
 ## En une phrase
 
@@ -52,7 +52,9 @@ Si le dossier des fichiers créés refuse l'écriture (« Accès à tous les fic
 
 Toujours sur une action de votre part, et vers l'application que vous choisissez :
 
-- **Partager**, **Ouvrir avec** : le fichier est confié à l'application choisie, en lecture seule, pour cette fois.
+- **Partager**, **Ouvrir avec** : le fichier est confié à l'application choisie, en lecture seule. Android lui laisse lire
+  ce fichier, sous ce nom, tant que son écran reste ouvert : si vous le modifiez entre-temps, elle peut en lire la
+  nouvelle version.
 - **Envoyer** vers kDrive, Google Drive ou Proton Drive, s'ils sont installés.
 - **Éditer dans PDF Tech** : l'accès en écriture n'est donné que si l'application installée porte bien la signature de PDF Tech.
 - **Partager automatiquement après création**, si vous activez ce réglage (désactivé par défaut).

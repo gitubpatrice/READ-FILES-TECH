@@ -17,6 +17,7 @@ import com.readfilestech.read_files_tech.data.convert.PdfConversionCalls
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
+import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -218,12 +219,12 @@ internal object PdfBox {
     }
 
     /**
-     * PdfBox's scratch: [SCRATCH_MEMORY] in memory, then files beside the decrypted copies of the viewer —
-     * a folder the main process purges at its start, and no FileProvider serves (PdfUnlocked). Created
-     * here: a conversion may come before any viewer made it.
+     * PdfBox's scratch: [SCRATCH_MEMORY] in memory, then files in a folder of their own, purged with the
+     * vault's plaintext and served by no FileProvider ([PdfUnlocked.SCRATCH_DIR]). Created here: a lock may
+     * have removed it.
      */
     fun scratch(context: Context): MemoryUsageSetting {
-        val folder = PdfUnlocked.under(context.cacheDir).folder
+        val folder = File(context.cacheDir, PdfUnlocked.SCRATCH_DIR)
         Files.createDirectories(folder.toPath())
         // Bounded on disk too: past it PdfBox throws ("Maximum allowed scratch file memory exceeded"), a refusal.
         return MemoryUsageSetting.setupMixed(SCRATCH_MEMORY, FileCaps.PDF_SCRATCH).setTempDir(folder)

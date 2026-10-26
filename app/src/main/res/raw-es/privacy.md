@@ -1,6 +1,6 @@
 # Política de privacidad — Read Files Tech
 
-_Última actualización: 25 de octubre de 2026 (versión 3.0.0)_
+_Última actualización: 26 de octubre de 2026 (versión 3.0.1)_
 
 ## En una frase
 
@@ -52,7 +52,9 @@ Si la carpeta de los archivos creados rechaza la escritura («Acceso a todos los
 
 Siempre por una acción suya, y hacia la aplicación que usted elija:
 
-- **Compartir**, **Abrir con**: el archivo se entrega a la aplicación elegida, solo para lectura, esa vez.
+- **Compartir**, **Abrir con**: el archivo se entrega a la aplicación elegida, solo para lectura. Android le deja leer
+  ese archivo, con ese nombre, mientras su pantalla siga abierta: si usted lo modifica mientras tanto, puede leer la
+  nueva versión.
 - **Enviar** a kDrive, Google Drive o Proton Drive, si están instalados.
 - **Editar en PDF Tech**: el acceso de escritura solo se da si la aplicación instalada lleva la firma de PDF Tech.
 - **Compartir automáticamente tras crear**, si activa este ajuste (desactivado por defecto).

@@ -15,13 +15,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Web
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,8 +42,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.data.viewer.html.HtmlLink
 import com.readfilestech.read_files_tech.data.viewer.html.HtmlLinks
+import com.readfilestech.read_files_tech.ui.common.DialogAction
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.viewer.ViewerFailure
 import com.readfilestech.read_files_tech.ui.viewer.ViewerFailureMessage
@@ -62,6 +68,7 @@ private const val SOURCE_FONT_SIZE = 12
 fun HtmlViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel: HtmlViewerViewModel = hiltViewModel()) {
     val state by viewModel.content.state.collectAsStateWithLifecycle()
     val colors by viewModel.colors.collectAsStateWithLifecycle()
+    val leaving by viewModel.pendingWeb.collectAsStateWithLifecycle()
     var showSource by rememberSaveable { mutableStateOf(false) }
     var colorsHidden by rememberSaveable { mutableStateOf(false) }
     val source = viewModel.source
@@ -96,7 +103,23 @@ fun HtmlViewerScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, viewModel
                 PageView(assets) { link -> scope.launch { viewModel.follow(link, assets.page, context)?.let(onNavigate) } }
             }
         }
+        // In the viewer's content: a vault file's address goes with it when the vault locks.
+        leaving?.let { url -> LeaveDialog(url, onOpen = { viewModel.openWeb(context) }, onStay = viewModel::stayOnPage) }
     }
+}
+
+/** Where a tapped link leads, said before another app opens it ([HtmlViewerViewModel.pendingWeb]). */
+@Composable
+private fun LeaveDialog(url: String, onOpen: () -> Unit, onStay: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onStay,
+        title = { Text(stringResource(R.string.html_leave_title)) },
+        text = {
+            Text(stringResource(R.string.html_leave_message, url.withoutBidiControls()), Modifier.verticalScroll(rememberScrollState()))
+        },
+        confirmButton = { DialogAction(stringResource(R.string.action_open), onClick = onOpen) },
+        dismissButton = { DialogAction(stringResource(R.string.action_cancel), onClick = onStay) },
+    )
 }
 
 /**

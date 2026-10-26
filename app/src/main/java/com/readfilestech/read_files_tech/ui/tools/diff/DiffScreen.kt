@@ -49,6 +49,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.files.FileCaps
 import com.readfilestech.read_files_tech.data.files.TextFiles
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.data.tools.DiffKind
 import com.readfilestech.read_files_tech.data.tools.DiffRow
 import com.readfilestech.read_files_tech.data.tools.LineComparison
@@ -140,7 +141,12 @@ private fun ChosenFile(label: String, file: FileEntry?, onChoose: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (file != null) {
-                Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    file.name.withoutBidiControls(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
                 Text(formatBytes(file.size), style = MaterialTheme.typography.bodySmall)
             }
         }

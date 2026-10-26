@@ -1,6 +1,6 @@
 # Privacy policy — Read Files Tech
 
-_Last updated: 25 October 2026 (version 3.0.0)_
+_Last updated: 26 October 2026 (version 3.0.1)_
 
 ## In one sentence
 
@@ -52,7 +52,8 @@ If the folder of the files the tools create refuses writes ("All files access" r
 
 Always on an action of yours, and to the app you choose:
 
-- **Share**, **Open with**: the file is handed to the chosen app, read-only, for that time.
+- **Share**, **Open with**: the file is handed to the chosen app, read-only. Android lets that app read the file, under
+  that name, as long as its screen stays open: if you change the file meanwhile, it can read the new version.
 - **Send** to kDrive, Google Drive or Proton Drive, if installed.
 - **Edit in PDF Tech**: write access is given only if the installed app carries PDF Tech's signature.
 - **Share automatically after creation**, if you turn this setting on (off by default).

@@ -24,6 +24,7 @@ import com.readfilestech.read_files_tech.ui.navigation.FileRouter
 import com.readfilestech.read_files_tech.ui.navigation.FileTarget
 import com.readfilestech.read_files_tech.ui.navigation.Routes
 import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
+import com.readfilestech.read_files_tech.ui.navigation.VaultScreens
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.io.FileNotFoundException
@@ -198,5 +199,24 @@ class UiLogicTest {
         assertThat(Shortcuts.featureOf("vault")).isEqualTo(Feature.VAULT)
         listOf(null, "", "VAULT", "vault ", "settings", "../vault").forEach { assertThat(Shortcuts.featureOf(it)).isNull() }
         Shortcuts.TILE_FEATURES.forEach { assertThat(Shortcuts.featureOf(Shortcuts.valueOf(it))).isEqualTo(it) }
+    }
+
+    @Test
+    fun `the vault stays open on its own screens and its choosers only, a tile's tool locks it`() {
+        fun keeps(route: String?, vararg arguments: Pair<String, String>) = VaultScreens.keepOpen(route, mapOf(*arguments)::get)
+        assertThat(keeps(Routes.FEATURE, Routes.ARG_FEATURE to Feature.VAULT.name)).isTrue()
+        assertThat(keeps(Routes.VIEWER, Routes.ARG_VIEWER to "PDF", Routes.ARG_VAULT to "x.enc")).isTrue()
+        assertThat(keeps(Routes.VAULT_IMPORT, Routes.ARG_PATH to "/d")).isTrue()
+        assertThat(keeps(Routes.PICKER, Routes.ARG_PICK to PickMode.FOLDER.argument)).isTrue()
+        assertThat(keeps(Routes.EXPLORER, Routes.ARG_PICK to PickMode.FOLDER.argument)).isTrue()
+        // What a tile, or a recent opened from the vault's picker, leads to: elsewhere.
+        Feature.entries.filter { it != Feature.VAULT }.forEach {
+            assertThat(keeps(Routes.FEATURE, Routes.ARG_FEATURE to it.name)).isFalse()
+        }
+        assertThat(keeps(Routes.VIEWER, Routes.ARG_VIEWER to "PDF", Routes.ARG_PATH to "/d/a.pdf")).isFalse()
+        assertThat(keeps(Routes.EXPLORER, Routes.ARG_PATH to "/d")).isFalse()
+        listOf(Routes.HOME, Routes.TRASH, Routes.SEARCH, Routes.INSTALL, Routes.LEGAL, null).forEach {
+            assertThat(keeps(it)).isFalse()
+        }
     }
 }

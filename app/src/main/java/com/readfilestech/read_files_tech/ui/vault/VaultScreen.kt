@@ -53,6 +53,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.SecureWindow
@@ -260,7 +261,7 @@ private fun VaultRow(item: VaultItem, viewModel: VaultViewModel, onNavigate: (St
     }
     ListItem(
         modifier = Modifier.clickable(onClick = open),
-        headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        headlineContent = { Text(item.name.withoutBidiControls(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = { Text(formatBytes(item.size)) },
         leadingContent = { Icon(Icons.Outlined.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = {

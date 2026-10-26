@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +26,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -48,6 +50,7 @@ import com.readfilestech.read_files_tech.ui.explorer.PickMode
 import com.readfilestech.read_files_tech.ui.home.HomeScreen
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Routes
+import com.readfilestech.read_files_tech.ui.navigation.VaultScreens
 import com.readfilestech.read_files_tech.ui.picker.PickerScreen
 import com.readfilestech.read_files_tech.ui.search.SearchScreen
 import com.readfilestech.read_files_tech.ui.settings.LegacyDataNotice
@@ -55,18 +58,26 @@ import com.readfilestech.read_files_tech.ui.trash.TrashScreen
 import com.readfilestech.read_files_tech.ui.vault.VaultImportFolderScreen
 import com.readfilestech.read_files_tech.ui.viewer.ViewerHost
 import com.readfilestech.read_files_tech.ui.viewer.ViewerKind
+import com.readfilestech.read_files_tech.vault.VaultService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 /**
  * The app's root: the one message host, storage access (asked once at the first launch, as the 2.15.x),
- * the shortcuts of the quick-settings tiles, and the destinations.
+ * the shortcuts of the quick-settings tiles, the destinations, and the vault locked on any of them but its own
+ * ([VaultScreens]).
  *
  * @param shortcut the tile that opened the app, if any; [onShortcutHandled] clears it.
  */
 @Composable
-fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<Feature?>, onShortcutHandled: () -> Unit) {
+fun AppRoot(
+    access: StorageAccess,
+    messages: UserMessages,
+    vault: VaultService,
+    shortcut: StateFlow<Feature?>,
+    onShortcutHandled: () -> Unit,
+) {
     val snackbar = remember { SnackbarHostState() }
     val navController = rememberNavController()
     // The configuration's resources: a language changed while the app runs takes effect at once.
@@ -83,6 +94,14 @@ fun AppRoot(access: StorageAccess, messages: UserMessages, shortcut: StateFlow<F
                 snackbar.show(message, message.text.resolve(resources), message.action?.label?.resolve(resources))
             }
         }
+    }
+    // Whatever leads elsewhere — a tile, a menu of the picker, an entry to come — leaves the vault, as Back does.
+    DisposableEffect(navController, vault) {
+        val leaving = NavController.OnDestinationChangedListener { _, destination, arguments ->
+            if (vault.unlocked.value && !VaultScreens.keepOpen(destination.route) { arguments?.getString(it) }) vault.lock()
+        }
+        navController.addOnDestinationChangedListener(leaving)
+        onDispose { navController.removeOnDestinationChangedListener(leaving) }
     }
     LaunchedEffect(shortcut) {
         shortcut.collect { feature ->

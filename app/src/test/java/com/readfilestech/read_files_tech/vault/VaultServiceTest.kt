@@ -351,7 +351,8 @@ class VaultServiceTest {
 
     @Test
     fun `lock purges the plaintext the Flutter app and the port left in the cache`() = runBlocking<Unit> {
-        val leftovers = listOf("vault_decrypt/x/a.pdf", "share_plus/b.jpg", "share/c.txt", "exports/coffre.rftvault")
+        val leftovers =
+            listOf("vault_decrypt/x/a.pdf", "pdf_scratch/PDFBox1.tmp", "share_plus/b.jpg", "share/c.txt", "exports/coffre.rftvault")
         leftovers.forEach { File(vault.dirs.cache, it).apply { parentFile.mkdirs() }.writeText("clear") }
         File(vault.dirs.cache, "thumbnails/keep.png").apply { parentFile.mkdirs() }.writeText("not the vault's")
         vault.service.lock()

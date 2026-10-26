@@ -1,6 +1,7 @@
 package com.readfilestech.read_files_tech.data.viewer.zip
 
 import com.readfilestech.read_files_tech.data.browse.FileNames
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import java.io.IOException
 
 /** Why an entry of an archive cannot be read, whatever is done with it. */
@@ -97,8 +98,11 @@ object ZipPaths {
         return segments.takeIf { it.isNotEmpty() && it.all(FileNames::isValid) }
     }
 
-    /** [text] with its control characters shown as `�`: a name may hold a line break, or a NUL. */
+    /**
+     * [text] with its control characters shown as `�`: a name may hold a line break, or a NUL — and a
+     * bidirectional control, which shows another extension than its own ([withoutBidiControls]).
+     */
     fun display(text: String): String = buildString(text.length) {
         text.forEach { append(if (it.isISOControl()) '�' else it) }
-    }
+    }.withoutBidiControls()
 }

@@ -3,6 +3,7 @@ package com.readfilestech.read_files_tech.vault
 import com.readfilestech.read_files_tech.data.files.AtomicFiles
 import com.readfilestech.read_files_tech.data.files.FileTrees
 import com.readfilestech.read_files_tech.data.prefs.FlutterPreferences
+import com.readfilestech.read_files_tech.data.viewer.pdf.PdfUnlocked
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.vault.format.VaultAuthenticationException
 import com.readfilestech.read_files_tech.vault.format.VaultCrypto
@@ -166,6 +167,7 @@ class VaultService @Inject constructor(
 
     /**
      * Deletes the plaintext copies left in the cache: `vault_decrypt/` and `vault_shared/` (VaultFiles),
+     * PdfBox's scratch (`pdf_scratch/`, PdfUnlocked),
      * and what the Flutter app left there — `share_plus/` (the plugin copies every shared file), `share/` (an older
      * name), `exports/` (the old staging of `.rftvault` exports). On lock, on panic and at startup;
      * never on a mere trip to the background, which would delete a file under the app receiving it.
@@ -204,6 +206,7 @@ class VaultService @Inject constructor(
          * The cache folders that may hold vault plaintext: purged here, and never served to another app by
          * PathGuard — `vault_shared/` leaves only through the share the user asked for (docs D-034).
          */
-        val PLAINTEXT_CACHE_DIRS = listOf(VaultFiles.DECRYPT_DIR, VaultFiles.SHARE_DIR, "share_plus", "share", "exports")
+        val PLAINTEXT_CACHE_DIRS =
+            listOf(VaultFiles.DECRYPT_DIR, VaultFiles.SHARE_DIR, PdfUnlocked.SCRATCH_DIR, "share_plus", "share", "exports")
     }
 }
