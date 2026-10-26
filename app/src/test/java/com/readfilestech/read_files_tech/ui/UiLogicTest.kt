@@ -11,6 +11,7 @@ import com.readfilestech.read_files_tech.ui.common.ByteSizes
 import com.readfilestech.read_files_tech.ui.common.ByteUnits
 import com.readfilestech.read_files_tech.ui.common.IoErrors
 import com.readfilestech.read_files_tech.ui.common.UiText
+import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.ui.explorer.ExplorerUiState
 import com.readfilestech.read_files_tech.ui.explorer.FolderProblem
 import com.readfilestech.read_files_tech.ui.explorer.PickMode
@@ -28,6 +29,7 @@ import com.readfilestech.read_files_tech.ui.navigation.VaultScreens
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.util.Locale
 
 /** The screens' logic that needs no Android: sizes, explorer state, batch messages, tile shortcuts. */
@@ -114,6 +116,26 @@ class UiLogicTest {
                 R.string.joined_dot,
             ),
         )
+    }
+
+    @Test
+    fun `a batch says the cause its failures share, and only a useful one`() {
+        val noSpace = IOException("write failed: ENOSPC (No space left on device)")
+        val full = BatchMessages.of(BatchResult(0, 2, errors = listOf(noSpace, noSpace)), R.plurals.copied_many)
+        assertThat(full.text).isEqualTo(
+            UiText.Joined(
+                UiText.Plural(R.plurals.copied_many, 0),
+                UiText.Joined(UiText.Plural(R.plurals.errors_count, 2), uiText(R.string.error_no_space), R.string.joined_reason),
+                R.string.joined_dot,
+            ),
+        )
+        val bare = UiText.Joined(UiText.Plural(R.plurals.copied_many, 0), UiText.Plural(R.plurals.errors_count, 2), R.string.joined_dot)
+        // Two causes, a vague one, or a failure that said none: the count alone, as the 2.15.x.
+        val mixed = listOf(noSpace, java.nio.file.NoSuchFileException("/d/a"))
+        assertThat(BatchMessages.of(BatchResult(0, 2, errors = mixed), R.plurals.copied_many).text).isEqualTo(bare)
+        val vague = listOf(IOException("boom"), IOException("boom"))
+        assertThat(BatchMessages.of(BatchResult(0, 2, errors = vague), R.plurals.copied_many).text).isEqualTo(bare)
+        assertThat(BatchMessages.of(BatchResult(0, 2, errors = listOf(noSpace)), R.plurals.copied_many).text).isEqualTo(bare)
     }
 
     @Test

@@ -9,6 +9,19 @@ import org.junit.jupiter.api.Test
 /** The words of a lockout: its wait rounded up, and the unlock form's countdown, gone once over. */
 class VaultFailuresTest {
     @Test
+    fun `an import that failed for one cause says it, as the explorer's batches`() {
+        val space = uiText(R.string.error_no_space)
+        val summary = VaultMessages.imported(1, 0, failed = 2, stoppedByLock = false, reasons = listOf(space, space))
+        assertThat(summary).isEqualTo(
+            UiText.Joined(
+                UiText.Plural(R.plurals.vault_imported, 1),
+                UiText.Joined(UiText.Plural(R.plurals.errors_count, 2), space, R.string.joined_reason),
+                R.string.joined_dot,
+            ),
+        )
+    }
+
+    @Test
     fun `a wait is whole seconds under a minute, whole minutes above, rounded up, never zero`() {
         assertThat(waitText(1)).isEqualTo(UiText.Plural(R.plurals.vault_wait_seconds, 1))
         assertThat(waitText(0)).isEqualTo(UiText.Plural(R.plurals.vault_wait_seconds, 1))

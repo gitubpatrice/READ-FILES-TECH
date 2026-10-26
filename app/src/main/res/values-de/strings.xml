@@ -210,6 +210,7 @@
     <string name="error_not_found">das Element existiert nicht mehr</string>
     <string name="error_read_only">der Datenträger ist schreibgeschützt</string>
     <string name="error_no_space">nicht genügend Speicherplatz</string>
+    <string name="joined_reason">%1$s: %2$s</string>
     <string name="error_name_too_long">Name zu lang</string>
     <string name="error_io">Lese- oder Schreibfehler</string>
     <string name="error_unexpected">Etwas ist schiefgelaufen.</string>
@@ -812,6 +813,7 @@
         <item quantity="other">Höchstens %d Seiten: Die übrigen Bilder wurden nicht hinzugefügt.</item>
     </plurals>
     <string name="scanner_no_camera">Keine Kamera-App auf diesem Telefon: Importieren Sie stattdessen Bilder.</string>
+    <string name="ocr_no_camera">Keine Kamera-App auf diesem Telefon: Wählen Sie stattdessen ein Bild.</string>
     <string name="scanner_photo_failed">Dieses Foto kann nicht gelesen werden: %1$s</string>
     <string name="scanner_page_failed">%1$s wurde nicht hinzugefügt: %2$s</string>
     <string name="scanner_page_not_made">Diese Seite kann nicht erstellt werden: %1$s</string>

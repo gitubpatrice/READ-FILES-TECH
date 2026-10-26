@@ -89,23 +89,25 @@ class FileOperations @Inject constructor(
      */
     fun moveToTrash(targets: List<File>, onTrashed: (List<String>) -> Unit = {}) = launch {
         val entries = mutableListOf<TrashEntry>()
-        var failed = 0
-        var lastError: IOException? = null
+        val errors = mutableListOf<IOException>()
         val leaving = mediaIndex.filesUnder(targets)
         for (target in targets) {
             try {
                 entries += trash.moveToTrash(target)
             } catch (e: IOException) {
-                failed++
-                lastError = e
+                errors += e
             }
         }
         mediaIndex.refresh(leaving)
         onTrashed(entries.map(TrashEntry::originalPath))
         val text = when {
-            targets.size == 1 && failed == 0 -> uiText(R.string.trashed_one, targets.single().name)
-            targets.size == 1 -> uiText(R.string.error_trash, IoErrors.reasonOf(requireNotNull(lastError)))
-            else -> BatchMessages.withFailures(UiText.Plural(R.plurals.trashed_many, entries.size), failed)
+            targets.size == 1 && errors.isEmpty() -> uiText(R.string.trashed_one, targets.single().name)
+            targets.size == 1 -> uiText(R.string.error_trash, IoErrors.reasonOf(errors.single()))
+            else -> BatchMessages.withFailures(
+                UiText.Plural(R.plurals.trashed_many, entries.size),
+                errors.size,
+                errors.map(IoErrors::reasonOf),
+            )
         }
         val undo = entries.takeIf { it.isNotEmpty() }?.let { trashed ->
             MessageAction(uiText(R.string.action_undo)) { restore(trashed, announce = false) }
@@ -118,22 +120,22 @@ class FileOperations @Inject constructor(
      * [announce]: the trash screen says "Restored: x" (perhaps "x (1)"), an "Undo" just undoes (2.15.x).
      */
     fun restore(entries: List<TrashEntry>, announce: Boolean = true) = launch {
-        var failed = 0
-        var lastError: IOException? = null
+        val errors = mutableListOf<IOException>()
         val restored = mutableListOf<File>()
         for (entry in entries) {
             try {
                 restored += trash.restore(entry)
             } catch (e: IOException) {
-                failed++
-                lastError = e
+                errors += e
             }
         }
         mediaIndex.refresh(mediaIndex.filesUnder(restored))
         when {
             // One item: why, as a failed move to the trash says it (coherence audit, phase 9).
-            entries.size == 1 && failed == 1 -> messages.error(uiText(R.string.error_restore, IoErrors.reasonOf(requireNotNull(lastError))))
-            failed > 0 -> messages.error(UiText.Plural(R.plurals.restore_failed, failed))
+            entries.size == 1 && errors.size == 1 -> messages.error(uiText(R.string.error_restore, IoErrors.reasonOf(errors.single())))
+            errors.isNotEmpty() -> messages.error(
+                BatchMessages.withReason(UiText.Plural(R.plurals.restore_failed, errors.size), errors.size, errors.map(IoErrors::reasonOf)),
+            )
             announce && entries.size == 1 -> messages.info(uiText(R.string.restored_one, restored.single().name))
         }
     }

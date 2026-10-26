@@ -224,6 +224,7 @@
     <string name="error_not_found">el elemento ya no existe</string>
     <string name="error_read_only">el volumen es de solo lectura</string>
     <string name="error_no_space">no hay espacio suficiente</string>
+    <string name="joined_reason">%1$s: %2$s</string>
     <string name="error_name_too_long">nombre demasiado largo</string>
     <string name="error_io">error de lectura o de escritura</string>
     <string name="error_unexpected">Algo ha fallado.</string>
@@ -860,6 +861,7 @@
         <item quantity="other">%d páginas como máximo: las demás imágenes no se han añadido.</item>
     </plurals>
     <string name="scanner_no_camera">No hay ninguna app de cámara en este teléfono: importe imágenes en su lugar.</string>
+    <string name="ocr_no_camera">No hay ninguna app de cámara en este teléfono: elija una imagen en su lugar.</string>
     <string name="scanner_photo_failed">No se puede leer esta foto: %1$s</string>
     <string name="scanner_page_failed">%1$s no se ha añadido: %2$s</string>
     <string name="scanner_page_not_made">No se puede crear esta página: %1$s</string>

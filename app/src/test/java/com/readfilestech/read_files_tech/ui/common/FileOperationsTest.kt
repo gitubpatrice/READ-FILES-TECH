@@ -109,15 +109,25 @@ class FileOperationsTest {
         val a = File(work, "a.txt").apply { writeText("a") }
         val b = File(work, "b.txt").apply { writeText("b") }
         val said = posted { it.moveToTrash(listOf(a, b, File(work, "absent"))) }.single()
-        assertThat(said.text).isEqualTo(
-            UiText.Joined(UiText.Plural(R.plurals.trashed_many, 2), UiText.Plural(R.plurals.errors_count, 1), R.string.joined_dot),
-        )
+        // The failure says its cause: the third file is not there.
+        val failure = UiText.Joined(UiText.Plural(R.plurals.errors_count, 1), uiText(R.string.error_not_found), R.string.joined_reason)
+        assertThat(said.text).isEqualTo(UiText.Joined(UiText.Plural(R.plurals.trashed_many, 2), failure, R.string.joined_dot))
         posted { requireNotNull(said.action).run() }
         assertThat(a.readText()).isEqualTo("a")
         assertThat(b.readText()).isEqualTo("b")
     }
 
     /** The duplicates screen drops from its lists what did go, not what was asked. */
+    @Test
+    fun `several restores that failed for one cause say it`() = runTest(dispatcher) {
+        val notes = listOf(File(work, "a.txt"), File(work, "b.txt")).onEach { it.writeText(it.name) }
+        val trashed = posted { it.moveToTrash(notes) }.single()
+        trash.list().forEach { it.payload.delete() } // gone from the trash: nothing to put back
+        val said = posted { requireNotNull(trashed.action).run() }.single()
+        val notFound = uiText(R.string.error_not_found)
+        assertThat(said.text).isEqualTo(UiText.Joined(UiText.Plural(R.plurals.restore_failed, 2), notFound, R.string.joined_reason))
+    }
+
     @Test
     fun `the trash hands back the paths that went`() = runTest(dispatcher) {
         val a = File(work, "a.txt").apply { writeText("a") }

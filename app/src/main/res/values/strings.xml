@@ -213,6 +213,7 @@
     <string name="error_not_found">the item no longer exists</string>
     <string name="error_read_only">the volume is read-only</string>
     <string name="error_no_space">not enough space</string>
+    <string name="joined_reason">%1$s: %2$s</string>
     <string name="error_name_too_long">name too long</string>
     <string name="error_io">read or write error</string>
     <string name="error_unexpected">Something went wrong.</string>
@@ -844,6 +845,7 @@
         <item quantity="other">%d pages at most: the other images were not added.</item>
     </plurals>
     <string name="scanner_no_camera">No camera app on this phone: import images instead.</string>
+    <string name="ocr_no_camera">No camera app on this phone: choose an image instead.</string>
     <string name="scanner_photo_failed">Cannot read this photo: %1$s</string>
     <string name="scanner_page_failed">%1$s was not added: %2$s</string>
     <string name="scanner_page_not_made">Cannot make this page: %1$s</string>

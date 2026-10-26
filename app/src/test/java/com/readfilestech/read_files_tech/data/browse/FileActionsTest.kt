@@ -143,7 +143,9 @@ class FileActionsTest {
     @Test
     fun `a source that vanished is a failure, and leaves no reservation behind`() {
         val result = actions.transfer(listOf(File(src, "gone.txt")), dest, move = true)
-        assertThat(result).isEqualTo(BatchResult(done = 0, failed = 1))
+        assertThat(result.copy(errors = emptyList())).isEqualTo(BatchResult(done = 0, failed = 1))
+        // Why, for the message (BatchMessages): not found.
+        assertThat(result.errors.single()).isInstanceOf(java.nio.file.NoSuchFileException::class.java)
         assertThat(dest.list()!!.toList()).isEmpty()
     }
 

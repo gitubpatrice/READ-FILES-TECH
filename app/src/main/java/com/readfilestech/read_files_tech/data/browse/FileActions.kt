@@ -7,6 +7,7 @@ import java.io.IOException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.NoSuchFileException
 import java.security.SecureRandom
 import javax.inject.Inject
 
@@ -15,7 +16,14 @@ class InvalidFileNameException(name: String) : IOException("invalid file name: $
 
 /** What a batch did: done, failed, and folders left out (copy and move take files only, as the 2.15.x). */
 /** What a batch did; [written] the files it put in place (a copy or a move: their new paths). */
-data class BatchResult(val done: Int, val failed: Int, val skippedFolders: Int = 0, val written: List<File> = emptyList())
+data class BatchResult(
+    val done: Int,
+    val failed: Int,
+    val skippedFolders: Int = 0,
+    val written: List<File> = emptyList(),
+    /** Why items failed, one per failure that said it: the message names a cause they share (BatchMessages). */
+    val errors: List<IOException> = emptyList(),
+)
 
 /**
  * The explorer's own changes to the user's files — `BatchOpsService` and the single-item actions of
@@ -117,29 +125,32 @@ class FileActions @Inject constructor() {
      * folder changes nothing (the 2.15.x made a "(1)" copy and deleted the original).
      */
     fun transfer(sources: List<File>, destDir: File, move: Boolean): BatchResult {
-        var failed = 0
         var folders = 0
         val written = mutableListOf<File>()
+        val errors = mutableListOf<IOException>()
         for (source in sources) {
             if (Files.isDirectory(source.toPath())) {
                 folders++
                 continue
             }
-            val placed = transferOne(source, destDir, move)
-            if (placed != null) written += placed else failed++
+            try {
+                written += transferOne(source, destDir, move)
+            } catch (e: IOException) {
+                errors += e
+            }
         }
-        return BatchResult(written.size, failed, folders, written)
+        return BatchResult(written.size, errors.size, folders, written, errors)
     }
 
-    /** Where [source] now is (itself, moved into its own folder), or null when it failed. */
-    private fun transferOne(source: File, destDir: File, move: Boolean): File? = when {
-        !Files.isRegularFile(source.toPath()) -> null
+    /**
+     * Where [source] now is (itself, moved into its own folder).
+     *
+     * @throws IOException why it failed — NoSuchFileException for a source that vanished, "No space left"…
+     */
+    private fun transferOne(source: File, destDir: File, move: Boolean): File = when {
+        !Files.isRegularFile(source.toPath()) -> throw NoSuchFileException(source.path)
         move && isSameFolder(source.absoluteFile.parentFile, destDir) -> source
-        else -> try {
-            FileMoves.reserveUniquePath(destDir, source.name, isDir = false).also { transferReserved(source, it, move) }
-        } catch (expected: IOException) {
-            null
-        }
+        else -> FileMoves.reserveUniquePath(destDir, source.name, isDir = false).also { transferReserved(source, it, move) }
     }
 
     /** Into [dest], our reservation; on failure it goes — it held at most a partial copy, the source is whole. */

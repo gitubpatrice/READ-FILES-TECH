@@ -170,6 +170,16 @@ class VaultViewModelTest {
         assertThat(viewModel.plain("a.txt")).isEqualTo("two")
     }
 
+    @Test
+    fun `an import whose files failed for one cause says it`() {
+        val viewModel = opened()
+        val gone = listOf(source("a.txt", "a"), source("b.txt", "b")).onEach { it.delete() }
+        viewModel.import(*gone.toTypedArray())
+        val notFound = uiText(R.string.error_not_found)
+        val said = VaultMessages.imported(0, 0, 2, stoppedByLock = false, reasons = listOf(notFound, notFound))!!
+        assertThat(shown.last()).isEqualTo(UserMessage(said, isError = true))
+    }
+
     /** The 2.15.3 counted the files after a lock as errors, and its "Replace?" waited over a locked vault. */
     @Test
     fun `a lock while a namesake is asked about keeps the file, and stops the import there`() {
