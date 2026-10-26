@@ -8,7 +8,8 @@ Read Files Tech is a Swiss army knife for the files on your Android phone: a fil
 <li>Editors — code and text with an automatic history of versions, CSV as an editable table</li>
 <li>Document scanner — edges found, perspective straightened, saved as a PDF</li>
 <li>OCR on the phone (Tesseract), in English, French, German, Italian and Spanish</li>
-<li>Encrypted vault — AES-256-GCM, a key derived from your password by Argon2id, locked automatically, and a panic erase</li>
+<li>Encrypted vault — AES-256-GCM, a key derived from your password by Argon2id, locked automatically</li>
+<li>Panic mode, in Settings: erases at once what the app keeps, the vault included</li>
 <li>Conversion — images to PDF, CSV to XLSX, text to PDF, PDF and DOCX to text, images to JPG or PNG</li>
 <li>Photos — smaller images, and the location, date and camera model removed before you share one</li>
 <li>Global search by name and by content, duplicates found by SHA-256, bulk rename with regular expressions</li>
@@ -23,7 +24,7 @@ Read Files Tech is a Swiss army knife for the files on your Android phone: a fil
 <li>No internet permission: the app cannot connect to anything, and its build checks it. No account, no analytics, no advertising, no tracking</li>
 <li>No Google service: OCR and the scanner are free software running inside the app</li>
 <li>All-files access is asked because a file manager needs it; nothing is read or written in the background</li>
-<li>Sending a file to a cloud app is always your action, through Android's share sheet</li>
+<li>Sending a file to a cloud app is always your action: from the file's menu, or through Android's share sheet</li>
 <li>Updates: About opens the releases page in your browser</li>
 <li>Free software under the Apache License 2.0 — https://github.com/gitubpatrice/READ-FILES-TECH</li>
 </ul>

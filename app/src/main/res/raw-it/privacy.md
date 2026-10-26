@@ -60,7 +60,7 @@ Sempre su una Sua azione, e verso l'app che Lei sceglie:
 - **Condividere automaticamente dopo la creazione**, se attiva questa impostazione (disattivata per impostazione predefinita).
 - **Scattare una foto** per lo scanner o l'OCR: l'app fotocamera del telefono scrive la foto in un file che Read Files Tech le apre solo a questo scopo.
 - **Link** — pagina delle versioni, sito, e-mail —: aperti nel Suo browser o nella Sua app di posta, che si connettono da soli. «Segnalare un bug» prepara un'e-mail che Lei rilegge e invia personalmente.
-- **Link di un documento**: un link che Lei tocca in una pagina HTML o in un file Markdown si apre nel Suo browser, che si connette da solo al sito.
+- **Link di un documento**: un link che Lei tocca in una pagina HTML o in un file Markdown si apre nel Suo browser o, per un indirizzo e-mail, nella Sua app di posta, che si connettono da soli; una pagina HTML mostra prima l'indirizzo e chiede conferma.
 
 Il visualizzatore HTML mostra una pagina senza JavaScript e senza alcuna connessione: vengono caricati solo i file della cartella della pagina.
 
@@ -85,7 +85,7 @@ Né fotocamera, né posizione, né contatti, né microfono, né notifiche, né I
 
 ## Registro di sistema
 
-Quando un'operazione non riesce, l'app scrive una sola riga nel registro di sistema: il tipo dell'errore, senza nome di file né contenuto. La libreria che legge i PDF può aggiungervi i propri avvisi, e Android vi registra un eventuale arresto anomalo dell'app; l'app non invia questo registro da nessuna parte.
+Quando un'operazione non riesce, l'app scrive una sola riga nel registro di sistema: il tipo dell'errore, senza nome di file né contenuto. La libreria che legge i PDF e la WebView di sistema possono aggiungervi i propri avvisi, senza il contenuto delle pagine, e Android vi registra un eventuale arresto anomalo dell'app; l'app non invia questo registro da nessuna parte.
 
 ## Dati delle versioni precedenti
 

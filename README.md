@@ -34,10 +34,11 @@ app under About.
   prefix and suffix, regular expressions), trash with undo, info, APK installation through Android's installer.
 - **Viewers** — text and code (syntax colors), Markdown, JSON (tree), HTML (sandboxed: no JavaScript, no
   connection), CSV and TSV, spreadsheets (XLSX, XLS, ODS), documents (DOCX, ODT, ODP), EPUB and a reading
-  mode, PDF (password, outline, go to page), ZIP (extract all), images (gallery, zoom, EXIF).
+  mode, PDF (password, outline, go to page), ZIP (extract all), images (gallery, zoom).
 - **Editors** — code and text with an automatic history of versions, CSV as an editable table.
 - **Encrypted vault** — AES-256-GCM, key derived by Argon2id, auto-lock, brute-force lockout, screens
-  protected from capture, encrypted `.rftvault` backups, folder import, panic mode.
+  protected from capture, encrypted `.rftvault` backups, folder import. A panic mode, in Settings, erases at
+  once what the app keeps: the vault, the trash, the history, the recents, the cache.
 - **Scanner** — photos taken with the camera app or picked, edges detected, perspective straightened, PDF.
 - **OCR** — Tesseract on the phone, in English, French, German, Italian and Spanish.
 - **Conversions** — images → PDF, CSV → XLSX, text → PDF, PDF and DOCX → text, images to JPG or PNG.
@@ -78,8 +79,8 @@ cd READ-FILES-TECH
 
 Requires JDK 17 and the Android SDK (compileSdk 37); Gradle and every dependency are pinned in the repository.
 By default the build installs **next to** the published app (package suffix `.next`, its own folders), so it
-never touches your data; `-Prft.replaceFlutter=true` builds the real package, whose release build refuses to
-run without the release key.
+never touches your data; `-Prft.replaceFlutter=true` builds the real package, whose release build fails
+without the release key.
 
 The CI gate runs the build, the unit tests, lint, detekt and the release build (R8), then checks the
 release APKs (package, versionCode, languages), the permissions and the shape of the manifest, the absence of

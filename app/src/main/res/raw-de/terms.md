@@ -1,6 +1,6 @@
 # Nutzungsbedingungen — Read Files Tech
 
-_Zuletzt aktualisiert: 25. Oktober 2026 (Version 3.0.0)_
+_Zuletzt aktualisiert: 26. Oktober 2026 (Version 3.0.1)_
 
 ## Gegenstand
 
@@ -31,7 +31,7 @@ Die App wird von einer Privatperson **kostenlos**, auf persönlicher und nicht k
 ## Dateien unbekannter Herkunft
 
 - Bleiben Sie vorsichtig mit Dateien aus unbekannten Quellen. Der HTML-Betrachter zeigt eine Seite ohne JavaScript und ohne jede Verbindung an, doch eine Datei kann trotzdem einen irreführenden Text enthalten.
-- **Eine APK zu installieren** ist Ihre Entscheidung: Die App zeigt ihren Namen, ihr Paket und ihre Version und übergibt sie dann an das Installationsprogramm von Android, das selbst um Bestätigung bittet. Read Files Tech prüft nicht, woher eine APK stammt.
+- **Eine APK aus dem Explorer zu installieren** ist Ihre Entscheidung: Die App zeigt ihren Namen, ihr Paket und ihre Version und übergibt sie dann an das Installationsprogramm von Android, das selbst um Bestätigung bittet. Read Files Tech prüft nicht, woher eine APK stammt.
 
 ## Updates
 
@@ -47,7 +47,7 @@ Die App wird kostenlos von einer Privatperson bereitgestellt. Soweit gesetzlich 
 
 ## Geistiges Eigentum
 
-Der Code, die Texte und die Bilder des Quellcode-Repositorys stehen unter der Apache-Lizenz 2.0. Wie ihr Abschnitt 6 vorsieht, gewährt diese Lizenz kein Recht, die Namen Read Files Tech und Files Tech oder das Symbol der App zur Bezeichnung eines anderen Produkts zu verwenden.
+Der Code, die Texte und die Bilder des Quellcode-Repositorys stehen unter der Apache-Lizenz 2.0, ausgenommen die in der Datei NOTICE aufgeführten Elemente Dritter, die ihre eigene behalten. Wie ihr Abschnitt 6 vorsieht, gewährt diese Lizenz kein Recht, die Namen Read Files Tech und Files Tech oder das Symbol der App zur Bezeichnung eines anderen Produkts zu verwenden.
 
 ## Daten
 

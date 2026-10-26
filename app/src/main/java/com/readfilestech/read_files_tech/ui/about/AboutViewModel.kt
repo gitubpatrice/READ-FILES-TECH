@@ -6,7 +6,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.viewer.markdown.MarkdownLinks
-import com.readfilestech.read_files_tech.ui.common.FileLauncher
 import com.readfilestech.read_files_tech.ui.common.LaunchOutcome
 import com.readfilestech.read_files_tech.ui.common.Links
 import com.readfilestech.read_files_tech.ui.common.UserMessages
@@ -19,7 +18,7 @@ import javax.inject.Inject
 class AboutViewModel @Inject constructor(private val messages: UserMessages) : ViewModel() {
     /** [url] in the browser (the releases page, the website). */
     fun open(context: Context, url: String) {
-        FileLauncher.messageFor(Links.open(context, url))?.let(messages::post)
+        Links.messageFor(Links.open(context, url))?.let(messages::post)
     }
 
     /** A link of a legal text: opened if it leads to the web or to an e-mail address, as the Markdown viewer's are. */

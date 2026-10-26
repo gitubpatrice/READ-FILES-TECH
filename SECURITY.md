@@ -73,17 +73,21 @@ upstream; attacks that need a rooted or already compromised phone; physical atta
   CI in the release classpath and in the manifest. The system WebView is opted out of its metrics, and
   EmojiCompat's start-up initializer, which would ask a downloadable-fonts provider for its font, is removed.
 - **What other apps can reach.** The launcher activity (empty task affinity, extras dropped but a whitelisted
-  shortcut) and the three Quick Settings tiles (system only); nothing else is exported, which the CI checks
-  exactly. The FileProvider is not exported: every file is checked by a path guard, then served read-only to
-  the app the user chose — Android keeps that app's access to the file, at that path, while its task lives —
-  and write access goes only to PDF Tech, after its signing certificate is checked.
+  shortcut), the three Quick Settings tiles (system only) and AndroidX's profile installer receiver, which only
+  the shell and the system may call (`DUMP` permission); nothing else is exported, which the CI checks exactly.
+  The FileProvider is not exported: every file is checked by a path guard, then served read-only to the app the
+  user chose — Android keeps that app's access to the file, at that path, while its task lives. Write access
+  goes only to PDF Tech, after its signing certificate is checked, and to the camera app, on the empty file of
+  the one photo asked for, until it returns.
 - **The vault.** AES-256-GCM, the file name bound as associated data; key derived by Argon2id, calibrated on
-  the phone; brute-force lockout on two clocks, so neither a reboot nor setting the clock back frees it (a
-  reboot followed by setting the clock forward frees one attempt per reboot: nothing else keeps time across a
-  reboot); auto-lock in the background, when idle, while the phone sleeps (an alarm) and as soon as a screen
-  other than its own opens; each operation works on its own copy of the key and stops if the vault was locked
-  meanwhile; screens protected from capture; decrypted copies, PdfBox's scratch included, purged at the lock
-  and at every start. The one-time repair of the files 2.15.2 encrypted under a zeroed key is carried over.
+  the phone, for a vault created since 2.7.1 (an older vault keeps its derivation: PBKDF2 with 600,000
+  iterations, or Argon2id 16 MiB × 4); brute-force lockout on two clocks, so neither a reboot nor setting the
+  clock back frees it (a reboot followed by setting the clock forward frees one attempt per reboot: nothing
+  else keeps time across a reboot); auto-lock in the background, when idle, while the phone sleeps (an alarm)
+  and as soon as a screen other than its own opens; each operation works on its own copy of the key and stops
+  if the vault was locked meanwhile; screens protected from capture; decrypted copies, PdfBox's scratch
+  included, purged at the lock and at every start. The one-time repair of the files 2.15.2 encrypted under a
+  zeroed key is carried over.
 - **Hostile files.** The HTML viewer loads no network resource and runs no JavaScript (WebViewAssetLoader,
   `blockNetworkLoads`, a restrictive CSP); ZIP extraction refuses names leading outside its folder and bounds
   what is produced, not what is declared; PDFs are parsed in a separate process (`:pdf`) that accepts only the

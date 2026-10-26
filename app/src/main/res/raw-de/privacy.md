@@ -60,7 +60,7 @@ Immer auf eine Handlung von Ihnen hin, und an die App, die Sie wählen:
 - **Nach dem Erstellen automatisch teilen**, wenn Sie diese Einstellung einschalten (standardmäßig aus).
 - **Ein Foto aufnehmen** für den Scanner oder die OCR: Die Kamera-App des Telefons schreibt das Foto in eine Datei, die Read Files Tech ihr nur dafür öffnet.
 - **Links** — die Seite der Versionen, die Website, E-Mail —: in Ihrem Browser oder Ihrer E-Mail-App geöffnet, die sich selbst verbinden. „Fehler melden“ bereitet eine E-Mail vor, die Sie selbst lesen und senden.
-- **Links in einem Dokument**: Ein Link, den Sie in einer HTML-Seite oder einer Markdown-Datei antippen, öffnet sich in Ihrem Browser, der sich selbst mit der Website verbindet.
+- **Links in einem Dokument**: Ein Link, den Sie in einer HTML-Seite oder einer Markdown-Datei antippen, öffnet sich in Ihrem Browser oder, bei einer E-Mail-Adresse, in Ihrer E-Mail-App, die sich selbst verbinden; eine HTML-Seite zeigt zuerst die Adresse und bittet um Bestätigung.
 
 Der HTML-Betrachter zeigt eine Seite ohne JavaScript und ohne jede Verbindung an: Nur die Dateien aus dem Ordner der Seite werden geladen.
 
@@ -85,7 +85,7 @@ Weder Kamera noch Standort noch Kontakte noch Mikrofon noch Benachrichtigungen n
 
 ## Systemprotokoll
 
-Schlägt ein Vorgang fehl, schreibt die App eine einzige Zeile in das Systemprotokoll: die Art des Fehlers, ohne Dateinamen und ohne Inhalt. Die Bibliothek, die PDFs liest, kann eigene Warnungen hinzufügen, und Android vermerkt dort einen Absturz der App; die App sendet dieses Protokoll nirgendwohin.
+Schlägt ein Vorgang fehl, schreibt die App eine einzige Zeile in das Systemprotokoll: die Art des Fehlers, ohne Dateinamen und ohne Inhalt. Die Bibliothek, die PDFs liest, und die System-WebView können eigene Warnungen hinzufügen, ohne den Inhalt der Seiten, und Android vermerkt dort einen Absturz der App; die App sendet dieses Protokoll nirgendwohin.
 
 ## Daten früherer Versionen
 

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
+import com.readfilestech.read_files_tech.R
 
 /**
  * Links handed to the app that answers them — a browser, a mail app — which makes its own connection: Read Files
@@ -18,6 +19,13 @@ object Links {
      */
     fun open(context: Context, url: String): LaunchOutcome =
         start(context, Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
+
+    /**
+     * What to say of [outcome] for a link: as for a file ([FileLauncher.messageFor]), but no app for it is said to be
+     * a link's — the HTML viewer and About said "this file" of a web address (environment audit of the 3.0).
+     */
+    fun messageFor(outcome: LaunchOutcome): UserMessage? =
+        if (outcome == LaunchOutcome.NO_APP) UserMessage(uiText(R.string.link_no_app), isError = true) else FileLauncher.messageFor(outcome)
 
     /** A new e-mail to [to], its [subject] and [body] filled in, in the mail app the user picks: nothing is sent by this app. */
     fun mail(context: Context, to: String, subject: String, body: String? = null): LaunchOutcome {

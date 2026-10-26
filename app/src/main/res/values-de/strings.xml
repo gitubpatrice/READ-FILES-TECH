@@ -60,7 +60,7 @@
     <string name="picker_all_folders">Alle Ordner</string>
     <string name="picker_filter">Aktiver Filter: %1$s</string>
     <string name="picker_empty_title">Keine zuletzt verwendete Datei</string>
-    <string name="picker_empty_body">Geöffnete Dateien und die von den Werkzeugen erstellten (Konvertierungen, Scanner, OCR…) erscheinen hier von selbst.</string>
+    <string name="picker_empty_body">Vom Startbildschirm aus geöffnete Dateien und die von den Werkzeugen erstellten (Konvertierungen, Scanner, OCR…) erscheinen hier von selbst.</string>
     <string name="recent_remove">Aus „Zuletzt verwendet“ entfernen</string>
     <string name="recent_removed">Aus „Zuletzt verwendet“ entfernt</string>
     <string name="picker_downloads">Downloads</string>
@@ -357,7 +357,7 @@
     <string name="about_feature_cloud">An eine Cloud-App senden</string>
     <string name="about_feature_cloud_desc">Auf Ihren Wunsch an kDrive, Google Drive oder Proton Drive, falls installiert — die App selbst sendet nichts</string>
     <string name="about_feature_search">Globale Suche</string>
-    <string name="about_feature_search_desc">Nach Name und Inhalt, auf dem ganzen Telefon</string>
+    <string name="about_feature_search_desc">Nach Name und Inhalt, im internen Speicher oder auf einer SD-Karte</string>
     <string name="about_feature_duplicates_desc">Identische Dateien anhand ihres SHA-256 gefunden, die größten aufgelistet, um Platz zu schaffen</string>
     <string name="about_permissions">Berechtigungen und wozu</string>
     <string name="about_perm_all_files">Ab Android 11: der Zugriff auf alle Dateien, den Sie in den Android-Einstellungen erteilen. Damit kann der Explorer Ihre Dateien durchsuchen, öffnen und ändern, nur wenn Sie es verlangen: Im Hintergrund wird nichts gelesen.</string>
@@ -467,9 +467,9 @@
     <string name="tool_hint_vault">Mit AES-256 verschlüsselte Dateien</string>
     <string name="tool_hint_scanner">Dokument → PDF (Kamera)</string>
     <string name="tool_hint_exif">Standort und Datum aus Bildern entfernen</string>
-    <string name="tool_hint_global_search">Nach Name und Inhalt, im ganzen Telefon</string>
+    <string name="tool_hint_global_search">Nach Name und Inhalt, interner Speicher oder SD-Karte</string>
     <string name="tool_hint_duplicates">Speicherplatz freigeben</string>
-    <string name="tool_hint_trash">Gelöschte Elemente wiederherstellen</string>
+    <string name="tool_hint_trash">Wiederherstellen, was Sie in den Papierkorb verschoben haben</string>
     <string name="missing_screen_title">Dieser Bildschirm kann nicht geöffnet werden</string>
     <string name="missing_screen_body">Er stammt aus einer anderen Version von Read Files Tech. Gehen Sie zurück und öffnen Sie ihn erneut über den Startbildschirm.</string>
 
@@ -841,7 +841,7 @@
     <string name="markdown_too_many_cells">Seine Tabellen könnten zu viele Zellen enthalten (über %1$,d): als Text angezeigt, nicht formatiert.</string>
     <string name="markdown_too_many_brackets">Zu viele gleichzeitig geöffnete eckige Klammern (über %1$,d): als Text angezeigt, nicht formatiert.</string>
     <string name="markdown_image">Bild, nicht geladen</string>
-    <string name="markdown_no_app">Keine App gefunden, um diesen Link zu öffnen.</string>
+    <string name="link_no_app">Keine App gefunden, um diesen Link zu öffnen.</string>
     <string name="markdown_link_refused">Dieser Link wird nicht geöffnet: Nur Web- und E-Mail-Links werden geöffnet.</string>
     <string name="json_show_pretty">Eingerückter Text</string>
     <string name="json_show_tree">Baum</string>
@@ -1044,7 +1044,7 @@
     <string name="compress_reduction">Verkleinerung: -%1$d %%</string>
     <string name="compress_larger">Die Kopie ist nicht kleiner als das Original: Versuchen Sie eine geringere Qualität oder Breite.</string>
     <string name="compress_failed">Dieses Bild kann nicht komprimiert werden: %1$s</string>
-    <string name="exif_intro">Zeigt Standort, Datum und Kamera, die in einem Bild gespeichert sind, und speichert eine Kopie ohne diese Angaben</string>
+    <string name="exif_intro">Zeigt, ob ein Bild einen Standort enthält, sowie Datum und Kamera, und speichert eine Kopie ohne diese Angaben</string>
     <string name="exif_found">Gefundene Metadaten</string>
     <string name="exif_none">Keine nennenswerten Metadaten</string>
     <string name="exif_gps">GPS-Standort</string>

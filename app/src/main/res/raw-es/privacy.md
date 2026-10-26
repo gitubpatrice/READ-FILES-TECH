@@ -60,7 +60,7 @@ Siempre por una acción suya, y hacia la aplicación que usted elija:
 - **Compartir automáticamente tras crear**, si activa este ajuste (desactivado por defecto).
 - **Hacer una foto** para el escáner o el OCR: la aplicación de cámara del teléfono escribe la foto en un archivo que Read Files Tech le abre solo para eso.
 - **Enlaces** — página de versiones, sitio web, correo —: se abren en su navegador o en su aplicación de correo, que se conectan por sí mismos. «Informar de un error» prepara un correo que usted revisa y envía.
-- **Enlaces de un documento**: un enlace que usted toca en una página HTML o en un archivo Markdown se abre en su navegador, que se conecta por sí mismo al sitio.
+- **Enlaces de un documento**: un enlace que usted toca en una página HTML o en un archivo Markdown se abre en su navegador o, para una dirección de correo, en su aplicación de correo, que se conectan por sí mismos; una página HTML muestra antes la dirección y pide confirmación.
 
 El visor HTML muestra una página sin JavaScript y sin ninguna conexión: solo se cargan los archivos de la carpeta de la página.
 
@@ -85,7 +85,7 @@ Ni cámara, ni ubicación, ni contactos, ni micrófono, ni notificaciones, ni In
 
 ## Registro del sistema
 
-Cuando una operación falla, la aplicación escribe una sola línea en el registro del sistema: el tipo del error, sin nombre de archivo ni contenido. La biblioteca que lee los PDF puede añadir sus propios avisos, y Android anota en él un posible cierre inesperado de la aplicación; la aplicación no envía este registro a ningún sitio.
+Cuando una operación falla, la aplicación escribe una sola línea en el registro del sistema: el tipo del error, sin nombre de archivo ni contenido. La biblioteca que lee los PDF y la WebView del sistema pueden añadir sus propios avisos, sin el contenido de las páginas, y Android anota en él un posible cierre inesperado de la aplicación; la aplicación no envía este registro a ningún sitio.
 
 ## Datos de las versiones anteriores
 

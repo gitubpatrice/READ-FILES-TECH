@@ -61,7 +61,7 @@
     <string name="picker_all_folders">Todas las carpetas</string>
     <string name="picker_filter">Filtro activo: %1$s</string>
     <string name="picker_empty_title">Ningún archivo reciente</string>
-    <string name="picker_empty_body">Los archivos que abra, y los que crean las herramientas (conversiones, escáner, OCR…), aparecen aquí automáticamente.</string>
+    <string name="picker_empty_body">Los archivos que abra desde la pantalla de inicio, y los que crean las herramientas (conversiones, escáner, OCR…), aparecen aquí automáticamente.</string>
     <string name="recent_remove">Quitar de recientes</string>
     <string name="recent_removed">Quitado de recientes</string>
     <string name="picker_downloads">Descargas</string>
@@ -376,7 +376,7 @@
     <string name="about_feature_cloud">Enviar a una app en la nube</string>
     <string name="about_feature_cloud_desc">Cuando usted lo pide, a kDrive, Google Drive o Proton Drive si están instalados — la app no envía nada por sí misma</string>
     <string name="about_feature_search">Búsqueda global</string>
-    <string name="about_feature_search_desc">Por nombre y por contenido, en todo el teléfono</string>
+    <string name="about_feature_search_desc">Por nombre y por contenido, en el almacenamiento interno o en una tarjeta SD</string>
     <string name="about_feature_duplicates_desc">Archivos idénticos detectados por su SHA-256, los más grandes listados, para liberar espacio</string>
     <string name="about_permissions">Permisos y para qué</string>
     <string name="about_perm_all_files">Desde Android 11: el acceso a todos los archivos, que usted concede en los ajustes de Android. Permite al explorador recorrer, abrir y modificar sus archivos, solo cuando usted lo pide: no se lee nada en segundo plano.</string>
@@ -492,9 +492,9 @@
     <string name="tool_hint_vault">Archivos cifrados con AES-256</string>
     <string name="tool_hint_scanner">Documento → PDF (cámara)</string>
     <string name="tool_hint_exif">Quitar ubicación y fecha de las fotos</string>
-    <string name="tool_hint_global_search">Por nombre y contenido, todo el teléfono</string>
+    <string name="tool_hint_global_search">Por nombre y contenido, almacenamiento interno o tarjeta SD</string>
     <string name="tool_hint_duplicates">Liberar espacio</string>
-    <string name="tool_hint_trash">Restaurar los elementos eliminados</string>
+    <string name="tool_hint_trash">Restaurar lo que movió a la papelera</string>
     <string name="missing_screen_title">No se puede abrir esta pantalla</string>
     <string name="missing_screen_body">Procede de otra versión de Read Files Tech. Vuelva atrás y ábrala de nuevo desde la pantalla de inicio.</string>
 
@@ -890,7 +890,7 @@
     <string name="markdown_too_many_cells">Sus tablas podrían contener demasiadas celdas (más de %1$,d): se muestra como texto, sin formato.</string>
     <string name="markdown_too_many_brackets">Demasiados corchetes abiertos a la vez (más de %1$,d): se muestra como texto, sin formato.</string>
     <string name="markdown_image">Imagen no cargada</string>
-    <string name="markdown_no_app">No se ha encontrado ninguna app para abrir este enlace.</string>
+    <string name="link_no_app">No se ha encontrado ninguna app para abrir este enlace.</string>
     <string name="markdown_link_refused">Este enlace no se abre: solo se abren los enlaces web y de correo electrónico.</string>
     <string name="json_show_pretty">Texto con sangría</string>
     <string name="json_show_tree">Árbol</string>
@@ -1120,7 +1120,7 @@
     <string name="compress_reduction">Reducción: -%1$d %%</string>
     <string name="compress_larger">La copia no es más ligera que el original: pruebe con una calidad o un ancho menores.</string>
     <string name="compress_failed">No se puede comprimir esta imagen: %1$s</string>
-    <string name="exif_intro">Muestra la ubicación, la fecha y la cámara que lleva una imagen, y guarda una copia sin ellas</string>
+    <string name="exif_intro">Indica si una imagen lleva una ubicación, muestra su fecha y su cámara, y guarda una copia sin ellas</string>
     <string name="exif_found">Metadatos encontrados</string>
     <string name="exif_none">Ningún metadato destacable</string>
     <string name="exif_gps">Ubicación GPS</string>

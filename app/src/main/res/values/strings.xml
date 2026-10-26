@@ -61,7 +61,7 @@
     <string name="picker_all_folders">All folders</string>
     <string name="picker_filter">Active filter: %1$s</string>
     <string name="picker_empty_title">No recent file</string>
-    <string name="picker_empty_body">Files you open, and those the tools make (conversions, scanner, OCR…), show up here by themselves.</string>
+    <string name="picker_empty_body">Files opened from the home screen, and those the tools make (conversions, scanner, OCR…), show up here by themselves.</string>
     <string name="recent_remove">Remove from recents</string>
     <string name="recent_removed">Removed from recents</string>
     <string name="picker_downloads">Downloads</string>
@@ -364,7 +364,7 @@
     <string name="about_feature_cloud">Send to a cloud app</string>
     <string name="about_feature_cloud_desc">When you ask, to kDrive, Google Drive or Proton Drive if installed — the app itself sends nothing</string>
     <string name="about_feature_search">Global search</string>
-    <string name="about_feature_search_desc">By name and by content, across the phone</string>
+    <string name="about_feature_search_desc">By name and by content, in the internal storage or an SD card</string>
     <string name="about_feature_duplicates_desc">Identical files found by their SHA-256, the largest ones listed, to free up space</string>
     <string name="about_permissions">Permissions and why</string>
     <string name="about_perm_all_files">Android 11 and later: access to all files, which you grant in Android\'s settings. It lets the explorer browse, open and change your files, only when you ask: nothing is read in the background.</string>
@@ -478,9 +478,9 @@
     <string name="tool_hint_vault">Files encrypted with AES-256</string>
     <string name="tool_hint_scanner">Document → PDF (camera)</string>
     <string name="tool_hint_exif">Strip location and date from pictures</string>
-    <string name="tool_hint_global_search">By name and content, the whole phone</string>
+    <string name="tool_hint_global_search">By name and content, internal storage or SD card</string>
     <string name="tool_hint_duplicates">Free up storage</string>
-    <string name="tool_hint_trash">Restore deleted items</string>
+    <string name="tool_hint_trash">Restore what you moved to the trash</string>
     <string name="missing_screen_title">This screen cannot be opened</string>
     <string name="missing_screen_body">It comes from another version of Read Files Tech. Go back, then open it again from the home screen.</string>
 
@@ -873,7 +873,7 @@
     <string name="markdown_too_many_cells">Its tables could hold too many cells (over %1$,d): shown as text, not rendered.</string>
     <string name="markdown_too_many_brackets">Too many square brackets open at once (over %1$,d): shown as text, not rendered.</string>
     <string name="markdown_image">Image, not loaded</string>
-    <string name="markdown_no_app">No app found to open this link.</string>
+    <string name="link_no_app">No app found to open this link.</string>
     <string name="markdown_link_refused">This link is not opened: only web and e-mail links are.</string>
     <string name="json_show_pretty">Indented text</string>
     <string name="json_show_tree">Tree</string>
@@ -1077,7 +1077,7 @@
     <string name="compress_reduction">Reduction: -%1$d %%</string>
     <string name="compress_larger">The copy is not lighter than the original: try a lower quality or width.</string>
     <string name="compress_failed">Cannot compress this picture: %1$s</string>
-    <string name="exif_intro">Shows the location, date and camera a picture carries, and saves a copy without them</string>
+    <string name="exif_intro">Says whether a picture carries a location, shows its date and camera, and saves a copy without them</string>
     <string name="exif_found">Metadata found</string>
     <string name="exif_none">No notable metadata</string>
     <string name="exif_gps">GPS location</string>

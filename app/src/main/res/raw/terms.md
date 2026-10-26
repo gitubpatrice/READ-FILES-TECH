@@ -1,6 +1,6 @@
 # Terms of use — Read Files Tech
 
-_Last updated: 25 October 2026 (version 3.0.0)_
+_Last updated: 26 October 2026 (version 3.0.1)_
 
 ## Purpose
 
@@ -47,7 +47,7 @@ The app is provided free of charge, by a private individual. To the extent permi
 
 ## Intellectual property
 
-The code, texts and images of the source repository are placed under the Apache 2.0 license. As its section 6 provides, this license grants no right to use the names Read Files Tech and Files Tech, nor the app's icon, to designate another product.
+The code, texts and images of the source repository are placed under the Apache 2.0 license, except the third-party elements listed in the NOTICE file, which keep their own. As its section 6 provides, this license grants no right to use the names Read Files Tech and Files Tech, nor the app's icon, to designate another product.
 
 ## Data
 

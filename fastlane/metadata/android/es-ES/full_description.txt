@@ -8,7 +8,8 @@ Read Files Tech es una navaja suiza para los archivos de su teléfono Android: u
 <li>Editores — código y texto con un historial automático de versiones, CSV como tabla editable</li>
 <li>Escáner de documentos — bordes detectados, perspectiva enderezada, guardado en PDF</li>
 <li>OCR en el teléfono (Tesseract), en español, inglés, francés, alemán e italiano</li>
-<li>Caja fuerte cifrada — AES-256-GCM, una clave derivada de su contraseña con Argon2id, bloqueo automático y un borrado de pánico</li>
+<li>Caja fuerte cifrada — AES-256-GCM, una clave derivada de su contraseña con Argon2id, bloqueo automático</li>
+<li>Modo pánico, en Ajustes: borra de una vez lo que la aplicación guarda, caja fuerte incluida</li>
 <li>Conversión — imágenes a PDF, CSV a XLSX, texto a PDF, PDF y DOCX a texto, imágenes a JPG o PNG</li>
 <li>Fotos — imágenes más ligeras, y la ubicación, la fecha y el modelo de cámara eliminados antes de compartir</li>
 <li>Búsqueda global por nombre y por contenido, duplicados encontrados por SHA-256, renombrado en bloque con expresiones regulares</li>
@@ -23,7 +24,7 @@ Read Files Tech es una navaja suiza para los archivos de su teléfono Android: u
 <li>Sin permiso de Internet: la aplicación no puede conectarse a nada, y su compilación lo comprueba. Sin cuenta, sin estadísticas, sin publicidad, sin rastreo</li>
 <li>Ningún servicio de Google: el OCR y el escáner son software libre que funciona dentro de la aplicación</li>
 <li>El acceso a todos los archivos se pide porque un gestor de archivos lo necesita; nada se lee ni se escribe en segundo plano</li>
-<li>Enviar un archivo a una aplicación en la nube es siempre su acción, mediante el menú de compartir de Android</li>
+<li>Enviar un archivo a una aplicación en la nube es siempre su acción: desde el menú del archivo, o mediante el menú de compartir de Android</li>
 <li>Actualizaciones: Acerca de abre la página de versiones en su navegador</li>
 <li>Software libre con la licencia Apache 2.0 — https://github.com/gitubpatrice/READ-FILES-TECH</li>
 </ul>

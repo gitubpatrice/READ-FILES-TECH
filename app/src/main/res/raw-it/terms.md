@@ -1,6 +1,6 @@
 # Condizioni d'uso — Read Files Tech
 
-_Ultimo aggiornamento: 25 ottobre 2026 (versione 3.0.0)_
+_Ultimo aggiornamento: 26 ottobre 2026 (versione 3.0.1)_
 
 ## Oggetto
 
@@ -47,7 +47,7 @@ L'app è fornita gratuitamente, da un privato. Nella misura consentita dalla leg
 
 ## Proprietà intellettuale
 
-Il codice, i testi e le immagini del repository dei sorgenti sono rilasciati con la licenza Apache 2.0. Come prevede la sua sezione 6, questa licenza non concede alcun diritto di usare i nomi Read Files Tech e Files Tech, né l'icona dell'app, per designare un altro prodotto.
+Il codice, i testi e le immagini del repository dei sorgenti sono rilasciati con la licenza Apache 2.0, salvo gli elementi di terzi elencati nel file NOTICE, che mantengono la propria. Come prevede la sua sezione 6, questa licenza non concede alcun diritto di usare i nomi Read Files Tech e Files Tech, né l'icona dell'app, per designare un altro prodotto.
 
 ## Dati
 

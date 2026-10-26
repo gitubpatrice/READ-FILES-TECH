@@ -12,7 +12,6 @@ import com.readfilestech.read_files_tech.data.viewer.html.HtmlPage
 import com.readfilestech.read_files_tech.data.viewer.html.HtmlResource
 import com.readfilestech.read_files_tech.data.viewer.text.TextColor
 import com.readfilestech.read_files_tech.data.viewer.text.TextColors
-import com.readfilestech.read_files_tech.ui.common.FileLauncher
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.common.Links
 import com.readfilestech.read_files_tech.ui.common.UserMessages
@@ -113,7 +112,7 @@ class HtmlViewerViewModel @Inject constructor(
     fun openWeb(from: Context) {
         val url = leaving.value ?: return
         leaving.value = null
-        FileLauncher.messageFor(Links.open(from, url))?.let(messages::post)
+        Links.messageFor(Links.open(from, url))?.let(messages::post)
     }
 
     fun stayOnPage() {
