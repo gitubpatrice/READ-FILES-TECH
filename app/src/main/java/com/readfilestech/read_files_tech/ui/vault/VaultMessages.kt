@@ -2,6 +2,7 @@ package com.readfilestech.read_files_tech.ui.vault
 
 import androidx.annotation.PluralsRes
 import com.readfilestech.read_files_tech.R
+import com.readfilestech.read_files_tech.ui.common.BatchMessages
 import com.readfilestech.read_files_tech.ui.common.UiText
 import com.readfilestech.read_files_tech.ui.common.uiText
 import com.readfilestech.read_files_tech.vault.VaultBackups
@@ -25,13 +26,14 @@ internal object VaultMessages {
         deleted: Int = 0,
         @PluralsRes keptLabel: Int = R.plurals.vault_kept,
         notDeleted: Int = 0,
+        reasons: List<UiText> = emptyList(),
     ): UiText? = joined(
         buildList {
             if (done > 0) add(UiText.Plural(R.plurals.vault_imported, done))
             if (deleted > 0) add(UiText.Plural(R.plurals.vault_originals_deleted, deleted))
             if (notDeleted > 0) add(UiText.Plural(R.plurals.vault_originals_not_deleted, notDeleted))
             if (kept > 0) add(UiText.Plural(keptLabel, kept))
-            if (failed > 0) add(UiText.Plural(R.plurals.errors_count, failed))
+            if (failed > 0) add(BatchMessages.withReason(UiText.Plural(R.plurals.errors_count, failed), failed, reasons))
             if (stoppedByLock) add(uiText(R.string.vault_reason_locked))
         },
     )

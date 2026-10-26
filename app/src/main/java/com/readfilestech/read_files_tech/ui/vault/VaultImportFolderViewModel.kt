@@ -197,7 +197,10 @@ class VaultImportFolderViewModel @Inject constructor(
             }
             error is NameTakenException -> tally.kept++
             error is VaultLockedException -> tally.stoppedByLock = true
-            else -> tally.failed++
+            else -> {
+                tally.failed++
+                tally.reasons += vaultReason(error)
+            }
         }
     }
 
@@ -210,6 +213,7 @@ class VaultImportFolderViewModel @Inject constructor(
             deleted = tally.deleted.size,
             keptLabel = R.plurals.vault_namesakes_kept,
             notDeleted = tally.notDeleted,
+            reasons = tally.reasons,
         )
         val interrupted = when {
             tally.stoppedByLock -> uiText(R.string.vault_folder_locked)
@@ -234,6 +238,9 @@ class VaultImportFolderViewModel @Inject constructor(
         val deleted = mutableListOf<String>()
         var notDeleted = 0
         var stoppedByLock = false
+
+        /** The causes of the failures, said when they share one (BatchMessages.withReason). */
+        val reasons = mutableListOf<UiText>()
         var stopped = false
     }
 }

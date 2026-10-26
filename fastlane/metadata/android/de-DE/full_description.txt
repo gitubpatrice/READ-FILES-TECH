@@ -8,7 +8,8 @@ Read Files Tech ist ein Schweizer Taschenmesser für die Dateien auf Ihrem Andro
 <li>Editoren – Code und Text mit automatischem Versionsverlauf, CSV als bearbeitbare Tabelle</li>
 <li>Dokumentenscanner – Ränder erkannt, Perspektive begradigt, als PDF gespeichert</li>
 <li>OCR auf dem Telefon (Tesseract), auf Deutsch, Englisch, Französisch, Italienisch und Spanisch</li>
-<li>Verschlüsselter Tresor – AES-256-GCM, ein per Argon2id aus Ihrem Passwort abgeleiteter Schlüssel, automatische Sperre und ein Panikmodus</li>
+<li>Verschlüsselter Tresor – AES-256-GCM, ein per Argon2id aus Ihrem Passwort abgeleiteter Schlüssel, automatische Sperre</li>
+<li>Panikmodus in den Einstellungen: löscht auf einmal, was die App aufbewahrt, den Tresor eingeschlossen</li>
 <li>Konvertierung – Bilder zu PDF, CSV zu XLSX, Text zu PDF, PDF und DOCX zu Text, Bilder zu JPG oder PNG</li>
 <li>Fotos – kleinere Bilder, und Standort, Datum und Kameramodell vor dem Teilen entfernt</li>
 <li>Globale Suche nach Name und Inhalt, Duplikate per SHA-256 gefunden, Massenumbenennung mit regulären Ausdrücken</li>
@@ -23,7 +24,7 @@ Read Files Tech ist ein Schweizer Taschenmesser für die Dateien auf Ihrem Andro
 <li>Keine Internetberechtigung: Die App kann sich mit nichts verbinden, und ihr Build prüft das. Kein Konto, keine Statistiken, keine Werbung, kein Tracking</li>
 <li>Kein Google-Dienst: OCR und Scanner sind freie Software, die in der App läuft</li>
 <li>Der Zugriff auf alle Dateien wird erbeten, weil ein Dateimanager ihn braucht; nichts wird im Hintergrund gelesen oder geschrieben</li>
-<li>Eine Datei an eine Cloud-App zu senden, ist immer Ihre Handlung, über das Teilen-Menü von Android</li>
+<li>Eine Datei an eine Cloud-App zu senden, ist immer Ihre Handlung: über das Menü der Datei oder das Teilen-Menü von Android</li>
 <li>Updates: „Über“ öffnet die Seite der Versionen in Ihrem Browser</li>
 <li>Freie Software unter der Apache-Lizenz 2.0 – https://github.com/gitubpatrice/READ-FILES-TECH</li>
 </ul>

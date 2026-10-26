@@ -60,7 +60,7 @@ Toujours sur une action de votre part, et vers l'application que vous choisissez
 - **Partager automatiquement après création**, si vous activez ce réglage (désactivé par défaut).
 - **Prendre une photo** pour le scanner ou l'OCR : l'application d'appareil photo du téléphone écrit la photo dans un fichier que Read Files Tech lui ouvre pour cela seulement.
 - **Liens** — page des versions, site, e-mail — : ouverts dans votre navigateur ou votre application d'e-mail, qui se connectent eux-mêmes. « Signaler un bug » prépare un e-mail que vous relisez et envoyez vous-même.
-- **Liens d'un document** : un lien que vous touchez dans une page HTML ou un fichier Markdown s'ouvre dans votre navigateur, qui se connecte lui-même au site visé.
+- **Liens d'un document** : un lien que vous touchez dans une page HTML ou un fichier Markdown s'ouvre dans votre navigateur ou, pour une adresse e-mail, dans votre application d'e-mail, qui se connectent eux-mêmes ; une page HTML montre d'abord l'adresse et demande confirmation.
 
 La visionneuse HTML affiche une page sans JavaScript et sans aucune connexion : seuls les fichiers du dossier de la page sont chargés.
 
@@ -85,7 +85,7 @@ Ni appareil photo, ni localisation, ni contacts, ni micro, ni notifications, ni 
 
 ## Journal du système
 
-En cas d'erreur d'une opération, l'application écrit une seule ligne dans le journal du système : le type de l'erreur, sans nom de fichier ni contenu. La bibliothèque qui lit les PDF peut y ajouter ses propres avertissements, et Android y consigne un éventuel plantage de l'application ; l'application n'envoie ce journal nulle part.
+En cas d'erreur d'une opération, l'application écrit une seule ligne dans le journal du système : le type de l'erreur, sans nom de fichier ni contenu. La bibliothèque qui lit les PDF et la WebView du système peuvent y ajouter leurs propres avertissements, sans le contenu des pages, et Android y consigne un éventuel plantage de l'application ; l'application n'envoie ce journal nulle part.
 
 ## Données des versions précédentes
 

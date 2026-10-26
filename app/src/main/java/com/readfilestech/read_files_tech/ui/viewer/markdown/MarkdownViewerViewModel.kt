@@ -93,7 +93,7 @@ class MarkdownViewerViewModel @Inject constructor(
         val target = MarkdownLinks.opened(destination)
         when {
             target == null -> messages.error(uiText(R.string.markdown_link_refused))
-            !start(context, target) -> messages.error(uiText(R.string.markdown_no_app))
+            !start(context, target) -> messages.error(uiText(R.string.link_no_app))
         }
     }
 

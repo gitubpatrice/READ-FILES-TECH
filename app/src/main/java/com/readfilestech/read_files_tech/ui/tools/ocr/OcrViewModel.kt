@@ -131,7 +131,7 @@ class OcrViewModel @Inject constructor(
         }
     }
 
-    fun noCamera() = messages.error(uiText(R.string.scanner_no_camera))
+    fun noCamera() = messages.error(uiText(R.string.ocr_no_camera))
 
     /**
      * One picture at a time: a new one replaces the one being read, whose recognition is stopped and waited

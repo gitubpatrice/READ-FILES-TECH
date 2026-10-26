@@ -33,10 +33,11 @@ affichée dans l'application sous À propos.
   informations, installation d'APK par l'installateur d'Android.
 - **Visionneuses** — texte et code (coloration), Markdown, JSON (arbre), HTML (isolé : sans JavaScript, sans
   connexion), CSV et TSV, tableurs (XLSX, XLS, ODS), documents (DOCX, ODT, ODP), EPUB et mode lecture, PDF
-  (mot de passe, sommaire, aller à la page), ZIP (tout extraire), images (galerie, zoom, EXIF).
+  (mot de passe, sommaire, aller à la page), ZIP (tout extraire), images (galerie, zoom).
 - **Éditeurs** — code et texte avec historique automatique des versions, CSV en tableau modifiable.
 - **Coffre chiffré** — AES-256-GCM, clé dérivée par Argon2id, verrouillage automatique, blocage contre la force
-  brute, écrans protégés de la capture, sauvegardes `.rftvault` chiffrées, import de dossier, mode panique.
+  brute, écrans protégés de la capture, sauvegardes `.rftvault` chiffrées, import de dossier. Un mode panique,
+  dans les Réglages, efface d'un coup ce que l'application garde : coffre, corbeille, historique, récents, cache.
 - **Scanner** — photos prises avec l'application d'appareil photo ou choisies, bords détectés, perspective
   redressée, PDF.
 - **OCR** — Tesseract sur le téléphone, en anglais, français, allemand, italien et espagnol.

@@ -59,7 +59,7 @@ Always on an action of yours, and to the app you choose:
 - **Share automatically after creation**, if you turn this setting on (off by default).
 - **Taking a photo** for the scanner or the OCR: the phone's camera app writes the photo into a file Read Files Tech opens to it for that only.
 - **Links** — the releases page, the website, e-mail —: opened in your browser or your e-mail app, which connect by themselves. "Report a bug" prepares an e-mail you read and send yourself.
-- **A document's links**: a link you touch in an HTML page or a Markdown file opens in your browser, which connects to the site by itself.
+- **A document's links**: a link you touch in an HTML page or a Markdown file opens in your browser or, for an e-mail address, in your e-mail app, which connect by themselves; an HTML page first shows the address and asks you to confirm.
 
 The HTML viewer shows a page without JavaScript and without any connection: only the files of the page's folder are loaded.
 
@@ -84,7 +84,7 @@ No camera, location, contacts, microphone, notifications or Internet.
 
 ## System log
 
-When an operation fails, the app writes one line to the system log: the type of the error, with no file name and no content. The library that reads PDFs may add its own warnings, and Android records a crash of the app there; the app sends this log nowhere.
+When an operation fails, the app writes one line to the system log: the type of the error, with no file name and no content. The library that reads PDFs and the system WebView may add their own warnings, without the pages' content, and Android records a crash of the app there; the app sends this log nowhere.
 
 ## Data of earlier versions
 

@@ -107,6 +107,24 @@ class VaultImportFolderViewModelTest {
     }
 
     @Test
+    fun `a folder import whose files failed for one cause says it`() {
+        val files = listOf(original("a.txt"), original("b.txt"))
+        val viewModel = viewModel()
+        files.forEach(File::delete)
+        viewModel.encrypt()
+        val notFound = uiText(R.string.error_not_found)
+        val said = VaultMessages.imported(
+            0,
+            0,
+            2,
+            stoppedByLock = false,
+            keptLabel = R.plurals.vault_namesakes_kept,
+            reasons = listOf(notFound, notFound),
+        )!!
+        assertThat(shown.last()).isEqualTo(UserMessage(said, isError = true))
+    }
+
+    @Test
     fun `without the option, the originals stay`() {
         original("a.txt")
         val viewModel = viewModel()

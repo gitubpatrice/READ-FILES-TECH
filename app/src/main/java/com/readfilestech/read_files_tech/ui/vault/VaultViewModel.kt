@@ -273,9 +273,10 @@ class VaultViewModel @Inject constructor(
         if (busy) return
         run(VaultWork.Importing(0, paths.size)) {
             val outcomes = mutableListOf<Imported>()
+            val reasons = mutableListOf<UiText>()
             for ((index, path) in paths.withIndex()) {
                 mutableState.update { it.copy(work = VaultWork.Importing(index + 1, paths.size)) }
-                val outcome = importOne(File(path))
+                val outcome = importOne(File(path), reasons)
                 outcomes += outcome
                 if (outcome == Imported.STOPPED) break
             }
@@ -283,7 +284,13 @@ class VaultViewModel @Inject constructor(
             val stopped = Imported.STOPPED in outcomes
             val failed = outcomes.count { it == Imported.FAILED }
             say(
-                VaultMessages.imported(outcomes.count { it == Imported.DONE }, outcomes.count { it == Imported.KEPT }, failed, stopped),
+                VaultMessages.imported(
+                    outcomes.count { it == Imported.DONE },
+                    outcomes.count { it == Imported.KEPT },
+                    failed,
+                    stopped,
+                    reasons = reasons,
+                ),
                 isError = failed > 0 || stopped,
             )
         }
@@ -291,17 +298,23 @@ class VaultViewModel @Inject constructor(
 
     private enum class Imported { DONE, KEPT, FAILED, STOPPED }
 
-    /** One file of an import; a namesake asked about — "Keep", or the vault locked while it asked: kept. */
-    private suspend fun importOne(source: File): Imported {
+    /**
+     * One file of an import; a namesake asked about — "Keep", or the vault locked while it asked: kept. A failure's
+     * cause goes to [reasons].
+     */
+    private suspend fun importOne(source: File, reasons: MutableList<UiText>): Imported {
         var outcome = loadOrFailure { files.import(source) }
         if (outcome.exceptionOrNull() is NameTakenException) {
             if (!ask(VaultDialog.Namesake(source.name))) return Imported.KEPT
             outcome = loadOrFailure { files.import(source, overwrite = true) }
         }
-        return when (outcome.exceptionOrNull()) {
+        return when (val error = outcome.exceptionOrNull()) {
             null -> Imported.DONE
             is VaultLockedException -> Imported.STOPPED
-            else -> Imported.FAILED
+            else -> {
+                reasons += vaultReason(error)
+                Imported.FAILED
+            }
         }
     }
 

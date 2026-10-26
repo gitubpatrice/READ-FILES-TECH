@@ -78,19 +78,23 @@ déverrouillé.
   exclue de ses statistiques, et l'initialisation d'EmojiCompat au démarrage, qui demanderait sa police à un
   fournisseur de polices, est retirée.
 - **Ce que les autres applications peuvent atteindre.** L'activité de lancement (affinité de tâche vide, extras
-  ignorés sauf un raccourci d'une liste fermée) et les trois tuiles des réglages rapides (pour le système seul) ;
-  rien d'autre n'est exporté, ce que l'intégration continue vérifie exactement. Le FileProvider n'est pas
-  exporté : chaque fichier passe par une garde de chemin, puis est servi en lecture à l'application choisie —
-  Android lui laisse l'accès à ce fichier, à ce chemin, tant que sa tâche vit — et l'écriture n'est donnée qu'à
-  PDF Tech, après vérification de son certificat de signature.
+  ignorés sauf un raccourci d'une liste fermée), les trois tuiles des réglages rapides (pour le système seul) et
+  le récepteur d'installation de profils d'AndroidX, que seuls le shell et le système peuvent appeler (permission
+  `DUMP`) ; rien d'autre n'est exporté, ce que l'intégration continue vérifie exactement. Le FileProvider n'est
+  pas exporté : chaque fichier passe par une garde de chemin, puis est servi en lecture à l'application choisie —
+  Android lui laisse l'accès à ce fichier, à ce chemin, tant que sa tâche vit. L'écriture n'est donnée qu'à PDF
+  Tech, après vérification de son certificat de signature, et à l'appareil photo, sur le seul fichier vide de la
+  photo demandée, jusqu'à son retour.
 - **Le coffre.** AES-256-GCM, le nom du fichier lié comme donnée associée ; clé dérivée par Argon2id, calibré sur
-  le téléphone ; blocage contre la force brute sur deux horloges, si bien que ni un redémarrage ni une horloge
-  reculée ne le lèvent (un redémarrage suivi d'une horloge avancée libère un essai par redémarrage : rien d'autre
-  ne garde l'heure d'un démarrage à l'autre) ; verrouillage automatique en arrière-plan, sans activité, pendant
-  la veille (une alarme) et dès qu'un autre écran que les siens s'ouvre ; chaque opération travaille sur sa
-  propre copie de la clé et s'arrête si le coffre a été verrouillé entre-temps ; écrans protégés de la capture ;
-  copies déchiffrées, brouillon de PdfBox compris, purgées au verrouillage et à chaque démarrage. La réparation
-  unique des fichiers que la 2.15.2 chiffrait sous une clé nulle est reprise.
+  le téléphone, pour un coffre créé depuis la 2.7.1 (un coffre plus ancien garde sa dérivation : PBKDF2 à 600 000
+  tours, ou Argon2id 16 Mio × 4) ; blocage contre la force brute sur deux horloges, si bien que ni un redémarrage
+  ni une horloge reculée ne le lèvent (un redémarrage suivi d'une horloge avancée libère un essai par
+  redémarrage : rien d'autre ne garde l'heure d'un démarrage à l'autre) ; verrouillage automatique en
+  arrière-plan, sans activité, pendant la veille (une alarme) et dès qu'un autre écran que les siens s'ouvre ;
+  chaque opération travaille sur sa propre copie de la clé et s'arrête si le coffre a été verrouillé
+  entre-temps ; écrans protégés de la capture ; copies déchiffrées, brouillon de PdfBox compris, purgées au
+  verrouillage et à chaque démarrage. La réparation unique des fichiers que la 2.15.2 chiffrait sous une clé
+  nulle est reprise.
 - **Fichiers hostiles.** La visionneuse HTML ne charge aucune ressource du réseau et n'exécute aucun JavaScript
   (WebViewAssetLoader, `blockNetworkLoads`, une CSP restrictive) ; l'extraction d'un ZIP refuse les noms qui
   sortent de son dossier et borne ce qui est produit, pas ce qui est annoncé ; les PDF sont analysés dans un

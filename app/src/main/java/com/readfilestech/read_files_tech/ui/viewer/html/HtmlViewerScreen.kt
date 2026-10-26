@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AndroidRuntimeException
 import android.view.View
+import android.webkit.ConsoleMessage
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -142,6 +144,7 @@ private fun PageView(assets: HtmlAssets, onLink: (HtmlLink) -> Unit) {
             factory = { context ->
                 newWebView(context)?.apply {
                     lockDown(settings)
+                    webChromeClient = QuietConsole
                     webViewClient = PageClient(
                         assets,
                         onLink = { currentOnLink(it) },
@@ -167,6 +170,16 @@ private fun newWebView(context: Context): WebView? = try {
     WebView(context)
 } catch (_: AndroidRuntimeException) {
     null
+}
+
+/**
+ * The page's console kept out of the system log. By default the WebView writes there every console message
+ * under the app's process — a resource the CSP refused, with the page's address, that is the file's name, a vault
+ * file's too (measured on the emulator, 2026-10-26: `source: …/page/<name>.html`); the privacy policy says the
+ * log holds no file name. Nothing else of a chrome client: no file chooser, no permission, no window, as before.
+ */
+private object QuietConsole : WebChromeClient() {
+    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = true
 }
 
 /**

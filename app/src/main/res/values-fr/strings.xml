@@ -55,7 +55,7 @@
     <string name="picker_all_folders">Tous les dossiers</string>
     <string name="picker_filter">Filtre actif : %1$s</string>
     <string name="picker_empty_title">Aucun fichier récent</string>
-    <string name="picker_empty_body">Les fichiers ouverts ou produits par les outils (conversions, scanner, OCR…) apparaîtront ici automatiquement.</string>
+    <string name="picker_empty_body">Les fichiers ouverts depuis l\'accueil et ceux que produisent les outils (conversions, scanner, OCR…) apparaîtront ici automatiquement.</string>
     <string name="recent_remove">Retirer des récents</string>
     <string name="recent_removed">Retiré des récents</string>
     <string name="picker_downloads">Téléchargements</string>
@@ -218,6 +218,7 @@
     <string name="error_not_found">l\'élément n\'existe plus</string>
     <string name="error_read_only">le volume est en lecture seule</string>
     <string name="error_no_space">espace insuffisant</string>
+    <string name="joined_reason">%1$s : %2$s</string>
     <string name="error_name_too_long">nom trop long</string>
     <string name="error_io">erreur de lecture ou d\'écriture</string>
     <string name="error_unexpected">Une erreur inattendue s\'est produite.</string>
@@ -370,7 +371,7 @@
     <string name="about_feature_cloud">Envoi vers une application cloud</string>
     <string name="about_feature_cloud_desc">À votre demande, vers kDrive, Google Drive ou Proton Drive s\'ils sont installés — l\'application n\'envoie rien elle-même</string>
     <string name="about_feature_search">Recherche globale</string>
-    <string name="about_feature_search_desc">Par nom et par contenu, sur tout le téléphone</string>
+    <string name="about_feature_search_desc">Par nom et par contenu, dans le stockage interne ou une carte SD</string>
     <string name="about_feature_duplicates_desc">Fichiers identiques repérés par leur SHA-256, les plus gros listés, pour libérer de la place</string>
     <string name="about_permissions">Permissions et pourquoi</string>
     <string name="about_perm_all_files">Android 11 et plus : l\'accès à tous les fichiers, que vous accordez dans les paramètres d\'Android. Il permet à l\'explorateur de parcourir, d\'ouvrir et de modifier vos fichiers, seulement quand vous le demandez : rien n\'est lu en arrière-plan.</string>
@@ -486,9 +487,9 @@
     <string name="tool_hint_vault">Fichiers chiffrés AES-256</string>
     <string name="tool_hint_scanner">Document → PDF (caméra)</string>
     <string name="tool_hint_exif">Supprimer GPS/date des images</string>
-    <string name="tool_hint_global_search">Par nom et contenu, tout le téléphone</string>
+    <string name="tool_hint_global_search">Par nom et contenu, stockage interne ou carte SD</string>
     <string name="tool_hint_duplicates">Libérer du stockage</string>
-    <string name="tool_hint_trash">Restaurer les éléments supprimés</string>
+    <string name="tool_hint_trash">Restaurer ce que vous avez mis à la corbeille</string>
     <string name="missing_screen_title">Impossible d\'ouvrir cet écran</string>
     <string name="missing_screen_body">Il vient d\'une autre version de Read Files Tech. Revenez en arrière, puis rouvrez-le depuis l\'accueil.</string>
 
@@ -846,6 +847,7 @@
         <item quantity="other">%d pages au plus : les autres images n\'ont pas été ajoutées.</item>
     </plurals>
     <string name="scanner_no_camera">Aucune appli photo sur ce téléphone : importez plutôt des images.</string>
+    <string name="ocr_no_camera">Aucune appli photo sur ce téléphone : choisissez plutôt une image.</string>
     <string name="scanner_photo_failed">Impossible de lire cette photo : %1$s</string>
     <string name="scanner_page_failed">%1$s n\'a pas été ajoutée : %2$s</string>
     <string name="scanner_page_not_made">Impossible de créer cette page : %1$s</string>
@@ -876,7 +878,7 @@
     <string name="markdown_too_many_cells">Ses tableaux pourraient compter trop de cellules (plus de %1$,d) : affiché en texte, sans mise en forme.</string>
     <string name="markdown_too_many_brackets">Trop de crochets ouverts à la fois (plus de %1$,d) : affiché en texte, sans mise en forme.</string>
     <string name="markdown_image">Image non chargée</string>
-    <string name="markdown_no_app">Aucune application trouvée pour ouvrir ce lien.</string>
+    <string name="link_no_app">Aucune application trouvée pour ouvrir ce lien.</string>
     <string name="markdown_link_refused">Ce lien n\'est pas ouvert : seuls les liens web et e-mail le sont.</string>
     <string name="json_show_pretty">Texte indenté</string>
     <string name="json_show_tree">Arbre</string>
@@ -1106,7 +1108,7 @@
     <string name="compress_reduction">Réduction : -%1$d %%</string>
     <string name="compress_larger">La copie n\'est pas plus légère que l\'original : essayez une qualité ou une largeur plus basse.</string>
     <string name="compress_failed">Impossible de compresser cette image : %1$s</string>
-    <string name="exif_intro">Montre la localisation, la date et l\'appareil que porte une image, et en enregistre une copie sans eux</string>
+    <string name="exif_intro">Dit si une image porte une localisation, montre sa date et son appareil, et en enregistre une copie sans eux</string>
     <string name="exif_found">Métadonnées détectées</string>
     <string name="exif_none">Aucune métadonnée notable</string>
     <string name="exif_gps">Localisation GPS</string>
