@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.search.SearchHit
 import com.readfilestech.read_files_tech.data.storage.StorageModel
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.LocalStorageSettings
 import com.readfilestech.read_files_tech.ui.common.BrandButton
@@ -243,7 +244,12 @@ private fun HitRow(hit: SearchHit, onOpenFolder: (String) -> Unit) {
             Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, contentDescription = null, modifier = Modifier.size(20.dp))
         },
         headlineContent = {
-            Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                file.name.withoutBidiControls(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         },
         supportingContent = {
             Column {

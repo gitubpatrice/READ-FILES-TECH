@@ -36,6 +36,7 @@ import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.apps.ApkArchives
 import com.readfilestech.read_files_tech.data.apps.ApkInfo
 import com.readfilestech.read_files_tech.data.browse.DirectoryListing
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.common.IoDispatcher
 import com.readfilestech.read_files_tech.ui.common.UserMessages
 import com.readfilestech.read_files_tech.ui.common.uiText
@@ -76,7 +77,9 @@ class ApkInstallViewModel @Inject constructor(
 
     /**
      * On each return too: back from the settings, an access just allowed shows at once. The archive is
-     * read by its REAL path, and its size and date kept: what is described is what [install] hands over.
+     * read by its REAL path, and its size and date kept: [install] refuses a file changed since. Not an app
+     * rewriting it on purpose, size and date put back: it could as well have changed it before it was opened, and
+     * the description is the archive's own words anyway (security audit of the 3.0, C1, refuted).
      */
     fun reload() {
         viewModelScope.launch {
@@ -183,7 +186,7 @@ fun ApkInstallDialog(onDismiss: () -> Unit, viewModel: ApkInstallViewModel = hil
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
                 info == null -> Text(stringResource(R.string.install_not_apk), style = MaterialTheme.typography.bodyMedium)
                 !state.allowed -> Text(stringResource(R.string.install_permission), style = MaterialTheme.typography.bodyMedium)
-                else -> Text(viewModel.name, style = MaterialTheme.typography.bodyMedium)
+                else -> Text(viewModel.name.withoutBidiControls(), style = MaterialTheme.typography.bodyMedium)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }

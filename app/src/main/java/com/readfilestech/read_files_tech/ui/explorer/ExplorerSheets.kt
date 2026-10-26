@@ -46,6 +46,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.TextPreview
 import com.readfilestech.read_files_tech.data.sharing.MimeTypes
 import com.readfilestech.read_files_tech.data.text.CsvRows
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import kotlinx.coroutines.Dispatchers
@@ -80,7 +81,7 @@ fun EntryInfoDialog(entry: FileEntry, onCopied: (String) -> Unit, onDismiss: () 
                 tint = FileVisuals.color(entry.isDirectory, entry.extension)
             )
         },
-        title = { Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        title = { Text(entry.name.withoutBidiControls(), maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 val unknown = stringResource(R.string.info_unknown)

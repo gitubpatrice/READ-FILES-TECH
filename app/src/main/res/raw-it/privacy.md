@@ -1,6 +1,6 @@
 # Informativa sulla privacy — Read Files Tech
 
-_Ultimo aggiornamento: 25 ottobre 2026 (versione 3.0.0)_
+_Ultimo aggiornamento: 26 ottobre 2026 (versione 3.0.1)_
 
 ## In una frase
 
@@ -52,7 +52,9 @@ Se la cartella dei file creati rifiuta la scrittura («Accesso a tutti i file» 
 
 Sempre su una Sua azione, e verso l'app che Lei sceglie:
 
-- **Condividi**, **Apri con**: il file è affidato all'app scelta, in sola lettura, per quella volta.
+- **Condividi**, **Apri con**: il file è affidato all'app scelta, in sola lettura. Android le lascia leggere quel file,
+  con quel nome, finché la sua schermata resta aperta: se nel frattempo Lei lo modifica, può leggerne la nuova
+  versione.
 - **Invia** a kDrive, Google Drive o Proton Drive, se installati.
 - **Modifica in PDF Tech**: l'accesso in scrittura è concesso solo se l'app installata porta la firma di PDF Tech.
 - **Condividere automaticamente dopo la creazione**, se attiva questa impostazione (disattivata per impostazione predefinita).

@@ -74,14 +74,16 @@ upstream; attacks that need a rooted or already compromised phone; physical atta
   EmojiCompat's start-up initializer, which would ask a downloadable-fonts provider for its font, is removed.
 - **What other apps can reach.** The launcher activity (empty task affinity, extras dropped but a whitelisted
   shortcut) and the three Quick Settings tiles (system only); nothing else is exported, which the CI checks
-  exactly. The FileProvider is not exported: every file is checked by a path guard, then served for that intent
-  only, read-only — write access goes only to PDF Tech, after its signing certificate is checked.
-- **The vault.** AES-256-GCM, the file name bound as associated data; key derived by Argon2id, calibrated on the
-  phone; brute-force lockout on two clocks, so neither a reboot nor setting the clock back frees it; auto-lock
-  in the background, when idle and while the phone sleeps (an alarm); each operation works on its own copy of
-  the key and stops if the vault was locked meanwhile; screens protected from capture; decrypted copies purged
-  at the lock and at every start. The one-time repair of the files 2.15.2 encrypted under a zeroed key is
-  carried over.
+  exactly. The FileProvider is not exported: every file is checked by a path guard, then served read-only to
+  the app the user chose — Android keeps that app's access to the file, at that path, while its task lives —
+  and write access goes only to PDF Tech, after its signing certificate is checked.
+- **The vault.** AES-256-GCM, the file name bound as associated data; key derived by Argon2id, calibrated on
+  the phone; brute-force lockout on two clocks, so neither a reboot nor setting the clock back frees it (a
+  reboot followed by setting the clock forward frees one attempt per reboot: nothing else keeps time across a
+  reboot); auto-lock in the background, when idle, while the phone sleeps (an alarm) and as soon as a screen
+  other than its own opens; each operation works on its own copy of the key and stops if the vault was locked
+  meanwhile; screens protected from capture; decrypted copies, PdfBox's scratch included, purged at the lock
+  and at every start. The one-time repair of the files 2.15.2 encrypted under a zeroed key is carried over.
 - **Hostile files.** The HTML viewer loads no network resource and runs no JavaScript (WebViewAssetLoader,
   `blockNetworkLoads`, a restrictive CSP); ZIP extraction refuses names leading outside its folder and bounds
   what is produced, not what is declared; PDFs are parsed in a separate process (`:pdf`) that accepts only the

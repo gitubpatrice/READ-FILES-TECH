@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import java.time.Instant
 import java.time.ZoneId
@@ -83,7 +84,12 @@ fun EntryRow(
         EntryIcon(entry, selected, thumbnails)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
-            Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                entry.name.withoutBidiControls(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+            )
             Text(details(entry), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (menu != null) RowMenuButton(menu) else Spacer(Modifier.width(12.dp))

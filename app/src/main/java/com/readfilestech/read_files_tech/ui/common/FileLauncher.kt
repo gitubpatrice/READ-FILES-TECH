@@ -29,7 +29,9 @@ enum class LaunchOutcome { STARTED, NO_APP, NOT_INSTALLED, REFUSED, FAILED }
  * the "Open with" chooser), share, send to one app, edit in PDF Tech.
  *
  * Every file goes through [PathGuard] first and is served by the app's FileProvider (authority
- * `<applicationId>.fileprovider`, unchanged, docs D-012) with a READ grant for that intent only. The
+ * `<applicationId>.fileprovider`, unchanged, docs D-012) with a READ grant to the app the intent starts, which
+ * Android keeps while that app's task lives — on the path, not on a copy: the privacy policy says so (security
+ * audit of the 3.0, C2). The
  * share no longer copies anything: share_plus staged a plaintext copy of every shared file in
  * `cache/share_plus/`.
  *

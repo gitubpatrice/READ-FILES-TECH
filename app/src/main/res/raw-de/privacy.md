@@ -1,6 +1,6 @@
 # Datenschutzerklärung — Read Files Tech
 
-_Zuletzt aktualisiert: 25. Oktober 2026 (Version 3.0.0)_
+_Zuletzt aktualisiert: 26. Oktober 2026 (Version 3.0.1)_
 
 ## In einem Satz
 
@@ -52,7 +52,9 @@ Nimmt der Ordner der erstellten Dateien keine Dateien an („Zugriff auf alle Da
 
 Immer auf eine Handlung von Ihnen hin, und an die App, die Sie wählen:
 
-- **Teilen**, **Öffnen mit**: Die Datei wird der gewählten App übergeben, nur zum Lesen, für dieses eine Mal.
+- **Teilen**, **Öffnen mit**: Die Datei wird der gewählten App übergeben, nur zum Lesen. Android lässt diese App die
+  Datei unter diesem Namen lesen, solange ihr Bildschirm geöffnet bleibt: Ändern Sie die Datei in der Zwischenzeit,
+  kann sie die neue Fassung lesen.
 - **Senden** an kDrive, Google Drive oder Proton Drive, falls installiert.
 - **In PDF Tech bearbeiten**: Schreibzugriff wird nur gegeben, wenn die installierte App die Signatur von PDF Tech trägt.
 - **Nach dem Erstellen automatisch teilen**, wenn Sie diese Einstellung einschalten (standardmäßig aus).

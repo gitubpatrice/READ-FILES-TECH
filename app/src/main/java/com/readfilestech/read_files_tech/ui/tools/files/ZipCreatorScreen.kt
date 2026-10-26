@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.outputs.OutputCategory
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
 import com.readfilestech.read_files_tech.ui.common.BrandButton
@@ -137,7 +138,7 @@ fun ZipCreatorScreen(
 @Composable
 private fun FileRow(file: FileEntry, enabled: Boolean, onRemove: () -> Unit) {
     ListItem(
-        headlineContent = { Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        headlineContent = { Text(file.name.withoutBidiControls(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = { Text(formatBytes(file.size)) },
         leadingContent = {
             Icon(

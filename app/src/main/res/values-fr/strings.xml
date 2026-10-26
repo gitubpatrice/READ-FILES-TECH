@@ -586,6 +586,8 @@
     <string name="html_view_source">Code source</string>
     <string name="html_view_page">Vue rendue</string>
     <string name="html_link_refused">Ce lien ne peut pas être ouvert.</string>
+    <string name="html_leave_title">Quitter la page ?</string>
+    <string name="html_leave_message">Ce lien mène à :\n%1$s\nIl s\'ouvre dans une autre appli, un navigateur ou une messagerie, qui peut se connecter à Internet.</string>
     <!-- Le moteur de rendu de la WebView a cessé sur cette page ; le reste de l’app continue. -->
     <string name="html_render_gone">Cette page n\'a pas pu être affichée.</string>
     <string name="html_no_webview">La WebView d\'Android est absente ou en cours de mise à jour : la page ne peut pas être affichée. Sa source reste lisible.</string>

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.common.BrandButton
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 
@@ -76,7 +77,12 @@ fun ChosenFileRow(file: FileEntry, onChange: () -> Unit, enabled: Boolean = true
         Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.size(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+            Text(
+                file.name.withoutBidiControls(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleSmall,
+            )
             Text(formatBytes(file.size), style = MaterialTheme.typography.bodySmall)
         }
         TextButton(onClick = onChange, enabled = enabled) { Text(stringResource(R.string.action_change)) }

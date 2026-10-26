@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -230,31 +231,35 @@ private fun RecentsTab(
                     null
                 } else {
                     { dismiss ->
-                        val canLeave = entry.path !in state.cannotLeave
-                        // Another app opens it only if it may leave the app; the app's own viewer always.
-                        if (canLeave || FileRouter.targetFor(entry) is FileTarget.Internal) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.action_open)) }, onClick = {
+                        // In a menu of its own, as the explorer's (EntryMenus): bare, the items were laid out in the
+                        // row itself, over its name, the row squeezed to a letter's width (seen on the emulator).
+                        DropdownMenu(expanded = true, onDismissRequest = dismiss) {
+                            val canLeave = entry.path !in state.cannotLeave
+                            // Another app opens it only if it may leave the app; the app's own viewer always.
+                            if (canLeave || FileRouter.targetFor(entry) is FileTarget.Internal) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.action_open)) }, onClick = {
+                                    dismiss()
+                                    open(entry)
+                                })
+                            }
+                            // "Modify" of the 2.15.3 (`rft_picker_screen.dart:669-676`) was offered for any file (F34).
+                            FileRouter.editorFor(entry.path, entry.extension)?.let { editor ->
+                                DropdownMenuItem(text = { Text(stringResource(R.string.action_edit)) }, onClick = {
+                                    dismiss()
+                                    onNavigate(editor)
+                                })
+                            }
+                            if (canLeave) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) }, onClick = {
+                                    dismiss()
+                                    viewModel.launching.share(context, listOf(entry))
+                                })
+                            }
+                            DropdownMenuItem(text = { Text(stringResource(R.string.recent_remove)) }, onClick = {
                                 dismiss()
-                                open(entry)
+                                viewModel.remove(entry)
                             })
                         }
-                        // "Modify" of the 2.15.3 (`rft_picker_screen.dart:669-676`) was offered for any file (F34).
-                        FileRouter.editorFor(entry.path, entry.extension)?.let { editor ->
-                            DropdownMenuItem(text = { Text(stringResource(R.string.action_edit)) }, onClick = {
-                                dismiss()
-                                onNavigate(editor)
-                            })
-                        }
-                        if (canLeave) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) }, onClick = {
-                                dismiss()
-                                viewModel.launching.share(context, listOf(entry))
-                            })
-                        }
-                        DropdownMenuItem(text = { Text(stringResource(R.string.recent_remove)) }, onClick = {
-                            dismiss()
-                            viewModel.remove(entry)
-                        })
                     }
                 },
             )

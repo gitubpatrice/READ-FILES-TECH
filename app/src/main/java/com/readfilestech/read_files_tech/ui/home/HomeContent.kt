@@ -61,6 +61,7 @@ import com.readfilestech.read_files_tech.data.browse.FileEntry
 import com.readfilestech.read_files_tech.data.browse.FileNames
 import com.readfilestech.read_files_tech.data.recents.RecentFile
 import com.readfilestech.read_files_tech.data.storage.StorageSpace
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.ui.common.SectionTitle
 import com.readfilestech.read_files_tech.ui.common.formatBytes
 import com.readfilestech.read_files_tech.ui.navigation.Feature
@@ -198,7 +199,12 @@ private fun ResumeCard(file: RecentFile, onOpen: () -> Unit) {
             ExtensionBadge(file)
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(file.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    file.name.withoutBidiControls(),
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(recentLine(file), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.Outlined.PlayCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -216,7 +222,12 @@ fun RecentRow(file: RecentFile, onOpen: () -> Unit, menu: (@Composable () -> Uni
         ExtensionBadge(file)
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(file.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                file.name.withoutBidiControls(),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(recentLine(file), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (menu != null) menu()

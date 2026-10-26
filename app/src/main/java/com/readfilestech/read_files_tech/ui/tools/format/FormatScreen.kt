@@ -43,6 +43,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.readfilestech.read_files_tech.R
 import com.readfilestech.read_files_tech.data.browse.FileEntry
+import com.readfilestech.read_files_tech.data.text.withoutBidiControls
 import com.readfilestech.read_files_tech.data.tools.FormatAction
 import com.readfilestech.read_files_tech.ui.AppSnackbarHost
 import com.readfilestech.read_files_tech.ui.PickedResults
@@ -185,7 +186,12 @@ private fun ChosenFile(file: FileEntry, onClear: () -> Unit) {
         Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.size(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+            Text(
+                file.name.withoutBidiControls(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleSmall,
+            )
             Text(formatBytes(file.size), style = MaterialTheme.typography.bodySmall)
         }
         IconButton(onClick = onClear) { Icon(Icons.Outlined.Clear, contentDescription = stringResource(R.string.action_clear)) }

@@ -597,6 +597,8 @@
     <string name="html_view_source">Codice sorgente</string>
     <string name="html_view_page">Pagina formattata</string>
     <string name="html_link_refused">Questo link non può essere aperto.</string>
+    <string name="html_leave_title">Lasciare la pagina?</string>
+    <string name="html_leave_message">Questo link porta a:\n%1$s\nSi apre in un\'altra app, un browser o un\'app di posta, che può connettersi a Internet.</string>
     <!-- The WebView's renderer stopped on this page: the app goes on. -->
     <string name="html_render_gone">Non è stato possibile mostrare questa pagina.</string>
     <string name="html_no_webview">La WebView di Android manca o è in aggiornamento: non è possibile mostrare la pagina. Il suo codice sorgente resta leggibile.</string>
