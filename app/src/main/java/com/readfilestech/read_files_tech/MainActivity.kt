@@ -17,6 +17,7 @@ import com.readfilestech.read_files_tech.data.storage.StorageAccess
 import com.readfilestech.read_files_tech.startup.StartupCleanup
 import com.readfilestech.read_files_tech.ui.AppRoot
 import com.readfilestech.read_files_tech.ui.common.UserMessages
+import com.readfilestech.read_files_tech.ui.common.keepSelectedTextInApp
 import com.readfilestech.read_files_tech.ui.navigation.Feature
 import com.readfilestech.read_files_tech.ui.navigation.Shortcuts
 import com.readfilestech.read_files_tech.ui.theme.ReadFilesTechTheme
@@ -66,6 +67,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Before any screen: a scan left by a process that died is kept only when its screen comes back.
         startupCleanup.clearScansOnce(restoring = savedInstanceState != null)
+        // Before the first viewer exists: the selection toolbar's "Translate" would hand the selected text of
+        // a document to another app. See `keepSelectedTextInApp`.
+        keepSelectedTextInApp()
         enableEdgeToEdge()
         accessGranted = access.isGranted()
         // Once: a recreated activity (rotation) must not replay the tile that opened it.
