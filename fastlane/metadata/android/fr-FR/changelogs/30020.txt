@@ -1,0 +1,2 @@
+Version 3.0.2, le texte sélectionné reste dans l'application.
+• La barre de sélection ne propose plus « Traduire » ni les actions d'une autre application, sur toutes les versions d'Android, dans les champs, les visionneuses et les pages HTML, fichiers du coffre compris : elles recevaient le texte sélectionné. Restent Couper, Copier, Coller, Tout sélectionner.

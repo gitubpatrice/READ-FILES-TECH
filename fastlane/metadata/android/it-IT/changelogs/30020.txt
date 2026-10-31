@@ -1,0 +1,2 @@
+Versione 3.0.2, il testo selezionato resta nell'app.
+• La barra di selezione non propone più «Traduci» né le azioni di un'altra app, su ogni versione di Android, nei campi, nei visualizzatori e nelle pagine HTML, file della cassaforte compresi: ricevevano il testo selezionato. Restano Taglia, Copia, Incolla, Seleziona tutto.

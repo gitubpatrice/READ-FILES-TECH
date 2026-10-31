@@ -45,13 +45,13 @@ read-files-tech-universel-<version>.apk
 Check the file you downloaded against the digest published for it; if it does not match, do not install it:
 
 ```bash
-sha256sum read-files-tech-arm64-v8a-3.0.1.apk
+sha256sum read-files-tech-arm64-v8a-3.0.2.apk
 ```
 
 Then check the signing certificate, which is what ties a download to this project — whatever its file name:
 
 ```bash
-apksigner verify --print-certs read-files-tech-arm64-v8a-3.0.1.apk
+apksigner verify --print-certs read-files-tech-arm64-v8a-3.0.2.apk
 ```
 
 Its SHA-256 has not changed since the 2.x versions: an APK that presents another one did not come from here.

@@ -1,0 +1,2 @@
+Version 3.0.2, markierter Text bleibt in der App.
+• Die Auswahlleiste bietet kein „Übersetzen“ und keine Textaktionen anderer Apps mehr, unter jedem Android, in Feldern, Betrachtern und HTML-Seiten, Tresor-Dateien eingeschlossen: Sie erhielten den markierten Text. Es bleiben Ausschneiden, Kopieren, Einfügen, Alles auswählen.

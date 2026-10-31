@@ -1,0 +1,2 @@
+Versión 3.0.2, el texto seleccionado se queda en la app.
+• La barra de selección ya no ofrece «Traducir» ni las acciones de otra app, en ninguna versión de Android, en campos, visores y páginas HTML, archivos de la caja fuerte incluidos: recibían el texto seleccionado. Quedan Cortar, Copiar, Pegar, Seleccionar todo.

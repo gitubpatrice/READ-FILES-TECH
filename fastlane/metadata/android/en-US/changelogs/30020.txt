@@ -1,0 +1,2 @@
+Version 3.0.2, selected text stays in the app.
+• The selection toolbar no longer offers Translate or another app's text actions, on any Android version, in fields, viewers and HTML pages, vault files included: they received the selected text. Cut, Copy, Paste and Select all remain.
