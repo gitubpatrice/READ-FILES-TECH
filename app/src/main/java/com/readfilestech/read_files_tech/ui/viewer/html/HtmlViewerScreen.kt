@@ -2,7 +2,12 @@ package com.readfilestech.read_files_tech.ui.viewer.html
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.graphics.Rect
 import android.util.AndroidRuntimeException
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.RenderProcessGoneDetail
@@ -167,9 +172,54 @@ private fun PageView(assets: HtmlAssets, onLink: (HtmlLink) -> Unit) {
  * which crashed the app the first time an HTML file was opened (API 26 emulator, 2026-10-25).
  */
 private fun newWebView(context: Context): WebView? = try {
-    WebView(context)
+    SelectionInAppWebView(context)
 } catch (_: AndroidRuntimeException) {
     null
+}
+
+/**
+ * A WebView whose selection toolbar offers no other app's text action.
+ *
+ * The WebView adds to that toolbar one entry per app that declares `ACTION_PROCESS_TEXT` and that this app can
+ * see — any app may declare one, under any name, and one tap hands it the selected text of the page, a vault
+ * file's too. Package visibility does not keep them out: before Android 11 it does not exist, and from 11 on it
+ * is granted per whole app. So those entries are hidden, on every version, as Compose's are
+ * (`keepSelectedTextInApp`). Hidden, not removed: the WebView adds them without an id of their own.
+ * The text classifier's "Translate" is gone too: the WebView reads the activity's classifier.
+ */
+private class SelectionInAppWebView(context: Context) : WebView(context) {
+    // The one-argument `startActionMode` calls this one with TYPE_PRIMARY: overriding it would wrap twice.
+    override fun startActionMode(callback: ActionMode.Callback, type: Int): ActionMode? =
+        super.startActionMode(WithoutOtherAppsTextActions(callback), type)
+}
+
+/** [delegate]'s menu, with every `ACTION_PROCESS_TEXT` entry hidden each time the WebView fills or refreshes it. */
+private class WithoutOtherAppsTextActions(private val delegate: ActionMode.Callback) : ActionMode.Callback2() {
+    override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean =
+        delegate.onCreateActionMode(mode, menu).also { menu.hideOtherAppsTextActions() }
+
+    override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean =
+        delegate.onPrepareActionMode(mode, menu).also { menu.hideOtherAppsTextActions() }
+
+    override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean = delegate.onActionItemClicked(mode, item)
+
+    override fun onDestroyActionMode(mode: ActionMode) = delegate.onDestroyActionMode(mode)
+
+    // The floating toolbar sits where the WebView says the selection is.
+    override fun onGetContentRect(mode: ActionMode, view: View, outRect: Rect) {
+        if (delegate is ActionMode.Callback2) {
+            delegate.onGetContentRect(mode, view, outRect)
+        } else {
+            super.onGetContentRect(mode, view, outRect)
+        }
+    }
+
+    private fun Menu.hideOtherAppsTextActions() {
+        for (index in 0 until size()) {
+            val item = getItem(index)
+            if (item.intent?.action == Intent.ACTION_PROCESS_TEXT) item.isVisible = false
+        }
+    }
 }
 
 /**
