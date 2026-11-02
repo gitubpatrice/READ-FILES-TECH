@@ -9,7 +9,7 @@ kotlin                  = "2.4.10"
 ksp                     = "2.3.12"
 
 # --- Android Gradle Plugin (Kotlin is built into AGP 9) ---
-agp                     = "9.4.1"
+agp                     = "9.5.0"
 
 # --- AndroidX ---
 androidxCore            = "1.19.1"
