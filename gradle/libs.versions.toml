@@ -6,7 +6,7 @@
 # Capped below 2.4.20: CodeQL 2.27 refuses to compile from there (measured on Agenda Tech). The root
 # build.gradle.kts pins the Kotlin Gradle Plugin to this EXACT version with `strictly`.
 kotlin                  = "2.4.10"
-ksp                     = "2.3.12"
+ksp                     = "2.3.13"
 
 # --- Android Gradle Plugin (Kotlin is built into AGP 9) ---
 agp                     = "9.4.1"
