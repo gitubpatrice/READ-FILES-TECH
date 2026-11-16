@@ -70,7 +70,7 @@ re2j                    = "1.8"
 tesseract4android       = "4.9.0"
 
 # --- Crypto (docs D-005): ONE BouncyCastle family for the vault KDFs and, later, PdfBox ---
-bouncycastle            = "1.86"
+bouncycastle            = "1.87"
 
 # --- PDF (phase 4, the PDF viewer, docs D-005 and D-029): PdfBox-Android reads what PdfRenderer does not
 # expose — the password of an encrypted file (decrypted to a private temporary) and the outline — and only
